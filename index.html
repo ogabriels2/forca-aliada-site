@@ -29,8 +29,10 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
         body { background-color: var(--branco); color: var(--azul-escuro-texto); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-        html { scroll-behavior: smooth; }
+        html { scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+        
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
@@ -89,11 +91,29 @@
         .btn-red { background-color: var(--vermelho-acao); color: var(--branco); }
         .btn-red:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(230, 57, 70, 0.5); }
 
-        /* --- STATS STRIP --- */
-        .stats-strip { display: flex; justify-content: center; gap: 80px; padding: 60px 5%; background: var(--branco); border-bottom: 1px solid #eee; }
-        .stat-item { text-align: center; }
-        .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; }
-        .stat-label { font-size: 0.9rem; color: #86868b; font-weight: 500; margin-top: 5px; }
+        /* --- STATS STRIP (CORRIGIDO: PRÓXIMOS E ALINHADOS) --- */
+        .stats-strip { 
+            display: flex; 
+            justify-content: center; /* Centraliza o bloco na tela */
+            gap: 80px; /* Distância original do PC */
+            padding: 60px 5%; 
+            background: var(--branco); 
+            border-bottom: 1px solid #eee;
+            
+            /* Garante linha única */
+            flex-wrap: nowrap; 
+            flex-direction: row;
+            width: 100%;
+        }
+        
+        .stat-item { 
+            text-align: center; 
+            /* CORREÇÃO: Removemos o flex:1 para eles não esticarem */
+            min-width: max-content; /* Garante que ocupem só o espaço necessário */
+        }
+        
+        .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; white-space: nowrap; }
+        .stat-label { font-size: 0.9rem; color: #86868b; font-weight: 500; margin-top: 5px; white-space: nowrap; }
 
         /* --- LEGADO --- */
         section { padding: 100px 5%; }
@@ -119,20 +139,54 @@
 
         /* --- CROSS PLATFORM --- */
         .cross-platform { background: var(--branco); text-align: center; overflow: hidden; }
-        .devices-container { display: flex; justify-content: center; align-items: flex-end; gap: 40px; flex-wrap: wrap; padding-bottom: 40px; }
         
-        .device, .switch-console { position: relative; background: #000; box-shadow: var(--sombra-suave); transition: 0.6s var(--transicao); }
-        .device:hover, .switch-console:hover { transform: translateY(-20px) scale(1.05); box-shadow: var(--sombra-flutuante); }
+        .devices-container { 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-end; 
+            gap: 15px; 
+            padding-bottom: 40px; 
+            flex-wrap: nowrap; 
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .device, .switch-console { 
+            position: relative; background: #000; box-shadow: var(--sombra-suave); transition: 0.6s var(--transicao);
+            flex-shrink: 1; min-width: 0; 
+        }
+        
+        @media (hover: hover) {
+            .device:hover, .switch-console:hover { transform: translateY(-20px) scale(1.05); box-shadow: var(--sombra-flutuante); }
+        }
+        
         .device img, .switch-console img { width: 100%; height: 100%; object-fit: cover; display: block; }
         
-        .monitor { width: 500px; height: 300px; border-radius: 12px; border: 10px solid #1a1a1a; border-bottom: 25px solid #1a1a1a; order: 2; z-index: 2; }
+        /* PC */
+        .monitor { width: 500px; height: auto; aspect-ratio: 16/9; border-radius: 12px; border: 10px solid #1a1a1a; border-bottom: 25px solid #1a1a1a; order: 2; z-index: 2; }
         .monitor::after { content: ''; position: absolute; bottom: -55px; left: 50%; transform: translateX(-50%); width: 140px; height: 30px; background: #555; clip-path: polygon(15% 0, 85% 0, 100% 100%, 0% 100%); }
-        .phone { width: 280px; height: 135px; border-radius: 18px; border: 6px solid #111; order: 3; z-index: 3; margin-bottom: 10px; }
+        
+        /* Phone */
+        .phone { 
+            width: 280px; height: auto; aspect-ratio: 2/1; border-radius: 18px; border: 6px solid #111; 
+            order: 3; z-index: 3; 
+            margin: 0 0 10px 12px; 
+        }
         .phone img { border-radius: 12px; }
-        .switch-console { width: 320px; height: 180px; background: #222; border: 8px solid #333; border-radius: 4px; order: 1; z-index: 1; margin: 0 35px; }
-        .switch-console img { opacity: 0.9; }
-        .switch-console::before { content: ''; position: absolute; top: -8px; left: -45px; width: 40px; height: calc(100% + 16px); background: #00C3E3; border-radius: 20px 0 0 20px; box-shadow: inset -5px 0 10px rgba(0,0,0,0.2); }
-        .switch-console::after { content: ''; position: absolute; top: -8px; right: -45px; width: 40px; height: calc(100% + 16px); background: #FF4554; border-radius: 0 20px 20px 0; box-shadow: inset 5px 0 10px rgba(0,0,0,0.2); }
+        
+        /* SWITCH */
+        .switch-console { 
+            width: 320px; height: auto; aspect-ratio: 16/9; 
+            background: #222; border: 8px solid #333; border-radius: 4px; 
+            order: 1; z-index: 1; 
+            margin: 0 55px 10px 55px; 
+        }
+        .switch-console img { opacity: 0.9; object-fit: fill; }
+        
+        /* Controles */
+        .switch-console::before { content: ''; position: absolute; top: -8px; left: -15%; width: 15%; height: calc(100% + 16px); background: #00C3E3; border-radius: 20px 0 0 20px; box-shadow: inset -5px 0 10px rgba(0,0,0,0.2); }
+        .switch-console::after { content: ''; position: absolute; top: -8px; right: -15%; width: 15%; height: calc(100% + 16px); background: #FF4554; border-radius: 0 20px 20px 0; box-shadow: inset 5px 0 10px rgba(0,0,0,0.2); }
         
         .platform-list { margin-top: 50px; display: flex; gap: 25px; justify-content: center; opacity: 0.5; flex-wrap: wrap; }
         .platform-tag { cursor: help; font-size: 0.9rem; font-weight: 500; transition: 0.3s; }
@@ -184,18 +238,41 @@
         /* --- FOOTER --- */
         footer { background: #050d1a; color: var(--branco); padding: 100px 5%; text-align: center; border-top: 1px solid #1a1a1a; }
 
-        /* RESPONSIVO */
+        /* --- RESPONSIVO (MOBILE) --- */
         @media (max-width: 1000px) {
             .hero h1 { font-size: 3.5rem; }
             .about-grid, .bento-grid { grid-template-columns: 1fr; }
-            .stats-strip { flex-direction: column; gap: 30px; }
-            .devices-container { flex-direction: column; gap: 60px; }
-            .monitor { width: 90%; height: auto; aspect-ratio: 16/9; order: unset; transform: none; }
-            .switch-console { width: 80%; margin: 0; order: unset; } 
-            .phone { order: unset; margin: 0; width: 80%; height: auto; aspect-ratio: 2/1; }
-            .phone::before { display: none; }
+            
+            /* STATS MOBILE: APERTADOS MAS EM LINHA */
+            .stats-strip { 
+                gap: 15px; /* Gap pequeno para caber */
+                padding: 30px 2%;
+            }
+            .stat-number { font-size: 1.3rem; } /* Fonte menor */
+            .stat-label { font-size: 0.7rem; }
+
+            /* Crossplay Mobile */
+            .devices-container { 
+                flex-direction: column; flex-wrap: nowrap; 
+                align-items: center; gap: 50px; 
+            }
+            .monitor { width: 90%; order: unset; transform: none; }
+            
+            /* Switch Mobile */
+            .switch-console { 
+                width: 80%; margin: 0 0 30px 0; order: unset; 
+            } 
+            .phone { order: unset; margin: 0; width: 60%; }
+            
+            .switch-console::before { left: -15%; width: 15%; }
+            .switch-console::after { right: -15%; width: 15%; }
+            
             .bento-grid { grid-template-rows: auto; }
             nav { display: none; }
+
+            .glass-card { padding: 40px 20px; width: 95%; }
+            .connection-info { grid-template-columns: 1fr; }
+            .info-box strong.ip { word-break: break-all; }
         }
     </style>
 </head>
@@ -417,14 +494,14 @@
         // CONFIGURAÇÃO VISUAL (O que o usuário vê e copia)
         const DISPLAY_HOST = 'fa.ogabriels.com';
 
-        // COPY (Usa DISPLAY_HOST)
+        // COPY
         function copiar(texto, porta = null) {
             let mensagem = 'Endereço copiado: ' + texto;
             if (porta) mensagem += '\n⚠️ Atenção Bedrock: Lembre-se da Porta ' + porta;
             navigator.clipboard.writeText(texto).then(() => alert(mensagem));
         }
 
-        // STATUS SYSTEM (Usa API_HOSTs)
+        // STATUS SYSTEM
         async function fetchStatus() {
             const countElement = document.getElementById('player-count');
             const url = `https://api.mcstatus.io/v2/status/java/${API_JAVA_HOST}`;
@@ -442,7 +519,6 @@
 
         async function fetchBedrockFallback() {
             const countElement = document.getElementById('player-count');
-            // Nota: API exige IP:PORTA
             const url = `https://api.mcstatus.io/v2/status/bedrock/${API_BEDROCK_HOST}:${BEDROCK_PORT}`;
             try {
                 const response = await fetch(url);
@@ -490,7 +566,7 @@
             }
         }
 
-        // LIGHTBOX & SCROLL
+        // LIGHTBOX
         let currentSlide = 0;
         const galleryImages = ['galeria1.png', 'galeria2.png', 'galeria3.png'];
 
@@ -520,6 +596,7 @@
         });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
+        // REVEAL ANIMATION
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
@@ -533,7 +610,7 @@
         window.onload = function() {
             fetchStatus();
             setInterval(fetchStatus, 5000);
-            reveal();
+            reveal(); 
         };
     </script>
 </body>
