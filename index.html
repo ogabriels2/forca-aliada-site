@@ -52,7 +52,7 @@
         .section-header h2 { font-size: 2.8rem; letter-spacing: -0.03em; margin-bottom: 15px; color: var(--azul-escuro-texto); font-weight: 700; }
         .section-header p { color: #86868b; font-size: 1.2rem; line-height: 1.5; }
 
-        /* --- HEADER --- */
+        /* --- HEADER (PC) --- */
         header {
             position: fixed; top: 0; width: 100%; padding: 15px 5%;
             display: flex; justify-content: space-between; align-items: center;
@@ -77,28 +77,25 @@
         }
         .nav-cta:hover { background: rgba(0, 68, 204, 0.2); transform: translateY(-1px); }
 
-        /* Status Pill (Botão Online) */
+        /* Status Pill */
         .status-pill {
             background: rgba(0,0,0,0.05);
             padding: 6px 14px; border-radius: 20px;
             font-size: 0.75rem; font-weight: 600; 
             display: flex; align-items: center; gap: 8px; 
-            transition: 0.3s;
-            cursor: pointer;
+            transition: 0.3s; cursor: pointer;
         }
         .status-pill:hover { opacity: 0.8; transform: translateY(-1px); }
         .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; }
 
-        /* MENU MOBILE (HAMBURGUER OTIMIZADO) */
+        /* MENU MOBILE (HAMBURGUER) */
         .mobile-menu-btn { 
             display: none; 
-            font-size: 1.8rem; /* Visual um pouco maior */
+            font-size: 1.8rem; 
             cursor: pointer; 
             z-index: 1002;
-            
-            /* A MÁGICA DO UX: Aumenta a área de toque */
-            padding: 15px; 
-            margin-right: -10px; /* Compensa o padding para não empurrar o layout */
+            padding: 15px; /* Área de toque */
+            margin-right: -10px; 
             line-height: 1;
         }
         
@@ -112,12 +109,17 @@
         .mobile-nav-overlay ul { display: flex; flex-direction: column; gap: 30px; text-align: center; }
         .mobile-nav-overlay a { font-size: 1.5rem; font-weight: 700; color: var(--azul-escuro-texto); }
         
+        /* BOTÃO FECHAR (X) - POSICIONAMENTO ERGONÔMICO */
         .close-menu-btn {
-            margin-top: 30px; 
+            position: absolute; 
+            top: 15px; /* Padrão PC */
+            right: 5%; 
+            margin-right: -10px; 
             font-size: 3rem; 
             cursor: pointer;
-            padding: 20px; /* Área de toque grande para fechar */
+            padding: 15px; 
             line-height: 0.5;
+            color: var(--azul-escuro-texto);
         }
 
         /* --- HERO --- */
@@ -241,46 +243,39 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         footer { background: #050d1a; color: var(--branco); padding: 100px 5%; text-align: center; border-top: 1px solid #1a1a1a; }
 
-        /* --- RESPONSIVO MOBILE (V9.0 - Refinamento) --- */
+        /* --- RESPONSIVO MOBILE (FINAL V13) --- */
         @media (max-width: 1000px) {
             .hero h1 { font-size: 3rem; }
             .section-header h2 { font-size: 2.2rem; }
             .about-grid, .bento-grid { grid-template-columns: 1fr; }
             
-            nav { display: none; }
+            /* HEADER FINO */
+            header { padding: 8px 5%; }
             .mobile-menu-btn { display: block; }
-            .status-pill { display: none; } /* Oculta pill no topo do mobile para limpar a área */
+            nav { display: none; }
+            .status-pill { display: none; }
             
-            /* STATS MOBILE: APERTADO, LINHA ÚNICA, TEXTO QUEBRA */
-            .stats-strip { 
-                gap: 5px; /* Espaço mínimo */
-                padding: 30px 10px; /* Margens laterais seguras */
-                align-items: flex-start; /* Alinha no topo caso quebre linha */
-            }
-            .stat-item {
-                flex: 1;
-                min-width: 0; /* Permite encolher */
-            }
-            .stat-number { font-size: 1.3rem; }
-            .stat-label { 
-                font-size: 0.65rem; 
-                white-space: normal; /* A MÁGICA: Permite quebrar linha! */
-                line-height: 1.2;
-                max-width: 100%; 
+            /* BOTÃO FECHAR ALINHADO */
+            .close-menu-btn { 
+                top: 8px; /* Alinhado com o header fino */
             }
 
-            /* CROSSPLAY MOBILE */
+            /* STATS */
+            .stats-strip { 
+                gap: 5px; padding: 30px 10px; align-items: flex-start; 
+            }
+            .stat-item { flex: 1; min-width: 0; }
+            .stat-number { font-size: 1.3rem; }
+            .stat-label { font-size: 0.65rem; white-space: normal; line-height: 1.2; max-width: 100%; }
+
+            /* CROSSPLAY */
             .devices-container { 
                 flex-direction: column; flex-wrap: nowrap; 
                 align-items: center; gap: 40px; 
             }
             .monitor { width: 90%; order: unset; transform: none; }
-            
-            .switch-console { 
-                width: 65%; margin: 0; order: unset; 
-            } 
+            .switch-console { width: 65%; margin: 0; order: unset; } 
             .phone { order: unset; margin: 0; width: 55%; }
-            
             .switch-console::before { left: -15%; width: 15%; }
             .switch-console::after { right: -15%; width: 15%; }
             
@@ -535,6 +530,25 @@
             document.getElementById('mobile-nav').classList.toggle('active');
         }
 
+        // TOUCH SWIPE LOGIC (GALLERY)
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const lightboxImg = document.getElementById('lightbox-img');
+
+        lightboxImg.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        lightboxImg.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) changeSlide(1); // Swipe Left (Next)
+            if (touchEndX > touchStartX + 50) changeSlide(-1); // Swipe Right (Prev)
+        }
+
         // STATUS SYSTEM
         async function fetchStatus() {
             const countElement = document.getElementById('player-count');
@@ -574,16 +588,14 @@
             const pill = document.getElementById('status-pill-container');
             
             if (isOnline) {
-                // FORÇA A COR VERDE
+                // COR VERDE (GARANTIDO)
                 statusDot.style.background = "#4CAF50";
-                pill.style.background = "#E8F5E9"; // Fundo verde claro
-                pill.style.color = "#2E7D32"; // Texto verde escuro
+                pill.style.background = "#E8F5E9"; // Verde claro
+                pill.style.color = "#2E7D32"; // Verde escuro
                 mainCount.style.color = "#ffffff";
                 
-                // TOOLTIP INTERATIVA (MOUSE)
+                // TOOLTIP E CLICK
                 pill.title = count + " jogadores online. Clique para ver detalhes.";
-                
-                // AÇÃO DE CLIQUE
                 pill.onclick = function() {
                     document.getElementById('status').scrollIntoView({behavior: 'smooth'});
                 };
