@@ -64,7 +64,6 @@
         .logo-img { height: 36px; width: 36px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .logo-text { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; color: var(--azul-escuro-texto); }
         
-        /* Menu Desktop */
         nav ul { display: flex; gap: 30px; align-items: center; }
         nav a { font-size: 0.85rem; font-weight: 500; color: #666; transition: 0.3s; }
         nav a:hover { color: var(--azul-profundo); }
@@ -78,14 +77,31 @@
         }
         .nav-cta:hover { background: rgba(0, 68, 204, 0.2); transform: translateY(-1px); }
 
+        /* Status Pill (Botão Online) */
         .status-pill {
-            background: rgba(0,0,0,0.05); padding: 6px 14px; border-radius: 20px;
-            font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.3s;
+            background: rgba(0,0,0,0.05);
+            padding: 6px 14px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 600; 
+            display: flex; align-items: center; gap: 8px; 
+            transition: 0.3s;
+            cursor: pointer;
         }
+        .status-pill:hover { opacity: 0.8; transform: translateY(-1px); }
         .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; }
 
-        /* HAMBURGER MENU (MOBILE) */
-        .mobile-menu-btn { display: none; font-size: 1.5rem; cursor: pointer; z-index: 1002; }
+        /* MENU MOBILE (HAMBURGUER OTIMIZADO) */
+        .mobile-menu-btn { 
+            display: none; 
+            font-size: 1.8rem; /* Visual um pouco maior */
+            cursor: pointer; 
+            z-index: 1002;
+            
+            /* A MÁGICA DO UX: Aumenta a área de toque */
+            padding: 15px; 
+            margin-right: -10px; /* Compensa o padding para não empurrar o layout */
+            line-height: 1;
+        }
+        
         .mobile-nav-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
             background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
@@ -95,6 +111,14 @@
         .mobile-nav-overlay.active { opacity: 1; pointer-events: all; }
         .mobile-nav-overlay ul { display: flex; flex-direction: column; gap: 30px; text-align: center; }
         .mobile-nav-overlay a { font-size: 1.5rem; font-weight: 700; color: var(--azul-escuro-texto); }
+        
+        .close-menu-btn {
+            margin-top: 30px; 
+            font-size: 3rem; 
+            cursor: pointer;
+            padding: 20px; /* Área de toque grande para fechar */
+            line-height: 0.5;
+        }
 
         /* --- HERO --- */
         .hero {
@@ -118,7 +142,7 @@
             background: var(--branco); border-bottom: 1px solid #eee;
             flex-wrap: nowrap; width: 100%;
         }
-        .stat-item { text-align: center; min-width: max-content; }
+        .stat-item { text-align: center; min-width: max-content; cursor: help; }
         .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; white-space: nowrap; }
         .stat-label { font-size: 0.9rem; color: #86868b; font-weight: 500; margin-top: 5px; white-space: nowrap; }
 
@@ -170,10 +194,7 @@
         .phone img { border-radius: 12px; }
         
         /* SWITCH */
-        .switch-console { 
-            width: 320px; height: auto; aspect-ratio: 16/9; background: #222; border: 8px solid #333; border-radius: 4px; 
-            order: 1; z-index: 1; margin: 0 55px 10px 55px; 
-        }
+        .switch-console { width: 320px; height: auto; aspect-ratio: 16/9; background: #222; border: 8px solid #333; border-radius: 4px; order: 1; z-index: 1; margin: 0 55px 10px 55px; }
         .switch-console img { opacity: 0.9; object-fit: fill; }
         .switch-console::before { content: ''; position: absolute; top: -8px; left: -15%; width: 15%; height: calc(100% + 16px); background: #00C3E3; border-radius: 20px 0 0 20px; box-shadow: inset -5px 0 10px rgba(0,0,0,0.2); }
         .switch-console::after { content: ''; position: absolute; top: -8px; right: -15%; width: 15%; height: calc(100% + 16px); background: #FF4554; border-radius: 0 20px 20px 0; box-shadow: inset 5px 0 10px rgba(0,0,0,0.2); }
@@ -220,52 +241,50 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         footer { background: #050d1a; color: var(--branco); padding: 100px 5%; text-align: center; border-top: 1px solid #1a1a1a; }
 
-        /* --- RESPONSIVO MOBILE (Ajuste Final V8.0) --- */
+        /* --- RESPONSIVO MOBILE (V9.0 - Refinamento) --- */
         @media (max-width: 1000px) {
-            .hero h1 { font-size: 3rem; } /* Fonte menor */
+            .hero h1 { font-size: 3rem; }
             .section-header h2 { font-size: 2.2rem; }
             .about-grid, .bento-grid { grid-template-columns: 1fr; }
             
-            /* HEADER: MENU HAMBURGUER */
             nav { display: none; }
             .mobile-menu-btn { display: block; }
-            .status-pill { display: none; } /* Esconde pill no mobile para limpar header */
+            .status-pill { display: none; } /* Oculta pill no topo do mobile para limpar a área */
             
-            /* STATS MOBILE: Permite quebra de linha interna */
+            /* STATS MOBILE: APERTADO, LINHA ÚNICA, TEXTO QUEBRA */
             .stats-strip { 
-                gap: 15px; padding: 30px 15px; /* Mais padding lateral */
+                gap: 5px; /* Espaço mínimo */
+                padding: 30px 10px; /* Margens laterais seguras */
+                align-items: flex-start; /* Alinha no topo caso quebre linha */
             }
-            .stat-number { font-size: 1.5rem; }
+            .stat-item {
+                flex: 1;
+                min-width: 0; /* Permite encolher */
+            }
+            .stat-number { font-size: 1.3rem; }
             .stat-label { 
-                font-size: 0.75rem; 
-                white-space: normal; /* Permite quebrar linha se apertar */
+                font-size: 0.65rem; 
+                white-space: normal; /* A MÁGICA: Permite quebrar linha! */
                 line-height: 1.2;
-                max-width: 100px; margin: 5px auto 0;
+                max-width: 100%; 
             }
 
-            /* CROSSPLAY MOBILE: Empilhado e Proporcional */
+            /* CROSSPLAY MOBILE */
             .devices-container { 
                 flex-direction: column; flex-wrap: nowrap; 
-                align-items: center; gap: 40px; /* Gap igual para todos */
+                align-items: center; gap: 40px; 
             }
             .monitor { width: 90%; order: unset; transform: none; }
             
-            /* Switch Reduzido e Centralizado */
             .switch-console { 
-                width: 65%; /* Tamanho reduzido para não ficar gigante */
-                margin: 0; /* Remove margem lateral */
-                order: unset; 
+                width: 65%; margin: 0; order: unset; 
             } 
             .phone { order: unset; margin: 0; width: 55%; }
             
-            /* Ajuste Joy-Cons mobile */
             .switch-console::before { left: -15%; width: 15%; }
             .switch-console::after { right: -15%; width: 15%; }
             
             .bento-grid { grid-template-rows: auto; }
-            
-            /* Ajustes Gerais */
-            .text-block { padding: 0 10px; }
             .glass-card { padding: 40px 20px; width: 95%; }
             .connection-info { grid-template-columns: 1fr; }
             .info-box strong.ip { word-break: break-all; }
@@ -276,59 +295,59 @@
 
     <div class="mobile-nav-overlay" id="mobile-nav">
         <ul>
-            <li><a href="#sobre" onclick="toggleMenu()">Legado</a></li>
-            <li><a href="#cidades" onclick="toggleMenu()">Tríade</a></li>
-            <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
-            <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
-            <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
-            <li><a href="#status" onclick="toggleMenu()" style="color: var(--azul-profundo);">Jogar Agora</a></li>
+            <li><a href="#sobre" onclick="toggleMenu()" title="Sobre o servidor">Legado</a></li>
+            <li><a href="#cidades" onclick="toggleMenu()" title="Regiões do mapa">Tríade</a></li>
+            <li><a href="#plataformas" onclick="toggleMenu()" title="Como jogar">Crossplay</a></li>
+            <li><a href="#galeria" onclick="toggleMenu()" title="Fotos do mundo">Galeria</a></li>
+            <li><a href="#faq" onclick="toggleMenu()" title="Perguntas frequentes">Dúvidas</a></li>
+            <li><a href="#status" onclick="toggleMenu()" style="color: var(--azul-profundo);" title="Ver endereços de IP">Jogar Agora</a></li>
         </ul>
-        <div style="margin-top: 30px; font-size: 2rem; cursor: pointer;" onclick="toggleMenu()">&times;</div>
+        <div class="close-menu-btn" onclick="toggleMenu()" title="Fechar menu">&times;</div>
     </div>
 
     <header>
-        <a href="#inicio" class="brand-link">
+        <a href="#inicio" class="brand-link" title="Voltar ao topo">
             <img src="logo.JPG" alt="FA Logo" class="logo-img">
             <div class="logo-text">Força Aliada</div>
         </a>
         
         <nav>
             <ul>
-                <li><a href="#sobre">Legado</a></li>
-                <li><a href="#cidades">Tríade</a></li>
-                <li><a href="#plataformas">Crossplay</a></li>
-                <li><a href="#galeria">Galeria</a></li>
-                <li><a href="#faq">Dúvidas</a></li>
-                <li><a href="#status" class="nav-cta">IP / Jogar</a></li>
+                <li><a href="#sobre" title="Nossa história">Legado</a></li>
+                <li><a href="#cidades" title="Economia e regiões">Tríade</a></li>
+                <li><a href="#plataformas" title="Sistemas compatíveis">Crossplay</a></li>
+                <li><a href="#galeria" title="Construções dos jogadores">Galeria</a></li>
+                <li><a href="#faq" title="Perguntas Frequentes">Dúvidas</a></li>
+                <li><a href="#status" class="nav-cta" title="Ver IP e Status">IP / Jogar</a></li>
             </ul>
         </nav>
 
-        <div class="status-pill" id="status-pill-container">
+        <div class="status-pill" id="status-pill-container" title="Verificando status...">
             <div class="dot" id="status-dot"></div>
             <span id="header-players">...</span>
         </div>
 
-        <div class="mobile-menu-btn" onclick="toggleMenu()">&#9776;</div>
+        <div class="mobile-menu-btn" onclick="toggleMenu()" title="Abrir menu">&#9776;</div>
     </header>
 
     <section class="hero reveal" id="inicio">
         <div class="hero-content">
             <h1>Construa para sempre.</h1>
             <p>O único servidor Survival Vanilla onde sua obra dura anos, não temporadas.<br>Ativo e estável desde 2021.</p>
-            <button class="btn btn-primary" onclick="document.getElementById('status').scrollIntoView({behavior: 'smooth'});">Começar a Jogar</button>
+            <button class="btn btn-primary" onclick="document.getElementById('status').scrollIntoView({behavior: 'smooth'});" title="Rolar até os endereços">Começar a Jogar</button>
         </div>
     </section>
 
     <div class="stats-strip reveal">
-        <div class="stat-item">
+        <div class="stat-item" title="Desde o lançamento em 2021">
             <span class="stat-number">4 Anos</span>
             <span class="stat-label">Online Ininterruptamente</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item" title="Mapa nunca foi resetado">
             <span class="stat-number">0 Resets</span>
             <span class="stat-label">Progresso Preservado</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item" title="Economia baseada em trocas reais">
             <span class="stat-number">100%</span>
             <span class="stat-label">Economia Player-Driven</span>
         </div>
@@ -382,13 +401,13 @@
         </div>
         
         <div class="devices-container">
-            <div class="switch-console">
+            <div class="switch-console" title="Compatível com Consoles via Bedrock">
                 <img src="print_mobile.PNG" alt="Minecraft no Console">
             </div>
-            <div class="device monitor">
+            <div class="device monitor" title="Versão Java Original">
                 <img src="print_pc.png" alt="Minecraft no PC">
             </div>
-            <div class="device phone">
+            <div class="device phone" title="Compatível com Celulares (Bedrock)">
                 <img src="print_mobile.PNG" alt="Minecraft no Celular">
             </div>
         </div>
@@ -414,12 +433,12 @@
             </div>
 
             <div class="connection-info">
-                <div class="info-box" onclick="copiar(DISPLAY_HOST)">
+                <div class="info-box" onclick="copiar(DISPLAY_HOST)" title="Clique para copiar o IP Java">
                     <span class="label">IP JAVA (PC)</span>
                     <strong class="ip">fa.ogabriels.com</strong>
                     <span class="port-info">Porta: Padrão (25565)</span>
                 </div>
-                <div class="info-box" onclick="copiar(DISPLAY_HOST, BEDROCK_PORT)">
+                <div class="info-box" onclick="copiar(DISPLAY_HOST, BEDROCK_PORT)" title="Clique para copiar o IP Bedrock">
                     <span class="label">IP BEDROCK (Mobile/Console)</span>
                     <strong class="ip">fa.ogabriels.com</strong>
                     <span class="port-info">Porta: 4615</span>
@@ -436,13 +455,13 @@
         </div>
 
         <div class="bento-grid">
-            <div class="bento-item item-big" onclick="openLightbox(0)">
+            <div class="bento-item item-big" onclick="openLightbox(0)" title="Ampliar imagem">
                 <img src="galeria1.png" alt="Destaque" loading="lazy">
             </div>
-            <div class="bento-item" onclick="openLightbox(1)">
+            <div class="bento-item" onclick="openLightbox(1)" title="Ampliar imagem">
                 <img src="galeria2.png" alt="Secundário" loading="lazy">
             </div>
-            <div class="bento-item" onclick="openLightbox(2)">
+            <div class="bento-item" onclick="openLightbox(2)" title="Ampliar imagem">
                 <img src="galeria3.png" alt="Terciário" loading="lazy">
             </div>
         </div>
@@ -454,28 +473,28 @@
             <p>Tudo o que você precisa saber antes de entrar.</p>
         </div>
         
-        <details>
+        <details title="Clique para ver a resposta">
             <summary>O servidor tem reset de mapa?</summary>
             <div class="faq-content">
                 Não. Acreditamos na permanência. Nosso mundo existe desde 2021 e continuará existindo. Suas construções estarão aqui ano que vem.
             </div>
         </details>
 
-        <details>
+        <details title="Clique para ver a resposta">
             <summary>Como funciona a economia?</summary>
             <div class="faq-content">
                 É baseada em Esmeraldas e confiança. Temos um Shopping Central de Aldeões onde você pode comprar itens essenciais e farms públicas para gerar recursos.
             </div>
         </details>
 
-        <details>
+        <details title="Clique para ver a resposta">
             <summary>É Pay-to-Win?</summary>
             <div class="faq-content">
                 Jamais. Não vendemos itens, voo ou vantagens injustas. Tudo o que existe no mundo foi conquistado jogando survival vanilla.
             </div>
         </details>
 
-        <details>
+        <details title="Clique para ver a resposta">
             <summary>Preciso de Whitelist?</summary>
             <div class="faq-content">
                 Atualmente operamos com um sistema aberto, mas monitorado. Entre no nosso Discord para garantir seu lugar na comunidade.
@@ -484,16 +503,16 @@
     </section>
 
     <div id="lightbox">
-        <span class="close-btn" onclick="closeLightbox()">&times;</span>
-        <button class="lightbox-btn prev-btn" onclick="changeSlide(-1)">&#10094;</button>
+        <span class="close-btn" onclick="closeLightbox()" title="Fechar">&times;</span>
+        <button class="lightbox-btn prev-btn" onclick="changeSlide(-1)" title="Anterior">&#10094;</button>
         <img id="lightbox-img" src="" alt="Imagem Ampliada">
-        <button class="lightbox-btn next-btn" onclick="changeSlide(1)">&#10095;</button>
+        <button class="lightbox-btn next-btn" onclick="changeSlide(1)" title="Próximo">&#10095;</button>
     </div>
 
     <footer id="comunidade" class="reveal">
         <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Faça parte da história</h2>
         <p style="color: rgba(255,255,255,0.7); max-width: 500px; margin: 0 auto;">Uma comunidade madura, estável e acolhedora espera por você.</p>
-        <button class="btn btn-red" style="margin-top: 30px;" onclick="window.open('https://discord.gg/SEU_LINK_AQUI', '_blank')">Entrar no Discord</button>
+        <button class="btn btn-red" style="margin-top: 30px;" onclick="window.open('https://discord.gg/SEU_LINK_AQUI', '_blank')" title="Entrar no servidor do Discord">Entrar no Discord</button>
         <p style="margin-top: 60px; font-size: 0.8rem; opacity: 0.5;">© 2021-2026 Força Aliada.</p>
     </footer>
 
@@ -552,10 +571,23 @@
             const headerPlayers = document.getElementById('header-players');
             const mainCount = document.getElementById('player-count');
             const mainLabel = document.getElementById('status-label');
+            const pill = document.getElementById('status-pill-container');
             
             if (isOnline) {
+                // FORÇA A COR VERDE
                 statusDot.style.background = "#4CAF50";
+                pill.style.background = "#E8F5E9"; // Fundo verde claro
+                pill.style.color = "#2E7D32"; // Texto verde escuro
                 mainCount.style.color = "#ffffff";
+                
+                // TOOLTIP INTERATIVA (MOUSE)
+                pill.title = count + " jogadores online. Clique para ver detalhes.";
+                
+                // AÇÃO DE CLIQUE
+                pill.onclick = function() {
+                    document.getElementById('status').scrollIntoView({behavior: 'smooth'});
+                };
+
                 if (count === 0) {
                     headerPlayers.innerText = "Online";
                     mainCount.innerText = "0";
@@ -571,6 +603,8 @@
                 }
             } else {
                 statusDot.style.background = "#E63946";
+                pill.style.background = "#FFEBEE"; pill.style.color = "#C62828";
+                pill.title = "Servidor Offline";
                 headerPlayers.innerText = "Offline";
                 mainCount.innerText = "--";
                 mainLabel.innerText = "MANUTENÇÃO / OFFLINE";
