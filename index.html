@@ -30,8 +30,21 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        body { background-color: var(--branco); color: var(--azul-escuro-texto); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-        html { scroll-behavior: smooth; overflow-x: hidden; width: 100%; }
+        /* --- CORREÇÃO CRÍTICA DE SCROLL (V7.0) --- */
+        html { 
+            scroll-behavior: smooth; 
+            /* Removido overflow daqui para evitar travamento mobile */
+        }
+        
+        body { 
+            background-color: var(--branco); 
+            color: var(--azul-escuro-texto); 
+            -webkit-font-smoothing: antialiased;
+            /* Apenas o body controla o eixo X agora */
+            overflow-x: hidden; 
+            width: 100%;
+            position: relative;
+        }
         
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
@@ -91,16 +104,14 @@
         .btn-red { background-color: var(--vermelho-acao); color: var(--branco); }
         .btn-red:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(230, 57, 70, 0.5); }
 
-        /* --- STATS STRIP (CORRIGIDO: PRÓXIMOS E ALINHADOS) --- */
+        /* --- STATS STRIP --- */
         .stats-strip { 
             display: flex; 
-            justify-content: center; /* Centraliza o bloco na tela */
-            gap: 80px; /* Distância original do PC */
+            justify-content: center; 
+            gap: 80px; 
             padding: 60px 5%; 
             background: var(--branco); 
             border-bottom: 1px solid #eee;
-            
-            /* Garante linha única */
             flex-wrap: nowrap; 
             flex-direction: row;
             width: 100%;
@@ -108,8 +119,7 @@
         
         .stat-item { 
             text-align: center; 
-            /* CORREÇÃO: Removemos o flex:1 para eles não esticarem */
-            min-width: max-content; /* Garante que ocupem só o espaço necessário */
+            min-width: max-content; 
         }
         
         .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; white-space: nowrap; }
@@ -245,10 +255,10 @@
             
             /* STATS MOBILE: APERTADOS MAS EM LINHA */
             .stats-strip { 
-                gap: 15px; /* Gap pequeno para caber */
+                gap: 15px; 
                 padding: 30px 2%;
             }
-            .stat-number { font-size: 1.3rem; } /* Fonte menor */
+            .stat-number { font-size: 1.3rem; }
             .stat-label { font-size: 0.7rem; }
 
             /* Crossplay Mobile */
