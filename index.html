@@ -56,7 +56,7 @@
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
-        /* --- TOAST NOTIFICATION (MENSAGEM DE CÓPIA) --- */
+        /* --- TOAST NOTIFICATION --- */
         #toast {
             visibility: hidden;
             min-width: 250px;
@@ -182,6 +182,7 @@
         .device, .switch-console { position: relative; background: #000; box-shadow: var(--sombra-suave); transition: 0.6s var(--transicao); flex-shrink: 1; min-width: 0; }
         @media (hover: hover) { .device:hover, .switch-console:hover { transform: translateY(-20px) scale(1.05); box-shadow: var(--sombra-flutuante); } }
         
+        /* CORREÇÃO DA IMAGEM CORTADA */
         .device img, .switch-console img { width: 100%; height: 100%; object-fit: fill; display: block; }
         
         .monitor { width: 500px; height: auto; aspect-ratio: 16/9; border-radius: 12px; border: 10px solid #1a1a1a; border-bottom: 25px solid #1a1a1a; order: 2; z-index: 2; }
@@ -233,7 +234,7 @@
         
         footer { background: #050d1a; color: var(--branco); padding: 100px 5%; text-align: center; border-top: 1px solid #1a1a1a; }
         
-        /* --- ÍCONES SOCIAIS (AGORA VAI!) --- */
+        /* --- ÍCONES SOCIAIS --- */
         .social-icons { display: flex; justify-content: center; gap: 20px; margin-top: 25px; }
         .social-icon { width: 40px; height: 40px; transition: 0.3s; opacity: 0.7; }
         .social-icon:hover { opacity: 1; transform: scale(1.1); }
@@ -260,7 +261,7 @@
             .status-pill { display: none; }
             .close-menu-btn { top: 8px; }
 
-            /* STATS - RESTAURADO: LINHA ÚNICA SEMPRE */
+            /* STATS - RESTAURADO */
             .stats-strip { 
                 gap: 2px; padding: 30px 2px; align-items: flex-start; 
             }
@@ -533,33 +534,31 @@
             let years = today.getFullYear() - startDate.getFullYear();
             const m = today.getMonth() - startDate.getMonth();
             
-            // Se ainda não chegou o mês (outubro) ou se está no mês mas não chegou o dia (25)
             if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) {
                 years--;
             }
             document.getElementById('uptime-counter').innerText = years + " Anos";
         }
 
-        // 2. SISTEMA DE TOAST BLINDADO (Não some antes da hora)
-        let toastTimeout; // Variável global para controlar o timer
+        // 2. SISTEMA DE TOAST BLINDADO (Mensagem IP Copiado)
+        let toastTimeout; 
 
         function copiar(texto, porta = null) {
             navigator.clipboard.writeText(texto).then(() => {
                 const toast = document.getElementById("toast");
                 
-                // Mensagem Padrão
                 let msg = 'IP Copiado!';
                 if (porta) msg = `IP Copiado! Porta: ${porta}`;
                 
                 toast.innerText = msg;
                 toast.className = "show"; // Mostra imediatamente
                 
-                // SE JÁ TIVER UM TIMER RODANDO, CANCELA ELE (REINICIA A CONTAGEM)
+                // Reinicia o timer se já estiver rodando
                 if (toastTimeout) {
                     clearTimeout(toastTimeout);
                 }
 
-                // DEFINE UM NOVO TIMER DE 3 SEGUNDOS
+                // Espera 3 segundos antes de sumir
                 toastTimeout = setTimeout(function(){ 
                     toast.className = toast.className.replace("show", ""); 
                 }, 3000);
@@ -571,7 +570,7 @@
             document.getElementById('mobile-nav').classList.toggle('active');
         }
 
-        // 4. TOUCH SWIPE LOGIC (GALERIA)
+        // 4. TOUCH SWIPE LOGIC
         let touchStartX = 0;
         let touchEndX = 0;
         const lightboxImg = document.getElementById('lightbox-img');
@@ -662,7 +661,7 @@
             }
         }
 
-        // 6. GALERIA LIGHTBOX
+        // 6. GALERIA LIGHTBOX (NOMES CORRIGIDOS)
         let currentSlide = 0;
         const galleryImages = [
             'galeria1.png', 
