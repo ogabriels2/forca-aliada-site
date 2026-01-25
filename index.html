@@ -56,7 +56,7 @@
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
-        /* --- TOAST NOTIFICATION --- */
+        /* --- TOAST NOTIFICATION (MENSAGEM DE CÓPIA) --- */
         #toast {
             visibility: hidden;
             min-width: 250px;
@@ -233,7 +233,7 @@
         
         footer { background: #050d1a; color: var(--branco); padding: 100px 5%; text-align: center; border-top: 1px solid #1a1a1a; }
         
-        /* --- ÍCONES SOCIAIS (CORRIGIDOS) --- */
+        /* --- ÍCONES SOCIAIS (AGORA VAI!) --- */
         .social-icons { display: flex; justify-content: center; gap: 20px; margin-top: 25px; }
         .social-icon { width: 40px; height: 40px; transition: 0.3s; opacity: 0.7; }
         .social-icon:hover { opacity: 1; transform: scale(1.1); }
@@ -333,8 +333,7 @@
 
     <div class="stats-strip reveal">
         <div class="stat-item" title="Desde o lançamento em 2021">
-            <span class="stat-number">4 Anos</span>
-            <span class="stat-label">Online Ininterruptamente</span>
+            <span class="stat-number" id="uptime-counter">4 Anos</span> <span class="stat-label">Online Ininterruptamente</span>
         </div>
         <div class="stat-item" title="Mapa nunca foi resetado">
             <span class="stat-number">0 Resets</span>
@@ -527,43 +526,52 @@
         const BEDROCK_PORT = '4615';
         const DISPLAY_HOST = 'fa.ogabriels.com';
 
-        // VARIÁVEL DE TIMEOUT GLOBAL (Para limpar o Toast se clicarem rápido)
-        let toastTimeout;
+        // 1. CÁLCULO AUTOMÁTICO DE ANOS (Início: 25/10/2021)
+        function updateServerAge() {
+            const startDate = new Date('2021-10-25');
+            const today = new Date();
+            let years = today.getFullYear() - startDate.getFullYear();
+            const m = today.getMonth() - startDate.getMonth();
+            
+            // Se ainda não chegou o mês (outubro) ou se está no mês mas não chegou o dia (25)
+            if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) {
+                years--;
+            }
+            document.getElementById('uptime-counter').innerText = years + " Anos";
+        }
 
-        // COPY (COM TOAST PADRONIZADO E BLINDADO)
+        // 2. SISTEMA DE TOAST BLINDADO (Não some antes da hora)
+        let toastTimeout; // Variável global para controlar o timer
+
         function copiar(texto, porta = null) {
             navigator.clipboard.writeText(texto).then(() => {
                 const toast = document.getElementById("toast");
                 
                 // Mensagem Padrão
                 let msg = 'IP Copiado!';
-                
-                // Se for Bedrock (tem porta), adiciona o detalhe
-                if (porta) {
-                    msg = `IP Copiado! Porta: ${porta}`;
-                }
+                if (porta) msg = `IP Copiado! Porta: ${porta}`;
                 
                 toast.innerText = msg;
-                toast.className = "show";
+                toast.className = "show"; // Mostra imediatamente
                 
-                // Limpa o temporizador anterior se houver (Blindagem contra cliques rápidos)
+                // SE JÁ TIVER UM TIMER RODANDO, CANCELA ELE (REINICIA A CONTAGEM)
                 if (toastTimeout) {
                     clearTimeout(toastTimeout);
                 }
 
-                // Define novo tempo de 3 segundos
+                // DEFINE UM NOVO TIMER DE 3 SEGUNDOS
                 toastTimeout = setTimeout(function(){ 
                     toast.className = toast.className.replace("show", ""); 
                 }, 3000);
             });
         }
 
-        // MOBILE MENU
+        // 3. MENU MOBILE
         function toggleMenu() {
             document.getElementById('mobile-nav').classList.toggle('active');
         }
 
-        // TOUCH SWIPE LOGIC
+        // 4. TOUCH SWIPE LOGIC (GALERIA)
         let touchStartX = 0;
         let touchEndX = 0;
         const lightboxImg = document.getElementById('lightbox-img');
@@ -582,7 +590,7 @@
             if (touchEndX > touchStartX + 50) changeSlide(-1); 
         }
 
-        // STATUS SYSTEM
+        // 5. STATUS DO SERVIDOR
         async function fetchStatus() {
             const countElement = document.getElementById('player-count');
             const url = `https://api.mcstatus.io/v2/status/java/${API_JAVA_HOST}`;
@@ -621,13 +629,11 @@
             const pill = document.getElementById('status-pill-container');
             
             if (isOnline) {
-                // FORÇA A COR VERDE
                 statusDot.style.background = "#4CAF50";
                 pill.style.background = "#E8F5E9"; 
                 pill.style.color = "#2E7D32";
                 mainCount.style.color = "#ffffff";
                 
-                // TOOLTIP E CLICK
                 pill.title = count + " jogadores online. Clique para ver detalhes.";
                 pill.onclick = function() {
                     document.getElementById('status').scrollIntoView({behavior: 'smooth'});
@@ -656,7 +662,7 @@
             }
         }
 
-        // LIGHTBOX ARRAY ATUALIZADO COM 10 FOTOS
+        // 6. GALERIA LIGHTBOX
         let currentSlide = 0;
         const galleryImages = [
             'galeria1.png', 
@@ -696,7 +702,7 @@
         });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
-        // REVEAL ANIMATION
+        // 7. ANIMAÇÃO DE SCROLL (REVEAL)
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
@@ -707,8 +713,10 @@
         }
         window.addEventListener("scroll", reveal);
 
+        // INICIALIZAÇÃO
         window.onload = function() {
             fetchStatus();
+            updateServerAge(); // Chama o cálculo de anos
             setInterval(fetchStatus, 5000);
             reveal(); 
         };
