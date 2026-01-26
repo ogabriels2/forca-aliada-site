@@ -56,6 +56,45 @@
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
+        /* --- SKELETON LOADING --- */
+        #skeleton-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .shimmer {
+            background: #f6f7f8;
+            background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+            background-repeat: no-repeat;
+            background-size: 800px 100%; 
+            animation: shimmer 1.5s infinite linear forwards;
+            border-radius: 8px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -468px 0; }
+            100% { background-position: 468px 0; }
+        }
+
+        .sk-header { position: absolute; top: 20px; width: 90%; height: 40px; display: flex; justify-content: space-between; }
+        .sk-logo { width: 120px; height: 100%; }
+        .sk-nav { width: 40%; height: 100%; }
+        .sk-hero-content { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 600px; padding: 20px; }
+        .sk-title { width: 80%; height: 60px; border-radius: 12px; }
+        .sk-subtitle { width: 60%; height: 20px; }
+        .sk-btn { width: 180px; height: 50px; border-radius: 50px; margin-top: 20px; }
+        .sk-stats { position: absolute; bottom: 60px; width: 80%; height: 80px; display: flex; justify-content: space-between; gap: 20px; }
+        .sk-stat-box { flex: 1; height: 100%; }
+        
+        @media (max-width: 768px) { .sk-nav { display: none; } .sk-stats { display: none; } }
+
         /* --- TOAST --- */
         #toast {
             visibility: hidden;
@@ -119,14 +158,13 @@
         .status-pill:hover { opacity: 0.8; transform: translateY(-1px); }
         .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; }
 
-        /* --- MENU MOBILE (LIQUID GLASS / APPLE STYLE) --- */
+        /* --- MENU MOBILE (LIQUID GLASS) --- */
         .mobile-menu-btn { display: none; font-size: 1.8rem; cursor: pointer; z-index: 1002; padding: 15px; margin-right: -10px; line-height: 1; }
         
         .mobile-nav-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            /* Efeito Vidro Premium */
-            background: rgba(245, 245, 247, 0.85); /* Cinza Apple bem claro e transparente */
-            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); /* Desfoque pesado */
+            background: rgba(245, 245, 247, 0.85); 
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
             z-index: 1001; 
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -134,37 +172,43 @@
         .mobile-nav-overlay.active { opacity: 1; pointer-events: all; }
         
         .mobile-nav-overlay ul { 
-            display: flex; flex-direction: column; gap: 40px; text-align: center; 
-            margin-bottom: 50px;
+            display: flex; flex-direction: column; 
+            gap: 32px; 
+            text-align: center; 
+            margin-bottom: 40px; 
         }
         .mobile-nav-overlay a { 
-            font-size: 2rem; /* Fonte maior para toque */
+            font-size: 1.9rem;
             font-weight: 700; 
             color: var(--azul-escuro-texto); 
-            letter-spacing: -0.03em;
-            transition: color 0.2s;
+            letter-spacing: -0.02em;
+            transition: transform 0.2s, color 0.2s;
+            display: block; 
+            padding: 5px;
         }
-        .mobile-nav-overlay a:active { color: var(--azul-profundo); transform: scale(0.98); }
+        .mobile-nav-overlay a:active { color: var(--azul-profundo); transform: scale(0.96); }
 
         .close-menu-btn { position: absolute; top: 8px; right: 5%; margin-right: -10px; font-size: 3rem; cursor: pointer; padding: 15px; line-height: 0.5; color: var(--azul-escuro-texto); z-index: 1005; }
 
-        /* WIDGET STATUS NO MENU MOBILE */
+        /* WIDGET STATUS MENU MOBILE */
         .mobile-status-card {
             background: #FFFFFF;
-            padding: 15px 25px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 16px 28px;
+            border-radius: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-top: 20px;
-            transform: scale(0.9);
-            transition: transform 0.3s;
+            gap: 14px;
+            margin-top: 15px;
+            transform: scale(1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
         }
+        .mobile-status-card:active { transform: scale(0.96); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
         .mobile-status-dot { width: 10px; height: 10px; background: #999; border-radius: 50%; }
         .mobile-status-info { text-align: left; }
-        .mobile-status-label { display: block; font-size: 0.75rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .mobile-status-count { display: block; font-size: 1.1rem; font-weight: 800; color: var(--azul-escuro-texto); }
+        .mobile-status-label { display: block; font-size: 0.7rem; font-weight: 700; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;}
+        .mobile-status-count { display: block; font-size: 1.15rem; font-weight: 700; color: var(--azul-escuro-texto); letter-spacing: -0.02em; }
 
         /* --- HERO --- */
         .hero {
@@ -332,18 +376,18 @@
             .close-menu-btn { top: 8px; }
             .close-btn { top: 40px; right: 20px; }
 
-            /* STATS - RESTAURADO COM QUEBRA DE LINHA SEGURA */
+            /* STATS - RESPONSIVO E SEGURO */
             .stats-strip { 
                 display: flex;
                 flex-wrap: nowrap; 
                 align-items: flex-start;
-                justify-content: center; 
-                gap: 20px;
-                padding: 30px 2%;
+                justify-content: space-between; /* Distribui */
+                gap: 2px;
+                padding: 30px 4%;
             }
             .stat-item { 
                 flex: 1;
-                min-width: 0;
+                min-width: 0; 
                 text-align: center;
                 padding: 0 2px;
             }
@@ -374,6 +418,23 @@
     </style>
 </head>
 <body>
+
+    <div id="skeleton-screen">
+        <div class="sk-header">
+            <div class="sk-logo shimmer"></div>
+            <div class="sk-nav shimmer"></div>
+        </div>
+        <div class="sk-hero-content">
+            <div class="sk-title shimmer"></div>
+            <div class="sk-subtitle shimmer"></div>
+            <div class="sk-btn shimmer"></div>
+        </div>
+        <div class="sk-stats">
+            <div class="sk-stat-box shimmer"></div>
+            <div class="sk-stat-box shimmer"></div>
+            <div class="sk-stat-box shimmer"></div>
+        </div>
+    </div>
 
     <div class="mobile-nav-overlay" id="mobile-nav">
         <ul>
@@ -628,7 +689,7 @@
         const BEDROCK_PORT = '4615';
         const DISPLAY_HOST = 'fa.ogabriels.com';
 
-        // 1. CÁLCULO AUTOMÁTICO DE ANOS (Início: 25/10/2021)
+        // 1. CÁLCULO AUTOMÁTICO DE ANOS
         function updateServerAge() {
             const startDate = new Date('2021-10-25');
             const today = new Date();
@@ -640,23 +701,16 @@
             document.getElementById('uptime-counter').innerText = years + " Anos";
         }
 
-        // 2. SISTEMA DE TOAST BLINDADO (Mensagem IP Copiado)
+        // 2. SISTEMA DE TOAST
         let toastTimeout; 
-
         function copiar(texto, porta = null) {
             navigator.clipboard.writeText(texto).then(() => {
                 const toast = document.getElementById("toast");
-                
                 let msg = 'IP Copiado!';
                 if (porta) msg = `IP Copiado! Porta: ${porta}`;
-                
                 toast.innerText = msg;
                 toast.className = "show"; 
-                
-                if (toastTimeout) {
-                    clearTimeout(toastTimeout);
-                }
-
+                if (toastTimeout) clearTimeout(toastTimeout);
                 toastTimeout = setTimeout(function(){ 
                     toast.className = toast.className.replace("show", ""); 
                 }, 3000);
@@ -672,28 +726,22 @@
         let touchStartX = 0;
         let touchEndX = 0;
         const lightboxImg = document.getElementById('lightbox-img');
-
-        lightboxImg.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-        });
-
-        lightboxImg.addEventListener('touchend', e => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        });
-
+        lightboxImg.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+        lightboxImg.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); });
         function handleSwipe() {
             if (touchEndX < touchStartX - 50) changeSlide(1); 
             if (touchEndX > touchStartX + 50) changeSlide(-1); 
         }
 
-        // 5. STATUS DO SERVIDOR (ATUALIZA HEADER E MENU MOBILE)
+        // 5. STATUS DO SERVIDOR
         async function fetchStatus() {
+            const countElement = document.getElementById('player-count');
             const url = `https://api.mcstatus.io/v2/status/java/${API_JAVA_HOST}`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 if (data.online) {
+                    countElement.classList.remove('skeleton');
                     updateDisplay(data.players.online, true);
                 } else {
                     fetchBedrockFallback();
@@ -702,80 +750,63 @@
         }
 
         async function fetchBedrockFallback() {
+            const countElement = document.getElementById('player-count');
             const url = `https://api.mcstatus.io/v2/status/bedrock/${API_BEDROCK_HOST}:${BEDROCK_PORT}`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
+                countElement.classList.remove('skeleton');
                 if (data.online) updateDisplay(data.players.online, true);
                 else updateDisplay(0, false);
             } catch (error) { 
+                countElement.classList.remove('skeleton');
                 updateDisplay(0, false); 
             }
         }
 
         function updateDisplay(count, isOnline) {
-            // ELEMENTOS DO HEADER
             const statusDot = document.getElementById('status-dot');
             const headerPlayers = document.getElementById('header-players');
-            const mainCount = document.getElementById('player-count'); // Status Section
+            const mainCount = document.getElementById('player-count');
             const mainLabel = document.getElementById('status-label');
             const pill = document.getElementById('status-pill-container');
             
-            // ELEMENTOS DO MENU MOBILE (WIDGET NOVO)
+            // WIDGET MOBILE
             const mobileDot = document.getElementById('mobile-status-dot');
             const mobileText = document.getElementById('mobile-status-text');
             const mobileCount = document.getElementById('mobile-player-count');
 
-            // REMOVE SKELETON
-            mainCount.classList.remove('skeleton');
-
             if (isOnline) {
-                // Header + Status Section
                 statusDot.style.background = "#4CAF50";
                 pill.style.background = "#E8F5E9"; pill.style.color = "#2E7D32";
                 mainCount.style.color = "#ffffff";
                 
-                // Mobile Widget
+                // MOBILE
                 if(mobileDot) mobileDot.style.background = "#4CAF50";
                 if(mobileText) { mobileText.innerText = "ONLINE"; mobileText.style.color = "#4CAF50"; }
                 if(mobileCount) mobileCount.innerText = count + (count === 1 ? " Jogador" : " Jogadores");
 
                 pill.title = count + " jogadores online. Clique para ver detalhes.";
                 pill.onclick = function() { document.getElementById('status').scrollIntoView({behavior: 'smooth'}); };
-
-                if (count === 0) {
-                    headerPlayers.innerText = "Online";
-                    mainCount.innerText = "0";
-                    mainLabel.innerText = "SEJA O PRIMEIRO";
-                } else if (count === 1) {
-                    headerPlayers.innerText = "1 Online";
-                    mainCount.innerText = "1";
-                    mainLabel.innerText = "JOGADOR ONLINE";
-                } else {
-                    headerPlayers.innerText = `${count} Online`;
-                    mainCount.innerText = count;
-                    mainLabel.innerText = "JOGADORES ONLINE";
-                }
+                if (count === 0) { headerPlayers.innerText = "Online"; mainCount.innerText = "0"; mainLabel.innerText = "SEJA O PRIMEIRO"; }
+                else if (count === 1) { headerPlayers.innerText = "1 Online"; mainCount.innerText = "1"; mainLabel.innerText = "JOGADOR ONLINE"; }
+                else { headerPlayers.innerText = `${count} Online`; mainCount.innerText = count; mainLabel.innerText = "JOGADORES ONLINE"; }
             } else {
-                // Offline State
-                statusDot.style.background = "#E63946";
-                pill.style.background = "#FFEBEE"; pill.style.color = "#C62828";
-                pill.title = "Servidor Offline";
-                headerPlayers.innerText = "Offline";
-                mainCount.innerText = "--";
-                mainLabel.innerText = "MANUTENÇÃO / OFFLINE";
-
-                // Mobile Widget Offline
+                statusDot.style.background = "#E63946"; pill.style.background = "#FFEBEE"; pill.style.color = "#C62828";
+                pill.title = "Servidor Offline"; headerPlayers.innerText = "Offline"; mainCount.innerText = "--"; mainLabel.innerText = "MANUTENÇÃO / OFFLINE";
+                
+                // MOBILE
                 if(mobileDot) mobileDot.style.background = "#E63946";
                 if(mobileText) { mobileText.innerText = "OFFLINE"; mobileText.style.color = "#E63946"; }
                 if(mobileCount) mobileCount.innerText = "--";
             }
         }
 
-        // 6. GALERIA LIGHTBOX COM ANIMAÇÃO INSTANTÂNEA E ARRAY CORRIGIDO
+        // 6. GALERIA LIGHTBOX - DEBOUNCE (250ms) E LOGICA CORRIGIDA
         let currentSlide = 0;
+        let isAnimating = false; // TRAVA DE SEGURANÇA
         const galleryImages = [
-            'sobre.png', // INDEX 0 (Imagem do Sobre)
+            'sobre.png', 
             'galeria1.jpeg', 'galeria2.jpeg', 'galeria3.jpeg',
             'galeria4.jpeg', 'galeria5.jpeg', 'galeria6.jpeg', 'galeria7.jpeg',
             'galeria8.jpeg', 'galeria9.jpeg', 'galeria10.png',
@@ -788,6 +819,7 @@
 
         function openLightbox(index) {
             currentSlide = index;
+            isAnimating = false;
             const imgElement = document.getElementById('lightbox-img');
             imgElement.src = galleryImages[index];
             imgElement.classList.remove('anim-next', 'anim-prev'); 
@@ -801,27 +833,35 @@
         }
 
         function changeSlide(n) {
+            if (isAnimating) return; // BLOQUEIA
+            isAnimating = true;
+
             currentSlide += n;
             if (currentSlide >= galleryImages.length) currentSlide = 0;
             if (currentSlide < 0) currentSlide = galleryImages.length - 1;
             
             const imgElement = document.getElementById('lightbox-img');
             
-            // 1. Remove classes para reiniciar a animação
+            // 1. Remove classes
             imgElement.classList.remove('anim-next', 'anim-prev');
             
-            // 2. Força o reflow (reinicia o ciclo de renderização do CSS)
+            // 2. Reflow
             void imgElement.offsetWidth;
             
-            // 3. Troca a imagem IMEDIATAMENTE (Sem timeout = sem piscar)
+            // 3. Troca
             imgElement.src = galleryImages[currentSlide];
             
-            // 4. Adiciona a classe correta baseada na direção
+            // 4. Animação
             if (n > 0) {
                 imgElement.classList.add('anim-next');
             } else {
                 imgElement.classList.add('anim-prev');
             }
+
+            // 5. Destrava após 250ms
+            setTimeout(() => {
+                isAnimating = false;
+            }, 250);
         }
 
         document.addEventListener('keydown', function(event) {
@@ -833,7 +873,7 @@
         });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
-        // 7. ANIMAÇÃO DE SCROLL
+        // 7. ANIMAÇÃO DE SCROLL E SKELETON
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
@@ -844,13 +884,19 @@
         }
         window.addEventListener("scroll", reveal);
 
-        // INICIALIZAÇÃO
-        window.onload = function() {
+        window.addEventListener('load', function() {
+            const skeleton = document.getElementById('skeleton-screen');
+            if (skeleton) {
+                skeleton.style.opacity = '0';
+                setTimeout(() => {
+                    skeleton.style.display = 'none';
+                }, 500); 
+            }
             fetchStatus();
             updateServerAge();
             setInterval(fetchStatus, 5000);
             reveal(); 
-        };
+        });
     </script>
 </body>
 </html>
