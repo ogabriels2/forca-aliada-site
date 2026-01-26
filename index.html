@@ -148,16 +148,11 @@
         .btn-red { background-color: var(--vermelho-acao); color: var(--branco); }
         .btn-red:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(230, 57, 70, 0.5); }
 
-        /* --- STATS STRIP (AJUSTE MOBILE IPHONE 8) --- */
+        /* --- STATS STRIP --- */
         .stats-strip { 
-            display: flex; 
-            justify-content: center; 
-            gap: 80px; 
-            padding: 60px 5%; 
-            background: var(--branco); 
-            border-bottom: 1px solid #eee;
-            flex-wrap: nowrap; 
-            width: 100%;
+            display: flex; justify-content: center; gap: 80px; padding: 60px 5%; 
+            background: var(--branco); border-bottom: 1px solid #eee;
+            flex-wrap: nowrap; width: 100%;
         }
         .stat-item { text-align: center; min-width: max-content; cursor: help; }
         .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; white-space: nowrap; }
@@ -244,7 +239,7 @@
         .social-icon:hover { opacity: 1; transform: scale(1.1); }
         .social-icon svg { width: 100%; height: 100%; fill: white; }
 
-        /* --- RESPONSIVO MOBILE (FINAL COM CORREÇÃO DE QUEBRA DE LINHA) --- */
+        /* --- RESPONSIVO MOBILE (CORREÇÃO V30.0 - LINHA ÚNICA) --- */
         @media (max-width: 1000px) {
             /* HERO SAFE AREA */
             .hero {
@@ -265,25 +260,27 @@
             .status-pill { display: none; }
             .close-menu-btn { top: 8px; }
 
-            /* STATS - AGORA QUEBRA CORRETAMENTE EM TELAS PEQUENAS */
+            /* STATS - AGORA TRAVADO EM UMA LINHA */
             .stats-strip { 
-                gap: 5px; /* Gap pequeno para manter junto se couber */
-                padding: 30px 10px; /* Mais padding lateral */
-                align-items: flex-start; 
-                flex-wrap: wrap; /* PERMITE QUEBRAR LINHA SE PRECISAR */
-                justify-content: space-around; /* Distribui bonito se quebrar */
+                display: flex; /* Força comportamento flex */
+                gap: 4px; /* Espaço mínimo entre colunas */
+                padding: 30px 10px; 
+                align-items: flex-start; /* Alinha tudo no topo */
+                flex-wrap: nowrap; /* CRUCIAL: PROÍBE QUEBRAR LINHA DOS BLOCOS */
+                justify-content: space-between; /* Distribui de ponta a ponta */
             }
             .stat-item { 
-                flex: 1 1 auto; /* Cresce, encolhe e base automática */
-                min-width: 100px; /* Garante um tamanho mínimo antes de quebrar */
-                margin-bottom: 10px; /* Espaço se quebrar linha */
+                flex: 1; /* Força todos a terem a mesma largura */
+                min-width: 0; /* CRUCIAL: Permite que o item encolha abaixo do tamanho do conteúdo */
+                margin-bottom: 0; 
+                padding: 0 2px; /* Margem de segurança interna */
             }
-            .stat-number { font-size: 1.6rem; }
+            .stat-number { font-size: 1.35rem; } /* Levemente menor para caber */
             .stat-label { 
-                font-size: 0.75rem; 
-                white-space: normal; /* PERMITE O TEXTO QUEBRAR DENTRO DO ITEM */
-                line-height: 1.2; 
-                max-width: 100%; 
+                font-size: 0.65rem; 
+                white-space: normal; /* PERMITE O TEXTO QUEBRAR DENTRO DO BLOCO */
+                line-height: 1.1; 
+                word-wrap: break-word; /* Garante quebra se necessário */
             }
 
             .devices-container { flex-direction: column; flex-wrap: nowrap; align-items: center; gap: 40px; }
@@ -717,7 +714,7 @@
         });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
-        // 7. ANIMAÇÃO DE SCROLL
+        // 7. ANIMAÇÃO DE SCROLL (REVEAL)
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
