@@ -182,6 +182,7 @@
         .device, .switch-console { position: relative; background: #000; box-shadow: var(--sombra-suave); transition: 0.6s var(--transicao); flex-shrink: 1; min-width: 0; }
         @media (hover: hover) { .device:hover, .switch-console:hover { transform: translateY(-20px) scale(1.05); box-shadow: var(--sombra-flutuante); } }
         
+        /* CORREÇÃO DA IMAGEM CORTADA */
         .device img, .switch-console img { width: 100%; height: 100%; object-fit: fill; display: block; }
         
         .monitor { width: 500px; height: auto; aspect-ratio: 16/9; border-radius: 12px; border: 10px solid #1a1a1a; border-bottom: 25px solid #1a1a1a; order: 2; z-index: 2; }
@@ -239,7 +240,7 @@
         .social-icon:hover { opacity: 1; transform: scale(1.1); }
         .social-icon svg { width: 100%; height: 100%; fill: white; }
 
-        /* --- RESPONSIVO MOBILE (CORREÇÃO V30.0 - LINHA ÚNICA) --- */
+        /* --- RESPONSIVO MOBILE (AJUSTE FINO V31) --- */
         @media (max-width: 1000px) {
             /* HERO SAFE AREA */
             .hero {
@@ -260,27 +261,31 @@
             .status-pill { display: none; }
             .close-menu-btn { top: 8px; }
 
-            /* STATS - AGORA TRAVADO EM UMA LINHA */
+            /* STATS - AGORA SIM: UMA LINHA, TEXTO QUEBRA DENTRO DO BLOCO, ALINHADO AO TOPO */
             .stats-strip { 
-                display: flex; /* Força comportamento flex */
-                gap: 4px; /* Espaço mínimo entre colunas */
-                padding: 30px 10px; 
-                align-items: flex-start; /* Alinha tudo no topo */
-                flex-wrap: nowrap; /* CRUCIAL: PROÍBE QUEBRAR LINHA DOS BLOCOS */
-                justify-content: space-between; /* Distribui de ponta a ponta */
+                display: flex;
+                flex-wrap: nowrap; /* Impede que os blocos caiam */
+                align-items: flex-start; /* Alinha números pelo topo */
+                justify-content: space-between; /* Distribui na largura total */
+                gap: 2px;
+                padding: 30px 4%; /* Margem lateral segura */
             }
             .stat-item { 
-                flex: 1; /* Força todos a terem a mesma largura */
-                min-width: 0; /* CRUCIAL: Permite que o item encolha abaixo do tamanho do conteúdo */
-                margin-bottom: 0; 
-                padding: 0 2px; /* Margem de segurança interna */
+                flex: 1; /* Larguras iguais */
+                min-width: 0; /* Permite encolher abaixo do conteúdo */
+                text-align: center;
+                padding: 0 2px;
             }
-            .stat-number { font-size: 1.35rem; } /* Levemente menor para caber */
+            .stat-number { 
+                font-size: 1.4rem; 
+                line-height: 1;
+                margin-bottom: 5px;
+            }
             .stat-label { 
                 font-size: 0.65rem; 
-                white-space: normal; /* PERMITE O TEXTO QUEBRAR DENTRO DO BLOCO */
-                line-height: 1.1; 
-                word-wrap: break-word; /* Garante quebra se necessário */
+                line-height: 1.1; /* Espaçamento bem apertado entre linhas */
+                white-space: normal; /* Permite quebrar linha */
+                display: block; /* Garante comportamento de bloco */
             }
 
             .devices-container { flex-direction: column; flex-wrap: nowrap; align-items: center; gap: 40px; }
