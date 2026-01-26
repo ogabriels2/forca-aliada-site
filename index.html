@@ -56,7 +56,7 @@
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
-        /* --- TOAST NOTIFICATION --- */
+        /* --- TOAST --- */
         #toast {
             visibility: hidden;
             min-width: 250px;
@@ -119,18 +119,52 @@
         .status-pill:hover { opacity: 0.8; transform: translateY(-1px); }
         .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; }
 
-        /* MENU MOBILE */
+        /* --- MENU MOBILE (LIQUID GLASS / APPLE STYLE) --- */
         .mobile-menu-btn { display: none; font-size: 1.8rem; cursor: pointer; z-index: 1002; padding: 15px; margin-right: -10px; line-height: 1; }
+        
         .mobile-nav-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
-            z-index: 1001; display: flex; flex-direction: column; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: 0.3s ease;
+            /* Efeito Vidro Premium */
+            background: rgba(245, 245, 247, 0.85); /* Cinza Apple bem claro e transparente */
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); /* Desfoque pesado */
+            z-index: 1001; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
         .mobile-nav-overlay.active { opacity: 1; pointer-events: all; }
-        .mobile-nav-overlay ul { display: flex; flex-direction: column; gap: 30px; text-align: center; }
-        .mobile-nav-overlay a { font-size: 1.5rem; font-weight: 700; color: var(--azul-escuro-texto); }
-        .close-menu-btn { position: absolute; top: 8px; right: 5%; margin-right: -10px; font-size: 3rem; cursor: pointer; padding: 15px; line-height: 0.5; color: var(--azul-escuro-texto); }
+        
+        .mobile-nav-overlay ul { 
+            display: flex; flex-direction: column; gap: 40px; text-align: center; 
+            margin-bottom: 50px;
+        }
+        .mobile-nav-overlay a { 
+            font-size: 2rem; /* Fonte maior para toque */
+            font-weight: 700; 
+            color: var(--azul-escuro-texto); 
+            letter-spacing: -0.03em;
+            transition: color 0.2s;
+        }
+        .mobile-nav-overlay a:active { color: var(--azul-profundo); transform: scale(0.98); }
+
+        .close-menu-btn { position: absolute; top: 8px; right: 5%; margin-right: -10px; font-size: 3rem; cursor: pointer; padding: 15px; line-height: 0.5; color: var(--azul-escuro-texto); z-index: 1005; }
+
+        /* WIDGET STATUS NO MENU MOBILE */
+        .mobile-status-card {
+            background: #FFFFFF;
+            padding: 15px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .mobile-status-dot { width: 10px; height: 10px; background: #999; border-radius: 50%; }
+        .mobile-status-info { text-align: left; }
+        .mobile-status-label { display: block; font-size: 0.75rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .mobile-status-count { display: block; font-size: 1.1rem; font-weight: 800; color: var(--azul-escuro-texto); }
 
         /* --- HERO --- */
         .hero {
@@ -150,16 +184,11 @@
 
         /* --- STATS STRIP --- */
         .stats-strip { 
-            display: flex;
-            flex-wrap: nowrap; /* Impede que os blocos caiam */
-            align-items: flex-start; /* Alinha números pelo topo */
-            justify-content: center; 
-            gap: 80px; /* Gap grande para Desktop */
-            padding: 60px 5%; 
+            display: flex; justify-content: center; gap: 80px; padding: 60px 5%; 
             background: var(--branco); border-bottom: 1px solid #eee;
-            width: 100%;
+            flex-wrap: nowrap; width: 100%;
         }
-        .stat-item { text-align: center; min-width: max-content; cursor: help; }
+        .stat-item { text-align: center; min-width: max-content; cursor: help; padding: 0 10px; }
         .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; white-space: nowrap; }
         .stat-label { font-size: 0.9rem; color: #86868b; font-weight: 500; margin-top: 5px; white-space: nowrap; }
 
@@ -168,9 +197,11 @@
         .about-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 80px; align-items: center; max-width: 1200px; margin: 0 auto; }
         .text-block h2 { font-size: 3rem; margin-bottom: 25px; letter-spacing: -0.03em; line-height: 1.1; color: var(--azul-escuro-texto); }
         .text-block p { font-size: 1.15rem; line-height: 1.6; color: #444; margin-bottom: 20px; }
+        
         .highlight-box { margin-top: 30px; font-size: 1.2rem; color: var(--azul-profundo); font-weight: 700; border-left: 4px solid var(--vermelho-acao); padding-left: 20px; font-style: italic; }
-        .img-card { border-radius: 20px; overflow: hidden; box-shadow: var(--sombra-flutuante); transition: 0.5s var(--transicao); }
-        .img-card:hover { transform: translateY(-5px); }
+        
+        .img-card { border-radius: 20px; overflow: hidden; box-shadow: var(--sombra-flutuante); transition: 0.5s var(--transicao); cursor: pointer; }
+        .img-card:hover { transform: translateY(-8px); } 
         .img-card img { width: 100%; display: block; }
 
         .features { background-color: var(--cinza-fundo); }
@@ -187,9 +218,9 @@
         .device, .switch-console { position: relative; background: #000; box-shadow: var(--sombra-suave); transition: 0.6s var(--transicao); flex-shrink: 1; min-width: 0; }
         @media (hover: hover) { .device:hover, .switch-console:hover { transform: translateY(-20px) scale(1.05); box-shadow: var(--sombra-flutuante); } }
         
-        /* CORREÇÃO DA IMAGEM CORTADA */
-        .device img, .switch-console img { width: 100%; height: 100%; object-fit: fill; display: block; }
-        
+        .device img, .switch-console img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .monitor img { object-position: bottom; } 
+
         .monitor { width: 500px; height: auto; aspect-ratio: 16/9; border-radius: 12px; border: 10px solid #1a1a1a; border-bottom: 25px solid #1a1a1a; order: 2; z-index: 2; }
         .monitor::after { content: ''; position: absolute; bottom: -55px; left: 50%; transform: translateX(-50%); width: 140px; height: 30px; background: #555; clip-path: polygon(15% 0, 85% 0, 100% 100%, 0% 100%); }
         .phone { width: 280px; height: auto; aspect-ratio: 2/1; border-radius: 18px; border: 6px solid #111; order: 3; z-index: 3; margin: 0 0 10px 12px; }
@@ -214,6 +245,7 @@
         .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%); background-size: 200% 100%; animation: loading 1.5s infinite; border-radius: 8px; color: transparent !important; }
         @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+        /* --- GALERIA & OVERLAY --- */
         .gallery { background-color: var(--cinza-fundo); }
         .bento-grid { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 350px 350px; gap: 25px; max-width: 1200px; margin: 0 auto; }
         .bento-item { border-radius: 24px; overflow: hidden; position: relative; box-shadow: var(--sombra-suave); cursor: zoom-in; }
@@ -221,11 +253,52 @@
         .bento-item:hover img { transform: scale(1.05); }
         .item-big { grid-row: span 2; }
         
+        .more-overlay {
+            position: absolute; inset: 0; background: rgba(0, 0, 0, 0.4); 
+            display: flex; justify-content: center; align-items: center; 
+            color: #fff; font-size: 2.8rem; font-weight: 700; 
+            backdrop-filter: blur(2px); transition: all 0.4s ease; 
+            z-index: 2; cursor: pointer;
+        }
+        .more-overlay span { transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+        .bento-item:hover .more-overlay { background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(4px); }
+        .bento-item:hover .more-overlay span { transform: scale(1.15); }
+
+        /* --- LIGHTBOX E ANIMAÇÃO --- */
         #lightbox { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.95); justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
         #lightbox.active { display: flex; opacity: 1; }
-        #lightbox-img { max-width: 90%; max-height: 85vh; border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
-        .lightbox-btn { position: absolute; top: 50%; transform: translateY(-50%); background: none; border: none; color: white; font-size: 3rem; cursor: pointer; padding: 20px; transition: 0.3s; opacity: 0.5; }
-        .close-btn { position: absolute; top: 20px; right: 30px; font-size: 3rem; color: white; cursor: pointer; z-index: 2001; }
+        
+        #lightbox-img { 
+            max-width: 90%; 
+            max-height: 85vh; 
+            border-radius: 8px; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        @keyframes slideInFromRight {
+            0% { transform: translateX(50px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideInFromLeft {
+            0% { transform: translateX(-50px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .anim-next { animation: slideInFromRight 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards; }
+        .anim-prev { animation: slideInFromLeft 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards; }
+
+        .lightbox-btn { position: absolute; top: 50%; transform: translateY(-50%); background: none; border: none; color: white; font-size: 3rem; cursor: pointer; padding: 20px; transition: 0.3s; opacity: 0.5; z-index: 2005; }
+        .lightbox-btn:hover { opacity: 1; transform: translateY(-50%) scale(1.1); }
+        
+        .close-btn { 
+            position: absolute; top: 20px; right: 30px; 
+            font-size: 3rem; color: white; 
+            cursor: pointer; z-index: 2001; 
+            transition: 0.3s; opacity: 0.7;
+        }
+        .close-btn:hover { opacity: 1; transform: scale(1.1); }
+
         .prev-btn { left: 20px; } .next-btn { right: 20px; }
 
         .faq-section { background: var(--branco); max-width: 800px; margin: 0 auto; padding-bottom: 80px; }
@@ -245,39 +318,32 @@
         .social-icon:hover { opacity: 1; transform: scale(1.1); }
         .social-icon svg { width: 100%; height: 100%; fill: white; }
 
-        /* --- RESPONSIVO MOBILE (FINAL V33 - GAP AJUSTADO E TEXTO QUEBRANDO) --- */
+        /* --- RESPONSIVO MOBILE --- */
         @media (max-width: 1000px) {
-            /* HERO SAFE AREA */
-            .hero {
-                padding-top: 140px; 
-                height: auto; 
-                min-height: 90vh; 
-                align-items: flex-start; 
-            }
+            .hero { padding-top: 140px; height: auto; min-height: 90vh; align-items: flex-start; }
             .hero h1 { font-size: 3rem; }
-            
             .section-header h2 { font-size: 2.2rem; }
             .about-grid, .bento-grid { grid-template-columns: 1fr; }
-            
-            /* HEADER FINO */
             header { padding: 8px 5%; }
             .mobile-menu-btn { display: block; }
             nav { display: none; }
             .status-pill { display: none; }
+            
             .close-menu-btn { top: 8px; }
+            .close-btn { top: 40px; right: 20px; }
 
-            /* STATS - UMA LINHA, TEXTO QUEBRA DENTRO DO BLOCO, ALINHADO AO TOPO */
+            /* STATS - RESTAURADO COM QUEBRA DE LINHA SEGURA */
             .stats-strip { 
                 display: flex;
-                flex-wrap: nowrap; /* Impede que os blocos caiam */
-                align-items: flex-start; /* Alinha números pelo topo */
-                justify-content: space-between; /* Distribui na largura total */
-                gap: 2px;
-                padding: 30px 4%; /* Margem lateral segura */
+                flex-wrap: nowrap; 
+                align-items: flex-start;
+                justify-content: center; 
+                gap: 20px;
+                padding: 30px 2%;
             }
             .stat-item { 
-                flex: 1; /* Larguras iguais */
-                min-width: 0; /* Permite encolher abaixo do conteúdo */
+                flex: 1;
+                min-width: 0;
                 text-align: center;
                 padding: 0 2px;
             }
@@ -288,9 +354,9 @@
             }
             .stat-label { 
                 font-size: 0.65rem; 
-                line-height: 1.1; /* Espaçamento bem apertado entre linhas */
-                white-space: normal; /* Permite quebrar linha */
-                display: block; /* Garante comportamento de bloco */
+                line-height: 1.1; 
+                white-space: normal;
+                display: block; 
             }
 
             .devices-container { flex-direction: column; flex-wrap: nowrap; align-items: center; gap: 40px; }
@@ -318,6 +384,15 @@
             <li><a href="#faq" onclick="toggleMenu()" title="Perguntas frequentes">Dúvidas</a></li>
             <li><a href="#status" onclick="toggleMenu()" style="color: var(--azul-profundo);" title="Ver endereços de IP">Jogar Agora</a></li>
         </ul>
+        
+        <div class="mobile-status-card" onclick="toggleMenu(); document.getElementById('status').scrollIntoView({behavior: 'smooth'});">
+            <div class="mobile-status-dot" id="mobile-status-dot"></div>
+            <div class="mobile-status-info">
+                <span class="mobile-status-label" id="mobile-status-text">OFFLINE</span>
+                <span class="mobile-status-count" id="mobile-player-count">-- Players</span>
+            </div>
+        </div>
+
         <div class="close-menu-btn" onclick="toggleMenu()" title="Fechar menu">&times;</div>
     </div>
 
@@ -374,14 +449,14 @@
     <section id="sobre">
         <div class="about-grid reveal">
             <div class="text-block">
-                <h2>Mais que blocos.<br>Um legado vivo.</h2>
+                <h2>Mais que blocos,<br>Um legado vivo.</h2>
                 <p>O Força Aliada começou em 2021 com três amigos de infância e uma ideia simples: criar o mundo perfeito. Sem resets, sem burocracia, apenas o Minecraft como deveria ser.</p>
                 <p>Hoje, mantido pelos fundadores originais, somos uma civilização digital. Nossa economia baseada em esmeraldas é sólida e a infraestrutura é projetada para durar décadas.</p>
                 <div class="highlight-box">
                     "Servidor mantido pelos fundadores originais desde 2021."
                 </div>
             </div>
-            <div class="img-card">
+            <div class="img-card" onclick="openLightbox(0)" title="Ampliar imagem">
                 <img src="sobre.png" alt="Centro da cidade">
             </div>
         </div>
@@ -473,13 +548,14 @@
         </div>
 
         <div class="bento-grid">
-            <div class="bento-item item-big" onclick="openLightbox(0)" title="Ampliar imagem">
+            <div class="bento-item item-big" onclick="openLightbox(1)" title="Ampliar imagem">
                 <img src="galeria1.jpeg" alt="Destaque" loading="lazy">
             </div>
-            <div class="bento-item" onclick="openLightbox(1)" title="Ampliar imagem">
+            <div class="bento-item" onclick="openLightbox(2)" title="Ampliar imagem">
                 <img src="galeria2.jpeg" alt="Secundário" loading="lazy">
             </div>
-            <div class="bento-item" onclick="openLightbox(2)" title="Ampliar imagem">
+            <div class="bento-item" onclick="openLightbox(3)" title="Ver galeria completa">
+                <div class="more-overlay"><span>+24</span></div>
                 <img src="galeria3.jpeg" alt="Terciário" loading="lazy">
             </div>
         </div>
@@ -558,34 +634,29 @@
             const today = new Date();
             let years = today.getFullYear() - startDate.getFullYear();
             const m = today.getMonth() - startDate.getMonth();
-            
-            // Se ainda não chegou o mês (outubro) ou se está no mês mas não chegou o dia (25)
             if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) {
                 years--;
             }
             document.getElementById('uptime-counter').innerText = years + " Anos";
         }
 
-        // 2. SISTEMA DE TOAST BLINDADO (Não some antes da hora)
-        let toastTimeout; // Variável global para controlar o timer
+        // 2. SISTEMA DE TOAST BLINDADO (Mensagem IP Copiado)
+        let toastTimeout; 
 
         function copiar(texto, porta = null) {
             navigator.clipboard.writeText(texto).then(() => {
                 const toast = document.getElementById("toast");
                 
-                // Mensagem Padrão
                 let msg = 'IP Copiado!';
                 if (porta) msg = `IP Copiado! Porta: ${porta}`;
                 
                 toast.innerText = msg;
-                toast.className = "show"; // Mostra imediatamente
+                toast.className = "show"; 
                 
-                // SE JÁ TIVER UM TIMER RODANDO, CANCELA ELE (REINICIA A CONTAGEM)
                 if (toastTimeout) {
                     clearTimeout(toastTimeout);
                 }
 
-                // DEFINE UM NOVO TIMER DE 3 SEGUNDOS
                 toastTimeout = setTimeout(function(){ 
                     toast.className = toast.className.replace("show", ""); 
                 }, 3000);
@@ -597,7 +668,7 @@
             document.getElementById('mobile-nav').classList.toggle('active');
         }
 
-        // 4. TOUCH SWIPE LOGIC (GALERIA)
+        // 4. TOUCH SWIPE LOGIC
         let touchStartX = 0;
         let touchEndX = 0;
         const lightboxImg = document.getElementById('lightbox-img');
@@ -616,15 +687,13 @@
             if (touchEndX > touchStartX + 50) changeSlide(-1); 
         }
 
-        // 5. STATUS DO SERVIDOR
+        // 5. STATUS DO SERVIDOR (ATUALIZA HEADER E MENU MOBILE)
         async function fetchStatus() {
-            const countElement = document.getElementById('player-count');
             const url = `https://api.mcstatus.io/v2/status/java/${API_JAVA_HOST}`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 if (data.online) {
-                    countElement.classList.remove('skeleton');
                     updateDisplay(data.players.online, true);
                 } else {
                     fetchBedrockFallback();
@@ -633,37 +702,46 @@
         }
 
         async function fetchBedrockFallback() {
-            const countElement = document.getElementById('player-count');
             const url = `https://api.mcstatus.io/v2/status/bedrock/${API_BEDROCK_HOST}:${BEDROCK_PORT}`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                countElement.classList.remove('skeleton');
                 if (data.online) updateDisplay(data.players.online, true);
                 else updateDisplay(0, false);
             } catch (error) { 
-                countElement.classList.remove('skeleton');
                 updateDisplay(0, false); 
             }
         }
 
         function updateDisplay(count, isOnline) {
+            // ELEMENTOS DO HEADER
             const statusDot = document.getElementById('status-dot');
             const headerPlayers = document.getElementById('header-players');
-            const mainCount = document.getElementById('player-count');
+            const mainCount = document.getElementById('player-count'); // Status Section
             const mainLabel = document.getElementById('status-label');
             const pill = document.getElementById('status-pill-container');
             
+            // ELEMENTOS DO MENU MOBILE (WIDGET NOVO)
+            const mobileDot = document.getElementById('mobile-status-dot');
+            const mobileText = document.getElementById('mobile-status-text');
+            const mobileCount = document.getElementById('mobile-player-count');
+
+            // REMOVE SKELETON
+            mainCount.classList.remove('skeleton');
+
             if (isOnline) {
+                // Header + Status Section
                 statusDot.style.background = "#4CAF50";
-                pill.style.background = "#E8F5E9"; 
-                pill.style.color = "#2E7D32";
+                pill.style.background = "#E8F5E9"; pill.style.color = "#2E7D32";
                 mainCount.style.color = "#ffffff";
                 
+                // Mobile Widget
+                if(mobileDot) mobileDot.style.background = "#4CAF50";
+                if(mobileText) { mobileText.innerText = "ONLINE"; mobileText.style.color = "#4CAF50"; }
+                if(mobileCount) mobileCount.innerText = count + (count === 1 ? " Jogador" : " Jogadores");
+
                 pill.title = count + " jogadores online. Clique para ver detalhes.";
-                pill.onclick = function() {
-                    document.getElementById('status').scrollIntoView({behavior: 'smooth'});
-                };
+                pill.onclick = function() { document.getElementById('status').scrollIntoView({behavior: 'smooth'}); };
 
                 if (count === 0) {
                     headerPlayers.innerText = "Online";
@@ -679,63 +757,73 @@
                     mainLabel.innerText = "JOGADORES ONLINE";
                 }
             } else {
+                // Offline State
                 statusDot.style.background = "#E63946";
                 pill.style.background = "#FFEBEE"; pill.style.color = "#C62828";
                 pill.title = "Servidor Offline";
                 headerPlayers.innerText = "Offline";
                 mainCount.innerText = "--";
                 mainLabel.innerText = "MANUTENÇÃO / OFFLINE";
+
+                // Mobile Widget Offline
+                if(mobileDot) mobileDot.style.background = "#E63946";
+                if(mobileText) { mobileText.innerText = "OFFLINE"; mobileText.style.color = "#E63946"; }
+                if(mobileCount) mobileCount.innerText = "--";
             }
         }
 
-        // 6. GALERIA LIGHTBOX - LISTA COMPLETA 27 IMAGENS (COM AS EXTENSÕES DO PRINT)
+        // 6. GALERIA LIGHTBOX COM ANIMAÇÃO INSTANTÂNEA E ARRAY CORRIGIDO
         let currentSlide = 0;
         const galleryImages = [
-            'galeria1.jpeg', 
-            'galeria2.jpeg', 
-            'galeria3.jpeg', 
-            'galeria4.jpeg', 
-            'galeria5.jpeg', 
-            'galeria6.jpeg', 
-            'galeria7.jpeg', 
-            'galeria8.jpeg', 
-            'galeria9.jpeg', 
-            'galeria10.png', 
-            'galeria11.jpeg', 
-            'galeria12.jpeg', 
-            'galeria13.jpeg', 
-            'galeria14.png', 
-            'galeria15.jpeg', 
-            'galeria16.jpeg', 
-            'galeria17.jpeg', 
-            'galeria18.jpeg', 
-            'galeria19.png', 
-            'galeria20.jpeg', 
-            'galeria21.jpeg', 
-            'galeria22.jpeg', 
-            'galeria23.jpeg', 
-            'galeria24.jpeg', 
-            'galeria25.jpeg', 
-            'galeria26.png', 
+            'sobre.png', // INDEX 0 (Imagem do Sobre)
+            'galeria1.jpeg', 'galeria2.jpeg', 'galeria3.jpeg',
+            'galeria4.jpeg', 'galeria5.jpeg', 'galeria6.jpeg', 'galeria7.jpeg',
+            'galeria8.jpeg', 'galeria9.jpeg', 'galeria10.png',
+            'galeria11.jpeg', 'galeria12.jpeg', 'galeria13.jpeg', 'galeria14.png',
+            'galeria15.jpeg', 'galeria16.jpeg', 'galeria17.jpeg', 'galeria18.jpeg',
+            'galeria19.png', 'galeria20.jpeg', 'galeria21.jpeg', 'galeria22.jpeg',
+            'galeria23.jpeg', 'galeria24.jpeg', 'galeria25.jpeg', 'galeria26.png',
             'galeria27.png'
         ];
 
         function openLightbox(index) {
             currentSlide = index;
-            document.getElementById('lightbox-img').src = galleryImages[index];
+            const imgElement = document.getElementById('lightbox-img');
+            imgElement.src = galleryImages[index];
+            imgElement.classList.remove('anim-next', 'anim-prev'); 
             document.getElementById('lightbox').classList.add('active');
             document.body.style.overflow = 'hidden';
         }
+
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('active');
             document.body.style.overflow = 'auto';
         }
+
         function changeSlide(n) {
             currentSlide += n;
             if (currentSlide >= galleryImages.length) currentSlide = 0;
             if (currentSlide < 0) currentSlide = galleryImages.length - 1;
-            document.getElementById('lightbox-img').src = galleryImages[currentSlide];
+            
+            const imgElement = document.getElementById('lightbox-img');
+            
+            // 1. Remove classes para reiniciar a animação
+            imgElement.classList.remove('anim-next', 'anim-prev');
+            
+            // 2. Força o reflow (reinicia o ciclo de renderização do CSS)
+            void imgElement.offsetWidth;
+            
+            // 3. Troca a imagem IMEDIATAMENTE (Sem timeout = sem piscar)
+            imgElement.src = galleryImages[currentSlide];
+            
+            // 4. Adiciona a classe correta baseada na direção
+            if (n > 0) {
+                imgElement.classList.add('anim-next');
+            } else {
+                imgElement.classList.add('anim-prev');
+            }
         }
+
         document.addEventListener('keydown', function(event) {
             if (document.getElementById('lightbox').classList.contains('active')) {
                 if (event.key === "Escape") closeLightbox();
@@ -745,7 +833,7 @@
         });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
-        // 7. ANIMAÇÃO DE SCROLL (REVEAL)
+        // 7. ANIMAÇÃO DE SCROLL
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
@@ -759,7 +847,7 @@
         // INICIALIZAÇÃO
         window.onload = function() {
             fetchStatus();
-            updateServerAge(); // Chama o cálculo de anos
+            updateServerAge();
             setInterval(fetchStatus, 5000);
             reveal(); 
         };
