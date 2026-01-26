@@ -148,11 +148,16 @@
         .btn-red { background-color: var(--vermelho-acao); color: var(--branco); }
         .btn-red:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(230, 57, 70, 0.5); }
 
-        /* --- STATS STRIP --- */
+        /* --- STATS STRIP (AJUSTE MOBILE IPHONE 8) --- */
         .stats-strip { 
-            display: flex; justify-content: center; gap: 80px; padding: 60px 5%; 
-            background: var(--branco); border-bottom: 1px solid #eee;
-            flex-wrap: nowrap; width: 100%;
+            display: flex; 
+            justify-content: center; 
+            gap: 80px; 
+            padding: 60px 5%; 
+            background: var(--branco); 
+            border-bottom: 1px solid #eee;
+            flex-wrap: nowrap; 
+            width: 100%;
         }
         .stat-item { text-align: center; min-width: max-content; cursor: help; }
         .stat-number { display: block; font-size: 2.5rem; font-weight: 800; color: var(--azul-escuro-texto); letter-spacing: -0.03em; white-space: nowrap; }
@@ -182,7 +187,6 @@
         .device, .switch-console { position: relative; background: #000; box-shadow: var(--sombra-suave); transition: 0.6s var(--transicao); flex-shrink: 1; min-width: 0; }
         @media (hover: hover) { .device:hover, .switch-console:hover { transform: translateY(-20px) scale(1.05); box-shadow: var(--sombra-flutuante); } }
         
-        /* CORREÇÃO DA IMAGEM CORTADA */
         .device img, .switch-console img { width: 100%; height: 100%; object-fit: fill; display: block; }
         
         .monitor { width: 500px; height: auto; aspect-ratio: 16/9; border-radius: 12px; border: 10px solid #1a1a1a; border-bottom: 25px solid #1a1a1a; order: 2; z-index: 2; }
@@ -240,7 +244,7 @@
         .social-icon:hover { opacity: 1; transform: scale(1.1); }
         .social-icon svg { width: 100%; height: 100%; fill: white; }
 
-        /* --- RESPONSIVO MOBILE --- */
+        /* --- RESPONSIVO MOBILE (FINAL COM CORREÇÃO DE QUEBRA DE LINHA) --- */
         @media (max-width: 1000px) {
             /* HERO SAFE AREA */
             .hero {
@@ -261,13 +265,26 @@
             .status-pill { display: none; }
             .close-menu-btn { top: 8px; }
 
-            /* STATS - RESTAURADO */
+            /* STATS - AGORA QUEBRA CORRETAMENTE EM TELAS PEQUENAS */
             .stats-strip { 
-                gap: 2px; padding: 30px 2px; align-items: flex-start; 
+                gap: 5px; /* Gap pequeno para manter junto se couber */
+                padding: 30px 10px; /* Mais padding lateral */
+                align-items: flex-start; 
+                flex-wrap: wrap; /* PERMITE QUEBRAR LINHA SE PRECISAR */
+                justify-content: space-around; /* Distribui bonito se quebrar */
             }
-            .stat-item { flex: 1; min-width: 0; }
-            .stat-number { font-size: 1.4rem; }
-            .stat-label { font-size: 0.65rem; white-space: nowrap; line-height: 1.2; max-width: 100%; }
+            .stat-item { 
+                flex: 1 1 auto; /* Cresce, encolhe e base automática */
+                min-width: 100px; /* Garante um tamanho mínimo antes de quebrar */
+                margin-bottom: 10px; /* Espaço se quebrar linha */
+            }
+            .stat-number { font-size: 1.6rem; }
+            .stat-label { 
+                font-size: 0.75rem; 
+                white-space: normal; /* PERMITE O TEXTO QUEBRAR DENTRO DO ITEM */
+                line-height: 1.2; 
+                max-width: 100%; 
+            }
 
             .devices-container { flex-direction: column; flex-wrap: nowrap; align-items: center; gap: 40px; }
             .monitor { width: 90%; order: unset; transform: none; }
@@ -334,7 +351,8 @@
 
     <div class="stats-strip reveal">
         <div class="stat-item" title="Desde o lançamento em 2021">
-            <span class="stat-number" id="uptime-counter">4 Anos</span> <span class="stat-label">Online Ininterruptamente</span>
+            <span class="stat-number" id="uptime-counter">4 Anos</span>
+            <span class="stat-label">Online Ininterruptamente</span>
         </div>
         <div class="stat-item" title="Mapa nunca foi resetado">
             <span class="stat-number">0 Resets</span>
@@ -553,12 +571,10 @@
                 toast.innerText = msg;
                 toast.className = "show"; // Mostra imediatamente
                 
-                // Reinicia o timer se já estiver rodando
                 if (toastTimeout) {
                     clearTimeout(toastTimeout);
                 }
 
-                // Espera 3 segundos antes de sumir
                 toastTimeout = setTimeout(function(){ 
                     toast.className = toast.className.replace("show", ""); 
                 }, 3000);
@@ -701,7 +717,7 @@
         });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
-        // 7. ANIMAÇÃO DE SCROLL (REVEAL)
+        // 7. ANIMAÇÃO DE SCROLL
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
