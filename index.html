@@ -92,7 +92,6 @@
         .sk-btn { width: 180px; height: 50px; border-radius: 50px; margin-top: 20px; }
         .sk-stats { position: absolute; bottom: 60px; width: 80%; height: 80px; display: flex; justify-content: space-between; gap: 20px; }
         .sk-stat-box { flex: 1; height: 100%; }
-        
         @media (max-width: 768px) { .sk-nav { display: none; } .sk-stats { display: none; } }
 
         /* --- TOAST --- */
@@ -158,13 +157,13 @@
         .status-pill:hover { opacity: 0.8; transform: translateY(-1px); }
         .dot { width: 6px; height: 6px; background: #999; border-radius: 50%; }
 
-        /* --- MENU MOBILE (LIQUID GLASS) --- */
+        /* --- MENU MOBILE (LIQUID GLASS / APPLE STYLE) --- */
         .mobile-menu-btn { display: none; font-size: 1.8rem; cursor: pointer; z-index: 1002; padding: 15px; margin-right: -10px; line-height: 1; }
         
         .mobile-nav-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-            background: rgba(245, 245, 247, 0.85); 
-            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            background: rgba(245, 245, 247, 0.85); /* Vidro Apple */
+            backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
             z-index: 1001; 
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -173,42 +172,57 @@
         
         .mobile-nav-overlay ul { 
             display: flex; flex-direction: column; 
-            gap: 32px; 
+            gap: 20px; /* Proximidade Apple */
             text-align: center; 
-            margin-bottom: 40px; 
+            margin-bottom: 30px; 
         }
         .mobile-nav-overlay a { 
-            font-size: 1.9rem;
-            font-weight: 700; 
+            font-size: 2.1rem; 
+            font-weight: 600; /* Peso da fonte reduzido para elegância */
             color: var(--azul-escuro-texto); 
-            letter-spacing: -0.02em;
+            letter-spacing: -0.02em; 
             transition: transform 0.2s, color 0.2s;
             display: block; 
-            padding: 5px;
+            padding: 5px 0; 
         }
-        .mobile-nav-overlay a:active { color: var(--azul-profundo); transform: scale(0.96); }
+        .mobile-nav-overlay a:active { 
+            color: var(--azul-profundo); 
+            transform: scale(0.96); 
+            opacity: 0.7;
+        }
 
         .close-menu-btn { position: absolute; top: 8px; right: 5%; margin-right: -10px; font-size: 3rem; cursor: pointer; padding: 15px; line-height: 0.5; color: var(--azul-escuro-texto); z-index: 1005; }
 
-        /* WIDGET STATUS MENU MOBILE */
+        /* WIDGET STATUS NO MENU MOBILE - POLIDO */
         .mobile-status-card {
             background: #FFFFFF;
-            padding: 16px 28px;
-            border-radius: 24px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+            padding: 18px 32px;
+            border-radius: 26px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin-top: 15px;
+            gap: 16px;
+            margin-top: 10px;
             transform: scale(1);
             transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
         }
-        .mobile-status-card:active { transform: scale(0.96); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-        .mobile-status-dot { width: 10px; height: 10px; background: #999; border-radius: 50%; }
-        .mobile-status-info { text-align: left; }
-        .mobile-status-label { display: block; font-size: 0.7rem; font-weight: 700; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;}
-        .mobile-status-count { display: block; font-size: 1.15rem; font-weight: 700; color: var(--azul-escuro-texto); letter-spacing: -0.02em; }
+        .mobile-status-card:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+        .mobile-status-dot { width: 12px; height: 12px; background: #999; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .mobile-status-info { text-align: left; display: flex; flex-direction: column; justify-content: center; }
+        .mobile-status-label { 
+            display: block; font-size: 0.75rem; font-weight: 700; 
+            color: #8e8e93; 
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;
+        }
+        .mobile-status-count { 
+            display: block; font-size: 1.25rem; font-weight: 700; 
+            color: var(--azul-escuro-texto); letter-spacing: -0.02em; 
+            line-height: 1;
+        }
 
         /* --- HERO --- */
         .hero {
@@ -376,18 +390,18 @@
             .close-menu-btn { top: 8px; }
             .close-btn { top: 40px; right: 20px; }
 
-            /* STATS - RESPONSIVO E SEGURO */
+            /* STATS - RESTAURADO COM QUEBRA DE LINHA SEGURA */
             .stats-strip { 
                 display: flex;
                 flex-wrap: nowrap; 
                 align-items: flex-start;
-                justify-content: space-between; /* Distribui */
-                gap: 2px;
-                padding: 30px 4%;
+                justify-content: center; 
+                gap: 20px;
+                padding: 30px 2%;
             }
             .stat-item { 
                 flex: 1;
-                min-width: 0; 
+                min-width: 0;
                 text-align: center;
                 padding: 0 2px;
             }
@@ -446,7 +460,7 @@
             <li><a href="#status" onclick="toggleMenu()" style="color: var(--azul-profundo);" title="Ver endereços de IP">Jogar Agora</a></li>
         </ul>
         
-        <div class="mobile-status-card" onclick="toggleMenu(); document.getElementById('status').scrollIntoView({behavior: 'smooth'});">
+        <div class="mobile-status-card" id="mobile-status-card" onclick="toggleMenu(); document.getElementById('status').scrollIntoView({behavior: 'smooth'});">
             <div class="mobile-status-dot" id="mobile-status-dot"></div>
             <div class="mobile-status-info">
                 <span class="mobile-status-label" id="mobile-status-text">OFFLINE</span>
@@ -771,7 +785,8 @@
             const mainLabel = document.getElementById('status-label');
             const pill = document.getElementById('status-pill-container');
             
-            // WIDGET MOBILE
+            // WIDGET MOBILE (ADICIONADO ID NO HTML)
+            const mobileCard = document.getElementById('mobile-status-card'); 
             const mobileDot = document.getElementById('mobile-status-dot');
             const mobileText = document.getElementById('mobile-status-text');
             const mobileCount = document.getElementById('mobile-player-count');
@@ -781,30 +796,67 @@
                 pill.style.background = "#E8F5E9"; pill.style.color = "#2E7D32";
                 mainCount.style.color = "#ffffff";
                 
-                // MOBILE
+                // MOBILE WIDGET
                 if(mobileDot) mobileDot.style.background = "#4CAF50";
                 if(mobileText) { mobileText.innerText = "ONLINE"; mobileText.style.color = "#4CAF50"; }
-                if(mobileCount) mobileCount.innerText = count + (count === 1 ? " Jogador" : " Jogadores");
+                if(mobileCount) {
+                    if (count === 0) {
+                        mobileCount.innerText = "Disponível";
+                    } else {
+                        mobileCount.innerText = count + (count === 1 ? " Jogador" : " Jogadores");
+                    }
+                }
 
-                pill.title = count + " jogadores online. Clique para ver detalhes.";
+                // LÓGICA DE TOOLTIP
+                let tooltipText = "";
+                if (count === 0) {
+                    tooltipText = "Servidor Online. Clique para ver detalhes.";
+                } else if (count === 1) {
+                    tooltipText = "1 jogador online. Clique para ver detalhes.";
+                } else {
+                    tooltipText = count + " jogadores online. Clique para ver detalhes.";
+                }
+                
+                pill.title = tooltipText;
+                // ADICIONA TOOLTIP NO MOBILE TAMBÉM
+                if (mobileCard) mobileCard.title = tooltipText;
+
                 pill.onclick = function() { document.getElementById('status').scrollIntoView({behavior: 'smooth'}); };
-                if (count === 0) { headerPlayers.innerText = "Online"; mainCount.innerText = "0"; mainLabel.innerText = "SEJA O PRIMEIRO"; }
-                else if (count === 1) { headerPlayers.innerText = "1 Online"; mainCount.innerText = "1"; mainLabel.innerText = "JOGADOR ONLINE"; }
-                else { headerPlayers.innerText = `${count} Online`; mainCount.innerText = count; mainLabel.innerText = "JOGADORES ONLINE"; }
+
+                if (count === 0) {
+                    headerPlayers.innerText = "Online";
+                    mainCount.innerText = "ON"; // LÓGICA ON
+                    mainLabel.innerText = "SEJA O PRIMEIRO";
+                } else if (count === 1) {
+                    headerPlayers.innerText = "1 Online";
+                    mainCount.innerText = "1";
+                    mainLabel.innerText = "JOGADOR ONLINE";
+                } else {
+                    headerPlayers.innerText = `${count} Online`;
+                    mainCount.innerText = count;
+                    mainLabel.innerText = "JOGADORES ONLINE";
+                }
             } else {
                 statusDot.style.background = "#E63946"; pill.style.background = "#FFEBEE"; pill.style.color = "#C62828";
-                pill.title = "Servidor Offline"; headerPlayers.innerText = "Offline"; mainCount.innerText = "--"; mainLabel.innerText = "MANUTENÇÃO / OFFLINE";
                 
-                // MOBILE
+                let offlineText = "Servidor Offline";
+                pill.title = offlineText;
+                if (mobileCard) mobileCard.title = offlineText;
+
+                headerPlayers.innerText = "Offline";
+                mainCount.innerText = "--";
+                mainLabel.innerText = "MANUTENÇÃO / OFFLINE";
+
+                // MOBILE OFF
                 if(mobileDot) mobileDot.style.background = "#E63946";
                 if(mobileText) { mobileText.innerText = "OFFLINE"; mobileText.style.color = "#E63946"; }
                 if(mobileCount) mobileCount.innerText = "--";
             }
         }
 
-        // 6. GALERIA LIGHTBOX - DEBOUNCE (250ms) E LOGICA CORRIGIDA
+        // 6. GALERIA LIGHTBOX - DEBOUNCE (250ms)
         let currentSlide = 0;
-        let isAnimating = false; // TRAVA DE SEGURANÇA
+        let isAnimating = false; 
         const galleryImages = [
             'sobre.png', 
             'galeria1.jpeg', 'galeria2.jpeg', 'galeria3.jpeg',
@@ -819,7 +871,7 @@
 
         function openLightbox(index) {
             currentSlide = index;
-            isAnimating = false;
+            isAnimating = false; 
             const imgElement = document.getElementById('lightbox-img');
             imgElement.src = galleryImages[index];
             imgElement.classList.remove('anim-next', 'anim-prev'); 
@@ -833,7 +885,7 @@
         }
 
         function changeSlide(n) {
-            if (isAnimating) return; // BLOQUEIA
+            if (isAnimating) return; 
             isAnimating = true;
 
             currentSlide += n;
@@ -842,23 +894,17 @@
             
             const imgElement = document.getElementById('lightbox-img');
             
-            // 1. Remove classes
             imgElement.classList.remove('anim-next', 'anim-prev');
-            
-            // 2. Reflow
             void imgElement.offsetWidth;
             
-            // 3. Troca
             imgElement.src = galleryImages[currentSlide];
             
-            // 4. Animação
             if (n > 0) {
                 imgElement.classList.add('anim-next');
             } else {
                 imgElement.classList.add('anim-prev');
             }
 
-            // 5. Destrava após 250ms
             setTimeout(() => {
                 isAnimating = false;
             }, 250);
@@ -884,6 +930,7 @@
         }
         window.addEventListener("scroll", reveal);
 
+        // LÓGICA DO SKELETON
         window.addEventListener('load', function() {
             const skeleton = document.getElementById('skeleton-screen');
             if (skeleton) {
