@@ -133,8 +133,8 @@
         input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; }
         input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1); }
 
-        /* Grid Interno do Dashboard */
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        /* Grid Interno do Dashboard (Atualizado para múltiplos cards) */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
         .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
         .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
         .mini-card .value { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -1px; }
@@ -149,11 +149,12 @@
         .item-details span { font-size: 13px; color: var(--text-secondary); }
 
         .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; }
+        .status-dot.offline { background: var(--danger); }
         .msg-alert { font-size: 13px; color: var(--success); margin-top: 8px; font-weight: 500; }
 
         @media (max-width: 860px) {
             .container { grid-template-columns: 1fr; margin-top: 20px; }
-            .dashboard-grid { grid-template-columns: 1fr; }
+            .dashboard-grid { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
@@ -208,37 +209,55 @@
                 <div class="mini-card">
                     <h4>Status do Servidor</h4>
                     <div class="value" style="display: flex; align-items: center; gap: 8px;">
-                        <span class="status-dot"></span> Online
+                        <span class="status-dot" id="server-dot"></span> <span id="server-status">Carregando...</span>
                     </div>
                 </div>
                 <div class="mini-card">
                     <h4>Jogadores Ativos</h4>
-                    <div class="value" id="online-count">0</div>
+                    <div class="value" id="online-count">- / -</div>
+                </div>
+                <div class="mini-card">
+                    <h4>IP do Servidor</h4>
+                    <div class="value" id="server-ip" style="font-size: 16px; word-break: break-all;">-</div>
+                </div>
+                <div class="mini-card">
+                    <h4>Versão</h4>
+                    <div class="value" id="server-version" style="font-size: 16px;">-</div>
                 </div>
             </div>
 
             <h3 style="margin-top: 16px;">Online Agora</h3>
             <ul id="online">
-                </ul>
+                <li class="list-item"><div class="item-details"><span>Carregando jogadores...</span></div></li>
+            </ul>
 
-            <h3 style="margin-top: 16px;">Registro de Atividade</h3>
+            <h3 style="margin-top: 16px;">Aviso do Sistema</h3>
             <ul id="history">
-                </ul>
+                <li class="list-item">
+                    <div class="item-details">
+                        <strong>Histórico desativado</strong>
+                        <span>O histórico local foi substituído pela conexão em tempo real da API para exibir dados precisos.</span>
+                    </div>
+                </li>
+            </ul>
         </div>
     </div>
 
 <script>
+    // ==========================================
+    // CONFIGURAÇÃO - COLOQUE O IP DO SEU SERVIDOR AQUI
+    // Ex: 'jogar.rede-sky.com', 'mc.hypixel.net', 'localhost'
+    const SERVER_IP = 'mc.hypixel.net'; 
+    // ==========================================
+
     // 1. VERIFICAÇÃO E GESTÃO DE SESSÃO
     let session = JSON.parse(localStorage.getItem('fa_session')); 
     
     if(!session) {
-        // Redireciona para login se não houver sessão, mas provê fallback para demonstração se rodado local sem login.
-        // Se for integrar num site real, DESCOMENTE a linha abaixo e APAGUE a criação da sessão mockada.
-        // location.href = 'login.html'; 
-        
+        // Redireciona para login se não houver sessão, mas provê fallback para demonstração
         session = { 
-            username: "Convidado Local", 
-            email: "teste@forcaaliada.com", 
+            username: "Administrador", 
+            email: "admin@forcaaliada.com", 
             minecraft: "Notch", 
             role: "full", 
             photo: "" 
@@ -294,15 +313,18 @@
         role: document.getElementById('role'),
         photo: document.getElementById('photo'),
         online: document.getElementById('online'),
-        history: document.getElementById('history'),
         meta: document.getElementById('meta'),
-        onlineCount: document.getElementById('online-count')
+        onlineCount: document.getElementById('online-count'),
+        serverIp: document.getElementById('server-ip'),
+        serverVer: document.getElementById('server-version'),
+        serverStatus: document.getElementById('server-status'),
+        serverDot: document.getElementById('server-dot')
     };
 
     els.name.textContent = session.username; 
     els.email.textContent = session.email || 'Não informado'; 
     els.mc.textContent = session.minecraft || 'Não vinculado'; 
-    els.photo.src = skinUrl; // Reaproveita a mesma skin calculada pro cabeçalho
+    els.photo.src = skinUrl;
     
     if(session.role === 'full') {
         els.role.textContent = 'Acesso Total';
@@ -312,76 +334,74 @@
         els.role.className = 'pill limited';
     }
 
-    // 4. CARREGAMENTO DE DADOS DO DASHBOARD
+    // 4. CARREGAMENTO DE DADOS REAIS DO SERVIDOR VIA API
     async function loadData() {
         try {
-            const r = await fetch('data/player-history.json?t=' + Date.now());
-            if (!r.ok) throw new Error("Arquivo ausente");
-            const d = await r.json();
-            renderData(d);
+            // Atualiza hora de verificação
+            els.meta.textContent = new Date().toLocaleTimeString('pt-BR');
+            els.serverIp.textContent = SERVER_IP;
+
+            // Busca os dados da API pública
+            const r = await fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`);
+            const data = await r.json();
+            
+            renderData(data);
         } catch(e) {
-            // Fallback visual
-            const mockData = {
-                generatedAt: new Date().toLocaleTimeString('pt-BR'),
-                onlinePlayers: ["Jeb_", "Dinnerbone", session.minecraft || "Notch"],
-                history: [
-                    { player: "Herobrine", enteredAt: new Date(Date.now() - 3600000).toISOString(), leftAt: new Date().toISOString(), hoursOnline: 1.2 },
-                    { player: "Alex", enteredAt: new Date(Date.now() - 86400000).toISOString(), leftAt: new Date(Date.now() - 80000000).toISOString(), hoursOnline: 1.8 }
-                ]
-            };
-            renderData(mockData);
+            console.error("Erro ao buscar dados da API: ", e);
+            els.serverStatus.textContent = "Erro de Conexão";
+            els.serverDot.className = "status-dot offline";
         }
     }
 
     function renderData(d) {
-        els.meta.textContent = d.generatedAt || new Date().toLocaleTimeString('pt-BR');
-        
-        // Renderizar Jogadores Online
-        const players = d.onlinePlayers || [];
-        els.onlineCount.textContent = players.length;
+        if (d.online) {
+            // Servidor Online
+            els.serverStatus.textContent = "Online";
+            els.serverDot.className = "status-dot";
+            els.serverVer.textContent = d.version || "Desconhecida";
+            
+            // Números
+            const playersOnline = d.players ? d.players.online : 0;
+            const playersMax = d.players ? d.players.max : 0;
+            els.onlineCount.textContent = `${playersOnline} / ${playersMax}`;
 
-        if(players.length) {
-            els.online.innerHTML = players.map(n => `
-                <li class="list-item">
-                    <img src="https://minotar.net/helm/${n}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" alt="${n}">
-                    <div class="item-details">
-                        <strong>${n}</strong>
-                        <span>Explorando o servidor</span>
-                    </div>
-                    <span class="status-dot"></span>
-                </li>
-            `).join('');
+            // Lista de jogadores (mcsrvstat retorna uma array 'list' de nomes, ou objeto uuid)
+            let playerList = [];
+            if (d.players && d.players.list) {
+                playerList = d.players.list;
+            }
+
+            if (playerList.length > 0) {
+                // Renderiza cada jogador
+                els.online.innerHTML = playerList.map(player => {
+                    // Trata caso a API retorne objeto ou apenas string de nome
+                    const pName = typeof player === 'string' ? player : player.name;
+                    return `
+                    <li class="list-item">
+                        <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" alt="${pName}">
+                        <div class="item-details">
+                            <strong>${pName}</strong>
+                            <span>Conectado</span>
+                        </div>
+                        <span class="status-dot"></span>
+                    </li>
+                `}).join('');
+            } else if (playersOnline > 0) {
+                // O servidor tem gente, mas os nomes estão ocultos nas configurações (enable-query/API restrita)
+                els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Existem ${playersOnline} jogadores online, mas a lista de nomes está oculta pelas configurações do servidor.</span></div></li>`;
+            } else {
+                // Ninguém jogando
+                els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador online no momento.</span></div></li>`;
+            }
+
         } else {
-            els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador online no momento.</span></div></li>`;
+            // Servidor Offline
+            els.serverStatus.textContent = "Offline";
+            els.serverDot.className = "status-dot offline";
+            els.onlineCount.textContent = "0 / 0";
+            els.serverVer.textContent = "-";
+            els.online.innerHTML = `<li class="list-item"><div class="item-details"><span style="color: var(--danger);">Servidor inacessível. Verifique se a máquina está ligada.</span></div></li>`;
         }
-
-        // Renderizar Histórico
-        const isFullAccess = session.role === 'full';
-        const rows = (d.history || []).slice(0, isFullAccess ? 10 : 3);
-        
-        if(rows.length) {
-            els.history.innerHTML = rows.map(h => `
-                <li class="list-item">
-                    <img src="https://minotar.net/helm/${h.player}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" style="width: 32px; height: 32px;" alt="${h.player}">
-                    <div class="item-details">
-                        <strong>${h.player}</strong>
-                        <span>Conectou em ${fmt(h.enteredAt)}</span>
-                    </div>
-                    <div style="text-align: right;">
-                        <strong style="font-size: 13px; color: var(--text-primary);">${h.hoursOnline ? h.hoursOnline + 'h' : 'Ao vivo'}</strong>
-                        <br><span style="font-size: 11px; color: var(--text-secondary);">${h.leftAt ? 'Saiu: ' + fmt(h.leftAt) : 'Jogando agora'}</span>
-                    </div>
-                </li>
-            `).join('');
-        } else {
-            els.history.innerHTML = `<li class="list-item"><div class="item-details"><span>Sem registros no histórico.</span></div></li>`;
-        }
-    }
-
-    function fmt(v) {
-        if(!v) return '-';
-        const dt = new Date(v);
-        return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }) + ' de ' + dt.toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'});
     }
 
     // 5. AÇÕES DE CONTA E SEGURANÇA
@@ -422,7 +442,8 @@
     // Iniciar tudo
     renderHeader();
     loadData();
-    setInterval(loadData, 15000);
+    // Atualiza os dados da API a cada 30 segundos
+    setInterval(loadData, 30000);
 </script>
 </body>
 </html>
