@@ -128,7 +128,7 @@
 
         /* Filtros e Gráficos */
         .filter-bar { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px; }
-        .chart-container { width: 100%; height: 200px; margin-bottom: 20px; }
+        .chart-container { width: 100%; height: 350px; margin-bottom: 20px; }
 
         /* --- MODAL DO JOGADOR --- */
         .modal-overlay {
@@ -212,7 +212,7 @@
         </div>
 
         <div class="card" style="grid-column: span 1;">
-            <h3>Métricas do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+            <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
             
             <div class="dashboard-grid">
                 <div class="mini-card">
@@ -225,16 +225,52 @@
                     <h4>Jogadores Online</h4>
                     <div class="value" id="online-count">- / -</div>
                 </div>
+                <div class="mini-card">
+                    <h4>IP do Servidor</h4>
+                    <div class="value" id="server-ip" style="font-size: 16px; word-break: break-all;">-</div>
+                </div>
+                <div class="mini-card">
+                    <h4>Versão</h4>
+                    <div class="value" id="server-version" style="font-size: 16px;">-</div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <h3 style="margin: 0; font-size: 16px;">Análise de Atividade</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <select id="chart-range" onchange="toggleCustomTime()" style="padding: 6px 10px; font-size: 13px; border-radius: 8px; width: auto;">
+                        <option value="24h" selected>Últimas 24h</option>
+                        <option value="7d">Últimos 7 dias</option>
+                        <option value="30d">Últimos 30 dias</option>
+                        <option value="custom">Personalizado...</option>
+                    </select>
+                    <select id="chart-grouping" onchange="updateActivityChart()" style="padding: 6px 10px; font-size: 13px; border-radius: 8px; width: auto;">
+                        <option value="minute">Por 15 Minutos</option>
+                        <option value="hour" selected>Por Hora</option>
+                        <option value="day">Por Dia</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="custom-time-controls" style="display: none; gap: 12px; margin-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12px; color: var(--text-secondary);">Início:</span>
+                    <input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding: 6px; font-size: 12px; border-radius: 6px; width: auto;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12px; color: var(--text-secondary);">Fim:</span>
+                    <input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding: 6px; font-size: 12px; border-radius: 6px; width: auto;">
+                </div>
             </div>
 
             <div class="chart-container">
                 <canvas id="activityChart"></canvas>
             </div>
 
-            <h3 style="margin-top: 16px; margin-bottom: 12px;">Auditoria de Jogadores</h3>
+            <h3 style="margin-top: 24px; margin-bottom: 12px;">Buscar Jogador</h3>
             
             <div class="filter-bar">
-                <input type="text" id="search-player" placeholder="Buscar por jogador..." oninput="applyFilters()">
+                <input type="text" id="search-player" placeholder="Digite o nome do jogador..." oninput="applyFilters()">
                 <input type="date" id="search-date" onchange="applyFilters()">
             </div>
 
@@ -243,7 +279,7 @@
                 <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
             </ul>
 
-            <h4 style="margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); text-transform: uppercase;">Histórico Recente</h4>
+            <h4 style="margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); text-transform: uppercase;">Últimos Desconectados</h4>
             <ul id="history">
                 <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
             </ul>
@@ -352,6 +388,8 @@
     // --- CARREGAMENTO DE DADOS (API + JSON) ---
     async function loadData() {
         document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
+        document.getElementById('server-ip').textContent = SERVER_IP;
+
         try {
             const [apiData, histData] = await Promise.all([
                 fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
@@ -360,34 +398,35 @@
             globalApiData = apiData;
             globalHistData = histData;
             renderDashboard();
-            renderChart();
+            updateActivityChart();
         } catch(e) { console.error("Erro", e); }
     }
 
-    // --- RENDERIZAÇÃO PRINCIPAL & FILTROS ---
+    // --- RENDERIZAÇÃO LISTAS & FILTROS ---
     function renderDashboard() {
-        // Status Superior
         if (globalApiData && globalApiData.online) {
             document.getElementById('server-status').textContent = "Online";
             document.getElementById('server-dot').className = "status-dot";
+            document.getElementById('server-version').textContent = globalApiData.version || "Desconhecida";
             document.getElementById('online-count').textContent = `${globalApiData.players?.online || 0} / ${globalApiData.players?.max || 0}`;
         } else {
             document.getElementById('server-status').textContent = "Offline";
             document.getElementById('server-dot').className = "status-dot offline";
+            document.getElementById('server-version').textContent = "-";
             document.getElementById('online-count').textContent = "0 / 0";
         }
-        applyFilters(); // Aplica filtros e renderiza listas
+        applyFilters(); 
     }
 
     function applyFilters() {
         const nameFilter = document.getElementById('search-player').value.toLowerCase().trim();
-        const dateFilter = document.getElementById('search-date').value; // Formato YYYY-MM-DD
+        const dateFilter = document.getElementById('search-date').value;
         
         let livePlayers = globalApiData?.players?.list?.map(p => typeof p === 'string' ? p : p.name) || globalHistData?.onlinePlayers || [];
         const activeSessions = globalHistData?.activeSessions || {};
         const historyList = globalHistData?.history || [];
 
-        // Filtra e renderiza Online
+        // Online Filtrado
         const filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
         const onlineUl = document.getElementById('online');
         
@@ -398,10 +437,10 @@
                 if (sKey) {
                     const enterDate = new Date(activeSessions[sKey].enteredAt);
                     const diffMins = Math.floor((new Date() - enterDate) / 60000);
-                    timeInfo = `Entrou às ${enterDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} (${Math.floor(diffMins/60)}h ${diffMins%60}m)`;
+                    timeInfo = `Entrou às ${enterDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} (${Math.floor(diffMins/60)}h ${diffMins%60}m logado)`;
                 }
                 return `
-                <li class="list-item" onclick="openPlayerProfile('${pName}')" title="Ver perfil de ${pName}">
+                <li class="list-item" onclick="openPlayerProfile('${pName}')" title="Clique para abrir perfil completo">
                     <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head">
                     <div class="item-details">
                         <strong>${pName}</strong><span>${timeInfo}</span>
@@ -410,82 +449,182 @@
                 </li>`;
             }).join('');
         } else {
-            onlineUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador correspondente online.</span></div></li>`;
+            onlineUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador correspondente.</span></div></li>`;
         }
 
-        // Filtra e renderiza Histórico
-        let filteredHistory = historyList.filter(h => h.leftAt !== null); // Apenas sessões finalizadas
+        // Histórico Filtrado
+        let filteredHistory = historyList.filter(h => h.leftAt !== null);
         if (nameFilter) filteredHistory = filteredHistory.filter(h => h.player.toLowerCase().includes(nameFilter));
         if (dateFilter) filteredHistory = filteredHistory.filter(h => h.enteredAt.startsWith(dateFilter));
 
         const histUl = document.getElementById('history');
         if (filteredHistory.length > 0) {
-            histUl.innerHTML = filteredHistory.slice(0, 15).map(h => {
+            histUl.innerHTML = filteredHistory.slice(0, 10).map(h => {
                 const enter = new Date(h.enteredAt).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
                 const left = new Date(h.leftAt).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
                 return `
-                <li class="list-item" onclick="openPlayerProfile('${h.player}')" title="Ver perfil de ${h.player}">
+                <li class="list-item" onclick="openPlayerProfile('${h.player}')" title="Clique para abrir histórico">
                     <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
                     <div class="item-details">
                         <strong>${h.player}</strong>
-                        <span style="font-size:12px;">Jogou por ${h.hoursOnline || '< 0.1'}h (${enter} - ${left})</span>
+                        <span style="font-size:12px;">Jogou por ${h.hoursOnline > 0 ? h.hoursOnline + 'h' : '< 1h'} (${enter} até ${left})</span>
                     </div>
                 </li>`;
             }).join('');
         } else {
-            histUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum registro encontrado para os filtros.</span></div></li>`;
+            histUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum registro encontrado.</span></div></li>`;
         }
     }
 
-    // --- GRÁFICO DE ATIVIDADE ---
-    function renderChart() {
-        if (!globalHistData || !globalHistData.history) return;
+    // --- GRÁFICO SUPER AVANÇADO (LÓGICA DE DADOS CRUZADOS) ---
+    function toggleCustomTime() {
+        const range = document.getElementById('chart-range').value;
+        const controls = document.getElementById('custom-time-controls');
         
-        // Agrupar sessões por data (Últimos 7 dias com dados)
-        const counts = {};
-        globalHistData.history.forEach(h => {
-            if(!h.enteredAt) return;
-            const dateStr = new Date(h.enteredAt).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
-            counts[dateStr] = (counts[dateStr] || 0) + 1;
+        if (range === 'custom') {
+            controls.style.display = 'flex';
+            // Preenche input default
+            const end = new Date();
+            const start = new Date(end.getTime() - 86400000); // Ontem
+            const formatDT = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            document.getElementById('custom-end').value = formatDT(end);
+            document.getElementById('custom-start').value = formatDT(start);
+        } else {
+            controls.style.display = 'none';
+        }
+        updateActivityChart();
+    }
+
+    function stringToColor(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 70%, 55%)`; // Cores vivas e padronizadas por nome
+    }
+
+    function updateActivityChart() {
+        if (!globalHistData) return;
+
+        const range = document.getElementById('chart-range').value;
+        const grouping = document.getElementById('chart-grouping').value;
+
+        let endTime = new Date();
+        let startTime = new Date();
+
+        if (range === '24h') startTime.setHours(startTime.getHours() - 24);
+        else if (range === '7d') startTime.setDate(startTime.getDate() - 7);
+        else if (range === '30d') startTime.setDate(startTime.getDate() - 30);
+        else if (range === 'custom') {
+            const startInput = document.getElementById('custom-start').value;
+            const endInput = document.getElementById('custom-end').value;
+            if (startInput) startTime = new Date(startInput);
+            if (endInput) endTime = new Date(endInput);
+            if (startTime > endTime) startTime = new Date(endTime.getTime() - 86400000); 
+        }
+
+        // Criar os blocos de tempo (bins) para o eixo X
+        let bins = [];
+        let curr = new Date(startTime);
+
+        if (grouping === 'hour') curr.setMinutes(0,0,0);
+        if (grouping === 'day') curr.setHours(0,0,0,0);
+        if (grouping === 'minute') { curr.setSeconds(0,0); curr.setMinutes(Math.floor(curr.getMinutes()/15)*15); } // Pula de 15 em 15
+
+        while(curr <= endTime) {
+            let next = new Date(curr);
+            if (grouping === 'minute') next.setMinutes(curr.getMinutes() + 15);
+            else if (grouping === 'hour') next.setHours(curr.getHours() + 1);
+            else if (grouping === 'day') next.setDate(curr.getDate() + 1);
+            
+            bins.push({
+                start: curr.getTime(),
+                end: next.getTime(),
+                label: grouping === 'day' ? curr.toLocaleDateString('pt-BR') : curr.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+                playersMap: {}
+            });
+            curr = next;
+        }
+
+        // Resgatar todas as sessões do banco para cruzar com a linha de tempo
+        const allSessions = [];
+        (globalHistData.history || []).forEach(h => {
+            if (h.enteredAt) allSessions.push({ player: h.player, start: new Date(h.enteredAt).getTime(), end: h.leftAt ? new Date(h.leftAt).getTime() : new Date().getTime() });
+        });
+        const active = globalHistData.activeSessions || {};
+        Object.values(active).forEach(s => {
+            allSessions.push({ player: s.name, start: new Date(s.enteredAt).getTime(), end: new Date().getTime() });
         });
 
-        const labels = Object.keys(counts).slice(0, 7).reverse(); // Exibe máx 7 dias
-        const dataPoints = labels.map(l => counts[l]);
+        // Calcular minutos logados por bloco
+        bins.forEach(bin => {
+            allSessions.forEach(session => {
+                let overlapStart = Math.max(bin.start, session.start);
+                let overlapEnd = Math.min(bin.end, session.end);
+                if (overlapStart < overlapEnd) {
+                    let mins = (overlapEnd - overlapStart) / 60000;
+                    bin.playersMap[session.player] = (bin.playersMap[session.player] || 0) + mins;
+                }
+            });
+        });
 
-        const ctx = document.getElementById('activityChart').getContext('2d');
+        const playersSet = new Set();
+        bins.forEach(b => Object.keys(b.playersMap).forEach(p => playersSet.add(p)));
+
+        const datasets = [];
+        
+        // Criar uma "Linha" pra cada Jogador!
+        playersSet.forEach(player => {
+            const data = bins.map(b => b.playersMap[player] || 0);
+            const playerColor = stringToColor(player);
+            
+            datasets.push({
+                label: player,
+                data: data,
+                borderColor: playerColor,
+                backgroundColor: playerColor,
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3, // Deixa a linha suave e curva
+                pointRadius: 2,
+                pointHoverRadius: 6
+            });
+        });
+
         if (activityChartInstance) activityChartInstance.destroy();
 
+        const ctx = document.getElementById('activityChart').getContext('2d');
         activityChartInstance = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Sessões Registradas',
-                    data: dataPoints,
-                    borderColor: '#0071e3',
-                    backgroundColor: 'rgba(0, 113, 227, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#0071e3',
-                    pointBorderWidth: 2,
-                    pointRadius: 4
-                }]
-            },
+            data: { labels: bins.map(b => b.label), datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8, padding: 15 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += context.parsed.y.toFixed(1) + ' mins';
+                                return label;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } },
-                    x: { grid: { display: false }, border: { display: false } }
+                    y: { beginAtZero: true, title: { display: true, text: 'Minutos Ativos' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                    x: { grid: { display: false } }
                 }
             }
         });
     }
 
-    // --- LÓGICA DO MODAL DO JOGADOR ---
+    // --- LÓGICA DO MODAL (PERFIL DETALHADO DO JOGADOR) ---
     function openPlayerProfile(playerName) {
         document.getElementById('modal-name').textContent = playerName;
         document.getElementById('modal-img').src = `https://minotar.net/helm/${playerName}/100.png`;
@@ -502,13 +641,11 @@
             statusBadge.className = 'pill limited';
         }
 
-        // Calcula Estatísticas
+        // Calcula Estatísticas Totais
         let totalHours = 0;
         const pHistory = (globalHistData?.history || []).filter(h => h.player === playerName);
         
         pHistory.forEach(h => { totalHours += (h.hoursOnline || 0); });
-        
-        // Somar tempo da sessão atual (se online)
         if (isOnline) {
             const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === playerName);
             const enterDate = new Date(activeSessions[sKey].enteredAt);
@@ -522,14 +659,14 @@
         document.getElementById('modal-sessions').textContent = totalSessions;
         document.getElementById('modal-avg-time').textContent = avgSession.toFixed(1) + 'h';
 
-        // Preenche Tabela
+        // Preenche Tabela de Entradas e Saídas
         const tbody = document.getElementById('modal-table-body');
         if (totalSessions === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sem dados registrados</td></tr>';
         } else {
             let tableHtml = '';
             
-            // Renderiza sessão atual primeiro (se houver)
+            // Renderiza sessão atual (Em andamento)
             if (isOnline) {
                 const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === playerName);
                 const eDate = new Date(activeSessions[sKey].enteredAt);
@@ -538,11 +675,11 @@
                     <td>${eDate.toLocaleDateString('pt-BR')}</td>
                     <td>${eDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
                     <td style="color:var(--success); font-weight:600;">Ao Vivo</td>
-                    <td>-</td>
+                    <td>Contando...</td>
                 </tr>`;
             }
 
-            // Renderiza histórico
+            // Renderiza histórico antigo
             tableHtml += pHistory.filter(h => h.leftAt !== null).map(h => {
                 const d = new Date(h.enteredAt);
                 const l = new Date(h.leftAt);
@@ -559,7 +696,7 @@
         }
 
         document.getElementById('player-modal').classList.add('active');
-        document.body.style.overflow = 'hidden'; // Evita scroll do fundo
+        document.body.style.overflow = 'hidden'; // Tranca a rolagem da página atrás
     }
 
     function closeModal() {
@@ -570,26 +707,22 @@
         if (e.target.id === 'player-modal') closeModal();
     }
 
-    // --- UTILITÁRIOS E SEGURANÇA ---
+    // --- UTILITÁRIOS ---
     function changePass() {
         const p = document.getElementById('newpass').value;
         const msg = document.getElementById('profile-msg');
-        if(!p) { msg.textContent = 'Senha vazia.'; msg.style.color = 'var(--danger)'; return; }
+        if(!p) { msg.textContent = 'A senha não pode ser vazia.'; msg.style.color = 'var(--danger)'; return; }
         session.password = p;
         localStorage.setItem('fa_session', JSON.stringify(session));
         msg.textContent = 'Senha atualizada.'; msg.style.color = 'var(--success)';
         setTimeout(() => msg.textContent = '', 3000);
     }
-
-    function logout() {
-        localStorage.removeItem('fa_session');
-        location.href = 'login.html';
-    }
+    function logout() { localStorage.removeItem('fa_session'); location.href = 'login.html'; }
 
     // Iniciar
     renderHeader();
     loadData();
-    setInterval(loadData, 30000); // Atualiza os dados a cada 30s
+    setInterval(loadData, 30000);
 </script>
 </body>
 </html>
