@@ -631,7 +631,7 @@
                 </div>
             </div>
             <p class="bottom-text" style="margin-top: 25px; font-size: 0.8rem; color: rgba(255,255,255,0.7);">Clique nos quadros para copiar o endereço.</p>
-            <button class="admin-entry" onclick="window.location.href='login.html'" title="Acesso restrito para staff">Painel restrito</button>
+            <button class="admin-entry" onclick="openAdminModal()" title="Acesso restrito para staff">Painel restrito</button>
         </div>
     </section>
 
@@ -699,12 +699,8 @@
     <div id="admin-modal" class="admin-modal" aria-hidden="true">
         <div class="admin-card">
             <h3>Painel restrito da staff</h3>
-            <p class="admin-note">Acesso protegido por usuário + senha.</p>
-            <input id="admin-username" class="admin-input" type="text" placeholder="Usuário ou e-mail">
-            <div style="position: relative;">
-                <input id="admin-password" class="admin-input" type="password" placeholder="Senha de acesso do painel">
-                <button id="toggle-password-btn" class="admin-btn subtle" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); padding:6px 10px;" onclick="toggleAdminPassword()" type="button">Ver</button>
-            </div>
+            <p class="admin-note">Acesso protegido por senha + endpoint privado.</p>
+            <input id="admin-password" class="admin-input" type="password" placeholder="Senha de acesso do painel">
             <div class="turnstile-wrap" id="turnstile-wrap">
                 <div class="cf-turnstile" data-sitekey="SEU_SITE_KEY_TURNSTILE" data-theme="dark"></div>
             </div>
@@ -724,7 +720,6 @@
                         <ul id="daily-summary-list"><li class="admin-note">Sem dados carregados.</li></ul>
                     </div>
                 </div>
-                <p id="admin-scope" class="admin-note"></p>
             </div>
         </div>
     </div>
@@ -753,13 +748,9 @@
         const API_BEDROCK_HOST = 'fa.ogabriels.com';
         const BEDROCK_PORT = '19132';
         const DISPLAY_HOST = 'fa.ogabriels.com';
-        const ADMIN_ACCOUNTS = [
-            { role: 'limited', usernames: ['admin'], password: 'NovaAlianca+' },
-            { role: 'full', usernames: ['gabalarca', 'gabalarcadsmoreira2016@gmail.com'], password: 'Famosos1290+' }
-        ];
+        const ADMIN_PANEL_PASSWORD = 'Famosos1290+';
         const TURNSTILE_SITE_KEY = 'SEU_SITE_KEY_TURNSTILE';
         const ADMIN_ENDPOINT = 'https://SEU-ENDPOINT-PRIVADO.exemplo.com/server/audit';
-        const HISTORY_DATA_URL = 'data/player-history.json';
 
         // 1. CÁLCULO AUTOMÁTICO DE ANOS
         function updateServerAge() {
@@ -998,6 +989,158 @@
                 summary: { joinedToday: role === 'full' ? 12 : 5, leftToday: role === 'full' ? 10 : 4, avgHours: role === 'full' ? 2.4 : 1.8 },
                 history: role === 'full' ? [{ player: 'Steve', enteredAt: `${hh}:${mm}`, leftAt: 'online', hoursOnline: 1.2 }] : []
             };
+        }
+        function renderAdminData(payload) {
+            const online = payload.onlinePlayers || window.__onlineSample || [];
+            const history = payload.history || [];
+            const summary = payload.summary || {};
+            const onlineList = document.getElementById('online-players-list');
+            const daily = document.getElementById('daily-summary-list');
+            onlineList.innerHTML = online.length ? online.map(name => `<li class="admin-row"><span>${name}</span><span>online</span></li>`).join('') : '<li class="admin-note">Ninguém online agora.</li>';
+            const baseItems = [
+                `<li class="admin-row"><span>Entraram hoje</span><strong>${summary.joinedToday || 0}</strong></li>`,
+                `<li class="admin-row"><span>Saíram hoje</span><strong>${summary.leftToday || 0}</strong></li>`,
+                `<li class="admin-row"><span>Tempo médio online</span><strong>${summary.avgHours || 0}h</strong></li>`
+            ];
+            const historyItems = history.slice(0, 8).map(item => `<li class="admin-row"><span>${item.player}</span><span>${item.enteredAt} → ${item.leftAt || 'online'} (${item.hoursOnline || 0}h)</span></li>`);
+            daily.innerHTML = [...baseItems, ...historyItems].join('');
+        }
+
+        function openAdminModal() {
+            const wrap = document.getElementById('turnstile-wrap');
+            const feedback = document.getElementById('admin-feedback');
+            if (TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY')) {
+                if (wrap) wrap.style.display = 'none';
+                feedback.innerText = 'Captcha desativado temporariamente (site key não configurada).';
+            } else {
+                if (wrap) wrap.style.display = 'block';
+                feedback.innerText = '';
+            }
+            document.getElementById('admin-modal').classList.add('active');
+        }
+        function closeAdminModal() { document.getElementById('admin-modal').classList.remove('active'); }
+        function toggleAdminPassword() {
+            const passInput = document.getElementById('admin-password');
+            const btn = document.getElementById('toggle-password-btn');
+            passInput.type = passInput.type === 'password' ? 'text' : 'password';
+            btn.innerText = passInput.type === 'password' ? 'Ver' : 'Ocultar';
+        }
+        function resolveAdminAccount(username, password) {
+            const login = (username || '').trim().toLowerCase();
+            return ADMIN_ACCOUNTS.find(acc => acc.password === password && acc.usernames.includes(login));
+        }
+        async function unlockAdminPanel() {
+            const username = document.getElementById('admin-username').value.trim();
+            const pass = document.getElementById('admin-password').value.trim();
+            const feedback = document.getElementById('admin-feedback');
+            if (!username) return feedback.innerText = 'Digite usuário ou e-mail.';
+            if (!pass) return feedback.innerText = 'Digite a senha do painel.';
+            const account = resolveAdminAccount(username, pass);
+            if (!account) return feedback.innerText = 'Usuário/e-mail ou senha inválidos.';
+            const captchaEnabled = !TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY');
+            const captchaInput = document.querySelector('input[name="cf-turnstile-response"]');
+            const captchaToken = captchaInput ? captchaInput.value : '';
+            if (captchaEnabled && !captchaToken) return feedback.innerText = 'Confirme o desafio "não sou um robô".';
+            feedback.innerText = 'Autenticado. Carregando painel...';
+            document.getElementById('admin-content').style.display = 'block';
+            document.getElementById('admin-scope').innerText = account.role === 'full'
+                ? 'Acesso completo liberado (Gabalarca).'
+                : 'Acesso limitado liberado (admin).';
+            try {
+                const localPayload = await fetchSiteHistory();
+                if (localPayload) renderAdminData(localPayload);
+                const res = await fetch(ADMIN_ENDPOINT, {
+                    headers: {
+                        'Authorization': 'Bearer ' + pass,
+                        'X-Turnstile-Token': captchaToken || 'captcha-disabled',
+                        'X-Admin-Role': account.role
+                    }
+                });
+                if (!res.ok) throw new Error('Endpoint indisponível');
+                const payload = await res.json();
+                renderAdminData(payload);
+                if (account.role === 'limited') applyLimitedView();
+                feedback.innerText = 'Painel atualizado com sucesso.';
+            } catch (e) {
+                const localPayload = await fetchSiteHistory();
+                renderAdminData(localPayload || buildLocalFallbackData(account.role));
+                if (account.role === 'limited') applyLimitedView();
+                feedback.innerText = 'Acesso liberado com dados locais (endpoint privado indisponível).';
+            }
+        }
+        async function fetchSiteHistory() {
+            try {
+                const res = await fetch(HISTORY_DATA_URL + '?t=' + Date.now());
+                if (!res.ok) return null;
+                return await res.json();
+            } catch {
+                return null;
+            }
+        }
+        function applyLimitedView() {
+            const daily = document.getElementById('daily-summary-list');
+            const items = daily.querySelectorAll('li');
+            items.forEach((item, index) => { if (index > 2) item.remove(); });
+        }
+        function buildLocalFallbackData(role) {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            return {
+                onlinePlayers: window.__onlineSample || [],
+                summary: { joinedToday: role === 'full' ? 12 : 5, leftToday: role === 'full' ? 10 : 4, avgHours: role === 'full' ? 2.4 : 1.8 },
+                history: role === 'full' ? [{ player: 'Steve', enteredAt: `${hh}:${mm}`, leftAt: 'online', hoursOnline: 1.2 }] : []
+            };
+        }
+        function renderAdminData(payload) {
+            const online = payload.onlinePlayers || window.__onlineSample || [];
+            const history = payload.history || [];
+            const summary = payload.summary || {};
+            const onlineList = document.getElementById('online-players-list');
+            const daily = document.getElementById('daily-summary-list');
+            onlineList.innerHTML = online.length ? online.map(name => `<li class="admin-row"><span>${name}</span><span>online</span></li>`).join('') : '<li class="admin-note">Ninguém online agora.</li>';
+            const baseItems = [
+                `<li class="admin-row"><span>Entraram hoje</span><strong>${summary.joinedToday || 0}</strong></li>`,
+                `<li class="admin-row"><span>Saíram hoje</span><strong>${summary.leftToday || 0}</strong></li>`,
+                `<li class="admin-row"><span>Tempo médio online</span><strong>${summary.avgHours || 0}h</strong></li>`
+            ];
+            const historyItems = history.slice(0, 8).map(item => `<li class="admin-row"><span>${item.player}</span><span>${item.enteredAt} → ${item.leftAt || 'online'} (${item.hoursOnline || 0}h)</span></li>`);
+            daily.innerHTML = [...baseItems, ...historyItems].join('');
+        }
+
+        function openAdminModal() {
+            const wrap = document.getElementById('turnstile-wrap');
+            const feedback = document.getElementById('admin-feedback');
+            if (TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY')) {
+                if (wrap) wrap.style.display = 'none';
+                feedback.innerText = 'Captcha desativado temporariamente (site key não configurada).';
+            } else {
+                if (wrap) wrap.style.display = 'block';
+                feedback.innerText = '';
+            }
+            document.getElementById('admin-modal').classList.add('active');
+        }
+        function closeAdminModal() { document.getElementById('admin-modal').classList.remove('active'); }
+        async function unlockAdminPanel() {
+            const pass = document.getElementById('admin-password').value.trim();
+            const feedback = document.getElementById('admin-feedback');
+            if (!pass) return feedback.innerText = 'Digite a senha do painel.';
+            if (pass !== ADMIN_PANEL_PASSWORD) return feedback.innerText = 'Senha inválida.';
+            const captchaEnabled = !TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY');
+            const captchaInput = document.querySelector('input[name="cf-turnstile-response"]');
+            const captchaToken = captchaInput ? captchaInput.value : '';
+            if (captchaEnabled && !captchaToken) return feedback.innerText = 'Confirme o desafio "não sou um robô".';
+            feedback.innerText = 'Validando e carregando dados...';
+            try {
+                const res = await fetch(ADMIN_ENDPOINT, {
+                    headers: { 'Authorization': 'Bearer ' + pass, 'X-Turnstile-Token': captchaToken || 'captcha-disabled' }
+                });
+                if (!res.ok) throw new Error('Acesso negado');
+                const payload = await res.json();
+                renderAdminData(payload);
+                document.getElementById('admin-content').style.display = 'block';
+                feedback.innerText = 'Painel atualizado com sucesso.';
+            } catch (e) { feedback.innerText = 'Falha no acesso. Verifique senha/endpoint privado.'; }
         }
         function renderAdminData(payload) {
             const online = payload.onlinePlayers || window.__onlineSample || [];

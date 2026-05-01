@@ -95,7 +95,7 @@ app.post('/api/snapshots/import', (req, res) => {
 
 app.get('/api/snapshots/latest', auth, (req, res) => {
   const row = db.prepare('SELECT generated_at,payload FROM player_snapshots ORDER BY id DESC LIMIT 1').get();
-  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], onlineCount: 0, summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
+  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
   const parsed = JSON.parse(row.payload);
   if (req.user.role !== 'full' && Array.isArray(parsed.history)) parsed.history = parsed.history.slice(0, 10);
   res.json(parsed);
