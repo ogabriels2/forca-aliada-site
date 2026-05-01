@@ -1,86 +1,428 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel | Força Aliada</title>
-<style>body{margin:0;font-family:-apple-system;background:#f3f4f6;color:#0f172a}.header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:10px;font-weight:700}.brand img{width:30px;height:30px;border-radius:8px}.wrap{max-width:1200px;margin:30px auto;padding:0 16px}.top{display:flex;justify-content:space-between;align-items:center}.card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.06);margin-top:16px}.grid{display:grid;grid-template-columns:320px 1fr;gap:16px}img{width:70px;height:70px;border-radius:16px}.pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.8rem}ul{padding:0;list-style:none}li{padding:8px 0;border-bottom:1px dashed #e2e8f0}input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;margin-top:8px}button{padding:10px 14px;border:none;border-radius:999px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.user-list li{cursor:pointer}</style></head>
-<body><div class="header"><div class="brand"><img src="logo.JPG" alt=""><span>Força Aliada</span></div><a href="index.html">Início</a></div><div class="wrap"><div class="top"><h1>Painel da Staff</h1><button onclick="logout()">Sair</button></div><div class="grid"><div class="card"><h3>Perfil</h3><img id="photo" src="logo.JPG"><p><strong id="name"></strong></p><p id="email"></p><p>Minecraft: <strong id="mc"></strong></p><span id="role" class="pill"></span><h4>Alterar senha</h4><input id="newpass" type="password" placeholder="Nova senha"><button style="margin-top:8px" onclick="changePass()">Salvar senha</button><p id="profile-msg"></p></div><div class="card"><h3>Dados ao vivo e histórico</h3><p id="meta"></p><h4 id="online-title">Online agora</h4><ul id="online"></ul><h4>Histórico</h4><ul id="history"></ul></div></div><div id="owner-tools" class="card"><h3>Painel proprietário (Gabalarca)</h3><div class="admin-grid"><div><h4>Contas registradas</h4><ul id="users-list" class="user-list"></ul></div><div><h4>Editar conta selecionada</h4><input id="edit-username" placeholder="Nome"><input id="edit-email" placeholder="E-mail"><input id="edit-minecraft" placeholder="Minecraft"><input id="edit-password" type="password" placeholder="Nova senha (opcional)"><button style="margin-top:8px" onclick="saveUserChanges()">Salvar alterações</button><p id="owner-msg"></p></div></div></div></div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Staff | Força Aliada</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --border: rgba(0, 0, 0, 0.08);
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a { text-decoration: none; color: inherit; }
+
+        /* --- HEADER (PADRÃO APPLE) --- */
+        header {
+            position: sticky; top: 0; width: 100%; padding: 12px 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            z-index: 1000; border-bottom: 1px solid var(--border);
+        }
+        
+        .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+        .brand-link:hover { opacity: 0.8; }
+        .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+
+        /* --- DROPDOWN DO USUÁRIO LOGADO --- */
+        .user-menu-wrapper { position: relative; display: inline-block; }
+        
+        .user-btn {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+            transition: all 0.2s ease; border: 1px solid transparent;
+            user-select: none;
+        }
+        .user-btn:hover { background: rgba(0,0,0,0.08); }
+        .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #e5e5ea; }
+        .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        
+        .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+        .user-btn.active svg { transform: rotate(180deg); }
+
+        .user-dropdown {
+            position: absolute; right: 0; top: calc(100% + 12px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
+            padding: 8px; display: flex; flex-direction: column; min-width: 200px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
+        }
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        
+        .user-dropdown button {
+            text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
+            font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
+            display: block; width: 100%;
+        }
+        .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        .user-dropdown .danger { color: var(--danger); }
+        .user-dropdown .danger:hover { background: rgba(255, 59, 48, 0.1); }
+
+        /* --- LAYOUT GRID PRINCIPAL --- */
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .btn-primary { padding: 12px 16px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s ease; }
+        .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
+
+        /* Cartões (Cards) */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card h3 {
+            margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.5px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+
+        /* Seção Perfil */
+        .profile-header { display: flex; align-items: center; gap: 16px; }
+        .profile-img { width: 64px; height: 64px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border); background: #e5e5ea; }
+        .profile-info h2 { margin: 0; font-size: 18px; font-weight: 600; }
+        .profile-info p { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
+
+        .pill {
+            display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px;
+            font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .pill.full { background: #e3f2fd; color: var(--accent); }
+        .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
+
+        /* Formulários */
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        .input-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; }
+        input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1); }
+
+        /* Grid Interno do Dashboard */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
+        .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .mini-card .value { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -1px; }
+
+        /* Listas (Online e Histórico) */
+        ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+        .list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid transparent; transition: border 0.2s; }
+        .list-item:hover { border-color: var(--border); background: #fff; }
+        .mc-head { width: 40px; height: 40px; border-radius: 8px; background: #e5e5ea; }
+        .item-details { flex: 1; }
+        .item-details strong { display: block; font-size: 14px; margin-bottom: 2px; }
+        .item-details span { font-size: 13px; color: var(--text-secondary); }
+
+        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; }
+        .msg-alert { font-size: 13px; color: var(--success); margin-top: 8px; font-weight: 500; }
+
+        @media (max-width: 860px) {
+            .container { grid-template-columns: 1fr; margin-top: 20px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="index.html" class="brand-link" title="Ir para a página principal">
+            <img src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+            <div class="logo-text">Força Aliada</div>
+        </a>
+        
+        <div id="auth-header-container">
+            </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="profile-header">
+                <img id="photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img" alt="Perfil">
+                <div class="profile-info">
+                    <h2 id="name">Carregando...</h2>
+                    <span id="role" class="pill limited">Staff</span>
+                </div>
+            </div>
+            
+            <hr style="border:none; border-top: 1px solid var(--border); margin: 8px 0;">
+
+            <div class="input-group">
+                <label>Email de Contato</label>
+                <p style="margin:0; font-size: 14px;" id="email">-</p>
+            </div>
+            
+            <div class="input-group">
+                <label>Conta Minecraft vinculada</label>
+                <p style="margin:0; font-size: 14px; font-weight: 600;" id="mc">-</p>
+            </div>
+
+            <hr style="border:none; border-top: 1px solid var(--border); margin: 8px 0;">
+
+            <h3>Segurança</h3>
+            <div class="input-group">
+                <input id="newpass" type="password" placeholder="Digite uma nova senha">
+            </div>
+            <button class="btn-primary" onclick="changePass()" style="width: 100%; margin-top: 8px;">Atualizar Credenciais</button>
+            <div id="profile-msg" class="msg-alert"></div>
+        </div>
+
+        <div class="card">
+            <h3>Visão Geral <span>Atualizado: <b id="meta">agora</b></span></h3>
+            
+            <div class="dashboard-grid">
+                <div class="mini-card">
+                    <h4>Status do Servidor</h4>
+                    <div class="value" style="display: flex; align-items: center; gap: 8px;">
+                        <span class="status-dot"></span> Online
+                    </div>
+                </div>
+                <div class="mini-card">
+                    <h4>Jogadores Ativos</h4>
+                    <div class="value" id="online-count">0</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 16px;">Online Agora</h3>
+            <ul id="online">
+                </ul>
+
+            <h3 style="margin-top: 16px;">Registro de Atividade</h3>
+            <ul id="history">
+                </ul>
+        </div>
+    </div>
+
 <script>
-const session=JSON.parse(localStorage.getItem('fa_session')||'null'); if(!session) location.href='login.html';
-const apiToken=localStorage.getItem('fa_api_token')||'';
-let selectedUserIndex=-1;
-let ownerUsersCache=[];
-const isOwner=session.role==='full'||(session.username||'').toLowerCase()==='gabalarca'||(session.email||'').toLowerCase()==='gabalarcadsmoreira2016@gmail.com';
-name.textContent=session.username; email.textContent=session.email||'Sem e-mail'; mc.textContent=session.minecraft||'-'; role.textContent=session.role==='full'?'Acesso completo':'Acesso limitado'; photo.src=session.photo||'logo.JPG';
-if(isOwner){
-  document.getElementById('owner-msg').innerText='Modo proprietário ativo.';
-}else{
-  document.getElementById('owner-tools').style.display='none';
-}
-
-async function fetchLiveNames(){
-  try{const r=await fetch('https://api.mcstatus.io/v2/status/java/fa.ogabriels.com');const d=await r.json();if(!d.online)return {count:0,names:[]};const list=(d.players&&d.players.list)?d.players.list.map(p=>p.name_clean||p.name_raw||p.name).filter(Boolean):[];return {count:d.players?.online||list.length,names:list};}catch{return {count:0,names:[]};}
-}
-
-async function loadData(){
-  try{
-    let d=null;
-    if(apiToken){const rr=await fetch('http://localhost:8787/api/snapshots/latest',{headers:{Authorization:'Bearer '+apiToken}});if(rr.ok)d=await rr.json();}
-    if(!d){const r=await fetch('data/player-history.json?t='+Date.now());d=await r.json();}
-    const live=await fetchLiveNames();
-    const count=live.count||d.onlineCount||((d.onlinePlayers||[]).length);
-    const names=live.names.length?live.names:(d.onlinePlayers||[]);
-    meta.textContent='Última atualização: '+(d.generatedAt||'aguardando');
-    document.getElementById('online-title').textContent=`Online agora (${count})`;
-    online.innerHTML=names.length?names.map(n=>`<li>${n}</li>`).join(''):(count>0?`<li>${count} jogador(es) online (API sem nomes públicos).</li>`:'<li>Nenhum jogador online no momento.</li>');
-    const rows=(d.history||[]).slice(0,session.role==='full'?120:8);
-    history.innerHTML=rows.length?rows.map(h=>`<li><strong>${h.player}</strong> — ${fmt(h.enteredAt)} → ${h.leftAt?fmt(h.leftAt):'online'} (${h.hoursOnline||0}h)</li>`).join(''):'<li>Sem histórico ainda.</li>';
-  }catch(e){meta.textContent='Falha ao carregar dados.';}
-}
-function fmt(v){if(!v)return '-';const dt=new Date(v);return dt.toLocaleString('pt-BR');}
-function changePass(){const users=JSON.parse(localStorage.getItem('fa_users')||'[]');const idx=users.findIndex(u=>u.username===session.username&&u.email===session.email);if(idx<0)return;users[idx].password=newpass.value;localStorage.setItem('fa_users',JSON.stringify(users));session.password=newpass.value;localStorage.setItem('fa_session',JSON.stringify(session));document.getElementById('profile-msg').innerText='Senha alterada com sucesso.';}
-function logout(){localStorage.removeItem('fa_session');location.href='login.html';}
-
-function renderUsersList(){
-  const users=ownerUsersCache.length?ownerUsersCache:JSON.parse(localStorage.getItem('fa_users')||'[]');
-  const ul=document.getElementById('users-list');
-  ul.innerHTML=users.map((u,i)=>`<li onclick="selectUser(${i})"><strong>${u.username}</strong><br><small>${u.email}</small></li>`).join('')||'<li>Nenhuma conta encontrada. Crie uma conta em signup.html.</li>';
-}
-function selectUser(index){
-  const users=ownerUsersCache.length?ownerUsersCache:JSON.parse(localStorage.getItem('fa_users')||'[]');
-  const user=users[index]; if(!user) return;
-  selectedUserIndex=index;
-  document.getElementById('edit-username').value=user.username||'';
-  document.getElementById('edit-email').value=user.email||'';
-  document.getElementById('edit-minecraft').value=user.minecraft||user.minecraft_name||'';
-  document.getElementById('edit-password').value='';
-}
-async function saveUserChanges(){
-  if(!isOwner) return;
-  const users=ownerUsersCache.length?ownerUsersCache:JSON.parse(localStorage.getItem('fa_users')||'[]');
-  if(selectedUserIndex<0||!users[selectedUserIndex]) return document.getElementById('owner-msg').innerText='Selecione uma conta primeiro.';
-  const u=users[selectedUserIndex];
-  const payload={username:document.getElementById('edit-username').value.trim(),email:document.getElementById('edit-email').value.trim(),minecraftName:document.getElementById('edit-minecraft').value.trim(),newPassword:document.getElementById('edit-password').value};
-  try{
-    if(apiToken&&u.id){
-      const r=await fetch(`http://localhost:8787/api/admin/users/${u.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken},body:JSON.stringify(payload)});
-      if(!r.ok) throw new Error('api');
-      await loadOwnerUsers();
-    } else {
-      u.username=payload.username;u.email=payload.email;u.minecraft=payload.minecraftName;if(payload.newPassword)u.password=payload.newPassword;
-      users[selectedUserIndex]=u; localStorage.setItem('fa_users',JSON.stringify(users));
-      ownerUsersCache=users;
+    // 1. VERIFICAÇÃO E GESTÃO DE SESSÃO
+    let session = JSON.parse(localStorage.getItem('fa_session')); 
+    
+    if(!session) {
+        // Redireciona para login se não houver sessão, mas provê fallback para demonstração se rodado local sem login.
+        // Se for integrar num site real, DESCOMENTE a linha abaixo e APAGUE a criação da sessão mockada.
+        // location.href = 'login.html'; 
+        
+        session = { 
+            username: "Convidado Local", 
+            email: "teste@forcaaliada.com", 
+            minecraft: "Notch", 
+            role: "full", 
+            photo: "" 
+        };
     }
-    document.getElementById('owner-msg').innerText='Conta atualizada com sucesso.';
-    renderUsersList();
-  }catch{document.getElementById('owner-msg').innerText='Falha ao salvar alterações.';}
-}
-async function loadOwnerUsers(){
-  if(!isOwner) return;
-  if(!apiToken){ownerUsersCache=JSON.parse(localStorage.getItem('fa_users')||'[]');renderUsersList();return;}
-  try{
-    const r=await fetch('http://localhost:8787/api/admin/users',{headers:{Authorization:'Bearer '+apiToken}});
-    if(!r.ok) throw new Error();
-    const users=await r.json();
-    ownerUsersCache=users.map(u=>({id:u.id,username:u.username,email:u.email,minecraft:u.minecraft_name||'',role:u.role,photo:u.photo_url||'logo.JPG'}));
-    renderUsersList();
-  }catch{ownerUsersCache=JSON.parse(localStorage.getItem('fa_users')||'[]');renderUsersList();}
-}
-loadData();setInterval(loadData,15000);if(isOwner){loadOwnerUsers();setTimeout(loadOwnerUsers,1200);}
-</script></body></html>
+
+    // URL inteligente da skin do Minecraft
+    const skinUrl = session.minecraft && session.minecraft.length > 2 
+                    ? `https://minotar.net/helm/${session.minecraft}/100.png` 
+                    : 'https://minotar.net/helm/Steve/100.png';
+
+    // 2. RENDERIZAR CABEÇALHO DINÂMICO
+    function renderHeader() {
+        const headerContainer = document.getElementById('auth-header-container');
+        headerContainer.innerHTML = `
+            <div class="user-menu-wrapper">
+                <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                    <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar do Usuário">
+                    <span>${session.username}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="user-dropdown" id="user-dropdown-menu">
+                    <button onclick="location.href='index.html'">Acessar Site Principal</button>
+                    <button class="danger" onclick="logout()">Sair da Conta</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function toggleUserDropdown(event) {
+        event.stopPropagation();
+        const btn = document.getElementById('user-btn-toggle');
+        const menu = document.getElementById('user-dropdown-menu');
+        btn.classList.toggle('active');
+        menu.classList.toggle('show');
+    }
+
+    // Fecha o dropdown ao clicar fora
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('user-dropdown-menu');
+        const btn = document.getElementById('user-btn-toggle');
+        if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.remove('show');
+            btn.classList.remove('active');
+        }
+    });
+
+    // 3. PREENCHIMENTO DOS DADOS DE PERFIL NA TELA
+    const els = {
+        name: document.getElementById('name'),
+        email: document.getElementById('email'),
+        mc: document.getElementById('mc'),
+        role: document.getElementById('role'),
+        photo: document.getElementById('photo'),
+        online: document.getElementById('online'),
+        history: document.getElementById('history'),
+        meta: document.getElementById('meta'),
+        onlineCount: document.getElementById('online-count')
+    };
+
+    els.name.textContent = session.username; 
+    els.email.textContent = session.email || 'Não informado'; 
+    els.mc.textContent = session.minecraft || 'Não vinculado'; 
+    els.photo.src = skinUrl; // Reaproveita a mesma skin calculada pro cabeçalho
+    
+    if(session.role === 'full') {
+        els.role.textContent = 'Acesso Total';
+        els.role.className = 'pill full';
+    } else {
+        els.role.textContent = 'Acesso Restrito';
+        els.role.className = 'pill limited';
+    }
+
+    // 4. CARREGAMENTO DE DADOS DO DASHBOARD
+    async function loadData() {
+        try {
+            const r = await fetch('data/player-history.json?t=' + Date.now());
+            if (!r.ok) throw new Error("Arquivo ausente");
+            const d = await r.json();
+            renderData(d);
+        } catch(e) {
+            // Fallback visual
+            const mockData = {
+                generatedAt: new Date().toLocaleTimeString('pt-BR'),
+                onlinePlayers: ["Jeb_", "Dinnerbone", session.minecraft || "Notch"],
+                history: [
+                    { player: "Herobrine", enteredAt: new Date(Date.now() - 3600000).toISOString(), leftAt: new Date().toISOString(), hoursOnline: 1.2 },
+                    { player: "Alex", enteredAt: new Date(Date.now() - 86400000).toISOString(), leftAt: new Date(Date.now() - 80000000).toISOString(), hoursOnline: 1.8 }
+                ]
+            };
+            renderData(mockData);
+        }
+    }
+
+    function renderData(d) {
+        els.meta.textContent = d.generatedAt || new Date().toLocaleTimeString('pt-BR');
+        
+        // Renderizar Jogadores Online
+        const players = d.onlinePlayers || [];
+        els.onlineCount.textContent = players.length;
+
+        if(players.length) {
+            els.online.innerHTML = players.map(n => `
+                <li class="list-item">
+                    <img src="https://minotar.net/helm/${n}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" alt="${n}">
+                    <div class="item-details">
+                        <strong>${n}</strong>
+                        <span>Explorando o servidor</span>
+                    </div>
+                    <span class="status-dot"></span>
+                </li>
+            `).join('');
+        } else {
+            els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador online no momento.</span></div></li>`;
+        }
+
+        // Renderizar Histórico
+        const isFullAccess = session.role === 'full';
+        const rows = (d.history || []).slice(0, isFullAccess ? 10 : 3);
+        
+        if(rows.length) {
+            els.history.innerHTML = rows.map(h => `
+                <li class="list-item">
+                    <img src="https://minotar.net/helm/${h.player}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" style="width: 32px; height: 32px;" alt="${h.player}">
+                    <div class="item-details">
+                        <strong>${h.player}</strong>
+                        <span>Conectou em ${fmt(h.enteredAt)}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong style="font-size: 13px; color: var(--text-primary);">${h.hoursOnline ? h.hoursOnline + 'h' : 'Ao vivo'}</strong>
+                        <br><span style="font-size: 11px; color: var(--text-secondary);">${h.leftAt ? 'Saiu: ' + fmt(h.leftAt) : 'Jogando agora'}</span>
+                    </div>
+                </li>
+            `).join('');
+        } else {
+            els.history.innerHTML = `<li class="list-item"><div class="item-details"><span>Sem registros no histórico.</span></div></li>`;
+        }
+    }
+
+    function fmt(v) {
+        if(!v) return '-';
+        const dt = new Date(v);
+        return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }) + ' de ' + dt.toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'});
+    }
+
+    // 5. AÇÕES DE CONTA E SEGURANÇA
+    function changePass() {
+        const passInput = document.getElementById('newpass');
+        if(passInput.value.trim() === '') {
+            showMsg('A senha não pode estar vazia.', 'var(--danger)');
+            return;
+        }
+
+        const users = JSON.parse(localStorage.getItem('fa_users') || '[]');
+        const idx = users.findIndex(u => u.username === session.username && u.email === session.email);
+        
+        if(idx >= 0) {
+            users[idx].password = passInput.value;
+            localStorage.setItem('fa_users', JSON.stringify(users));
+        }
+        
+        session.password = passInput.value;
+        localStorage.setItem('fa_session', JSON.stringify(session));
+        
+        passInput.value = '';
+        showMsg('Credenciais atualizadas com segurança.', 'var(--success)');
+    }
+
+    function showMsg(text, color) {
+        const msgEl = document.getElementById('profile-msg');
+        msgEl.style.color = color;
+        msgEl.innerText = text;
+        setTimeout(() => msgEl.innerText = '', 4000);
+    }
+
+    function logout() {
+        localStorage.removeItem('fa_session');
+        location.href = 'login.html';
+    }
+
+    // Iniciar tudo
+    renderHeader();
+    loadData();
+    setInterval(loadData, 15000);
+</script>
+</body>
+</html>

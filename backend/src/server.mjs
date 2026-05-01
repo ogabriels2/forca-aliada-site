@@ -51,11 +51,6 @@ function auth(req, res, next) {
   }
 }
 
-function requireFull(req, res, next) {
-  if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
-  next();
-}
-
 app.post('/api/auth/signup', (req, res) => {
   const { username, email, password, minecraftName } = req.body;
   if (!username || !email || !password) return res.status(400).json({ error: 'missing fields' });
@@ -100,33 +95,10 @@ app.post('/api/snapshots/import', (req, res) => {
 
 app.get('/api/snapshots/latest', auth, (req, res) => {
   const row = db.prepare('SELECT generated_at,payload FROM player_snapshots ORDER BY id DESC LIMIT 1').get();
-  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], onlineCount: 0, summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
+  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
   const parsed = JSON.parse(row.payload);
   if (req.user.role !== 'full' && Array.isArray(parsed.history)) parsed.history = parsed.history.slice(0, 10);
   res.json(parsed);
-});
-
-app.get('/api/admin/users', auth, requireFull, (req, res) => {
-  const users = db.prepare('SELECT id,username,email,minecraft_name,photo_url,role,created_at FROM users ORDER BY id DESC').all();
-  res.json(users);
-});
-
-app.put('/api/admin/users/:id', auth, requireFull, (req, res) => {
-  const id = Number(req.params.id);
-  const { username, email, minecraftName, newPassword } = req.body || {};
-  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
-  if (!user) return res.status(404).json({ error: 'user not found' });
-  try {
-    db.prepare('UPDATE users SET username=?, email=?, minecraft_name=? WHERE id=?')
-      .run(String(username || '').toLowerCase(), String(email || '').toLowerCase(), minecraftName || '', id);
-    if (newPassword) {
-      const hash = bcrypt.hashSync(newPassword, 10);
-      db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, id);
-    }
-    res.json({ ok: true });
-  } catch {
-    res.status(409).json({ error: 'username/email already exists' });
-  }
 });
 
 migrate();
