@@ -701,7 +701,7 @@
             <h3>Painel restrito da staff</h3>
             <p class="admin-note">Acesso protegido por senha + endpoint privado.</p>
             <input id="admin-password" class="admin-input" type="password" placeholder="Senha de acesso do painel">
-            <div class="turnstile-wrap">
+            <div class="turnstile-wrap" id="turnstile-wrap">
                 <div class="cf-turnstile" data-sitekey="SEU_SITE_KEY_TURNSTILE" data-theme="dark"></div>
             </div>
             <div class="admin-actions">
@@ -749,6 +749,7 @@
         const BEDROCK_PORT = '19132';
         const DISPLAY_HOST = 'fa.ogabriels.com';
         const ADMIN_PANEL_PASSWORD = 'Famosos1290+';
+        const TURNSTILE_SITE_KEY = 'SEU_SITE_KEY_TURNSTILE';
         const ADMIN_ENDPOINT = 'https://SEU-ENDPOINT-PRIVADO.exemplo.com/server/audit';
 
         // 1. CÁLCULO AUTOMÁTICO DE ANOS
@@ -903,20 +904,32 @@
             }
         }
 
-        function openAdminModal() { document.getElementById('admin-modal').classList.add('active'); }
+        function openAdminModal() {
+            const wrap = document.getElementById('turnstile-wrap');
+            const feedback = document.getElementById('admin-feedback');
+            if (TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY')) {
+                if (wrap) wrap.style.display = 'none';
+                feedback.innerText = 'Captcha desativado temporariamente (site key não configurada).';
+            } else {
+                if (wrap) wrap.style.display = 'block';
+                feedback.innerText = '';
+            }
+            document.getElementById('admin-modal').classList.add('active');
+        }
         function closeAdminModal() { document.getElementById('admin-modal').classList.remove('active'); }
         async function unlockAdminPanel() {
             const pass = document.getElementById('admin-password').value.trim();
             const feedback = document.getElementById('admin-feedback');
             if (!pass) return feedback.innerText = 'Digite a senha do painel.';
             if (pass !== ADMIN_PANEL_PASSWORD) return feedback.innerText = 'Senha inválida.';
+            const captchaEnabled = !TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY');
             const captchaInput = document.querySelector('input[name="cf-turnstile-response"]');
             const captchaToken = captchaInput ? captchaInput.value : '';
-            if (!captchaToken) return feedback.innerText = 'Confirme o desafio "não sou um robô".';
+            if (captchaEnabled && !captchaToken) return feedback.innerText = 'Confirme o desafio "não sou um robô".';
             feedback.innerText = 'Validando e carregando dados...';
             try {
                 const res = await fetch(ADMIN_ENDPOINT, {
-                    headers: { 'Authorization': 'Bearer ' + pass, 'X-Turnstile-Token': captchaToken }
+                    headers: { 'Authorization': 'Bearer ' + pass, 'X-Turnstile-Token': captchaToken || 'captcha-disabled' }
                 });
                 if (!res.ok) throw new Error('Acesso negado');
                 const payload = await res.json();
