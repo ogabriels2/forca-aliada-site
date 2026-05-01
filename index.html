@@ -476,6 +476,8 @@
             <li><a href="#galeria" onclick="toggleMenu()" title="Fotos do mundo">Galeria</a></li>
             <li><a href="#faq" onclick="toggleMenu()" title="Perguntas frequentes">Dúvidas</a></li>
             <li><a href="#status" onclick="toggleMenu()" style="color: var(--azul-profundo);" title="Ver endereços de IP">Jogar Agora</a></li>
+            <li><a href="login.html?next=dashboard.html" onclick="toggleMenu()" title="Entrar">Login</a></li>
+            <li><a href="account.html" onclick="toggleMenu()" title="Perfil">Minha Conta</a></li>
         </ul>
         
         <div class="mobile-status-card" id="mobile-status-card" onclick="toggleMenu(); document.getElementById('status').scrollIntoView({behavior: 'smooth'});">
@@ -505,6 +507,8 @@
                 <li><a href="#galeria" title="Construções dos jogadores">Galeria</a></li>
                 <li><a href="#faq" title="Perguntas Frequentes">Dúvidas</a></li>
                 <li><a href="#status" class="nav-cta" title="Ver IP e Status">IP / Jogar</a></li>
+                <li><a href="login.html?next=dashboard.html" title="Entrar no painel">Login</a></li>
+                <li><a href="account.html" title="Personalizar conta">Minha Conta</a></li>
             </ul>
         </nav>
 
@@ -631,7 +635,7 @@
                 </div>
             </div>
             <p class="bottom-text" style="margin-top: 25px; font-size: 0.8rem; color: rgba(255,255,255,0.7);">Clique nos quadros para copiar o endereço.</p>
-            <button class="admin-entry" onclick="openAdminModal()" title="Acesso restrito para staff">Painel restrito</button>
+            <button class="admin-entry" onclick="window.location.href='login.html?next=dashboard.html'" title="Acesso restrito para staff">Painel restrito</button>
         </div>
     </section>
 
