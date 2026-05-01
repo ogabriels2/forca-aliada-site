@@ -35,7 +35,7 @@
 
         a { text-decoration: none; color: inherit; }
 
-        /* --- HEADER (PADRÃO APPLE) --- */
+        /* --- HEADER --- */
         header {
             position: fixed; top: 0; width: 100%; padding: 12px 5%;
             display: flex; justify-content: space-between; align-items: center;
@@ -117,7 +117,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Avatar Dinâmico */
         .avatar-preview {
             width: 80px;
             height: 80px;
@@ -127,6 +126,7 @@
             object-fit: cover;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: block;
         }
 
         h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
@@ -134,7 +134,9 @@
 
         .form-group { margin-bottom: 16px; text-align: left; }
         
-        input {
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
             width: 100%; padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--border);
             background: rgba(255, 255, 255, 0.9); font-size: 15px; transition: all 0.2s ease; outline: none; color: var(--text-primary);
         }
@@ -147,14 +149,19 @@
         }
         button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
         button.main-btn:active { transform: scale(0.98); }
+        button.main-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 
         .footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
-        .footer-text a { color: var(--text-primary); text-decoration: none; font-weight: 600; transition: color 0.2s; cursor: pointer; }
+        .footer-text a { color: var(--text-primary); font-weight: 600; transition: color 0.2s; cursor: pointer; }
         .footer-text a:hover { color: var(--accent); text-decoration: underline; }
 
         .msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
         .error { color: var(--danger); }
-        .success { color: #34c759; }
+        .success { color: var(--success); }
+
+        /* Views controladas por JS — apenas uma aparece por vez */
+        #view-loggedin { display: none; }
+        #view-login    { display: block; }
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -162,7 +169,6 @@
             40%, 80% { transform: translateX(5px); }
         }
         .shake-animation { animation: shake 0.4s ease; }
-
     </style>
 </head>
 <body>
@@ -173,23 +179,132 @@
             <div class="logo-text">Força Aliada</div>
         </a>
         
+        <!-- Header: área de auth — alterada por JS via classList, NÃO por innerHTML -->
         <div id="auth-header-container">
+
+            <!-- Botão "Criar conta" — visível quando deslogado -->
+            <a id="header-signup-link" href="signup.html" class="nav-cta">Criar conta</a>
+
+            <!-- Dropdown do usuário — visível quando logado -->
+            <div id="header-user-menu" class="user-menu-wrapper" style="display:none;">
+                <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                    <img id="header-avatar" src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+                    <span id="header-username"></span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+                <div class="user-dropdown" id="user-dropdown-menu">
+                    <button onclick="location.href='dashboard.html'">Acessar Dashboard</button>
+                    <button class="danger" onclick="forceLogout()">Sair da Conta</button>
+                </div>
             </div>
+
+        </div>
     </header>
 
     <div class="login-wrapper">
         <div class="card" id="loginCard">
-            <div id="card-content"></div>
-        </div>
+
+            <!-- ====================================================
+                 VIEW 1: USUÁRIO JÁ LOGADO
+                 Existe no HTML estático; JS apenas mostra/oculta.
+            ===================================================== -->
+            <div id="view-loggedin">
+                <img id="avatar-loggedin" class="avatar-preview"
+                     src="logo.JPG"
+                     onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+                     alt="Avatar">
+                <h1 id="loggedin-username"></h1>
+                <p class="subtitle">Você já está conectado.</p>
+                <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+                <div class="footer-text">
+                    <a onclick="forceLogout()" style="color: var(--danger);">Entrar com outra conta</a>
+                </div>
+            </div>
+
+            <!-- ====================================================
+                 VIEW 2: FORMULÁRIO DE LOGIN
+                 
+                 ✅ FIX 1: O <form> existe no HTML ESTÁTICO desde o carregamento.
+                            O browser consegue escanear e indexar os campos
+                            para autocompletar e oferecer salvar senha.
+
+                 ✅ FIX 2: autocomplete="username" e autocomplete="current-password"
+                            são as diretivas padrão que ativam o gerenciador
+                            de senhas nativo do browser (Chrome, Safari, Firefox).
+
+                 ✅ FIX 3: name="username" e name="password" são obrigatórios.
+                            Sem o atributo `name`, o browser ignora o campo
+                            para fins de autocomplete e salvamento de senha.
+            ===================================================== -->
+            <div id="view-login">
+                <img id="avatar-login" class="avatar-preview"
+                     src="logo.JPG"
+                     onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+                     alt="Logotipo">
+
+                <h1>Entrar</h1>
+                <p class="subtitle">Acesse sua conta do painel administrativo.</p>
+
+                <!--
+                    ✅ FIX 4: action="login.html" + method="post"
+                       O browser só aciona o prompt "Deseja salvar a senha?"
+                       quando detecta uma submissão de formulário acompanhada
+                       de uma navegação de página. O `action` sinaliza isso.
+                       A navegação real acontece via JS (location.href),
+                       mas ter o `action` declarado é o gatilho que o browser
+                       precisa para considerar esse form como "de login real".
+                -->
+                <form id="login-form"
+                      action="login.html"
+                      method="post"
+                      onsubmit="handleLogin(event)">
+
+                    <div class="form-group">
+                        <input
+                            id="login-input"
+                            name="username"
+                            type="text"
+                            placeholder="Usuário ou e-mail"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <input
+                            id="pass-input"
+                            name="password"
+                            type="password"
+                            placeholder="Senha"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" id="btn-login" class="main-btn">
+                        Iniciar Sessão
+                    </button>
+                </form>
+
+                <div id="msg" class="msg"></div>
+
+                <div class="footer-text">
+                    Não possui acesso? <a href="signup.html">Criar conta</a>
+                </div>
+            </div>
+
+        </div><!-- /.card -->
     </div>
 
 <script>
-    // 1. INICIALIZAÇÃO DE DADOS
+    // ─── BANCO DE DADOS LOCAL ────────────────────────────────────────────────
     const predefined = [
-        {username:'admin', email:'', minecraft:'admin', password:'NovaAlianca+', role:'limited', photo:'logo.JPG'},
-        {username:'gabalarca', email:'gabalarcadsmoreira2016@gmail.com', minecraft:'gabalarca', password:'Famosos1290+', role:'full', photo:''}
+        { username: 'admin',    email: '',                               minecraft: 'admin',    password: 'NovaAlianca+', role: 'limited', photo: 'logo.JPG' },
+        { username: 'gabalarca', email: 'gabalarcadsmoreira2016@gmail.com', minecraft: 'gabalarca', password: 'Famosos1290+', role: 'full',    photo: '' }
     ];
-    
+
     let db = JSON.parse(localStorage.getItem('fa_users'));
     if (!db) {
         localStorage.setItem('fa_users', JSON.stringify(predefined));
@@ -198,104 +313,55 @@
 
     let session = JSON.parse(localStorage.getItem('fa_session'));
 
-    // 2. LÓGICA DE RENDERIZAÇÃO DA INTERFACE
+    // ─── RENDERIZAÇÃO (só altera visibilidade — nunca recria o DOM) ──────────
+    //
+    // ✅ FIX 5: Em vez de injetar innerHTML e destruir o formulário,
+    //           usamos display:block / display:none para alternar views.
+    //           O <form> permanece no DOM desde o carregamento da página,
+    //           mantendo o contexto de autocomplete do browser intacto.
+    //
     function renderUI() {
-        const headerContainer = document.getElementById('auth-header-container');
-        const cardContent = document.getElementById('card-content');
-        
+        const viewLoggedin  = document.getElementById('view-loggedin');
+        const viewLogin     = document.getElementById('view-login');
+        const headerSignup  = document.getElementById('header-signup-link');
+        const headerMenu    = document.getElementById('header-user-menu');
+
         if (session) {
-            // --- ESTADO: JÁ LOGADO ---
-            const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'logo.JPG';
-            
-            headerContainer.innerHTML = `
-                <div class="user-menu-wrapper">
-                    <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
-                        <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
-                        <span>${session.username}</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="user-dropdown" id="user-dropdown-menu">
-                        <button onclick="location.href='dashboard.html'">Acessar Dashboard</button>
-                        <button class="danger" onclick="forceLogout()">Sair da Conta</button>
-                    </div>
-                </div>
-            `;
+            const skinUrl = session.minecraft
+                ? `https://minotar.net/helm/${session.minecraft}/100.png`
+                : 'logo.JPG';
 
-            cardContent.innerHTML = `
-                <img id="avatar" class="avatar-preview" src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'">
-                <h1>${session.username}</h1>
-                <p class="subtitle">Você já está conectado.</p>
-                
-                <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
-                
-                <div class="footer-text">
-                    <a onclick="forceLogout()" style="color: var(--danger);">Entrar com outra conta</a>
-                </div>
-            `;
-            
+            // Preenche a view de usuário logado
+            document.getElementById('avatar-loggedin').src    = skinUrl;
+            document.getElementById('loggedin-username').textContent = session.username;
+            document.getElementById('header-avatar').src       = skinUrl;
+            document.getElementById('header-username').textContent  = session.username;
+
+            // Alterna visibilidade
+            viewLoggedin.style.display = 'block';
+            viewLogin.style.display    = 'none';
+            headerSignup.style.display = 'none';
+            headerMenu.style.display   = 'inline-block';
+
         } else {
-            // --- ESTADO: NÃO LOGADO ---
-            headerContainer.innerHTML = `<a href="signup.html" class="nav-cta">Criar conta</a>`;
-
-            // Agora usando um <form> real para que o navegador ofereça salvar a senha
-            cardContent.innerHTML = `
-                <img id="avatar" class="avatar-preview" src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logotipo">
-                
-                <h1>Entrar</h1>
-                <p class="subtitle">Acesse sua conta do painel administrativo.</p>
-                
-                <form id="login-form" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <input id="login" name="username" type="text" placeholder="Usuário ou e-mail" autocomplete="username" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <input id="pass" name="password" type="password" placeholder="Senha" autocomplete="current-password" required>
-                    </div>
-                    
-                    <button type="submit" id="btn-login" class="main-btn">Iniciar Sessão</button>
-                </form>
-                
-                <div id="msg" class="msg"></div>
-
-                <div class="footer-text">
-                    Não possui acesso? <a href="signup.html">Criar conta</a>
-                </div>
-            `;
-
-            attachLoginEvents();
+            // Alterna visibilidade — o formulário permanece no DOM
+            viewLoggedin.style.display = 'none';
+            viewLogin.style.display    = 'block';
+            headerSignup.style.display = 'inline-block';
+            headerMenu.style.display   = 'none';
         }
     }
 
-    // 3. FUNÇÕES DO DROPDOWN DO HEADER
-    function toggleUserDropdown(event) {
-        event.stopPropagation();
-        const btn = document.getElementById('user-btn-toggle');
-        const menu = document.getElementById('user-dropdown-menu');
-        btn.classList.toggle('active');
-        menu.classList.toggle('show');
-    }
-
-    document.addEventListener('click', (e) => {
-        const menu = document.getElementById('user-dropdown-menu');
-        const btn = document.getElementById('user-btn-toggle');
-        if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
-            menu.classList.remove('show');
-            btn.classList.remove('active');
-        }
-    });
-
-    // 4. LÓGICA DE LOGIN E EVENTOS
-    function attachLoginEvents() {
-        const loginInput = document.getElementById('login');
-        const avatar = document.getElementById('avatar');
-
-        // Microinteração da Foto do Minecraft
+    // ─── MICROINTERAÇÃO DO AVATAR (skin do Minecraft) ────────────────────────
+    (function attachAvatarPreview() {
+        const loginInput = document.getElementById('login-input');
+        const avatar     = document.getElementById('avatar-login');
         let typingTimer;
+
         loginInput.addEventListener('input', () => {
             clearTimeout(typingTimer);
             const val = loginInput.value.trim();
-            
+
             if (val.length > 2 && !val.includes('@')) {
                 typingTimer = setTimeout(() => {
                     avatar.src = `https://minotar.net/helm/${val}/100.png`;
@@ -306,64 +372,92 @@
                 avatar.onerror = () => { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
             }
         });
-        
-        // Removemos o event listener de 'keydown' para o Enter, pois a tag <form> já resolve isso nativamente.
+    })();
+
+    // ─── DROPDOWN DO HEADER ──────────────────────────────────────────────────
+    function toggleUserDropdown(event) {
+        event.stopPropagation();
+        document.getElementById('user-btn-toggle').classList.toggle('active');
+        document.getElementById('user-dropdown-menu').classList.toggle('show');
     }
 
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('user-dropdown-menu');
+        const btn  = document.getElementById('user-btn-toggle');
+        if (menu && btn) {
+            menu.classList.remove('show');
+            btn.classList.remove('active');
+        }
+    });
+
+    // ─── MENSAGEM DE ERRO / SUCESSO ──────────────────────────────────────────
     function showMessage(text, type) {
         const msgEl = document.getElementById('msg');
-        const card = document.getElementById('loginCard');
-        
+        const card  = document.getElementById('loginCard');
         msgEl.textContent = text;
-        msgEl.className = `msg ${type}`;
-        
+        msgEl.className   = `msg ${type}`;
         if (type === 'error') {
             card.classList.remove('shake-animation');
-            void card.offsetWidth; // Trigger reflow
+            void card.offsetWidth;
             card.classList.add('shake-animation');
         }
     }
 
-    // A função atrelada ao "onsubmit" do formulário
+    // ─── SUBMIT DO FORMULÁRIO ────────────────────────────────────────────────
+    //
+    // ✅ FIX 6: NÃO chamamos event.preventDefault() imediatamente.
+    //    O fluxo correto para o browser salvar a senha é:
+    //      1. Validar as credenciais via JS.
+    //      2. Se corretas → deixar o browser "ver" a submissão antes
+    //         de navegar. Usamos um setTimeout curto para que o browser
+    //         registre a intenção de submit e acione o prompt de salvar,
+    //         depois redirecionamos manualmente.
+    //      3. Se incorretas → aí sim prevenimos o envio e mostramos erro.
+    //
     function handleLogin(event) {
-        event.preventDefault(); // Impede o recarregamento da página para que possamos checar o db via JS
-
-        const loginInput = document.getElementById('login');
-        const passInput = document.getElementById('pass');
+        const l = document.getElementById('login-input').value.trim().toLowerCase();
+        const p = document.getElementById('pass-input').value;
         const btn = document.getElementById('btn-login');
 
-        const l = loginInput.value.trim().toLowerCase();
-        const p = passInput.value;
-
-        const user = db.find(u => (u.username.toLowerCase() === l || u.email.toLowerCase() === l) && u.password === p);
+        const user = db.find(u =>
+            (u.username.toLowerCase() === l || u.email.toLowerCase() === l) && u.password === p
+        );
 
         if (user) {
+            // ✅ Credenciais corretas:
+            //    Não prevenimos o event aqui. O browser detecta a submissão
+            //    real do form e aciona o "Deseja salvar a senha?".
+            //    Salvamos a sessão e redirecionamos logo após.
             showMessage('Autenticado com sucesso. Entrando...', 'success');
             btn.textContent = 'Carregando...';
-            btn.style.opacity = '0.7';
-            btn.disabled = true;
-            
+            btn.disabled    = true;
+
             localStorage.setItem('fa_session', JSON.stringify(user));
             session = user;
-            
-            setTimeout(() => {
-                location.href = 'dashboard.html';
-                renderUI(); 
-            }, 600);
+
+            // Pequeno delay para o browser processar o submit e exibir o prompt de salvar
+            setTimeout(() => { location.href = 'dashboard.html'; }, 800);
+
         } else {
+            // ❌ Credenciais erradas: aí prevenimos o envio
+            event.preventDefault();
             showMessage('Usuário ou senha incorretos.', 'error');
-            passInput.value = ''; 
-            passInput.focus();
+            document.getElementById('pass-input').value = '';
+            document.getElementById('pass-input').focus();
         }
     }
 
+    // ─── LOGOUT ──────────────────────────────────────────────────────────────
     function forceLogout() {
         localStorage.removeItem('fa_session');
         session = null;
-        renderUI(); // Recarrega a tela pro formulário de login normal
+        // Reseta avatar para o logo padrão ao deslogar
+        const avatar = document.getElementById('avatar-login');
+        if (avatar) { avatar.src = 'logo.JPG'; }
+        renderUI();
     }
 
-    // Iniciar a página
+    // ─── INICIAR ─────────────────────────────────────────────────────────────
     renderUI();
 </script>
 </body>
