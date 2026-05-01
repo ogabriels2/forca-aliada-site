@@ -1,16 +1,29 @@
 {
-  "generatedAt": "2026-05-01T21:32:33.997Z",
+  "generatedAt": "2026-05-01T22:29:49.684Z",
   "onlinePlayers": [
-    "GS_Games",
+    "Agiota834",
+    "Jaqueta_",
     "Gabalarca",
-    "Jaqueta_"
+    "CaioLeal"
   ],
   "summary": {
-    "joinedToday": 7,
-    "leftToday": 4,
-    "avgHours": 1.64
+    "joinedToday": 9,
+    "leftToday": 5,
+    "avgHours": 1.5
   },
   "history": [
+    {
+      "player": "CaioLeal",
+      "enteredAt": "2026-05-01T22:29:49.684Z",
+      "leftAt": null,
+      "hoursOnline": 0
+    },
+    {
+      "player": "Agiota834",
+      "enteredAt": "2026-05-01T22:29:49.684Z",
+      "leftAt": null,
+      "hoursOnline": 0
+    },
     {
       "player": "Jaqueta_",
       "enteredAt": "2026-05-01T21:32:33.997Z",
@@ -20,8 +33,8 @@
     {
       "player": "GS_Games",
       "enteredAt": "2026-05-01T21:32:33.997Z",
-      "leftAt": null,
-      "hoursOnline": 0
+      "leftAt": "2026-05-01T22:29:49.684Z",
+      "hoursOnline": 0.95
     },
     {
       "player": "Agiota834",
@@ -59,17 +72,21 @@
       "name": "Gabalarca",
       "enteredAt": "2026-05-01T18:15:35.436Z"
     },
-    "7b356306-58c7-3b40-8671-d2d68188864f": {
-      "name": "GS_Games",
-      "enteredAt": "2026-05-01T21:32:33.997Z"
-    },
     "d9add386-0891-318c-90bb-02aedd68c9ba": {
       "name": "Jaqueta_",
       "enteredAt": "2026-05-01T21:32:33.997Z"
+    },
+    "00000000-0000-0000-0009-01f9af288133": {
+      "name": "Agiota834",
+      "enteredAt": "2026-05-01T22:29:49.684Z"
+    },
+    "d3e393bc-520f-371f-a8eb-f06cd12b6ab2": {
+      "name": "CaioLeal",
+      "enteredAt": "2026-05-01T22:29:49.684Z"
     }
   },
   "totals": {
-    "sessionsClosedToday": 4,
-    "totalHoursToday": 6.569999999999999
+    "sessionsClosedToday": 5,
+    "totalHoursToday": 7.52
   }
 }
