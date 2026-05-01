@@ -1,4 +1,374 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Criar conta</title>
-<style>body{margin:0;font-family:-apple-system;background:#f7f8fa;min-height:100vh}.header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:10px;font-weight:700}.brand img{width:30px;height:30px;border-radius:8px}.center{display:grid;place-items:center;min-height:calc(100vh - 52px)}.card{width:min(460px,92vw);background:#fff;border:1px solid #e5e7eb;border-radius:24px;padding:26px;box-shadow:0 20px 40px rgba(0,0,0,.06)}input{width:100%;padding:12px;border-radius:12px;border:1px solid #d1d5db;margin-top:10px}button{width:100%;padding:12px;border:none;border-radius:999px;margin-top:12px;background:#0f172a;color:#fff}.ghost{background:#e2e8f0;color:#0f172a}</style></head>
-<body><div class="header"><div class="brand"><img src="assets/images/logo.JPG" alt=""><span>Força Aliada</span></div><a href="index.html">Início</a></div><div class="center"><div class="card"><h2>Criar conta</h2><input id="u" placeholder="Usuário"><input id="e" placeholder="E-mail"><input id="m" placeholder="Nome no Minecraft"><input id="p" type="password" placeholder="Senha"><button onclick="signup()">Criar conta</button><button class="ghost" onclick="location.href='login'">Fazer login</button><p id="msg"></p></div></div>
-<script>async function signup(){const users=JSON.parse(localStorage.getItem('fa_users')||'[]');const user={username:u.value.trim(),email:e.value.trim(),minecraft:m.value.trim(),password:p.value,role:'limited',photo:'assets/images/logo.JPG'};if(!user.username||!user.email||!user.password)return msg.innerText='Preencha os campos obrigatórios.';if(users.some(x=>x.username===user.username||x.email===user.email))return msg.innerText='Usuário/e-mail já existe.';users.push(user);localStorage.setItem('fa_users',JSON.stringify(users));try{await fetch(`${window.location.origin}/api/auth/signup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user.username,email:user.email,password:user.password,minecraftName:user.minecraft})});}catch{}msg.innerText='Conta criada. Redirecionando...';setTimeout(()=>location.href='login',700);}</script></body></html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Criar Conta | Força Aliada</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --border: #d2d2d7;
+            --radius-lg: 24px;
+            --radius-md: 12px;
+            --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a { text-decoration: none; color: inherit; }
+
+        /* --- HEADER (PADRÃO APPLE) --- */
+        header {
+            position: fixed; top: 0; width: 100%; padding: 12px 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+        .brand-link:hover { opacity: 0.8; }
+        .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+
+        /* --- DROPDOWN DO USUÁRIO LOGADO --- */
+        .user-menu-wrapper { position: relative; display: inline-block; }
+        
+        .user-btn {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+            transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
+        }
+        .user-btn:hover { background: rgba(0,0,0,0.08); }
+        .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #e5e5ea; }
+        .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        
+        .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+        .user-btn.active svg { transform: rotate(180deg); }
+
+        .user-dropdown {
+            position: absolute; right: 0; top: calc(100% + 12px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
+            padding: 8px; display: flex; flex-direction: column; min-width: 200px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
+        }
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        
+        .user-dropdown button {
+            text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
+            font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
+            display: block; width: 100%;
+        }
+        .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        .user-dropdown .danger { color: var(--danger); }
+        .user-dropdown .danger:hover { background: rgba(255, 59, 48, 0.1); }
+
+        .nav-cta { color: var(--accent) !important; font-weight: 600 !important; background: rgba(0, 113, 227, 0.08); padding: 8px 16px; border-radius: 980px; transition: background 0.2s; font-size: 14px; }
+        .nav-cta:hover { background: rgba(0, 113, 227, 0.15); }
+
+        /* --- WRAPPER DO FORMULÁRIO --- */
+        .login-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px 20px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card-bg);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255,255,255,0.4);
+            text-align: center;
+            transition: transform 0.3s ease;
+            animation: fadeIn 0.4s ease;
+            position: relative;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Avatar Dinâmico */
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: #e5e5ea;
+            margin: 0 auto 20px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .avatar-preview.inactive {
+            transform: scale(0.9);
+            opacity: 0.5;
+        }
+
+        h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+        p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
+
+        .form-group { margin-bottom: 16px; text-align: left; }
+        
+        input {
+            width: 100%; padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.9); font-size: 15px; transition: all 0.2s ease; outline: none; color: var(--text-primary);
+        }
+        input::placeholder { color: #a1a1a6; }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15); background: #fff; }
+
+        button.main-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
+            background: var(--text-primary); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+        }
+        button.main-btn:hover { background: #000; transform: scale(1.02); }
+        button.main-btn:active { transform: scale(0.98); }
+
+        .footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
+        .footer-text a { color: var(--text-primary); text-decoration: none; font-weight: 600; transition: color 0.2s; cursor: pointer; }
+        .footer-text a:hover { color: var(--accent); text-decoration: underline; }
+
+        .msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
+        .error { color: var(--danger); }
+        .success { color: #34c759; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .shake-animation { animation: shake 0.4s ease; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="index.html" class="brand-link" title="Voltar ao site principal">
+            <img src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+            <div class="logo-text">Força Aliada</div>
+        </a>
+        
+        <div id="auth-header-container">
+            </div>
+    </header>
+
+    <div class="login-wrapper">
+        <div class="card" id="signupCard">
+            <div id="card-content"></div>
+        </div>
+    </div>
+
+<script>
+    // 1. INICIALIZAÇÃO E SESSÃO
+    let session = JSON.parse(localStorage.getItem('fa_session'));
+
+    // 2. RENDERIZAÇÃO DA INTERFACE DINÂMICA
+    function renderUI() {
+        const headerContainer = document.getElementById('auth-header-container');
+        const cardContent = document.getElementById('card-content');
+        
+        if (session) {
+            // --- ESTADO: JÁ LOGADO ---
+            const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'logo.JPG';
+            
+            // Header
+            headerContainer.innerHTML = `
+                <div class="user-menu-wrapper">
+                    <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                        <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+                        <span>${session.username}</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="user-dropdown" id="user-dropdown-menu">
+                        <button onclick="location.href='dashboard.html'">Acessar Dashboard</button>
+                        <button class="danger" onclick="forceLogout()">Sair da Conta</button>
+                    </div>
+                </div>
+            `;
+
+            // Card
+            cardContent.innerHTML = `
+                <img id="avatar" class="avatar-preview" src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'">
+                <h1>${session.username}</h1>
+                <p class="subtitle">Você já possui uma conta ativa.</p>
+                
+                <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+                
+                <div class="footer-text">
+                    <a onclick="forceLogout()" style="color: var(--danger);">Criar uma nova conta</a>
+                </div>
+            `;
+            
+        } else {
+            // --- ESTADO: NÃO LOGADO ---
+            headerContainer.innerHTML = `<a href="login.html" class="nav-cta">Fazer login</a>`;
+
+            // Card: O form permite o browser interceptar o 'submit' para salvar a senha
+            cardContent.innerHTML = `
+                <img id="avatar" class="avatar-preview inactive" src="https://minotar.net/helm/Steve/100.png" alt="Avatar Preview">
+                
+                <h1>Criar sua conta</h1>
+                <p class="subtitle">Acesso ao painel da Staff Força Aliada</p>
+
+                <form id="signup-form" onsubmit="handleSignup(event)">
+                    <div class="form-group">
+                        <input id="u" name="username" type="text" placeholder="Nome de usuário" autocomplete="username" required>
+                    </div>
+
+                    <div class="form-group">
+                        <input id="e" name="email" type="email" placeholder="E-mail de contato" autocomplete="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <input id="m" name="custom-mc" type="text" placeholder="Nome exato no Minecraft" autocomplete="off" required>
+                    </div>
+
+                    <div class="form-group">
+                        <input id="p" name="password" type="password" placeholder="Crie uma senha segura" autocomplete="new-password" required>
+                    </div>
+
+                    <button type="submit" id="btn-signup" class="main-btn">Continuar</button>
+                </form>
+
+                <div id="msg" class="msg"></div>
+
+                <div class="footer-text">
+                    Já faz parte da equipe? <a href="login.html">Faça login aqui</a>
+                </div>
+            `;
+
+            attachSignupEvents();
+        }
+    }
+
+    // 3. FUNÇÕES DO DROPDOWN
+    function toggleUserDropdown(event) {
+        event.stopPropagation();
+        const btn = document.getElementById('user-btn-toggle');
+        const menu = document.getElementById('user-dropdown-menu');
+        btn.classList.toggle('active');
+        menu.classList.toggle('show');
+    }
+
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('user-dropdown-menu');
+        const btn = document.getElementById('user-btn-toggle');
+        if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.remove('show');
+            btn.classList.remove('active');
+        }
+    });
+
+    // 4. LÓGICA DE CRIAÇÃO E EVENTOS
+    function attachSignupEvents() {
+        const mcInput = document.getElementById('m');
+        const avatar = document.getElementById('avatar');
+
+        // Microinteração da Foto do Minecraft
+        let typingTimer;
+        mcInput.addEventListener('input', () => {
+            clearTimeout(typingTimer);
+            const nick = mcInput.value.trim();
+            
+            if (nick.length > 2) {
+                avatar.classList.remove('inactive');
+                typingTimer = setTimeout(() => {
+                    avatar.src = `https://minotar.net/helm/${nick}/100.png`;
+                    avatar.onerror = () => { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+                }, 500);
+            } else {
+                avatar.src = 'https://minotar.net/helm/Steve/100.png';
+                avatar.classList.add('inactive');
+            }
+        });
+    }
+
+    function showMessage(text, type) {
+        const msgEl = document.getElementById('msg');
+        const card = document.getElementById('signupCard');
+        
+        msgEl.textContent = text;
+        msgEl.className = `msg ${type}`;
+        
+        if (type === 'error') {
+            card.classList.remove('shake-animation');
+            void card.offsetWidth; // Trigger reflow
+            card.classList.add('shake-animation');
+        }
+    }
+
+    // A função atrelada ao "onsubmit" do form
+    function handleSignup(event) {
+        event.preventDefault(); // Impede que a página recarregue para o localStorage funcionar
+
+        const btn = document.getElementById('btn-signup');
+        const users = JSON.parse(localStorage.getItem('fa_users') || '[]');
+        
+        const user = {
+            username: document.getElementById('u').value.trim(),
+            email: document.getElementById('e').value.trim(),
+            minecraft: document.getElementById('m').value.trim(),
+            password: document.getElementById('p').value,
+            role: 'limited',
+            photo: ''
+        };
+
+        // Validação de duplicidade
+        if (users.some(x => x.username.toLowerCase() === user.username.toLowerCase() || x.email.toLowerCase() === user.email.toLowerCase())) {
+            return showMessage('Este usuário ou e-mail já está em uso.', 'error');
+        }
+
+        // Sucesso
+        users.push(user);
+        localStorage.setItem('fa_users', JSON.stringify(users));
+        
+        btn.textContent = 'Criando conta...';
+        btn.style.opacity = '0.7';
+        btn.disabled = true;
+        
+        showMessage('Conta criada com sucesso. Redirecionando...', 'success');
+        
+        setTimeout(() => location.href = 'login.html', 1500);
+    }
+
+    function forceLogout() {
+        localStorage.removeItem('fa_session');
+        session = null;
+        renderUI(); // Volta para o formulário de criar conta limpo
+    }
+
+    // Inicialização
+    renderUI();
+</script>
+</body>
+</html>
