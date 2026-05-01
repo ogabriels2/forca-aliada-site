@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | Força Aliada</title>
+  <style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:linear-gradient(160deg,#eef3ff,#f9fafb);min-height:100vh}
+    .header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700}.brand img{width:30px;height:30px;border-radius:8px}
+    .center{display:grid;place-items:center;min-height:calc(100vh - 52px)}
+    .card{width:min(420px,92vw);background:rgba(255,255,255,.8);backdrop-filter:blur(14px);border:1px solid #e5e7eb;border-radius:24px;padding:28px;box-shadow:0 20px 50px rgba(0,0,0,.08)}
+    h1{margin:0 0 6px;font-size:1.8rem} p{color:#6b7280} input{width:100%;padding:12px;border-radius:12px;border:1px solid #d1d5db;margin-top:10px}
+    button{width:100%;margin-top:14px;padding:12px;border:none;border-radius:999px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}
+    .ghost{background:#eef2ff;color:#1e3a8a}
+    .msg{font-size:.9rem;color:#475569;margin-top:8px;min-height:18px}
+  </style>
+</head>
+<body>
+  <div class="header"><div class="brand"><img src="logo.JPG" alt=""><span>Força Aliada</span></div><a href="index.html">Início</a></div>
+  <div class="center"><div class="card">
+    <h1>Entrar</h1>
+    <p>Acesse sua conta para abrir o painel.</p>
+    <input id="login" placeholder="Usuário ou e-mail">
+    <input id="pass" type="password" placeholder="Senha">
+    <button onclick="doLogin()">Fazer login</button>
+    <button class="ghost" onclick="location.href='signup.html'">Criar conta</button>
+    <div id="msg" class="msg"></div>
+  </div></div>
+  <script>
+    const predefined=[{username:'admin',email:'',minecraft:'admin',password:'NovaAlianca+',role:'limited',photo:'logo.JPG'},{username:'gabalarca',email:'gabalarcadsmoreira2016@gmail.com',minecraft:'gabalarca',password:'Famosos1290+',role:'full',photo:'logo.JPG'}];
+    const db=JSON.parse(localStorage.getItem('fa_users')||'null')||predefined;
+    if(!localStorage.getItem('fa_users')) localStorage.setItem('fa_users',JSON.stringify(db));
+    async function doLogin(){
+      const l=document.getElementById('login').value.trim().toLowerCase(),p=document.getElementById('pass').value;
+      const user=db.find(u=>(u.username.toLowerCase()===l||u.email.toLowerCase()===l)&&u.password===p);
+      if(user){localStorage.setItem('fa_session',JSON.stringify(user));}
+      try {
+        const r=await fetch('http://localhost:8787/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:l,password:p})});
+        if(r.ok){const data=await r.json();localStorage.setItem('fa_api_token',data.token);localStorage.setItem('fa_session',JSON.stringify({...user,...data.user}));}
+      } catch {}
+      const ok=!!JSON.parse(localStorage.getItem('fa_session')||'null');
+      document.getElementById('msg').innerText=ok?'Login feito com sucesso.':'Credenciais inválidas.';
+      if(ok){setTimeout(()=>location.href='dashboard.html',400);}
+    }
+    document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  </script>
+</body>
+</html>
