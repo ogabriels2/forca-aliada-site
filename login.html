@@ -93,7 +93,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 80px 20px 20px; /* Padding top para compensar o header fixo */
+            padding: 80px 20px 20px;
         }
 
         .card {
@@ -109,6 +109,7 @@
             text-align: center;
             transition: transform 0.3s ease;
             animation: fadeIn 0.4s ease;
+            position: relative;
         }
 
         @keyframes fadeIn {
@@ -155,7 +156,6 @@
         .error { color: var(--danger); }
         .success { color: #34c759; }
 
-        /* Animação de erro (Shake) */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-5px); }
@@ -198,7 +198,7 @@
 
     let session = JSON.parse(localStorage.getItem('fa_session'));
 
-    // 2. LÓGICA DE RENDERIZAÇÃO DA INTERFACE (MÁGICA DO "CONTINUAR COMO")
+    // 2. LÓGICA DE RENDERIZAÇÃO DA INTERFACE
     function renderUI() {
         const headerContainer = document.getElementById('auth-header-container');
         const cardContent = document.getElementById('card-content');
@@ -207,7 +207,6 @@
             // --- ESTADO: JÁ LOGADO ---
             const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'logo.JPG';
             
-            // Atualiza Header
             headerContainer.innerHTML = `
                 <div class="user-menu-wrapper">
                     <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
@@ -222,7 +221,6 @@
                 </div>
             `;
 
-            // Atualiza Card de Login para o modo "Bem-vindo de volta"
             cardContent.innerHTML = `
                 <img id="avatar" class="avatar-preview" src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'">
                 <h1>${session.username}</h1>
@@ -237,25 +235,26 @@
             
         } else {
             // --- ESTADO: NÃO LOGADO ---
-            // Atualiza Header
             headerContainer.innerHTML = `<a href="signup.html" class="nav-cta">Criar conta</a>`;
 
-            // Atualiza Card de Login para o formulário padrão
+            // Agora usando um <form> real para que o navegador ofereça salvar a senha
             cardContent.innerHTML = `
                 <img id="avatar" class="avatar-preview" src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logotipo">
                 
                 <h1>Entrar</h1>
                 <p class="subtitle">Acesse sua conta do painel administrativo.</p>
                 
-                <div class="form-group">
-                    <input id="login" type="text" placeholder="Usuário ou e-mail" autocomplete="username">
-                </div>
-                
-                <div class="form-group">
-                    <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
-                </div>
-                
-                <button id="btn-login" class="main-btn" onclick="doLogin()">Iniciar Sessão</button>
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <input id="login" name="username" type="text" placeholder="Usuário ou e-mail" autocomplete="username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <input id="pass" name="password" type="password" placeholder="Senha" autocomplete="current-password" required>
+                    </div>
+                    
+                    <button type="submit" id="btn-login" class="main-btn">Iniciar Sessão</button>
+                </form>
                 
                 <div id="msg" class="msg"></div>
 
@@ -264,7 +263,6 @@
                 </div>
             `;
 
-            // Re-anexa os eventos após criar o HTML
             attachLoginEvents();
         }
     }
@@ -290,7 +288,6 @@
     // 4. LÓGICA DE LOGIN E EVENTOS
     function attachLoginEvents() {
         const loginInput = document.getElementById('login');
-        const passInput = document.getElementById('pass');
         const avatar = document.getElementById('avatar');
 
         // Microinteração da Foto do Minecraft
@@ -309,11 +306,8 @@
                 avatar.onerror = () => { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
             }
         });
-
-        // Evento de Enter
-        passInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter') doLogin();
-        });
+        
+        // Removemos o event listener de 'keydown' para o Enter, pois a tag <form> já resolve isso nativamente.
     }
 
     function showMessage(text, type) {
@@ -330,7 +324,10 @@
         }
     }
 
-    function doLogin() {
+    // A função atrelada ao "onsubmit" do formulário
+    function handleLogin(event) {
+        event.preventDefault(); // Impede o recarregamento da página para que possamos checar o db via JS
+
         const loginInput = document.getElementById('login');
         const passInput = document.getElementById('pass');
         const btn = document.getElementById('btn-login');
@@ -338,23 +335,20 @@
         const l = loginInput.value.trim().toLowerCase();
         const p = passInput.value;
 
-        if (!l || !p) {
-            return showMessage('Preencha todos os campos.', 'error');
-        }
-
         const user = db.find(u => (u.username.toLowerCase() === l || u.email.toLowerCase() === l) && u.password === p);
 
         if (user) {
             showMessage('Autenticado com sucesso. Entrando...', 'success');
             btn.textContent = 'Carregando...';
             btn.style.opacity = '0.7';
+            btn.disabled = true;
             
             localStorage.setItem('fa_session', JSON.stringify(user));
-            session = user; // Atualiza a variável global
+            session = user;
             
             setTimeout(() => {
-                location.href = 'dashboard.html'; // Tenta redirecionar primeiro
-                renderUI(); // Caso o redirect falhe/atrase, atualiza a UI pro modo "Logado"
+                location.href = 'dashboard.html';
+                renderUI(); 
             }, 600);
         } else {
             showMessage('Usuário ou senha incorretos.', 'error');
