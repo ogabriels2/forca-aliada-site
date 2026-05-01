@@ -13,9 +13,11 @@
             --accent: #0071e3;
             --accent-hover: #0077ed;
             --danger: #ff3b30;
+            --success: #34c759;
             --border: #d2d2d7;
             --radius-lg: 24px;
             --radius-md: 12px;
+            --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
         * { box-sizing: border-box; }
@@ -25,11 +27,73 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
             color: var(--text-primary);
-            display: grid;
-            place-items: center;
-            min-height: 100vh;
             -webkit-font-smoothing: antialiased;
-            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a { text-decoration: none; color: inherit; }
+
+        /* --- HEADER (PADRÃO APPLE) --- */
+        header {
+            position: fixed; top: 0; width: 100%; padding: 12px 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+        .brand-link:hover { opacity: 0.8; }
+        .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+
+        /* --- DROPDOWN DO USUÁRIO LOGADO --- */
+        .user-menu-wrapper { position: relative; display: inline-block; }
+        
+        .user-btn {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+            transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
+        }
+        .user-btn:hover { background: rgba(0,0,0,0.08); }
+        .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #e5e5ea; }
+        .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        
+        .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+        .user-btn.active svg { transform: rotate(180deg); }
+
+        .user-dropdown {
+            position: absolute; right: 0; top: calc(100% + 12px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
+            padding: 8px; display: flex; flex-direction: column; min-width: 200px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
+        }
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        
+        .user-dropdown button {
+            text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
+            font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
+            display: block; width: 100%;
+        }
+        .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        .user-dropdown .danger { color: var(--danger); }
+        .user-dropdown .danger:hover { background: rgba(255, 59, 48, 0.1); }
+
+        .nav-cta { color: var(--accent) !important; font-weight: 600 !important; background: rgba(0, 113, 227, 0.08); padding: 8px 16px; border-radius: 980px; transition: background 0.2s; font-size: 14px; }
+        .nav-cta:hover { background: rgba(0, 113, 227, 0.15); }
+
+        /* --- WRAPPER DO FORMULÁRIO --- */
+        .login-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px 20px; /* Padding top para compensar o header fixo */
         }
 
         .card {
@@ -44,13 +108,19 @@
             border: 1px solid rgba(255,255,255,0.4);
             text-align: center;
             transition: transform 0.3s ease;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* Avatar Dinâmico */
         .avatar-preview {
-            width: 72px;
-            height: 72px;
-            border-radius: 18px;
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
             background: #e5e5ea;
             margin: 0 auto 20px;
             object-fit: cover;
@@ -58,83 +128,30 @@
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        h1 {
-            margin: 0 0 8px;
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
+        h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+        p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
 
-        p.subtitle {
-            margin: 0 0 28px;
-            color: var(--text-secondary);
-            font-size: 15px;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-            text-align: left;
-        }
-
+        .form-group { margin-bottom: 16px; text-align: left; }
+        
         input {
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, 0.9);
-            font-size: 15px;
-            transition: all 0.2s ease;
-            outline: none;
-            color: var(--text-primary);
+            width: 100%; padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.9); font-size: 15px; transition: all 0.2s ease; outline: none; color: var(--text-primary);
         }
-
         input::placeholder { color: #a1a1a6; }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15); background: #fff; }
 
-        input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
-            background: #fff;
+        button.main-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
+            background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
         }
+        button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
+        button.main-btn:active { transform: scale(0.98); }
 
-        button {
-            width: 100%;
-            padding: 16px;
-            border: none;
-            border-radius: 980px;
-            margin-top: 12px;
-            background: var(--accent);
-            color: #fff;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        button:hover { background: var(--accent-hover); transform: scale(1.02); }
-        button:active { transform: scale(0.98); }
-
-        .footer-text {
-            margin-top: 24px;
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .footer-text a {
-            color: var(--text-primary);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s;
-        }
-
+        .footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
+        .footer-text a { color: var(--text-primary); text-decoration: none; font-weight: 600; transition: color 0.2s; cursor: pointer; }
         .footer-text a:hover { color: var(--accent); text-decoration: underline; }
 
-        .msg {
-            margin-top: 16px;
-            font-size: 14px;
-            font-weight: 500;
-            min-height: 20px;
-        }
-
+        .msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
         .error { color: var(--danger); }
         .success { color: #34c759; }
 
@@ -150,83 +167,176 @@
 </head>
 <body>
 
-    <div class="card" id="loginCard">
-        <img id="avatar" class="avatar-preview" src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logotipo ou Avatar">
+    <header>
+        <a href="index.html" class="brand-link" title="Voltar ao site principal">
+            <img src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+            <div class="logo-text">Força Aliada</div>
+        </a>
         
-        <h1>Entrar</h1>
-        <p class="subtitle">Acesse sua conta do painel administrativo.</p>
-        
-        <div class="form-group">
-            <input id="login" type="text" placeholder="Usuário ou e-mail" autocomplete="username">
-        </div>
-        
-        <div class="form-group">
-            <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
-        </div>
-        
-        <button id="btn-login" onclick="doLogin()">Iniciar Sessão</button>
-        
-        <div id="msg" class="msg"></div>
+        <div id="auth-header-container">
+            </div>
+    </header>
 
-        <div class="footer-text">
-            Não possui acesso? <a href="signup.html">Criar conta</a>
+    <div class="login-wrapper">
+        <div class="card" id="loginCard">
+            <div id="card-content"></div>
         </div>
     </div>
 
 <script>
-    // Banco de dados predefinido (Mantido do seu código original)
+    // 1. INICIALIZAÇÃO DE DADOS
     const predefined = [
         {username:'admin', email:'', minecraft:'admin', password:'NovaAlianca+', role:'limited', photo:'logo.JPG'},
         {username:'gabalarca', email:'gabalarcadsmoreira2016@gmail.com', minecraft:'gabalarca', password:'Famosos1290+', role:'full', photo:''}
     ];
     
-    // Inicialização do LocalStorage
     let db = JSON.parse(localStorage.getItem('fa_users'));
     if (!db) {
         localStorage.setItem('fa_users', JSON.stringify(predefined));
         db = predefined;
     }
 
-    const els = {
-        login: document.getElementById('login'),
-        pass: document.getElementById('pass'),
-        msg: document.getElementById('msg'),
-        avatar: document.getElementById('avatar'),
-        card: document.getElementById('loginCard'),
-        btn: document.getElementById('btn-login')
-    };
+    let session = JSON.parse(localStorage.getItem('fa_session'));
 
-    // Microinteração: Tenta carregar o rosto do Minecraft se o login não for um e-mail
-    let typingTimer;
-    els.login.addEventListener('input', () => {
-        clearTimeout(typingTimer);
-        const val = els.login.value.trim();
+    // 2. LÓGICA DE RENDERIZAÇÃO DA INTERFACE (MÁGICA DO "CONTINUAR COMO")
+    function renderUI() {
+        const headerContainer = document.getElementById('auth-header-container');
+        const cardContent = document.getElementById('card-content');
         
-        if (val.length > 2 && !val.includes('@')) {
-            typingTimer = setTimeout(() => {
-                els.avatar.src = `https://minotar.net/helm/${val}/100.png`;
-                els.avatar.onerror = () => { els.avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
-            }, 400);
-        } else if (val.length === 0) {
-            els.avatar.src = 'logo.JPG'; // Volta para o logo se estiver vazio
-            els.avatar.onerror = () => { els.avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+        if (session) {
+            // --- ESTADO: JÁ LOGADO ---
+            const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'logo.JPG';
+            
+            // Atualiza Header
+            headerContainer.innerHTML = `
+                <div class="user-menu-wrapper">
+                    <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                        <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+                        <span>${session.username}</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="user-dropdown" id="user-dropdown-menu">
+                        <button onclick="location.href='dashboard.html'">Acessar Dashboard</button>
+                        <button class="danger" onclick="forceLogout()">Sair da Conta</button>
+                    </div>
+                </div>
+            `;
+
+            // Atualiza Card de Login para o modo "Bem-vindo de volta"
+            cardContent.innerHTML = `
+                <img id="avatar" class="avatar-preview" src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'">
+                <h1>${session.username}</h1>
+                <p class="subtitle">Você já está conectado.</p>
+                
+                <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+                
+                <div class="footer-text">
+                    <a onclick="forceLogout()" style="color: var(--danger);">Entrar com outra conta</a>
+                </div>
+            `;
+            
+        } else {
+            // --- ESTADO: NÃO LOGADO ---
+            // Atualiza Header
+            headerContainer.innerHTML = `<a href="signup.html" class="nav-cta">Criar conta</a>`;
+
+            // Atualiza Card de Login para o formulário padrão
+            cardContent.innerHTML = `
+                <img id="avatar" class="avatar-preview" src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logotipo">
+                
+                <h1>Entrar</h1>
+                <p class="subtitle">Acesse sua conta do painel administrativo.</p>
+                
+                <div class="form-group">
+                    <input id="login" type="text" placeholder="Usuário ou e-mail" autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
+                </div>
+                
+                <button id="btn-login" class="main-btn" onclick="doLogin()">Iniciar Sessão</button>
+                
+                <div id="msg" class="msg"></div>
+
+                <div class="footer-text">
+                    Não possui acesso? <a href="signup.html">Criar conta</a>
+                </div>
+            `;
+
+            // Re-anexa os eventos após criar o HTML
+            attachLoginEvents();
+        }
+    }
+
+    // 3. FUNÇÕES DO DROPDOWN DO HEADER
+    function toggleUserDropdown(event) {
+        event.stopPropagation();
+        const btn = document.getElementById('user-btn-toggle');
+        const menu = document.getElementById('user-dropdown-menu');
+        btn.classList.toggle('active');
+        menu.classList.toggle('show');
+    }
+
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('user-dropdown-menu');
+        const btn = document.getElementById('user-btn-toggle');
+        if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.remove('show');
+            btn.classList.remove('active');
         }
     });
 
+    // 4. LÓGICA DE LOGIN E EVENTOS
+    function attachLoginEvents() {
+        const loginInput = document.getElementById('login');
+        const passInput = document.getElementById('pass');
+        const avatar = document.getElementById('avatar');
+
+        // Microinteração da Foto do Minecraft
+        let typingTimer;
+        loginInput.addEventListener('input', () => {
+            clearTimeout(typingTimer);
+            const val = loginInput.value.trim();
+            
+            if (val.length > 2 && !val.includes('@')) {
+                typingTimer = setTimeout(() => {
+                    avatar.src = `https://minotar.net/helm/${val}/100.png`;
+                    avatar.onerror = () => { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+                }, 400);
+            } else if (val.length === 0) {
+                avatar.src = 'logo.JPG';
+                avatar.onerror = () => { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+            }
+        });
+
+        // Evento de Enter
+        passInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+    }
+
     function showMessage(text, type) {
-        els.msg.textContent = text;
-        els.msg.className = `msg ${type}`;
+        const msgEl = document.getElementById('msg');
+        const card = document.getElementById('loginCard');
+        
+        msgEl.textContent = text;
+        msgEl.className = `msg ${type}`;
         
         if (type === 'error') {
-            els.card.classList.remove('shake-animation');
-            void els.card.offsetWidth; // Trigger reflow
-            els.card.classList.add('shake-animation');
+            card.classList.remove('shake-animation');
+            void card.offsetWidth; // Trigger reflow
+            card.classList.add('shake-animation');
         }
     }
 
     function doLogin() {
-        const l = els.login.value.trim().toLowerCase();
-        const p = els.pass.value;
+        const loginInput = document.getElementById('login');
+        const passInput = document.getElementById('pass');
+        const btn = document.getElementById('btn-login');
+
+        const l = loginInput.value.trim().toLowerCase();
+        const p = passInput.value;
 
         if (!l || !p) {
             return showMessage('Preencha todos os campos.', 'error');
@@ -235,24 +345,32 @@
         const user = db.find(u => (u.username.toLowerCase() === l || u.email.toLowerCase() === l) && u.password === p);
 
         if (user) {
-            showMessage('Autenticado com sucesso. Redirecionando...', 'success');
-            els.btn.textContent = 'Carregando...';
-            els.btn.style.opacity = '0.7';
+            showMessage('Autenticado com sucesso. Entrando...', 'success');
+            btn.textContent = 'Carregando...';
+            btn.style.opacity = '0.7';
             
-            // Atualizamos os dados na sessão
             localStorage.setItem('fa_session', JSON.stringify(user));
-            setTimeout(() => location.href = 'dashboard.html', 800);
+            session = user; // Atualiza a variável global
+            
+            setTimeout(() => {
+                location.href = 'dashboard.html'; // Tenta redirecionar primeiro
+                renderUI(); // Caso o redirect falhe/atrase, atualiza a UI pro modo "Logado"
+            }, 600);
         } else {
             showMessage('Usuário ou senha incorretos.', 'error');
-            els.pass.value = ''; // Limpa a senha para tentar de novo
-            els.pass.focus();
+            passInput.value = ''; 
+            passInput.focus();
         }
     }
 
-    // Permite login pressionando Enter
-    els.pass.addEventListener('keydown', e => {
-        if (e.key === 'Enter') doLogin();
-    });
+    function forceLogout() {
+        localStorage.removeItem('fa_session');
+        session = null;
+        renderUI(); // Recarrega a tela pro formulário de login normal
+    }
+
+    // Iniciar a página
+    renderUI();
 </script>
 </body>
 </html>
