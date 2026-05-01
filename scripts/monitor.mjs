@@ -4,8 +4,6 @@ import path from 'node:path';
 const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
 const OUTPUT = path.resolve('data/player-history.json');
 const NOW = new Date();
-const INGEST_URL = process.env.INGEST_URL || '';
-const INGEST_SECRET = process.env.INGEST_SECRET || '';
 
 async function readJsonSafe(file, fallback) {
   try {
@@ -40,11 +38,6 @@ function normalizePlayers(data) {
   })).filter((p) => p.id);
 }
 
-function getOnlineCount(data, playersNow) {
-  if (typeof data?.players?.online === 'number') return data.players.online;
-  return playersNow.length;
-}
-
 async function main() {
   const store = await readJsonSafe(OUTPUT, {
     generatedAt: null,
@@ -57,7 +50,6 @@ async function main() {
 
   const status = await fetchStatus();
   const playersNow = normalizePlayers(status);
-  const onlineCount = getOnlineCount(status, playersNow);
   const nowIso = NOW.toISOString();
   const dateKey = currentDateKey(NOW);
   const existing = store.activeSessions || {};
@@ -89,7 +81,6 @@ async function main() {
 
   store.activeSessions = existing;
   store.onlinePlayers = playersNow.map((p) => p.name);
-  store.onlineCount = onlineCount;
 
   const joinedToday = store.history.filter((h) => h.enteredAt?.startsWith(dateKey)).length;
   const leftToday = store.history.filter((h) => h.leftAt?.startsWith(dateKey)).length;
@@ -102,14 +93,6 @@ async function main() {
 
   await fs.mkdir(path.dirname(OUTPUT), { recursive: true });
   await fs.writeFile(OUTPUT, JSON.stringify(store, null, 2) + '\n', 'utf8');
-
-  if (INGEST_URL && INGEST_SECRET) {
-    await fetch(INGEST_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: INGEST_SECRET, payload: store })
-    });
-  }
 }
 
 main().catch((err) => {

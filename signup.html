@@ -1,4 +1,293 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Criar conta</title>
-<style>body{margin:0;font-family:-apple-system;background:#f7f8fa;min-height:100vh}.header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:10px;font-weight:700}.brand img{width:30px;height:30px;border-radius:8px}.center{display:grid;place-items:center;min-height:calc(100vh - 52px)}.card{width:min(460px,92vw);background:#fff;border:1px solid #e5e7eb;border-radius:24px;padding:26px;box-shadow:0 20px 40px rgba(0,0,0,.06)}input{width:100%;padding:12px;border-radius:12px;border:1px solid #d1d5db;margin-top:10px}button{width:100%;padding:12px;border:none;border-radius:999px;margin-top:12px;background:#0f172a;color:#fff}.ghost{background:#e2e8f0;color:#0f172a}</style></head>
-<body><div class="header"><div class="brand"><img src="logo.JPG" alt=""><span>Força Aliada</span></div><a href="index.html">Início</a></div><div class="center"><div class="card"><h2>Criar conta</h2><input id="u" placeholder="Usuário"><input id="e" placeholder="E-mail"><input id="m" placeholder="Nome no Minecraft"><input id="p" type="password" placeholder="Senha"><button onclick="signup()">Criar conta</button><button class="ghost" onclick="location.href='login.html'">Fazer login</button><p id="msg"></p></div></div>
-<script>async function signup(){const users=JSON.parse(localStorage.getItem('fa_users')||'[]');const user={username:u.value.trim(),email:e.value.trim(),minecraft:m.value.trim(),password:p.value,role:'limited',photo:'logo.JPG'};if(!user.username||!user.email||!user.password)return msg.innerText='Preencha os campos obrigatórios.';if(users.some(x=>x.username===user.username||x.email===user.email))return msg.innerText='Usuário/e-mail já existe.';users.push(user);localStorage.setItem('fa_users',JSON.stringify(users));try{await fetch('http://localhost:8787/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user.username,email:user.email,password:user.password,minecraftName:user.minecraft})});}catch{}msg.innerText='Conta criada. Redirecionando...';setTimeout(()=>location.href='login.html',700);}</script></body></html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Conta | Força Aliada</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --danger: #ff3b30;
+            --border: #d2d2d7;
+            --radius-lg: 24px;
+            --radius-md: 12px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            padding: 20px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Área do Avatar Dinâmico */
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: #e5e5ea;
+            margin: 0 auto 20px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: scale(0.9);
+            opacity: 0.5;
+        }
+
+        .avatar-preview.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .card h2 {
+            margin: 0 0 8px;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .card p.subtitle {
+            margin: 0 0 30px;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            margin-left: 4px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 15px;
+            transition: all 0.2s ease;
+            outline: none;
+            color: var(--text-primary);
+        }
+
+        input::placeholder {
+            color: #a1a1a6;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+            background: #fff;
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 980px; /* Padrão pílula Apple */
+            margin-top: 24px;
+            background: var(--text-primary);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: #000;
+            transform: scale(1.02);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .footer-text {
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .footer-text a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        #msg {
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            min-height: 20px;
+        }
+
+        .error { color: var(--danger); }
+        .success { color: #34c759; }
+
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <img id="avatar" class="avatar-preview" src="https://minotar.net/helm/Steve/100.png" alt="Avatar Preview">
+        
+        <h2>Criar sua conta</h2>
+        <p class="subtitle">Acesso ao painel da Staff Força Aliada</p>
+
+        <div class="form-group">
+            <input id="u" type="text" placeholder="Nome de usuário" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <input id="e" type="email" placeholder="E-mail de contato" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <input id="m" type="text" placeholder="Nome exato no Minecraft" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <input id="p" type="password" placeholder="Crie uma senha segura">
+        </div>
+
+        <button id="submitBtn" onclick="signup()">Continuar</button>
+
+        <p id="msg"></p>
+
+        <div class="footer-text">
+            Já faz parte da equipe? <a href="login.html">Faça login aqui</a>
+        </div>
+    </div>
+
+<script>
+    const els = {
+        u: document.getElementById('u'),
+        e: document.getElementById('e'),
+        m: document.getElementById('m'),
+        p: document.getElementById('p'),
+        msg: document.getElementById('msg'),
+        avatar: document.getElementById('avatar'),
+        btn: document.getElementById('submitBtn')
+    };
+
+    // Microinteração: Atualiza a imagem do Minecraft em tempo real
+    let typingTimer;
+    els.m.addEventListener('input', () => {
+        clearTimeout(typingTimer);
+        const nick = els.m.value.trim();
+        
+        if (nick.length > 2) {
+            els.avatar.classList.remove('active');
+            typingTimer = setTimeout(() => {
+                els.avatar.src = `https://minotar.net/helm/${nick}/100.png`;
+                els.avatar.onload = () => els.avatar.classList.add('active');
+                els.avatar.onerror = () => {
+                    els.avatar.src = 'https://minotar.net/helm/Steve/100.png';
+                    els.avatar.classList.add('active');
+                };
+            }, 500); // Aguarda meio segundo após parar de digitar para chamar a API
+        } else {
+            els.avatar.src = 'https://minotar.net/helm/Steve/100.png';
+            els.avatar.classList.remove('active');
+        }
+    });
+
+    function showMessage(text, type) {
+        els.msg.textContent = text;
+        els.msg.className = type;
+        
+        // Efeito de "shake" se for erro
+        if(type === 'error') {
+            els.btn.style.transform = 'translateX(-5px)';
+            setTimeout(() => els.btn.style.transform = 'translateX(5px)', 100);
+            setTimeout(() => els.btn.style.transform = 'translateX(0)', 200);
+        }
+    }
+
+    function signup() {
+        const users = JSON.parse(localStorage.getItem('fa_users') || '[]');
+        
+        const user = {
+            username: els.u.value.trim(),
+            email: els.e.value.trim(),
+            minecraft: els.m.value.trim(),
+            password: els.p.value,
+            role: 'limited', // Padrão
+            photo: '' // Deixamos vazio para usar a API do Minotar no painel
+        };
+
+        // Validação básica
+        if (!user.username || !user.email || !user.password) {
+            return showMessage('Por favor, preencha os campos obrigatórios.', 'error');
+        }
+
+        // Validação de formato de email simples
+        if (!user.email.includes('@')) {
+            return showMessage('Insira um endereço de e-mail válido.', 'error');
+        }
+
+        // Verificação de duplicidade
+        if (users.some(x => x.username.toLowerCase() === user.username.toLowerCase() || x.email.toLowerCase() === user.email.toLowerCase())) {
+            return showMessage('Este usuário ou e-mail já está em uso.', 'error');
+        }
+
+        // Sucesso
+        users.push(user);
+        localStorage.setItem('fa_users', JSON.stringify(users));
+        
+        // Estado de carregamento no botão
+        els.btn.textContent = 'Criando conta...';
+        els.btn.style.opacity = '0.7';
+        els.btn.disabled = true;
+        
+        showMessage('Conta criada com sucesso. Redirecionando...', 'success');
+        
+        setTimeout(() => location.href = 'login.html', 1500);
+    }
+
+    // Permite enviar apertando "Enter" no campo de senha
+    els.p.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') signup();
+    });
+</script>
+</body>
+</html>
