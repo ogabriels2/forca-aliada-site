@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Staff | Força Aliada</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #f5f5f7;
@@ -32,7 +33,7 @@
 
         a { text-decoration: none; color: inherit; }
 
-        /* --- HEADER (PADRÃO APPLE) --- */
+        /* --- HEADER --- */
         header {
             position: sticky; top: 0; width: 100%; padding: 12px 5%;
             display: flex; justify-content: space-between; align-items: center;
@@ -40,39 +41,33 @@
             backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
             z-index: 1000; border-bottom: 1px solid var(--border);
         }
-        
         .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
         .brand-link:hover { opacity: 0.8; }
         .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
 
-        /* --- DROPDOWN DO USUÁRIO LOGADO --- */
+        /* --- DROPDOWN DO USUÁRIO --- */
         .user-menu-wrapper { position: relative; display: inline-block; }
-        
         .user-btn {
             display: flex; align-items: center; gap: 8px; cursor: pointer;
             background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
-            transition: all 0.2s ease; border: 1px solid transparent;
-            user-select: none;
+            transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
         }
         .user-btn:hover { background: rgba(0,0,0,0.08); }
         .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        
         .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #e5e5ea; }
         .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-        
         .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
         .user-btn.active svg { transform: rotate(180deg); }
 
         .user-dropdown {
             position: absolute; right: 0; top: calc(100% + 12px);
-            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px);
             border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
             padding: 8px; display: flex; flex-direction: column; min-width: 200px;
             opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
         }
         .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
-        
         .user-dropdown button {
             text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
             font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
@@ -82,90 +77,108 @@
         .user-dropdown .danger { color: var(--danger); }
         .user-dropdown .danger:hover { background: rgba(255, 59, 48, 0.1); }
 
-        /* --- LAYOUT GRID PRINCIPAL --- */
+        /* --- LAYOUT GRID --- */
         .container {
-            max-width: 1100px;
-            margin: 40px auto;
-            padding: 0 20px;
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 24px;
-            align-items: start;
+            max-width: 1200px; margin: 40px auto; padding: 0 20px;
+            display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;
         }
 
         .btn-primary { padding: 12px 16px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s ease; }
         .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
 
-        /* Cartões (Cards) */
         .card {
-            background: var(--card-bg);
-            border-radius: var(--radius-lg);
-            padding: 28px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
-            border: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+            background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04); border: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 16px;
         }
-
-        .card h3 {
-            margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.5px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        .card h3 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.5px; display: flex; justify-content: space-between; align-items: center; }
         .card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
 
-        /* Seção Perfil */
         .profile-header { display: flex; align-items: center; gap: 16px; }
         .profile-img { width: 64px; height: 64px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border); background: #e5e5ea; }
         .profile-info h2 { margin: 0; font-size: 18px; font-weight: 600; }
         .profile-info p { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
 
-        .pill {
-            display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px;
-            font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
-        }
+        .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
         .pill.full { background: #e3f2fd; color: var(--accent); }
         .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
+        .pill.success { background: #e8f8f0; color: var(--success); }
+        .pill.danger { background: #ffebe9; color: var(--danger); }
 
-        /* Formulários */
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
         .input-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; }
-        input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1); }
+        input, select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; font-family: inherit; }
+        input:focus, select:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1); }
 
-        /* Grid Interno do Dashboard */
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
         .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
         .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
         .mini-card .value { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -1px; }
 
-        /* Listas (Online e Histórico) */
+        /* Listas */
         ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-        .list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid transparent; transition: border 0.2s; }
-        .list-item:hover { border-color: var(--border); background: #fff; }
+        .list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
+        .list-item:hover { border-color: var(--border); background: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .mc-head { width: 40px; height: 40px; border-radius: 8px; background: #e5e5ea; }
         .item-details { flex: 1; }
         .item-details strong { display: block; font-size: 14px; margin-bottom: 2px; }
         .item-details span { font-size: 13px; color: var(--text-secondary); }
-
         .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; }
         .status-dot.offline { background: var(--danger); }
-        .msg-alert { font-size: 13px; color: var(--success); margin-top: 8px; font-weight: 500; }
+
+        /* Filtros e Gráficos */
+        .filter-bar { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .chart-container { width: 100%; height: 200px; margin-bottom: 20px; }
+
+        /* --- MODAL DO JOGADOR --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 2000; display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: var(--transicao); padding: 20px;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        
+        .modal-content {
+            background: var(--card-bg); width: 100%; max-width: 700px; max-height: 90vh;
+            border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; overflow: hidden;
+            transform: scale(0.95); transition: var(--transicao);
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        .modal-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: #fafafa; }
+        .modal-user-info { display: flex; align-items: center; gap: 16px; }
+        .modal-user-info img { width: 80px; height: 80px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .modal-user-info h2 { margin: 0 0 8px; font-size: 24px; letter-spacing: -0.5px; }
+        .close-modal { background: rgba(0,0,0,0.05); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .close-modal:hover { background: rgba(0,0,0,0.1); }
+
+        .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-box { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center; }
+        .stat-box span { display: block; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+        .stat-box strong { font-size: 20px; color: var(--text-primary); }
+
+        .history-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .history-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; }
+        .history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .history-table tr:hover td { background: rgba(0,0,0,0.02); }
 
         @media (max-width: 860px) {
             .container { grid-template-columns: 1fr; margin-top: 20px; }
-            .dashboard-grid { grid-template-columns: 1fr 1fr; }
+            .filter-bar { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <a href="index.html" class="brand-link" title="Ir para a página principal">
+        <a href="index.html" class="brand-link">
             <img src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
             <div class="logo-text">Força Aliada</div>
         </a>
-        
         <div id="auth-header-container"></div>
     </header>
 
@@ -180,104 +193,133 @@
             </div>
             
             <hr style="border:none; border-top: 1px solid var(--border); margin: 8px 0;">
-
             <div class="input-group">
                 <label>Email de Contato</label>
                 <p style="margin:0; font-size: 14px;" id="email">-</p>
             </div>
-            
             <div class="input-group">
-                <label>Conta Minecraft vinculada</label>
+                <label>Conta Minecraft</label>
                 <p style="margin:0; font-size: 14px; font-weight: 600;" id="mc">-</p>
             </div>
-
             <hr style="border:none; border-top: 1px solid var(--border); margin: 8px 0;">
 
             <h3>Segurança</h3>
             <div class="input-group">
-                <input id="newpass" type="password" placeholder="Digite uma nova senha">
+                <input id="newpass" type="password" placeholder="Nova senha">
             </div>
-            <button class="btn-primary" onclick="changePass()" style="width: 100%; margin-top: 8px;">Atualizar Credenciais</button>
-            <div id="profile-msg" class="msg-alert"></div>
+            <button class="btn-primary" onclick="changePass()" style="width: 100%; margin-top: 8px;">Atualizar</button>
+            <div id="profile-msg" style="font-size: 13px; margin-top: 8px;"></div>
         </div>
 
-        <div class="card">
-            <h3>Visão Geral <span>Atualizado: <b id="meta">agora</b></span></h3>
+        <div class="card" style="grid-column: span 1;">
+            <h3>Métricas do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
             
             <div class="dashboard-grid">
                 <div class="mini-card">
-                    <h4>Status do Servidor</h4>
+                    <h4>Status Geral</h4>
                     <div class="value" style="display: flex; align-items: center; gap: 8px;">
-                        <span class="status-dot" id="server-dot"></span> <span id="server-status">Carregando...</span>
+                        <span class="status-dot" id="server-dot"></span> <span id="server-status">Buscando...</span>
                     </div>
                 </div>
                 <div class="mini-card">
-                    <h4>Jogadores Ativos</h4>
+                    <h4>Jogadores Online</h4>
                     <div class="value" id="online-count">- / -</div>
-                </div>
-                <div class="mini-card">
-                    <h4>IP do Servidor</h4>
-                    <div class="value" id="server-ip" style="font-size: 16px; word-break: break-all;">-</div>
-                </div>
-                <div class="mini-card">
-                    <h4>Versão</h4>
-                    <div class="value" id="server-version" style="font-size: 16px;">-</div>
                 </div>
             </div>
 
-            <h3 style="margin-top: 16px;">Online Agora</h3>
-            <ul id="online">
-                <li class="list-item"><div class="item-details"><span>Carregando jogadores...</span></div></li>
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+
+            <h3 style="margin-top: 16px; margin-bottom: 12px;">Auditoria de Jogadores</h3>
+            
+            <div class="filter-bar">
+                <input type="text" id="search-player" placeholder="Buscar por jogador..." oninput="applyFilters()">
+                <input type="date" id="search-date" onchange="applyFilters()">
+            </div>
+
+            <h4 style="margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); text-transform: uppercase;">Conectados Agora</h4>
+            <ul id="online" style="margin-bottom: 24px;">
+                <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
             </ul>
 
-            <h3 style="margin-top: 16px;">Registro de Atividades</h3>
+            <h4 style="margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); text-transform: uppercase;">Histórico Recente</h4>
             <ul id="history">
-                <li class="list-item">
-                    <div class="item-details">
-                        <span>Carregando histórico...</span>
-                    </div>
-                </li>
+                <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
             </ul>
         </div>
     </div>
 
+    <div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-user-info">
+                    <img id="modal-img" src="" alt="Skin">
+                    <div>
+                        <h2 id="modal-name">Nome do Jogador</h2>
+                        <span id="modal-status" class="pill">Status</span>
+                    </div>
+                </div>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span>Tempo Total Logado</span>
+                        <strong id="modal-total-time">0h</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Total de Sessões</span>
+                        <strong id="modal-sessions">0</strong>
+                    </div>
+                    <div class="stat-box">
+                        <span>Média por Sessão</span>
+                        <strong id="modal-avg-time">0h</strong>
+                    </div>
+                </div>
+
+                <h3 style="margin: 0 0 16px; font-size: 16px;">Registro Detalhado de Sessões</h3>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Entrada</th>
+                            <th>Saída</th>
+                            <th>Duração</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 <script>
-    // ==========================================
-    // CONFIGURAÇÃO DO SERVIDOR
-    // ==========================================
     const SERVER_IP = 'fa.ogabriels.com'; 
-    // ==========================================
+    let globalHistData = null;
+    let globalApiData = null;
+    let activityChartInstance = null;
 
-    // 1. VERIFICAÇÃO E GESTÃO DE SESSÃO
+    // --- SESSÃO E CABEÇALHO ---
     let session = JSON.parse(localStorage.getItem('fa_session')); 
-    
     if(!session) {
-        session = { 
-            username: "Administrador", 
-            email: "admin@forcaaliada.com", 
-            minecraft: "Notch", 
-            role: "full", 
-            photo: "" 
-        };
+        session = { username: "Administrador", email: "admin@forcaaliada.com", minecraft: "Notch", role: "full" };
     }
+    const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'https://minotar.net/helm/Steve/100.png';
 
-    const skinUrl = session.minecraft && session.minecraft.length > 2 
-                    ? `https://minotar.net/helm/${session.minecraft}/100.png` 
-                    : 'https://minotar.net/helm/Steve/100.png';
-
-    // 2. RENDERIZAR CABEÇALHO DINÂMICO
     function renderHeader() {
-        const headerContainer = document.getElementById('auth-header-container');
-        headerContainer.innerHTML = `
+        document.getElementById('auth-header-container').innerHTML = `
             <div class="user-menu-wrapper">
                 <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
-                    <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar do Usuário">
+                    <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'">
                     <span>${session.username}</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
                 <div class="user-dropdown" id="user-dropdown-menu">
-                    <button onclick="location.href='index.html'">Acessar Site Principal</button>
-                    <button class="danger" onclick="logout()">Sair da Conta</button>
+                    <button onclick="location.href='index.html'">Acessar Site</button>
+                    <button class="danger" onclick="logout()">Sair</button>
                 </div>
             </div>
         `;
@@ -285,200 +327,258 @@
 
     function toggleUserDropdown(event) {
         event.stopPropagation();
-        const btn = document.getElementById('user-btn-toggle');
-        const menu = document.getElementById('user-dropdown-menu');
-        btn.classList.toggle('active');
-        menu.classList.toggle('show');
+        document.getElementById('user-btn-toggle').classList.toggle('active');
+        document.getElementById('user-dropdown-menu').classList.toggle('show');
     }
 
     document.addEventListener('click', (e) => {
         const menu = document.getElementById('user-dropdown-menu');
-        const btn = document.getElementById('user-btn-toggle');
-        if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+        if (menu && !menu.contains(e.target)) {
             menu.classList.remove('show');
-            btn.classList.remove('active');
+            document.getElementById('user-btn-toggle')?.classList.remove('active');
         }
     });
 
-    // 3. PREENCHIMENTO DOS DADOS
-    const els = {
-        name: document.getElementById('name'),
-        email: document.getElementById('email'),
-        mc: document.getElementById('mc'),
-        role: document.getElementById('role'),
-        photo: document.getElementById('photo'),
-        online: document.getElementById('online'),
-        history: document.getElementById('history'),
-        meta: document.getElementById('meta'),
-        onlineCount: document.getElementById('online-count'),
-        serverIp: document.getElementById('server-ip'),
-        serverVer: document.getElementById('server-version'),
-        serverStatus: document.getElementById('server-status'),
-        serverDot: document.getElementById('server-dot')
-    };
-
-    els.name.textContent = session.username; 
-    els.email.textContent = session.email || 'Não informado'; 
-    els.mc.textContent = session.minecraft || 'Não vinculado'; 
-    els.photo.src = skinUrl;
+    // --- SETUP DO PERFIL STAFF ---
+    document.getElementById('name').textContent = session.username; 
+    document.getElementById('email').textContent = session.email || '-'; 
+    document.getElementById('mc').textContent = session.minecraft || '-'; 
+    document.getElementById('photo').src = skinUrl;
     
-    if(session.role === 'full') {
-        els.role.textContent = 'Acesso Total';
-        els.role.className = 'pill full';
-    } else {
-        els.role.textContent = 'Acesso Restrito';
-        els.role.className = 'pill limited';
-    }
+    const roleEl = document.getElementById('role');
+    if(session.role === 'full') { roleEl.textContent = 'Acesso Total'; roleEl.className = 'pill full'; } 
+    else { roleEl.textContent = 'Acesso Restrito'; roleEl.className = 'pill limited'; }
 
-    // 4. CARREGAMENTO DUPLO: API EM TEMPO REAL + HISTÓRICO GERADO (JSON)
+    // --- CARREGAMENTO DE DADOS (API + JSON) ---
     async function loadData() {
-        els.meta.textContent = new Date().toLocaleTimeString('pt-BR');
-        els.serverIp.textContent = SERVER_IP;
-
+        document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
         try {
-            // Requisição 1: API Externa para ver se o servidor está online e capacidade total
-            const apiReq = fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null);
-            
-            // Requisição 2: Arquivo local de histórico gerado pelo GitHub Actions / Backend
-            const histReq = fetch('data/player-history.json?t=' + Date.now()).then(r => r.json()).catch(() => null);
-
-            // Aguarda os dois carregarem juntos
-            const [apiData, histData] = await Promise.all([apiReq, histReq]);
-            
-            renderData(apiData, histData);
-        } catch(e) {
-            console.error("Erro na atualização dos dados: ", e);
-            els.serverStatus.textContent = "Falha de Conexão";
-            els.serverDot.className = "status-dot offline";
-        }
+            const [apiData, histData] = await Promise.all([
+                fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
+                fetch('data/player-history.json?t=' + Date.now()).then(r => r.json()).catch(() => null)
+            ]);
+            globalApiData = apiData;
+            globalHistData = histData;
+            renderDashboard();
+            renderChart();
+        } catch(e) { console.error("Erro", e); }
     }
 
-    function renderData(apiData, histData) {
-        // --- 4.1 VISÃO GERAL (Cards Superiores) ---
-        if (apiData && apiData.online) {
-            els.serverStatus.textContent = "Online";
-            els.serverDot.className = "status-dot";
-            els.serverVer.textContent = apiData.version || "Desconhecida";
-            
-            const playersOnline = apiData.players ? apiData.players.online : 0;
-            const playersMax = apiData.players ? apiData.players.max : 0;
-            els.onlineCount.textContent = `${playersOnline} / ${playersMax}`;
+    // --- RENDERIZAÇÃO PRINCIPAL & FILTROS ---
+    function renderDashboard() {
+        // Status Superior
+        if (globalApiData && globalApiData.online) {
+            document.getElementById('server-status').textContent = "Online";
+            document.getElementById('server-dot').className = "status-dot";
+            document.getElementById('online-count').textContent = `${globalApiData.players?.online || 0} / ${globalApiData.players?.max || 0}`;
         } else {
-            els.serverStatus.textContent = "Offline";
-            els.serverDot.className = "status-dot offline";
-            els.serverVer.textContent = "-";
-            els.onlineCount.textContent = "0 / 0";
+            document.getElementById('server-status').textContent = "Offline";
+            document.getElementById('server-dot').className = "status-dot offline";
+            document.getElementById('online-count').textContent = "0 / 0";
         }
+        applyFilters(); // Aplica filtros e renderiza listas
+    }
 
-        // --- 4.2 JOGADORES ONLINE & TEMPO LOGADO ---
-        // Puxamos quem está online na API, e enriquecemos com o 'enteredAt' do histData
-        let livePlayers = [];
-        if (apiData && apiData.players && apiData.players.list) {
-            livePlayers = apiData.players.list.map(p => typeof p === 'string' ? p : p.name);
-        } else if (histData && histData.onlinePlayers) {
-            livePlayers = histData.onlinePlayers; // Fallback se a API ocultar nomes
-        }
+    function applyFilters() {
+        const nameFilter = document.getElementById('search-player').value.toLowerCase().trim();
+        const dateFilter = document.getElementById('search-date').value; // Formato YYYY-MM-DD
+        
+        let livePlayers = globalApiData?.players?.list?.map(p => typeof p === 'string' ? p : p.name) || globalHistData?.onlinePlayers || [];
+        const activeSessions = globalHistData?.activeSessions || {};
+        const historyList = globalHistData?.history || [];
 
-        const activeSessions = histData ? (histData.activeSessions || {}) : {};
-
-        if (livePlayers.length > 0) {
-            els.online.innerHTML = livePlayers.map(pName => {
-                let timeInfo = 'Conectado agora pouco';
-                
-                // Busca a sessão ativa desse jogador para calcular o tempo
-                const sessionKey = Object.keys(activeSessions).find(k => activeSessions[k].name === pName);
-                if (sessionKey) {
-                    const session = activeSessions[sessionKey];
-                    const enterDate = new Date(session.enteredAt);
-                    const enterTimeStr = enterDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    
-                    // Lógica para calcular horas e minutos online
-                    const diffMs = new Date() - enterDate;
-                    const diffMins = Math.floor(diffMs / 60000);
-                    const hours = Math.floor(diffMins / 60);
-                    const mins = diffMins % 60;
-                    
-                    let durStr = '';
-                    if (hours > 0) durStr += `${hours}h e `;
-                    durStr += `${mins}m`;
-
-                    timeInfo = `Entrou às ${enterTimeStr} (Online há ${durStr})`;
+        // Filtra e renderiza Online
+        const filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
+        const onlineUl = document.getElementById('online');
+        
+        if (filteredLive.length > 0) {
+            onlineUl.innerHTML = filteredLive.map(pName => {
+                let timeInfo = 'Conectado agora';
+                const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === pName);
+                if (sKey) {
+                    const enterDate = new Date(activeSessions[sKey].enteredAt);
+                    const diffMins = Math.floor((new Date() - enterDate) / 60000);
+                    timeInfo = `Entrou às ${enterDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} (${Math.floor(diffMins/60)}h ${diffMins%60}m)`;
                 }
-
                 return `
-                <li class="list-item">
-                    <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" alt="${pName}">
+                <li class="list-item" onclick="openPlayerProfile('${pName}')" title="Ver perfil de ${pName}">
+                    <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head">
                     <div class="item-details">
-                        <strong>${pName}</strong>
-                        <span>${timeInfo}</span>
+                        <strong>${pName}</strong><span>${timeInfo}</span>
                     </div>
                     <span class="status-dot"></span>
-                </li>
-                `;
+                </li>`;
             }).join('');
-        } else if (apiData && apiData.players && apiData.players.online > 0) {
-            els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Nomes ocultos pelas configurações do servidor.</span></div></li>`;
         } else {
-            els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador online no momento.</span></div></li>`;
+            onlineUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador correspondente online.</span></div></li>`;
         }
 
-        // --- 4.3 HISTÓRICO DE ATIVIDADE RECENTE ---
-        if (histData && histData.history && histData.history.length > 0) {
-            // Pega apenas as sessões encerradas (onde 'leftAt' não é nulo) e corta para não esticar a tela
-            const completedSessions = histData.history.filter(h => h.leftAt !== null).slice(0, 8);
-            
-            if (completedSessions.length > 0) {
-                els.history.innerHTML = completedSessions.map(h => {
-                    const enter = new Date(h.enteredAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    const left = new Date(h.leftAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    const duration = h.hoursOnline > 0 ? `${h.hoursOnline}h` : '< 1h';
-                    
-                    return `
-                    <li class="list-item">
-                        <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px; height:32px;">
-                        <div class="item-details">
-                            <strong>${h.player}</strong>
-                            <span style="font-size:12px;">Jogou por ${duration} (${enter} - ${left})</span>
-                        </div>
-                    </li>
-                    `;
-                }).join('');
-            } else {
-                els.history.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum registro de saída recente.</span></div></li>`;
+        // Filtra e renderiza Histórico
+        let filteredHistory = historyList.filter(h => h.leftAt !== null); // Apenas sessões finalizadas
+        if (nameFilter) filteredHistory = filteredHistory.filter(h => h.player.toLowerCase().includes(nameFilter));
+        if (dateFilter) filteredHistory = filteredHistory.filter(h => h.enteredAt.startsWith(dateFilter));
+
+        const histUl = document.getElementById('history');
+        if (filteredHistory.length > 0) {
+            histUl.innerHTML = filteredHistory.slice(0, 15).map(h => {
+                const enter = new Date(h.enteredAt).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+                const left = new Date(h.leftAt).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+                return `
+                <li class="list-item" onclick="openPlayerProfile('${h.player}')" title="Ver perfil de ${h.player}">
+                    <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
+                    <div class="item-details">
+                        <strong>${h.player}</strong>
+                        <span style="font-size:12px;">Jogou por ${h.hoursOnline || '< 0.1'}h (${enter} - ${left})</span>
+                    </div>
+                </li>`;
+            }).join('');
+        } else {
+            histUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum registro encontrado para os filtros.</span></div></li>`;
+        }
+    }
+
+    // --- GRÁFICO DE ATIVIDADE ---
+    function renderChart() {
+        if (!globalHistData || !globalHistData.history) return;
+        
+        // Agrupar sessões por data (Últimos 7 dias com dados)
+        const counts = {};
+        globalHistData.history.forEach(h => {
+            if(!h.enteredAt) return;
+            const dateStr = new Date(h.enteredAt).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+            counts[dateStr] = (counts[dateStr] || 0) + 1;
+        });
+
+        const labels = Object.keys(counts).slice(0, 7).reverse(); // Exibe máx 7 dias
+        const dataPoints = labels.map(l => counts[l]);
+
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        if (activityChartInstance) activityChartInstance.destroy();
+
+        activityChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Sessões Registradas',
+                    data: dataPoints,
+                    borderColor: '#0071e3',
+                    backgroundColor: 'rgba(0, 113, 227, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#0071e3',
+                    pointBorderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } },
+                    x: { grid: { display: false }, border: { display: false } }
+                }
             }
+        });
+    }
+
+    // --- LÓGICA DO MODAL DO JOGADOR ---
+    function openPlayerProfile(playerName) {
+        document.getElementById('modal-name').textContent = playerName;
+        document.getElementById('modal-img').src = `https://minotar.net/helm/${playerName}/100.png`;
+        
+        const activeSessions = globalHistData?.activeSessions || {};
+        const isOnline = Object.values(activeSessions).some(s => s.name === playerName);
+        
+        const statusBadge = document.getElementById('modal-status');
+        if (isOnline) {
+            statusBadge.textContent = '🟢 Online Agora';
+            statusBadge.className = 'pill success';
         } else {
-            els.history.innerHTML = `<li class="list-item"><div class="item-details"><span>Arquivo de histórico vazio ou inacessível.</span></div></li>`;
+            statusBadge.textContent = '⚪ Offline';
+            statusBadge.className = 'pill limited';
         }
+
+        // Calcula Estatísticas
+        let totalHours = 0;
+        const pHistory = (globalHistData?.history || []).filter(h => h.player === playerName);
+        
+        pHistory.forEach(h => { totalHours += (h.hoursOnline || 0); });
+        
+        // Somar tempo da sessão atual (se online)
+        if (isOnline) {
+            const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === playerName);
+            const enterDate = new Date(activeSessions[sKey].enteredAt);
+            totalHours += ((new Date() - enterDate) / 3600000); 
+        }
+
+        const totalSessions = pHistory.length + (isOnline ? 1 : 0);
+        const avgSession = totalSessions > 0 ? (totalHours / totalSessions) : 0;
+
+        document.getElementById('modal-total-time').textContent = totalHours.toFixed(1) + 'h';
+        document.getElementById('modal-sessions').textContent = totalSessions;
+        document.getElementById('modal-avg-time').textContent = avgSession.toFixed(1) + 'h';
+
+        // Preenche Tabela
+        const tbody = document.getElementById('modal-table-body');
+        if (totalSessions === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Sem dados registrados</td></tr>';
+        } else {
+            let tableHtml = '';
+            
+            // Renderiza sessão atual primeiro (se houver)
+            if (isOnline) {
+                const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === playerName);
+                const eDate = new Date(activeSessions[sKey].enteredAt);
+                tableHtml += `
+                <tr style="background: rgba(52, 199, 89, 0.05);">
+                    <td>${eDate.toLocaleDateString('pt-BR')}</td>
+                    <td>${eDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td style="color:var(--success); font-weight:600;">Ao Vivo</td>
+                    <td>-</td>
+                </tr>`;
+            }
+
+            // Renderiza histórico
+            tableHtml += pHistory.filter(h => h.leftAt !== null).map(h => {
+                const d = new Date(h.enteredAt);
+                const l = new Date(h.leftAt);
+                return `
+                <tr>
+                    <td>${d.toLocaleDateString('pt-BR')}</td>
+                    <td>${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td>${l.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td>${h.hoursOnline ? h.hoursOnline.toFixed(2) + 'h' : '< 1h'}</td>
+                </tr>`;
+            }).join('');
+            
+            tbody.innerHTML = tableHtml;
+        }
+
+        document.getElementById('player-modal').classList.add('active');
+        document.body.style.overflow = 'hidden'; // Evita scroll do fundo
     }
 
-    // 5. AÇÕES DE CONTA E SEGURANÇA
+    function closeModal() {
+        document.getElementById('player-modal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    function closeModalOutside(e) {
+        if (e.target.id === 'player-modal') closeModal();
+    }
+
+    // --- UTILITÁRIOS E SEGURANÇA ---
     function changePass() {
-        const passInput = document.getElementById('newpass');
-        if(passInput.value.trim() === '') {
-            showMsg('A senha não pode estar vazia.', 'var(--danger)');
-            return;
-        }
-
-        const users = JSON.parse(localStorage.getItem('fa_users') || '[]');
-        const idx = users.findIndex(u => u.username === session.username && u.email === session.email);
-        
-        if(idx >= 0) {
-            users[idx].password = passInput.value;
-            localStorage.setItem('fa_users', JSON.stringify(users));
-        }
-        
-        session.password = passInput.value;
+        const p = document.getElementById('newpass').value;
+        const msg = document.getElementById('profile-msg');
+        if(!p) { msg.textContent = 'Senha vazia.'; msg.style.color = 'var(--danger)'; return; }
+        session.password = p;
         localStorage.setItem('fa_session', JSON.stringify(session));
-        
-        passInput.value = '';
-        showMsg('Credenciais atualizadas com segurança.', 'var(--success)');
-    }
-
-    function showMsg(text, color) {
-        const msgEl = document.getElementById('profile-msg');
-        msgEl.style.color = color;
-        msgEl.innerText = text;
-        setTimeout(() => msgEl.innerText = '', 4000);
+        msg.textContent = 'Senha atualizada.'; msg.style.color = 'var(--success)';
+        setTimeout(() => msg.textContent = '', 3000);
     }
 
     function logout() {
@@ -486,10 +586,10 @@
         location.href = 'login.html';
     }
 
-    // Iniciar tudo
+    // Iniciar
     renderHeader();
     loadData();
-    setInterval(loadData, 30000);
+    setInterval(loadData, 30000); // Atualiza os dados a cada 30s
 </script>
 </body>
 </html>
