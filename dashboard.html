@@ -17,6 +17,7 @@
             --border: rgba(0, 0, 0, 0.08);
             --radius-lg: 20px;
             --radius-md: 12px;
+            --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
         * { box-sizing: border-box; }
@@ -29,54 +30,59 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Navbar - Estilo Glassmorphism Apple */
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 5%;
+        a { text-decoration: none; color: inherit; }
+
+        /* --- HEADER (PADRÃO APPLE) --- */
+        header {
+            position: sticky; top: 0; width: 100%; padding: 12px 5%;
+            display: flex; justify-content: space-between; align-items: center;
             background: rgba(255, 255, 255, 0.72);
-            backdrop-filter: saturate(180%) blur(20px);
-            -webkit-backdrop-filter: saturate(180%) blur(20px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid var(--border);
+            backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            z-index: 1000; border-bottom: 1px solid var(--border);
         }
+        
+        .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+        .brand-link:hover { opacity: 0.8; }
+        .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
 
-        .navbar h1 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
+        /* --- DROPDOWN DO USUÁRIO LOGADO --- */
+        .user-menu-wrapper { position: relative; display: inline-block; }
+        
+        .user-btn {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+            transition: all 0.2s ease; border: 1px solid transparent;
+            user-select: none;
         }
+        .user-btn:hover { background: rgba(0,0,0,0.08); }
+        .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #e5e5ea; }
+        .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        
+        .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+        .user-btn.active svg { transform: rotate(180deg); }
 
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 980px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        .user-dropdown {
+            position: absolute; right: 0; top: calc(100% + 12px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
+            padding: 8px; display: flex; flex-direction: column; min-width: 200px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
         }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #fff;
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        
+        .user-dropdown button {
+            text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
+            font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
+            display: block; width: 100%;
         }
+        .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        .user-dropdown .danger { color: var(--danger); }
+        .user-dropdown .danger:hover { background: rgba(255, 59, 48, 0.1); }
 
-        .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-outline:hover { background: rgba(0,0,0,0.04); }
-
-        /* Layout Grid Principal */
+        /* --- LAYOUT GRID PRINCIPAL --- */
         .container {
             max-width: 1100px;
             margin: 40px auto;
@@ -86,6 +92,9 @@
             gap: 24px;
             align-items: start;
         }
+
+        .btn-primary { padding: 12px 16px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s ease; }
+        .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
 
         /* Cartões (Cards) */
         .card {
@@ -100,158 +109,65 @@
         }
 
         .card h3 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.5px;
+            display: flex; justify-content: space-between; align-items: center;
         }
-
-        .card h3 span {
-            font-size: 12px;
-            font-weight: 400;
-            color: var(--text-secondary);
-        }
+        .card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
 
         /* Seção Perfil */
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .profile-img {
-            width: 64px;
-            height: 64px;
-            border-radius: var(--radius-md);
-            object-fit: cover;
-            border: 1px solid var(--border);
-        }
-
+        .profile-header { display: flex; align-items: center; gap: 16px; }
+        .profile-img { width: 64px; height: 64px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border); background: #e5e5ea; }
         .profile-info h2 { margin: 0; font-size: 18px; font-weight: 600; }
         .profile-info p { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
 
         .pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 10px;
-            border-radius: 980px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
+            display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px;
+            font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
         }
-
         .pill.full { background: #e3f2fd; color: var(--accent); }
         .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
 
         /* Formulários */
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 12px;
-        }
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        .input-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; }
+        input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1); }
 
-        .input-group label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            background: var(--bg-color);
-            font-size: 14px;
-            transition: all 0.2s;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: var(--accent);
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
-        }
-
-        /* Grid Interno do Dashboard (Bento Box) */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .mini-card {
-            background: var(--bg-color);
-            padding: 16px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border);
-        }
-
+        /* Grid Interno do Dashboard */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
         .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
         .mini-card .value { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -1px; }
 
         /* Listas (Online e Histórico) */
         ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-        
-        .list-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: var(--bg-color);
-            border-radius: var(--radius-md);
-            border: 1px solid transparent;
-            transition: border 0.2s;
-        }
-
+        .list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid transparent; transition: border 0.2s; }
         .list-item:hover { border-color: var(--border); background: #fff; }
-
-        .mc-head {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            background: #e5e5ea;
-        }
-
+        .mc-head { width: 40px; height: 40px; border-radius: 8px; background: #e5e5ea; }
         .item-details { flex: 1; }
         .item-details strong { display: block; font-size: 14px; margin-bottom: 2px; }
         .item-details span { font-size: 13px; color: var(--text-secondary); }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--success);
-            border-radius: 50%;
-            display: inline-block;
-        }
+        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; }
+        .msg-alert { font-size: 13px; color: var(--success); margin-top: 8px; font-weight: 500; }
 
-        .msg-alert {
-            font-size: 13px;
-            color: var(--success);
-            margin-top: 8px;
-            font-weight: 500;
-        }
-
-        /* Responsividade */
         @media (max-width: 860px) {
-            .container { grid-template-columns: 1fr; }
+            .container { grid-template-columns: 1fr; margin-top: 20px; }
             .dashboard-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-    <nav class="navbar">
-        <h1>Força Aliada</h1>
-        <button class="btn btn-outline" onclick="logout()">Encerrar Sessão</button>
-    </nav>
+    <header>
+        <a href="index.html" class="brand-link" title="Ir para a página principal">
+            <img src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+            <div class="logo-text">Força Aliada</div>
+        </a>
+        
+        <div id="auth-header-container">
+            </div>
+    </header>
 
     <div class="container">
         <div class="card">
@@ -281,7 +197,7 @@
             <div class="input-group">
                 <input id="newpass" type="password" placeholder="Digite uma nova senha">
             </div>
-            <button class="btn btn-primary" onclick="changePass()" style="width: 100%; margin-top: 8px;">Atualizar Credenciais</button>
+            <button class="btn-primary" onclick="changePass()" style="width: 100%; margin-top: 8px;">Atualizar Credenciais</button>
             <div id="profile-msg" class="msg-alert"></div>
         </div>
 
@@ -312,23 +228,65 @@
     </div>
 
 <script>
-    // 1. GESTÃO DE SESSÃO COM FALLBACK INTELIGENTE (Para fins de teste e design)
-    let session = JSON.parse(localStorage.getItem('fa_session') || 'null'); 
+    // 1. VERIFICAÇÃO E GESTÃO DE SESSÃO
+    let session = JSON.parse(localStorage.getItem('fa_session')); 
     
     if(!session) {
-        // Fallback: Se não houver sessão, cria uma falsa para você poder visualizar o design bonito
-        // Em produção, descomente o location.href e apague a sessão mockada.
+        // Redireciona para login se não houver sessão, mas provê fallback para demonstração se rodado local sem login.
+        // Se for integrar num site real, DESCOMENTE a linha abaixo e APAGUE a criação da sessão mockada.
+        // location.href = 'login.html'; 
+        
         session = { 
-            username: "Administrador", 
-            email: "admin@forcaaliada.com", 
+            username: "Convidado Local", 
+            email: "teste@forcaaliada.com", 
             minecraft: "Notch", 
             role: "full", 
             photo: "" 
         };
-        // location.href='login.html'; 
     }
 
-    // 2. PREENCHIMENTO DO PERFIL
+    // URL inteligente da skin do Minecraft
+    const skinUrl = session.minecraft && session.minecraft.length > 2 
+                    ? `https://minotar.net/helm/${session.minecraft}/100.png` 
+                    : 'https://minotar.net/helm/Steve/100.png';
+
+    // 2. RENDERIZAR CABEÇALHO DINÂMICO
+    function renderHeader() {
+        const headerContainer = document.getElementById('auth-header-container');
+        headerContainer.innerHTML = `
+            <div class="user-menu-wrapper">
+                <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                    <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar do Usuário">
+                    <span>${session.username}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="user-dropdown" id="user-dropdown-menu">
+                    <button onclick="location.href='index.html'">Acessar Site Principal</button>
+                    <button class="danger" onclick="logout()">Sair da Conta</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function toggleUserDropdown(event) {
+        event.stopPropagation();
+        const btn = document.getElementById('user-btn-toggle');
+        const menu = document.getElementById('user-dropdown-menu');
+        btn.classList.toggle('active');
+        menu.classList.toggle('show');
+    }
+
+    // Fecha o dropdown ao clicar fora
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('user-dropdown-menu');
+        const btn = document.getElementById('user-btn-toggle');
+        if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.remove('show');
+            btn.classList.remove('active');
+        }
+    });
+
+    // 3. PREENCHIMENTO DOS DADOS DE PERFIL NA TELA
     const els = {
         name: document.getElementById('name'),
         email: document.getElementById('email'),
@@ -344,6 +302,7 @@
     els.name.textContent = session.username; 
     els.email.textContent = session.email || 'Não informado'; 
     els.mc.textContent = session.minecraft || 'Não vinculado'; 
+    els.photo.src = skinUrl; // Reaproveita a mesma skin calculada pro cabeçalho
     
     if(session.role === 'full') {
         els.role.textContent = 'Acesso Total';
@@ -353,21 +312,18 @@
         els.role.className = 'pill limited';
     }
 
-    // Usa a API do Minotar para pegar a cabeça do jogador logado se não houver foto enviada
-    els.photo.src = session.photo || (session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'logo.JPG');
-
-    // 3. CARREGAMENTO DE DADOS COM TRATAMENTO DE ERRO VISUAL
+    // 4. CARREGAMENTO DE DADOS DO DASHBOARD
     async function loadData() {
         try {
             const r = await fetch('data/player-history.json?t=' + Date.now());
-            if (!r.ok) throw new Error("Arquivo não encontrado");
+            if (!r.ok) throw new Error("Arquivo ausente");
             const d = await r.json();
             renderData(d);
         } catch(e) {
-            // Em vez de só dar erro, geramos dados falsos bonitos para você ver o design em ação localmente
+            // Fallback visual
             const mockData = {
                 generatedAt: new Date().toLocaleTimeString('pt-BR'),
-                onlinePlayers: ["Jeb_", "Dinnerbone", session.minecraft],
+                onlinePlayers: ["Jeb_", "Dinnerbone", session.minecraft || "Notch"],
                 history: [
                     { player: "Herobrine", enteredAt: new Date(Date.now() - 3600000).toISOString(), leftAt: new Date().toISOString(), hoursOnline: 1.2 },
                     { player: "Alex", enteredAt: new Date(Date.now() - 86400000).toISOString(), leftAt: new Date(Date.now() - 80000000).toISOString(), hoursOnline: 1.8 }
@@ -380,14 +336,14 @@
     function renderData(d) {
         els.meta.textContent = d.generatedAt || new Date().toLocaleTimeString('pt-BR');
         
-        // Render Online Players
+        // Renderizar Jogadores Online
         const players = d.onlinePlayers || [];
         els.onlineCount.textContent = players.length;
 
         if(players.length) {
             els.online.innerHTML = players.map(n => `
                 <li class="list-item">
-                    <img src="https://minotar.net/helm/${n}/48.png" class="mc-head" alt="${n}">
+                    <img src="https://minotar.net/helm/${n}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" alt="${n}">
                     <div class="item-details">
                         <strong>${n}</strong>
                         <span>Explorando o servidor</span>
@@ -399,14 +355,14 @@
             els.online.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador online no momento.</span></div></li>`;
         }
 
-        // Render History
+        // Renderizar Histórico
         const isFullAccess = session.role === 'full';
         const rows = (d.history || []).slice(0, isFullAccess ? 10 : 3);
         
         if(rows.length) {
             els.history.innerHTML = rows.map(h => `
                 <li class="list-item">
-                    <img src="https://minotar.net/helm/${h.player}/48.png" class="mc-head" style="width: 32px; height: 32px;" alt="${h.player}">
+                    <img src="https://minotar.net/helm/${h.player}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" style="width: 32px; height: 32px;" alt="${h.player}">
                     <div class="item-details">
                         <strong>${h.player}</strong>
                         <span>Conectou em ${fmt(h.enteredAt)}</span>
@@ -422,14 +378,13 @@
         }
     }
 
-    // Formatação de data mais limpa
     function fmt(v) {
         if(!v) return '-';
         const dt = new Date(v);
         return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }) + ' de ' + dt.toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'});
     }
 
-    // 4. FUNÇÕES DE AÇÃO
+    // 5. AÇÕES DE CONTA E SEGURANÇA
     function changePass() {
         const passInput = document.getElementById('newpass');
         if(passInput.value.trim() === '') {
@@ -464,7 +419,8 @@
         location.href = 'login.html';
     }
 
-    // Iniciar loop
+    // Iniciar tudo
+    renderHeader();
     loadData();
     setInterval(loadData, 15000);
 </script>
