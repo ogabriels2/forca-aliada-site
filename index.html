@@ -966,9 +966,13 @@
                 if (account.role === 'limited') applyLimitedView();
                 feedback.innerText = 'Painel atualizado com sucesso.';
             } catch (e) {
-                renderAdminData(buildLocalFallbackData(account.role));
+                renderAdminData({
+                    onlinePlayers: window.__onlineSample || [],
+                    summary: {},
+                    history: []
+                });
                 if (account.role === 'limited') applyLimitedView();
-                feedback.innerText = 'Acesso liberado com dados locais (endpoint privado indisponível).';
+                feedback.innerText = 'Acesso liberado, mas sem dados históricos reais (endpoint privado indisponível).';
             }
         }
         function applyLimitedView() {
@@ -976,15 +980,10 @@
             const items = daily.querySelectorAll('li');
             items.forEach((item, index) => { if (index > 2) item.remove(); });
         }
-        function buildLocalFallbackData(role) {
-            const now = new Date();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            return {
-                onlinePlayers: window.__onlineSample || [],
-                summary: { joinedToday: role === 'full' ? 12 : 5, leftToday: role === 'full' ? 10 : 4, avgHours: role === 'full' ? 2.4 : 1.8 },
-                history: role === 'full' ? [{ player: 'Steve', enteredAt: `${hh}:${mm}`, leftAt: 'online', hoursOnline: 1.2 }] : []
-            };
+        function normalizePlayerName(player) {
+            if (typeof player === 'string') return player;
+            if (!player || typeof player !== 'object') return 'Desconhecido';
+            return player.name_clean || player.name_raw || player.name || player.username || player.nick || 'Desconhecido';
         }
         function renderAdminData(payload) {
             const online = payload.onlinePlayers || window.__onlineSample || [];
@@ -992,13 +991,15 @@
             const summary = payload.summary || {};
             const onlineList = document.getElementById('online-players-list');
             const daily = document.getElementById('daily-summary-list');
-            onlineList.innerHTML = online.length ? online.map(name => `<li class="admin-row"><span>${name}</span><span>online</span></li>`).join('') : '<li class="admin-note">Ninguém online agora.</li>';
+            onlineList.innerHTML = online.length
+                ? online.map(player => `<li class="admin-row"><span>${normalizePlayerName(player)}</span><span>online</span></li>`).join('')
+                : '<li class="admin-note">Ninguém online agora.</li>';
             const baseItems = [
-                `<li class="admin-row"><span>Entraram hoje</span><strong>${summary.joinedToday || 0}</strong></li>`,
-                `<li class="admin-row"><span>Saíram hoje</span><strong>${summary.leftToday || 0}</strong></li>`,
-                `<li class="admin-row"><span>Tempo médio online</span><strong>${summary.avgHours || 0}h</strong></li>`
+                `<li class="admin-row"><span>Entraram hoje</span><strong>${summary.joinedToday ?? '—'}</strong></li>`,
+                `<li class="admin-row"><span>Saíram hoje</span><strong>${summary.leftToday ?? '—'}</strong></li>`,
+                `<li class="admin-row"><span>Tempo médio online</span><strong>${summary.avgHours ?? '—'}${summary.avgHours != null ? 'h' : ''}</strong></li>`
             ];
-            const historyItems = history.slice(0, 8).map(item => `<li class="admin-row"><span>${item.player}</span><span>${item.enteredAt} → ${item.leftAt || 'online'} (${item.hoursOnline || 0}h)</span></li>`);
+            const historyItems = history.slice(0, 8).map(item => `<li class="admin-row"><span>${normalizePlayerName(item.player)}</span><span>${item.enteredAt || '—'} → ${item.leftAt || 'online'} (${item.hoursOnline ?? '—'}${item.hoursOnline != null ? 'h' : ''})</span></li>`);
             daily.innerHTML = [...baseItems, ...historyItems].join('');
         }
 
