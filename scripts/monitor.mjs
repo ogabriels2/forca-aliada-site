@@ -4,8 +4,6 @@ import path from 'node:path';
 const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
 const OUTPUT = path.resolve('data/player-history.json');
 const NOW = new Date();
-const INGEST_URL = process.env.INGEST_URL || '';
-const INGEST_SECRET = process.env.INGEST_SECRET || '';
 
 async function readJsonSafe(file, fallback) {
   try {
@@ -95,14 +93,6 @@ async function main() {
 
   await fs.mkdir(path.dirname(OUTPUT), { recursive: true });
   await fs.writeFile(OUTPUT, JSON.stringify(store, null, 2) + '\n', 'utf8');
-
-  if (INGEST_URL && INGEST_SECRET) {
-    await fetch(INGEST_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: INGEST_SECRET, payload: store })
-    });
-  }
 }
 
 main().catch((err) => {
