@@ -5,7 +5,6 @@
 - SQLite (`better-sqlite3`)
 - JWT auth
 - Hash de senha com bcrypt
-- Tabelas persistentes para jogadores (`players`) e eventos (`player_events`)
 
 ## Rodar
 ```bash
