@@ -1017,6 +1017,12 @@
                 if (event.key === "ArrowLeft") changeSlide(-1);
             }
         });
+        document.getElementById('admin-password').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') unlockAdminPanel();
+        });
+        document.getElementById('admin-username').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') unlockAdminPanel();
+        });
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
 
         // 7. ANIMAÇÃO DE SCROLL E SKELETON
