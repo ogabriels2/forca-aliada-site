@@ -4,15 +4,10 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const webRoot = path.resolve(__dirname, '..', '..');
-app.use(express.static(webRoot));
 
 const db = new Database('backend/data/app.db');
 const JWT_SECRET = process.env.JWT_SECRET || 'trocar-em-producao';
@@ -56,11 +51,6 @@ function auth(req, res, next) {
   }
 }
 
-function requireFull(req, res, next) {
-  if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
-  next();
-}
-
 app.post('/api/auth/signup', (req, res) => {
   const { username, email, password, minecraftName } = req.body;
   if (!username || !email || !password) return res.status(400).json({ error: 'missing fields' });
@@ -81,13 +71,6 @@ app.post('/api/auth/login', (req, res) => {
   const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
 });
-
-app.get('/login', (_req, res) => res.sendFile(path.join(webRoot, 'login.html')));
-app.get('/signup', (_req, res) => res.sendFile(path.join(webRoot, 'signup.html')));
-app.get('/dashboard', (_req, res) => res.sendFile(path.join(webRoot, 'dashboard.html')));
-app.get('/login.html', (_req, res) => res.sendFile(path.join(webRoot, 'login.html')));
-app.get('/signup.html', (_req, res) => res.sendFile(path.join(webRoot, 'signup.html')));
-app.get('/dashboard.html', (_req, res) => res.sendFile(path.join(webRoot, 'dashboard.html')));
 
 app.get('/api/me', auth, (req, res) => {
   const user = db.prepare('SELECT username,email,minecraft_name,photo_url,role FROM users WHERE id = ?').get(req.user.sub);
@@ -110,51 +93,12 @@ app.post('/api/snapshots/import', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/live-status', async (_req, res) => {
-  try {
-    const response = await fetch('https://api.mcstatus.io/v2/status/java/fa.ogabriels.com');
-    if (!response.ok) return res.status(502).json({ error: 'upstream error' });
-    const data = await response.json();
-    const list = (data.players?.list || []).map((p) => p.name_clean || p.name_raw || p.name).filter(Boolean);
-    res.json({
-      online: !!data.online,
-      onlineCount: typeof data.players?.online === 'number' ? data.players.online : list.length,
-      onlinePlayers: list
-    });
-  } catch {
-    res.status(500).json({ error: 'failed to fetch live status' });
-  }
-});
-
 app.get('/api/snapshots/latest', auth, (req, res) => {
   const row = db.prepare('SELECT generated_at,payload FROM player_snapshots ORDER BY id DESC LIMIT 1').get();
-  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], onlineCount: 0, summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
+  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
   const parsed = JSON.parse(row.payload);
   if (req.user.role !== 'full' && Array.isArray(parsed.history)) parsed.history = parsed.history.slice(0, 10);
   res.json(parsed);
-});
-
-app.get('/api/admin/users', auth, requireFull, (req, res) => {
-  const users = db.prepare('SELECT id,username,email,minecraft_name,photo_url,role,created_at FROM users ORDER BY id DESC').all();
-  res.json(users);
-});
-
-app.put('/api/admin/users/:id', auth, requireFull, (req, res) => {
-  const id = Number(req.params.id);
-  const { username, email, minecraftName, newPassword } = req.body || {};
-  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
-  if (!user) return res.status(404).json({ error: 'user not found' });
-  try {
-    db.prepare('UPDATE users SET username=?, email=?, minecraft_name=? WHERE id=?')
-      .run(String(username || '').toLowerCase(), String(email || '').toLowerCase(), minecraftName || '', id);
-    if (newPassword) {
-      const hash = bcrypt.hashSync(newPassword, 10);
-      db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, id);
-    }
-    res.json({ ok: true });
-  } catch {
-    res.status(409).json({ error: 'username/email already exists' });
-  }
 });
 
 migrate();
