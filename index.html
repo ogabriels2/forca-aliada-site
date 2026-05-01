@@ -24,6 +24,7 @@
     <meta name="twitter:image" content="https://forcaaliada.ogabriels.com/og-image.jpg">
 
     <meta name="theme-color" content="#0044CC">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
     <style>
         /* --- DESIGN SYSTEM --- */
@@ -444,6 +445,7 @@
         .admin-btn.primary { background: #2563eb; color: #fff; }
         .admin-btn.subtle { background: #1e293b; color: #e2e8f0; }
         .admin-note { margin-top: 8px; font-size: 0.8rem; color: #94a3b8; }
+        .turnstile-wrap { margin-top: 12px; }
         @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -699,6 +701,9 @@
             <h3>Painel restrito da staff</h3>
             <p class="admin-note">Acesso protegido por senha + endpoint privado.</p>
             <input id="admin-password" class="admin-input" type="password" placeholder="Senha de acesso do painel">
+            <div class="turnstile-wrap">
+                <div class="cf-turnstile" data-sitekey="SEU_SITE_KEY_TURNSTILE" data-theme="dark"></div>
+            </div>
             <div class="admin-actions">
                 <button class="admin-btn primary" onclick="unlockAdminPanel()">Entrar</button>
                 <button class="admin-btn subtle" onclick="closeAdminModal()">Fechar</button>
@@ -743,6 +748,7 @@
         const API_BEDROCK_HOST = 'fa.ogabriels.com';
         const BEDROCK_PORT = '19132';
         const DISPLAY_HOST = 'fa.ogabriels.com';
+        const ADMIN_PANEL_PASSWORD = 'Famosos1290+';
         const ADMIN_ENDPOINT = 'https://SEU-ENDPOINT-PRIVADO.exemplo.com/server/audit';
 
         // 1. CÁLCULO AUTOMÁTICO DE ANOS
@@ -903,9 +909,15 @@
             const pass = document.getElementById('admin-password').value.trim();
             const feedback = document.getElementById('admin-feedback');
             if (!pass) return feedback.innerText = 'Digite a senha do painel.';
+            if (pass !== ADMIN_PANEL_PASSWORD) return feedback.innerText = 'Senha inválida.';
+            const captchaInput = document.querySelector('input[name="cf-turnstile-response"]');
+            const captchaToken = captchaInput ? captchaInput.value : '';
+            if (!captchaToken) return feedback.innerText = 'Confirme o desafio "não sou um robô".';
             feedback.innerText = 'Validando e carregando dados...';
             try {
-                const res = await fetch(ADMIN_ENDPOINT, { headers: { 'Authorization': 'Bearer ' + pass } });
+                const res = await fetch(ADMIN_ENDPOINT, {
+                    headers: { 'Authorization': 'Bearer ' + pass, 'X-Turnstile-Token': captchaToken }
+                });
                 if (!res.ok) throw new Error('Acesso negado');
                 const payload = await res.json();
                 renderAdminData(payload);
