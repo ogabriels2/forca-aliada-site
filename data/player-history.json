@@ -1,0 +1,16 @@
+{
+  "generatedAt": null,
+  "onlinePlayers": [],
+  "onlineCount": 0,
+  "summary": {
+    "joinedToday": 0,
+    "leftToday": 0,
+    "avgHours": 0
+  },
+  "history": [],
+  "activeSessions": {},
+  "totals": {
+    "sessionsClosedToday": 0,
+    "totalHoursToday": 0
+  }
+}
