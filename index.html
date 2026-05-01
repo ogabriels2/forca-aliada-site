@@ -16,8 +16,6 @@
     <meta property="og:image" content="https://forcaaliada.ogabriels.com/og-image.jpg">
     <meta name="theme-color" content="#0071e3">
 
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
     <style>
         /* --- DESIGN SYSTEM APPLE --- */
         :root {
@@ -80,12 +78,51 @@
         .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
         
-        nav ul { display: flex; gap: 28px; align-items: center; }
+        nav ul { display: flex; gap: 28px; align-items: center; margin: 0; padding: 0; }
         nav a { font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: color 0.2s; }
         nav a:hover { color: var(--text-primary); }
+        
+        /* Botão Nav Genérico */
         .nav-cta { color: var(--accent) !important; font-weight: 600 !important; background: rgba(0, 113, 227, 0.08); padding: 8px 16px; border-radius: 980px; transition: background 0.2s; }
         .nav-cta:hover { background: rgba(0, 113, 227, 0.15); }
 
+        /* --- DROPDOWN DO USUÁRIO LOGADO --- */
+        .user-menu-wrapper { position: relative; display: inline-block; }
+        
+        .user-btn {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+            transition: all 0.2s ease; border: 1px solid transparent;
+        }
+        .user-btn:hover { background: rgba(0,0,0,0.08); }
+        .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+        .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        
+        .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+        .user-btn.active svg { transform: rotate(180deg); }
+
+        .user-dropdown {
+            position: absolute; right: 0; top: calc(100% + 12px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
+            padding: 8px; display: flex; flex-direction: column; min-width: 180px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        
+        .user-dropdown a, .user-dropdown button {
+            text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
+            font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
+            display: block; width: 100%;
+        }
+        .user-dropdown a:hover, .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        
+        .user-dropdown .danger { color: var(--danger); }
+        .user-dropdown .danger:hover { background: rgba(255, 59, 48, 0.1); }
+
+        /* Pílula de Status / Dashboard Header */
         .status-pill {
             background: #fff; border: 1px solid #e5e5ea; padding: 6px 16px; border-radius: 980px;
             font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; 
@@ -155,7 +192,7 @@
         .feature-card h3 { font-size: 22px; margin-bottom: 8px; font-weight: 600; letter-spacing: -0.5px; }
         .feature-card p { color: var(--text-secondary); line-height: 1.5; font-size: 16px; }
 
-        /* --- CROSS PLATFORM (RESTAURADO E POLIDO) --- */
+        /* --- CROSS PLATFORM --- */
         .cross-platform { background: #fff; text-align: center; overflow: hidden; padding-bottom: 80px; }
         .devices-container { display: flex; justify-content: center; align-items: flex-end; gap: 15px; padding-bottom: 40px; max-width: 1100px; margin: 0 auto; }
         .device, .switch-console { position: relative; background: #000; box-shadow: var(--shadow-float); transition: 0.6s cubic-bezier(0.165, 0.84, 0.44, 1); }
@@ -192,8 +229,10 @@
         .info-box span.label { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
         .info-box strong.ip { font-size: 18px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .info-box span.port-info { color: #34c759; font-size: 13px; margin-top: 6px; display: block; }
-        .admin-entry { margin-top: 24px; background: transparent; border: 1px solid rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.8); border-radius: 980px; padding: 8px 20px; font-size: 13px; cursor: pointer; transition: 0.2s; }
-        .admin-entry:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        
+        /* BOTÃO PAINEL DA STAFF ATUALIZADO */
+        .admin-entry { margin-top: 24px; background: transparent; border: 1px solid rgba(255, 255, 255, 0.4); color: #fff; border-radius: 980px; padding: 10px 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .admin-entry:hover { background: rgba(255,255,255,0.15); transform: scale(1.02); }
 
         /* --- GALERIA BENTO --- */
         .bento-grid { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 300px 300px; gap: 20px; max-width: 1100px; margin: 0 auto; }
@@ -204,7 +243,7 @@
         .more-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.3); display: flex; justify-content: center; align-items: center; color: #fff; font-size: 2.8rem; font-weight: 700; backdrop-filter: blur(2px); transition: all 0.4s ease; z-index: 2; }
         .bento-item:hover .more-overlay { background: rgba(0, 0, 0, 0.1); backdrop-filter: blur(4px); }
 
-        /* --- FAQ (RESTAURADO E POLIDO) --- */
+        /* --- FAQ --- */
         .faq-section { background: var(--bg-color); max-width: 800px; margin: 0 auto; padding-bottom: 120px; }
         details { border-bottom: 1px solid #d2d2d7; padding: 24px 0; cursor: pointer; transition: 0.3s; }
         details[open] summary { margin-bottom: 16px; color: var(--text-primary); }
@@ -215,7 +254,7 @@
         .faq-content { color: var(--text-secondary); line-height: 1.6; font-size: 16px; padding-right: 20px; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- FOOTER & REDES SOCIAIS (RESTAURADO) --- */
+        /* --- FOOTER & REDES SOCIAIS --- */
         footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top: 1px solid #e5e5ea; }
         .social-icons { display: flex; justify-content: center; gap: 24px; margin-top: 32px; }
         .social-icon { width: 32px; height: 32px; transition: 0.3s; color: var(--text-secondary); }
@@ -232,26 +271,10 @@
         .lightbox-btn:hover { opacity: 1; }
         .prev-btn { left: 20px; } .next-btn { right: 20px; }
 
-        /* --- ADMIN MODAL (RESTAURADO COM ESTILO APPLE) --- */
-        .admin-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px; }
-        .admin-modal.active { display: flex; animation: fadeIn 0.3s ease; }
-        .admin-card { width: min(860px, 100%); max-height: 90vh; overflow: auto; background: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); border: 1px solid rgba(255,255,255,0.5); border-radius: 24px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); color: var(--text-primary); }
-        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        .admin-box { background: #fff; border-radius: 16px; padding: 20px; border: 1px solid #e5e5ea; }
-        .admin-box h4 { margin-bottom: 12px; font-size: 16px; color: var(--accent); }
-        .admin-box ul { display: flex; flex-direction: column; gap: 8px; }
-        .admin-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; border-bottom: 1px dashed #e5e5ea; padding-bottom: 8px; }
-        .admin-input { width: 100%; margin-top: 12px; border-radius: 12px; border: 1px solid #d2d2d7; background: #fff; padding: 14px; font-size: 15px; outline: none; }
-        .admin-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
-        .admin-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-        .admin-btn { border: none; border-radius: 980px; padding: 12px 20px; cursor: pointer; font-weight: 600; font-size: 14px; }
-        .admin-btn.primary { background: var(--text-primary); color: #fff; }
-        .admin-btn.subtle { background: #e5e5ea; color: var(--text-primary); }
-        .admin-note { margin-top: 8px; font-size: 13px; color: var(--text-secondary); }
-
+        /* --- RESPONSIVO --- */
         @media (max-width: 860px) {
             .hero h1 { font-size: 3.5rem; }
-            .about-grid, .bento-grid, .features-grid, .admin-grid { grid-template-columns: 1fr; }
+            .about-grid, .bento-grid, .features-grid { grid-template-columns: 1fr; }
             .bento-grid { grid-template-rows: auto; gap: 16px; }
             .bento-item { height: 250px; }
             .item-big { height: 400px; }
@@ -260,30 +283,11 @@
             nav, .status-pill { display: none; }
             .stats-strip { flex-direction: column; gap: 30px; }
             .connection-info { grid-template-columns: 1fr; }
-            
-            /* Ajuste Crossplay Mobile */
             .devices-container { flex-direction: column; align-items: center; gap: 30px; }
             .monitor { width: 90%; order: unset; }
             .switch-console { width: 70%; margin: 0; order: unset; } 
             .phone { width: 50%; margin: 0; order: unset; }
         }
-        .admin-entry { margin-top: 14px; background: transparent; border: 1px solid rgba(255, 255, 255, 0.35); color: rgba(255, 255, 255, 0.8); border-radius: 999px; padding: 8px 16px; font-size: 0.8rem; cursor: pointer; }
-        .admin-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px; }
-        .admin-modal.active { display: flex; }
-        .admin-card { width: min(860px, 100%); max-height: 90vh; overflow: auto; background: #0f172a; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; }
-        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
-        .admin-box { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 14px; }
-        .admin-box h4 { margin-bottom: 10px; font-size: 0.95rem; color: #93c5fd; }
-        .admin-box ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-        .admin-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.9rem; border-bottom: 1px dashed rgba(255,255,255,0.08); padding-bottom: 5px; }
-        .admin-input { width: 100%; margin-top: 12px; border-radius: 10px; border: 1px solid #334155; background: #020617; color: #fff; padding: 10px 12px; }
-        .admin-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .admin-btn { border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer; font-weight: 700; }
-        .admin-btn.primary { background: #2563eb; color: #fff; }
-        .admin-btn.subtle { background: #1e293b; color: #e2e8f0; }
-        .admin-note { margin-top: 8px; font-size: 0.8rem; color: #94a3b8; }
-        .turnstile-wrap { margin-top: 12px; }
-        @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -296,6 +300,9 @@
             <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
             <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
             <li><a href="#status" onclick="toggleMenu()" style="color: var(--accent);">Jogar Agora</a></li>
+            
+            <li id="mobile-auth-container" style="margin-top: 20px; border-top: 1px solid #d2d2d7; padding-top: 20px;">
+                </li>
         </ul>
         
         <div class="mobile-status-card" onclick="document.getElementById('status').scrollIntoView(); toggleMenu();">
@@ -323,7 +330,9 @@
                 <li><a href="#plataformas">Crossplay</a></li>
                 <li><a href="#galeria">Galeria</a></li>
                 <li><a href="#faq">Dúvidas</a></li>
-                <li><a href="#status" class="nav-cta">IP / Jogar</a></li>
+                
+                <li id="auth-container">
+                    </li>
             </ul>
         </nav>
 
@@ -447,7 +456,7 @@
             </div>
             <p style="margin-top: 24px; font-size: 13px; color: rgba(255,255,255,0.6);">Clique nos quadros para copiar o endereço.</p>
             
-            <button class="admin-entry" onclick="openAdminModal()">Painel restrito</button>
+            <button class="admin-entry" onclick="location.href='dashboard.html'">Painel da Staff</button>
         </div>
     </section>
 
@@ -479,64 +488,21 @@
         
         <details>
             <summary>O servidor tem reset de mapa?</summary>
-            <div class="faq-content">
-                Não. Acreditamos na permanência. Nosso mundo existe desde 2021 e continuará existindo. Suas construções estarão aqui ano que vem.
-            </div>
+            <div class="faq-content">Não. Acreditamos na permanência. Nosso mundo existe desde 2021 e continuará existindo. Suas construções estarão aqui ano que vem.</div>
         </details>
         <details>
             <summary>Como funciona a economia?</summary>
-            <div class="faq-content">
-                É baseada em Esmeraldas e confiança. Temos um Shopping Central de Aldeões onde você pode comprar itens essenciais e farms públicas para gerar recursos.
-            </div>
+            <div class="faq-content">É baseada em Esmeraldas e confiança. Temos um Shopping Central de Aldeões onde você pode comprar itens essenciais e farms públicas para gerar recursos.</div>
         </details>
         <details>
             <summary>É Pay-to-Win?</summary>
-            <div class="faq-content">
-                Jamais. Não vendemos itens, voo ou vantagens injustas. Tudo o que existe no mundo foi conquistado jogando survival vanilla.
-            </div>
+            <div class="faq-content">Jamais. Não vendemos itens, voo ou vantagens injustas. Tudo o que existe no mundo foi conquistado jogando survival vanilla.</div>
         </details>
         <details>
             <summary>Preciso de Whitelist?</summary>
-            <div class="faq-content">
-                Atualmente operamos com um sistema aberto, mas monitorado. Entre no nosso Discord para garantir seu lugar na comunidade.
-            </div>
+            <div class="faq-content">Atualmente operamos com um sistema aberto, mas monitorado. Entre no nosso Discord para garantir seu lugar na comunidade.</div>
         </details>
     </section>
-
-    <div id="admin-modal" class="admin-modal" aria-hidden="true">
-        <div class="admin-card">
-            <h3 style="font-size: 22px; margin-bottom: 4px;">Painel restrito da staff</h3>
-            <p class="admin-note">Acesso protegido por senha + endpoint privado.</p>
-            
-            <input id="admin-username" class="admin-input" type="text" placeholder="Usuário ou E-mail">
-            <input id="admin-password" class="admin-input" type="password" placeholder="Senha de acesso">
-            
-            <div class="turnstile-wrap" id="turnstile-wrap" style="margin-top: 16px;">
-                <div class="cf-turnstile" data-sitekey="SEU_SITE_KEY_TURNSTILE" data-theme="light"></div>
-            </div>
-            
-            <div class="admin-actions">
-                <button class="admin-btn primary" onclick="unlockAdminPanel()">Entrar</button>
-                <button class="admin-btn subtle" onclick="closeAdminModal()">Cancelar</button>
-            </div>
-            
-            <p id="admin-feedback" class="admin-note" style="color: var(--danger); font-weight: 500;"></p>
-            <p id="admin-scope" class="admin-note" style="color: var(--success); font-weight: 500;"></p>
-            
-            <div id="admin-content" style="display:none; margin-top: 24px;">
-                <div class="admin-grid">
-                    <div class="admin-box">
-                        <h4>Jogadores online agora</h4>
-                        <ul id="online-players-list"><li class="admin-note">Sem dados.</li></ul>
-                    </div>
-                    <div class="admin-box">
-                        <h4>Resumo do dia</h4>
-                        <ul id="daily-summary-list"><li class="admin-note">Sem dados.</li></ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <footer>
         <h2 style="font-size: 28px; margin-bottom: 16px; font-weight: 600;">Faça parte da história</h2>
@@ -563,23 +529,80 @@
     </div>
 
     <script>
-        // CONFIGURAÇÕES TÉCNICAS MANTIDAS
+        // --- 1. LÓGICA DE AUTENTICAÇÃO E MENU DROPDOWN ---
+        function renderAuthMenu() {
+            const container = document.getElementById('auth-container');
+            const mobileContainer = document.getElementById('mobile-auth-container');
+            const sessionData = localStorage.getItem('fa_session');
+            let session = null;
+
+            try { session = sessionData ? JSON.parse(sessionData) : null; } catch(e){}
+
+            if (session) {
+                // Monta o Avatar Dinâmico com a skin do usuário logado
+                const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'logo.JPG';
+                
+                // Botão Desktop
+                container.innerHTML = `
+                    <div class="user-menu-wrapper">
+                        <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                            <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+                            <span>${session.username}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        <div class="user-dropdown" id="user-dropdown-menu">
+                            <button onclick="location.href='dashboard.html'">Acessar Dashboard</button>
+                            <button class="danger" onclick="doLogout()">Sair da Conta</button>
+                        </div>
+                    </div>
+                `;
+
+                // Botão Mobile
+                mobileContainer.innerHTML = `
+                    <a href="dashboard.html" style="font-size: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <img src="${skinUrl}" style="width: 48px; height: 48px; border-radius: 50%;" onerror="this.src='https://minotar.net/helm/Steve/100.png'">
+                        Painel (${session.username})
+                    </a>
+                    <a href="#" onclick="doLogout(); return false;" style="font-size: 16px; color: var(--danger); margin-top: 10px;">Encerrar Sessão</a>
+                `;
+            } else {
+                // Usuário não logado
+                container.innerHTML = `<a href="login.html" class="nav-cta" style="margin-left: 8px;">Entrar</a>`;
+                mobileContainer.innerHTML = `<a href="login.html" style="font-size: 22px; color: var(--accent);">Acesso Staff</a>`;
+            }
+        }
+
+        function toggleUserDropdown(event) {
+            event.stopPropagation();
+            const btn = document.getElementById('user-btn-toggle');
+            const menu = document.getElementById('user-dropdown-menu');
+            btn.classList.toggle('active');
+            menu.classList.toggle('show');
+        }
+
+        function doLogout() {
+            localStorage.removeItem('fa_session');
+            renderAuthMenu();
+            // Se o menu mobile estiver aberto, fecha
+            document.getElementById('mobile-nav').classList.remove('active');
+        }
+
+        // Fecha o dropdown se clicar fora dele
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('user-dropdown-menu');
+            const btn = document.getElementById('user-btn-toggle');
+            if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.classList.remove('show');
+                btn.classList.remove('active');
+            }
+        });
+
+        // --- 2. CONFIGURAÇÕES GERAIS ---
         const API_JAVA_HOST = 'fa.ogabriels.com'; 
         const API_BEDROCK_HOST = 'fa.ogabriels.com';
         const BEDROCK_PORT = '19132';
         const DISPLAY_HOST = 'fa.ogabriels.com';
-        const ADMIN_PANEL_PASSWORD = 'Famosos1290+';
-        const TURNSTILE_SITE_KEY = 'SEU_SITE_KEY_TURNSTILE';
-        const ADMIN_ENDPOINT = 'https://SEU-ENDPOINT-PRIVADO.exemplo.com/server/audit';
-        const HISTORY_DATA_URL = 'data/player-history.json';
-        
-        // Mock de contas do seu JS original
-        const ADMIN_ACCOUNTS = [
-            { usernames: ['admin'], password: 'NovaAlianca+', role: 'limited' },
-            { usernames: ['gabalarca', 'gabalarcadsmoreira2016@gmail.com'], password: 'Famosos1290+', role: 'full' }
-        ];
 
-        // Animação Reveal
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
@@ -590,10 +613,8 @@
         }
         window.addEventListener("scroll", reveal);
 
-        // Menu Mobile
         function toggleMenu() { document.getElementById('mobile-nav').classList.toggle('active'); }
 
-        // Copiar IP
         let toastTimeout; 
         function copiar(texto, porta = null) {
             navigator.clipboard.writeText(texto).then(() => {
@@ -605,18 +626,13 @@
             });
         }
 
-        // Status do Servidor
         async function fetchStatus() {
             const url = `https://api.mcstatus.io/v2/status/java/${API_JAVA_HOST}`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                if (data.online) {
-                    window.__onlineSample = (data.players && data.players.list) ? data.players.list : [];
-                    updateDisplay(data.players.online, true);
-                } else {
-                    fetchBedrockFallback();
-                }
+                if (data.online) { updateDisplay(data.players.online, true); } 
+                else { fetchBedrockFallback(); }
             } catch (error) { fetchBedrockFallback(); }
         }
 
@@ -661,7 +677,7 @@
             }
         }
 
-        // Galeria Lightbox
+        // --- 3. GALERIA LIGHTBOX ---
         const galleryImages = ['sobre.png', 'galeria1.jpeg', 'galeria2.jpeg', 'galeria3.jpeg'];
         let currentSlide = 0;
         function openLightbox(index) {
@@ -681,119 +697,6 @@
             document.getElementById('lightbox-img').src = galleryImages[currentSlide];
         }
 
-        // Lógica do Modal Admin (SEU CÓDIGO ORIGINAL RESTAURADO)
-        function openAdminModal() {
-            const wrap = document.getElementById('turnstile-wrap');
-            const feedback = document.getElementById('admin-feedback');
-            if (TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY')) {
-                if (wrap) wrap.style.display = 'none';
-                feedback.innerText = 'Captcha desativado temporariamente (site key não configurada).';
-            } else {
-                if (wrap) wrap.style.display = 'block';
-                feedback.innerText = '';
-            }
-            document.getElementById('admin-modal').classList.add('active');
-        }
-        
-        function closeAdminModal() { document.getElementById('admin-modal').classList.remove('active'); }
-        
-        function resolveAdminAccount(username, password) {
-            const login = (username || '').trim().toLowerCase();
-            return ADMIN_ACCOUNTS.find(acc => acc.password === password && acc.usernames.includes(login));
-        }
-
-        async function unlockAdminPanel() {
-            const username = document.getElementById('admin-username').value.trim();
-            const pass = document.getElementById('admin-password').value.trim();
-            const feedback = document.getElementById('admin-feedback');
-            
-            if (!username) return feedback.innerText = 'Digite usuário ou e-mail.';
-            if (!pass) return feedback.innerText = 'Digite a senha do painel.';
-            
-            const account = resolveAdminAccount(username, pass);
-            if (!account) return feedback.innerText = 'Usuário/e-mail ou senha inválidos.';
-            
-            const captchaEnabled = !TURNSTILE_SITE_KEY.includes('SEU_SITE_KEY');
-            const captchaInput = document.querySelector('input[name="cf-turnstile-response"]');
-            const captchaToken = captchaInput ? captchaInput.value : '';
-            if (captchaEnabled && !captchaToken) return feedback.innerText = 'Confirme o desafio "não sou um robô".';
-            
-            feedback.innerText = 'Autenticado. Carregando painel...';
-            feedback.style.color = "var(--text-primary)";
-            document.getElementById('admin-content').style.display = 'block';
-            document.getElementById('admin-scope').innerText = account.role === 'full'
-                ? 'Acesso completo liberado.'
-                : 'Acesso limitado liberado.';
-            
-            try {
-                const localPayload = await fetchSiteHistory();
-                if (localPayload) renderAdminData(localPayload);
-                const res = await fetch(ADMIN_ENDPOINT, {
-                    headers: {
-                        'Authorization': 'Bearer ' + pass,
-                        'X-Turnstile-Token': captchaToken || 'captcha-disabled',
-                        'X-Admin-Role': account.role
-                    }
-                });
-                if (!res.ok) throw new Error('Endpoint indisponível');
-                const payload = await res.json();
-                renderAdminData(payload);
-                if (account.role === 'limited') applyLimitedView();
-                feedback.innerText = 'Painel atualizado com sucesso.';
-                feedback.style.color = "var(--success)";
-            } catch (e) {
-                const localPayload = await fetchSiteHistory();
-                renderAdminData(localPayload || buildLocalFallbackData(account.role));
-                if (account.role === 'limited') applyLimitedView();
-                feedback.innerText = 'Acesso liberado com dados locais (endpoint indisponível).';
-                feedback.style.color = "var(--accent)";
-            }
-        }
-
-        async function fetchSiteHistory() {
-            try {
-                const res = await fetch(HISTORY_DATA_URL + '?t=' + Date.now());
-                if (!res.ok) return null;
-                return await res.json();
-            } catch { return null; }
-        }
-
-        function applyLimitedView() {
-            const daily = document.getElementById('daily-summary-list');
-            const items = daily.querySelectorAll('li');
-            items.forEach((item, index) => { if (index > 2) item.remove(); });
-        }
-
-        function buildLocalFallbackData(role) {
-            const now = new Date();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            return {
-                onlinePlayers: window.__onlineSample || [],
-                summary: { joinedToday: role === 'full' ? 12 : 5, leftToday: role === 'full' ? 10 : 4, avgHours: role === 'full' ? 2.4 : 1.8 },
-                history: role === 'full' ? [{ player: 'Steve', enteredAt: `${hh}:${mm}`, leftAt: 'online', hoursOnline: 1.2 }] : []
-            };
-        }
-
-        function renderAdminData(payload) {
-            const online = payload.onlinePlayers || window.__onlineSample || [];
-            const history = payload.history || [];
-            const summary = payload.summary || {};
-            const onlineList = document.getElementById('online-players-list');
-            const daily = document.getElementById('daily-summary-list');
-            
-            onlineList.innerHTML = online.length ? online.map(name => `<li class="admin-row"><span>${name}</span><span style="color:var(--success)">online</span></li>`).join('') : '<li class="admin-note">Ninguém online agora.</li>';
-            
-            const baseItems = [
-                `<li class="admin-row"><span>Entraram hoje</span><strong>${summary.joinedToday || 0}</strong></li>`,
-                `<li class="admin-row"><span>Saíram hoje</span><strong>${summary.leftToday || 0}</strong></li>`,
-                `<li class="admin-row"><span>Tempo médio online</span><strong>${summary.avgHours || 0}h</strong></li>`
-            ];
-            const historyItems = history.slice(0, 8).map(item => `<li class="admin-row"><span>${item.player}</span><span>${item.enteredAt} → ${item.leftAt || 'online'}</span></li>`);
-            daily.innerHTML = [...baseItems, ...historyItems].join('');
-        }
-
-        // Eventos
         document.getElementById('lightbox').addEventListener('click', function(e) { if (e.target === this) closeLightbox(); });
         document.addEventListener('keydown', e => {
             if (document.getElementById('lightbox').classList.contains('active')) {
@@ -802,9 +705,10 @@
                 if (e.key === "ArrowLeft") changeSlide(-1);
             }
         });
-        document.getElementById('admin-password').addEventListener('keydown', e => { if (e.key === 'Enter') unlockAdminPanel(); });
 
+        // --- 4. INICIALIZAÇÃO ---
         window.onload = () => {
+            renderAuthMenu(); // Verifica a sessão ao carregar a página
             reveal();
             fetchStatus();
             setInterval(fetchStatus, 30000);
