@@ -1,14 +1,49 @@
 {
-  "generatedAt": null,
-  "onlinePlayers": [],
-  "onlineCount": 0,
+  "generatedAt": "2026-05-01T18:15:35.436Z",
+  "onlinePlayers": [
+    "Gabalarca",
+    "CaioLeal",
+    "Agiota834"
+  ],
   "summary": {
-    "joinedToday": 0,
+    "joinedToday": 3,
     "leftToday": 0,
     "avgHours": 0
   },
-  "history": [],
-  "activeSessions": {},
+  "history": [
+    {
+      "player": "Agiota834",
+      "enteredAt": "2026-05-01T18:15:35.436Z",
+      "leftAt": null,
+      "hoursOnline": 0
+    },
+    {
+      "player": "CaioLeal",
+      "enteredAt": "2026-05-01T18:15:35.436Z",
+      "leftAt": null,
+      "hoursOnline": 0
+    },
+    {
+      "player": "Gabalarca",
+      "enteredAt": "2026-05-01T18:15:35.436Z",
+      "leftAt": null,
+      "hoursOnline": 0
+    }
+  ],
+  "activeSessions": {
+    "779c4188-572d-3b3d-b1fc-448105e5ed02": {
+      "name": "Gabalarca",
+      "enteredAt": "2026-05-01T18:15:35.436Z"
+    },
+    "d3e393bc-520f-371f-a8eb-f06cd12b6ab2": {
+      "name": "CaioLeal",
+      "enteredAt": "2026-05-01T18:15:35.436Z"
+    },
+    "00000000-0000-0000-0009-01f9af288133": {
+      "name": "Agiota834",
+      "enteredAt": "2026-05-01T18:15:35.436Z"
+    }
+  },
   "totals": {
     "sessionsClosedToday": 0,
     "totalHoursToday": 0
