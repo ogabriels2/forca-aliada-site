@@ -253,178 +253,153 @@
 </div>
 
 <script>
-    // ── BANCO DE DADOS ────────────────────────────────────────────────────────
-    const predefined = [
-        { username: 'admin',     email: '',                                 minecraft: 'admin',     password: 'NovaAlianca+', role: 'limited', photo: 'logo.JPG' },
-        { username: 'gabalarca', email: 'gabalarcadsmoreira2016@gmail.com', minecraft: 'gabalarca', password: 'Famosos1290+', role: 'full',    photo: '' }
-    ];
+const TOKEN_KEY = 'fa_token';
+const SESSION_KEY = 'fa_session';
+const API_BASE = (() => {
+  if (window.FA_API_BASE) return window.FA_API_BASE;
+  if (location.protocol === 'file:') return 'http://localhost:8787';
+  return `${location.protocol}//${location.host}`;
+})();
 
-    let db = JSON.parse(localStorage.getItem('fa_users'));
-    if (!db) {
-        localStorage.setItem('fa_users', JSON.stringify(predefined));
-        db = predefined;
+let session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+
+function skinUrl(name) {
+  return name ? `https://minotar.net/helm/${name}/100.png` : 'logo.JPG';
+}
+
+function renderUI() {
+  const viewLoggedin = document.getElementById('view-loggedin');
+  const viewLogin = document.getElementById('view-login');
+  const headerSignup = document.getElementById('header-signup-link');
+  const headerMenu = document.getElementById('header-user-menu');
+
+  if (session) {
+    const avatarUrl = skinUrl(session.minecraftName);
+    document.getElementById('avatar-loggedin').src = avatarUrl;
+    document.getElementById('loggedin-username').textContent = session.username;
+    document.getElementById('header-avatar').src = avatarUrl;
+    document.getElementById('header-username').textContent = session.username;
+    viewLoggedin.style.display = 'block';
+    viewLogin.style.display = 'none';
+    headerSignup.style.display = 'none';
+    headerMenu.style.display = 'inline-block';
+  } else {
+    viewLoggedin.style.display = 'none';
+    viewLogin.style.display = 'block';
+    headerSignup.style.display = 'inline-block';
+    headerMenu.style.display = 'none';
+  }
+}
+
+function showMessage(text, type) {
+  const msgEl = document.getElementById('msg');
+  const card = document.getElementById('loginCard');
+  msgEl.textContent = text;
+  msgEl.className = `msg ${type}`;
+  if (type === 'error') {
+    card.classList.remove('shake-animation');
+    void card.offsetWidth;
+    card.classList.add('shake-animation');
+  }
+}
+
+function toggleUserDropdown(event) {
+  event.stopPropagation();
+  document.getElementById('user-btn-toggle').classList.toggle('active');
+  document.getElementById('user-dropdown-menu').classList.toggle('show');
+}
+
+document.addEventListener('click', () => {
+  const menu = document.getElementById('user-dropdown-menu');
+  const btn = document.getElementById('user-btn-toggle');
+  if (menu && btn) {
+    menu.classList.remove('show');
+    btn.classList.remove('active');
+  }
+});
+
+(function attachAvatarPreview() {
+  const loginInput = document.getElementById('login-input');
+  const avatar = document.getElementById('avatar-login');
+  let timer;
+  loginInput.addEventListener('input', () => {
+    clearTimeout(timer);
+    const val = loginInput.value.trim();
+    if (val.length > 2 && !val.includes('@')) {
+      timer = setTimeout(() => {
+        avatar.src = skinUrl(val);
+      }, 300);
+    } else {
+      avatar.src = 'logo.JPG';
     }
+  });
+})();
 
-    let session = JSON.parse(localStorage.getItem('fa_session'));
+async function bootstrapSession() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return renderUI();
 
-    // ── RENDERIZAÇÃO ──────────────────────────────────────────────────────────
-    // Alterna display:block/none — o <form> NUNCA é removido do DOM.
-    function renderUI() {
-        const viewLoggedin = document.getElementById('view-loggedin');
-        const viewLogin    = document.getElementById('view-login');
-        const headerSignup = document.getElementById('header-signup-link');
-        const headerMenu   = document.getElementById('header-user-menu');
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Sessão expirada');
+    const me = await res.json();
+    session = {
+      username: me.username,
+      email: me.email,
+      minecraftName: me.minecraft_name,
+      role: me.role
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    session = null;
+  }
 
-        if (session) {
-            const skinUrl = session.minecraft
-                ? 'https://minotar.net/helm/' + session.minecraft + '/100.png'
-                : 'logo.JPG';
+  renderUI();
+}
 
-            document.getElementById('avatar-loggedin').src           = skinUrl;
-            document.getElementById('loggedin-username').textContent  = session.username;
-            document.getElementById('header-avatar').src             = skinUrl;
-            document.getElementById('header-username').textContent   = session.username;
+async function handleLogin(event) {
+  event.preventDefault();
+  const btn = document.getElementById('btn-login');
+  const loginVal = document.getElementById('login-input').value.trim();
+  const passVal = document.getElementById('pass-input').value;
 
-            viewLoggedin.style.display = 'block';
-            viewLogin.style.display    = 'none';
-            headerSignup.style.display = 'none';
-            headerMenu.style.display   = 'inline-block';
-        } else {
-            viewLoggedin.style.display = 'none';
-            viewLogin.style.display    = 'block';
-            headerSignup.style.display = 'inline-block';
-            headerMenu.style.display   = 'none';
-        }
-    }
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
 
-    // ── AVATAR DO MINECRAFT ───────────────────────────────────────────────────
-    (function () {
-        var loginInput = document.getElementById('login-input');
-        var avatar     = document.getElementById('avatar-login');
-        var timer;
-
-        loginInput.addEventListener('input', function () {
-            clearTimeout(timer);
-            var val = loginInput.value.trim();
-            if (val.length > 2 && val.indexOf('@') === -1) {
-                timer = setTimeout(function () {
-                    avatar.src     = 'https://minotar.net/helm/' + val + '/100.png';
-                    avatar.onerror = function () { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
-                }, 400);
-            } else if (val.length === 0) {
-                avatar.src     = 'logo.JPG';
-                avatar.onerror = function () { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
-            }
-        });
-    })();
-
-    // ── DROPDOWN ──────────────────────────────────────────────────────────────
-    function toggleUserDropdown(event) {
-        event.stopPropagation();
-        document.getElementById('user-btn-toggle').classList.toggle('active');
-        document.getElementById('user-dropdown-menu').classList.toggle('show');
-    }
-
-    document.addEventListener('click', function () {
-        var menu = document.getElementById('user-dropdown-menu');
-        var btn  = document.getElementById('user-btn-toggle');
-        if (menu && btn) {
-            menu.classList.remove('show');
-            btn.classList.remove('active');
-        }
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: loginVal, password: passVal })
     });
 
-    // ── MENSAGEM ──────────────────────────────────────────────────────────────
-    function showMessage(text, type) {
-        var msgEl = document.getElementById('msg');
-        var card  = document.getElementById('loginCard');
-        msgEl.textContent = text;
-        msgEl.className   = 'msg ' + type;
-        if (type === 'error') {
-            card.classList.remove('shake-animation');
-            void card.offsetWidth;
-            card.classList.add('shake-animation');
-        }
-    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Falha no login');
 
-    // ── HANDLELOGIN ───────────────────────────────────────────────────────────
-    //
-    // POR QUE event.preventDefault() é chamado SEMPRE:
-    //   O <form> sem action="" faria um GET para a URL atual ao submeter,
-    //   recarregando a página imediatamente — antes do setTimeout ter
-    //   chance de redirecionar para dashboard.html. Prevenir o default
-    //   mantém o controle do fluxo no JS.
-    //
-    // COMO a senha é salva no browser mesmo assim:
-    //   Chrome/Edge: usamos a Credential Management API (PasswordCredential)
-    //   que aciona o prompt "Salvar senha?" de forma programática.
-    //   Firefox/Safari: detectam a navegação via location.href após interação
-    //   com campos [name="username"] + [name="password"] por heurística.
-    //   Em ambos os casos, autocomplete="username/current-password" e os
-    //   atributos name corretos são o que ativa o preenchimento automático.
-    //
-    //   IMPORTANTE: isso só funciona via HTTP/HTTPS (localhost ou servidor).
-    //   Em file:// o browser bloqueia gerenciadores de senha por segurança.
-    //
-    async function handleLogin(event) {
-        event.preventDefault();
+    localStorage.setItem(TOKEN_KEY, data.token);
+    session = data.user;
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
-        var loginVal = document.getElementById('login-input').value.trim().toLowerCase();
-        var passVal  = document.getElementById('pass-input').value;
-        var btn      = document.getElementById('btn-login');
+    showMessage('Autenticado com sucesso. Entrando...', 'success');
+    setTimeout(() => { location.href = 'dashboard.html'; }, 500);
+  } catch (err) {
+    showMessage(err.message || 'Erro de autenticação.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Iniciar Sessão';
+  }
+}
 
-        var user = null;
-        for (var i = 0; i < db.length; i++) {
-            var u = db[i];
-            if ((u.username.toLowerCase() === loginVal || u.email.toLowerCase() === loginVal) && u.password === passVal) {
-                user = u;
-                break;
-            }
-        }
+function forceLogout() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  session = null;
+  renderUI();
+}
 
-        if (user) {
-            showMessage('Autenticado com sucesso. Entrando...', 'success');
-            btn.textContent = 'Carregando...';
-            btn.disabled    = true;
-
-            localStorage.setItem('fa_session', JSON.stringify(user));
-            session = user;
-
-            // Credential Management API — Chrome/Edge
-            if (window.PasswordCredential) {
-                try {
-                    var cred = new PasswordCredential({
-                        id:       user.username,
-                        password: passVal,
-                        name:     user.username
-                    });
-                    await navigator.credentials.store(cred);
-                } catch (e) { /* silencioso */ }
-            }
-
-            setTimeout(function () { location.href = 'dashboard.html'; }, 600);
-
-        } else {
-            showMessage('Usuário ou senha incorretos.', 'error');
-            document.getElementById('pass-input').value = '';
-            document.getElementById('pass-input').focus();
-        }
-    }
-
-    // ── LOGOUT ────────────────────────────────────────────────────────────────
-    function forceLogout() {
-        localStorage.removeItem('fa_session');
-        session = null;
-        var avatar = document.getElementById('avatar-login');
-        if (avatar) {
-            avatar.src     = 'logo.JPG';
-            avatar.onerror = function () { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
-        }
-        renderUI();
-    }
-
-    // ── INICIAR ───────────────────────────────────────────────────────────────
-    renderUI();
+bootstrapSession();
 </script>
 </body>
 </html>
