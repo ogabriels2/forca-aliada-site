@@ -253,41 +253,27 @@
 </div>
 
 <script>
+const API_BASE = localStorage.getItem('fa_api_base') || 'http://localhost:8787';
 const TOKEN_KEY = 'fa_token';
 const SESSION_KEY = 'fa_session';
-const API_BASE = (() => {
-  if (window.FA_API_BASE) return window.FA_API_BASE;
-  if (location.protocol === 'file:') return 'http://localhost:8787';
-  return `${location.protocol}//${location.host}`;
-})();
-
 let session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-
-function skinUrl(name) {
-  return name ? `https://minotar.net/helm/${name}/100.png` : 'logo.JPG';
-}
 
 function renderUI() {
   const viewLoggedin = document.getElementById('view-loggedin');
   const viewLogin = document.getElementById('view-login');
   const headerSignup = document.getElementById('header-signup-link');
   const headerMenu = document.getElementById('header-user-menu');
-
   if (session) {
-    const avatarUrl = skinUrl(session.minecraftName);
-    document.getElementById('avatar-loggedin').src = avatarUrl;
+    const skinUrl = session.minecraftName ? `https://minotar.net/helm/${session.minecraftName}/100.png` : 'logo.JPG';
+    document.getElementById('avatar-loggedin').src = skinUrl;
     document.getElementById('loggedin-username').textContent = session.username;
-    document.getElementById('header-avatar').src = avatarUrl;
+    document.getElementById('header-avatar').src = skinUrl;
     document.getElementById('header-username').textContent = session.username;
-    viewLoggedin.style.display = 'block';
-    viewLogin.style.display = 'none';
-    headerSignup.style.display = 'none';
-    headerMenu.style.display = 'inline-block';
+    viewLoggedin.style.display = 'block'; viewLogin.style.display = 'none';
+    headerSignup.style.display = 'none'; headerMenu.style.display = 'inline-block';
   } else {
-    viewLoggedin.style.display = 'none';
-    viewLogin.style.display = 'block';
-    headerSignup.style.display = 'inline-block';
-    headerMenu.style.display = 'none';
+    viewLoggedin.style.display = 'none'; viewLogin.style.display = 'block';
+    headerSignup.style.display = 'inline-block'; headerMenu.style.display = 'none';
   }
 }
 
@@ -296,11 +282,7 @@ function showMessage(text, type) {
   const card = document.getElementById('loginCard');
   msgEl.textContent = text;
   msgEl.className = `msg ${type}`;
-  if (type === 'error') {
-    card.classList.remove('shake-animation');
-    void card.offsetWidth;
-    card.classList.add('shake-animation');
-  }
+  if (type === 'error') { card.classList.remove('shake-animation'); void card.offsetWidth; card.classList.add('shake-animation'); }
 }
 
 function toggleUserDropdown(event) {
@@ -308,98 +290,56 @@ function toggleUserDropdown(event) {
   document.getElementById('user-btn-toggle').classList.toggle('active');
   document.getElementById('user-dropdown-menu').classList.toggle('show');
 }
-
 document.addEventListener('click', () => {
   const menu = document.getElementById('user-dropdown-menu');
   const btn = document.getElementById('user-btn-toggle');
-  if (menu && btn) {
-    menu.classList.remove('show');
-    btn.classList.remove('active');
-  }
+  if (menu && btn) { menu.classList.remove('show'); btn.classList.remove('active'); }
 });
 
-(function attachAvatarPreview() {
-  const loginInput = document.getElementById('login-input');
-  const avatar = document.getElementById('avatar-login');
-  let timer;
-  loginInput.addEventListener('input', () => {
-    clearTimeout(timer);
-    const val = loginInput.value.trim();
-    if (val.length > 2 && !val.includes('@')) {
-      timer = setTimeout(() => {
-        avatar.src = skinUrl(val);
-      }, 300);
-    } else {
-      avatar.src = 'logo.JPG';
-    }
-  });
-})();
-
-async function bootstrapSession() {
+(async function hydrateFromToken() {
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) return renderUI();
-
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error('Sessão expirada');
     const me = await res.json();
-    session = {
-      username: me.username,
-      email: me.email,
-      minecraftName: me.minecraft_name,
-      role: me.role
-    };
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name || me.minecraftName, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(SESSION_KEY);
-    session = null;
+    localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); session = null;
   }
-
   renderUI();
-}
+})();
 
 async function handleLogin(event) {
   event.preventDefault();
-  const btn = document.getElementById('btn-login');
   const loginVal = document.getElementById('login-input').value.trim();
   const passVal = document.getElementById('pass-input').value;
-
-  btn.disabled = true;
-  btn.textContent = 'Entrando...';
-
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Entrando...';
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ login: loginVal, password: passVal })
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Falha no login');
-
     localStorage.setItem(TOKEN_KEY, data.token);
     session = data.user;
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
     showMessage('Autenticado com sucesso. Entrando...', 'success');
     setTimeout(() => { location.href = 'dashboard.html'; }, 500);
   } catch (err) {
-    showMessage(err.message || 'Erro de autenticação.', 'error');
+    showMessage(err.message, 'error');
+    document.getElementById('pass-input').value = '';
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Iniciar Sessão';
+    btn.disabled = false; btn.textContent = 'Iniciar Sessão';
   }
 }
 
 function forceLogout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  session = null;
-  renderUI();
+  localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); session = null; renderUI();
 }
-
-bootstrapSession();
 </script>
 </body>
 </html>
