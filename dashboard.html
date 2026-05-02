@@ -311,7 +311,7 @@
                     </div>
                     <div class="stat-box">
                         <span>Média por Sessão</span>
-                        <strong id="modal-avg-time">0h</strong>
+                        <strong id="modal-avg-time">0m</strong>
                     </div>
                 </div>
 
@@ -337,6 +337,23 @@
     let globalHistData = null;
     let globalApiData = null;
     let activityChartInstance = null;
+
+    // --- FUNÇÃO GLOBAL DE CONVERSÃO DE TEMPO ---
+    // Transforma números decimais de horas (ex: 1.96) em "1h 57m" legíveis.
+    function formatTime(hoursFloat) {
+        if (!hoursFloat || hoursFloat <= 0) return "Menos de 1m";
+        const totalMins = Math.floor(hoursFloat * 60);
+        const days = Math.floor(totalMins / 1440);
+        const hours = Math.floor((totalMins % 1440) / 60);
+        const mins = totalMins % 60;
+        
+        let parts = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (mins > 0) parts.push(`${mins}m`);
+        
+        return parts.length > 0 ? parts.join(' ') : "Menos de 1m";
+    }
 
     // --- SESSÃO E CABEÇALHO ---
     let session = JSON.parse(localStorage.getItem('fa_session')); 
@@ -422,23 +439,32 @@
         const nameFilter = document.getElementById('search-player').value.toLowerCase().trim();
         const dateFilter = document.getElementById('search-date').value;
         
-        let livePlayers = globalApiData?.players?.list?.map(p => typeof p === 'string' ? p : p.name) || globalHistData?.onlinePlayers || [];
+        let livePlayers = globalApiData?.players?.list?.map(p => typeof p === 'string' ? p : p.name) || [];
+        
+        // Fallback: se a API falhar, confia na lista do JSON (mesmo com delay de 5 min)
+        if (livePlayers.length === 0 && globalHistData?.onlinePlayers) {
+            livePlayers = globalHistData.onlinePlayers;
+        }
+
         const activeSessions = globalHistData?.activeSessions || {};
         const historyList = globalHistData?.history || [];
 
-        // Online Filtrado
+        // Filtra Online
         const filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
         const onlineUl = document.getElementById('online');
         
         if (filteredLive.length > 0) {
             onlineUl.innerHTML = filteredLive.map(pName => {
-                let timeInfo = 'Conectado agora';
-                const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === pName);
+                let timeInfo = 'Acabou de entrar'; // Fallback para delay da API vs JSON
+                
+                // Busca session independente de case
+                const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name.toLowerCase() === pName.toLowerCase());
                 if (sKey) {
                     const enterDate = new Date(activeSessions[sKey].enteredAt);
-                    const diffMins = Math.floor((new Date() - enterDate) / 60000);
-                    timeInfo = `Entrou às ${enterDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} (${Math.floor(diffMins/60)}h ${diffMins%60}m logado)`;
+                    const diffHours = (new Date() - enterDate) / 3600000;
+                    timeInfo = `Entrou às ${enterDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} (Logado há ${formatTime(diffHours)})`;
                 }
+                
                 return `
                 <li class="list-item" onclick="openPlayerProfile('${pName}')" title="Clique para abrir perfil completo">
                     <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head">
@@ -452,7 +478,7 @@
             onlineUl.innerHTML = `<li class="list-item"><div class="item-details"><span>Nenhum jogador correspondente.</span></div></li>`;
         }
 
-        // Histórico Filtrado
+        // Filtra Histórico
         let filteredHistory = historyList.filter(h => h.leftAt !== null);
         if (nameFilter) filteredHistory = filteredHistory.filter(h => h.player.toLowerCase().includes(nameFilter));
         if (dateFilter) filteredHistory = filteredHistory.filter(h => h.enteredAt.startsWith(dateFilter));
@@ -467,7 +493,7 @@
                     <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
                     <div class="item-details">
                         <strong>${h.player}</strong>
-                        <span style="font-size:12px;">Jogou por ${h.hoursOnline > 0 ? h.hoursOnline + 'h' : '< 1h'} (${enter} até ${left})</span>
+                        <span style="font-size:12px;">Jogou por ${formatTime(h.hoursOnline)} (${enter} até ${left})</span>
                     </div>
                 </li>`;
             }).join('');
@@ -483,7 +509,6 @@
         
         if (range === 'custom') {
             controls.style.display = 'flex';
-            // Preenche input default
             const end = new Date();
             const start = new Date(end.getTime() - 86400000); // Ontem
             const formatDT = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -499,7 +524,7 @@
         let hash = 0;
         for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
         const hue = Math.abs(hash) % 360;
-        return `hsl(${hue}, 70%, 55%)`; // Cores vivas e padronizadas por nome
+        return `hsl(${hue}, 70%, 55%)`; 
     }
 
     function updateActivityChart() {
@@ -522,13 +547,12 @@
             if (startTime > endTime) startTime = new Date(endTime.getTime() - 86400000); 
         }
 
-        // Criar os blocos de tempo (bins) para o eixo X
         let bins = [];
         let curr = new Date(startTime);
 
         if (grouping === 'hour') curr.setMinutes(0,0,0);
         if (grouping === 'day') curr.setHours(0,0,0,0);
-        if (grouping === 'minute') { curr.setSeconds(0,0); curr.setMinutes(Math.floor(curr.getMinutes()/15)*15); } // Pula de 15 em 15
+        if (grouping === 'minute') { curr.setSeconds(0,0); curr.setMinutes(Math.floor(curr.getMinutes()/15)*15); }
 
         while(curr <= endTime) {
             let next = new Date(curr);
@@ -545,7 +569,6 @@
             curr = next;
         }
 
-        // Resgatar todas as sessões do banco para cruzar com a linha de tempo
         const allSessions = [];
         (globalHistData.history || []).forEach(h => {
             if (h.enteredAt) allSessions.push({ player: h.player, start: new Date(h.enteredAt).getTime(), end: h.leftAt ? new Date(h.leftAt).getTime() : new Date().getTime() });
@@ -555,14 +578,15 @@
             allSessions.push({ player: s.name, start: new Date(s.enteredAt).getTime(), end: new Date().getTime() });
         });
 
-        // Calcular minutos logados por bloco
         bins.forEach(bin => {
             allSessions.forEach(session => {
                 let overlapStart = Math.max(bin.start, session.start);
                 let overlapEnd = Math.min(bin.end, session.end);
                 if (overlapStart < overlapEnd) {
                     let mins = (overlapEnd - overlapStart) / 60000;
-                    bin.playersMap[session.player] = (bin.playersMap[session.player] || 0) + mins;
+                    // Consolida case-insensitive para evitar linhas duplicadas no grafico
+                    const playerUpper = session.player.toUpperCase(); 
+                    bin.playersMap[playerUpper] = (bin.playersMap[playerUpper] || 0) + mins;
                 }
             });
         });
@@ -572,7 +596,6 @@
 
         const datasets = [];
         
-        // Criar uma "Linha" pra cada Jogador!
         playersSet.forEach(player => {
             const data = bins.map(b => b.playersMap[player] || 0);
             const playerColor = stringToColor(player);
@@ -584,7 +607,7 @@
                 backgroundColor: playerColor,
                 borderWidth: 2,
                 fill: false,
-                tension: 0.3, // Deixa a linha suave e curva
+                tension: 0.3,
                 pointRadius: 2,
                 pointHoverRadius: 6
             });
@@ -601,16 +624,17 @@
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { usePointStyle: true, boxWidth: 8, padding: 15 }
-                    },
+                    legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 15 } },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
                                 let label = context.dataset.label || '';
                                 if (label) label += ': ';
-                                if (context.parsed.y !== null) label += context.parsed.y.toFixed(1) + ' mins';
+                                // Formatação de tempo no Tooltip!
+                                if (context.parsed.y !== null) {
+                                    const hrs = context.parsed.y / 60;
+                                    label += formatTime(hrs);
+                                }
                                 return label;
                             }
                         }
@@ -629,8 +653,13 @@
         document.getElementById('modal-name').textContent = playerName;
         document.getElementById('modal-img').src = `https://minotar.net/helm/${playerName}/100.png`;
         
+        // Verifica a sessão atual com Case Insensitive (Corrige o bug "Online mas offline")
         const activeSessions = globalHistData?.activeSessions || {};
-        const isOnline = Object.values(activeSessions).some(s => s.name === playerName);
+        const sessionKey = Object.keys(activeSessions).find(k => activeSessions[k].name.toLowerCase() === playerName.toLowerCase());
+        
+        // Checa também se está vivo na API agora mesmo
+        const livePlayersList = globalApiData?.players?.list?.map(p => (typeof p === 'string' ? p : p.name).toLowerCase()) || [];
+        const isOnline = !!sessionKey || livePlayersList.includes(playerName.toLowerCase());
         
         const statusBadge = document.getElementById('modal-status');
         if (isOnline) {
@@ -643,21 +672,22 @@
 
         // Calcula Estatísticas Totais
         let totalHours = 0;
-        const pHistory = (globalHistData?.history || []).filter(h => h.player === playerName);
+        const pHistory = (globalHistData?.history || []).filter(h => h.player.toLowerCase() === playerName.toLowerCase());
         
         pHistory.forEach(h => { totalHours += (h.hoursOnline || 0); });
-        if (isOnline) {
-            const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === playerName);
-            const enterDate = new Date(activeSessions[sKey].enteredAt);
+        
+        // Acumula a sessão atual se existir
+        if (sessionKey) {
+            const enterDate = new Date(activeSessions[sessionKey].enteredAt);
             totalHours += ((new Date() - enterDate) / 3600000); 
         }
 
         const totalSessions = pHistory.length + (isOnline ? 1 : 0);
         const avgSession = totalSessions > 0 ? (totalHours / totalSessions) : 0;
 
-        document.getElementById('modal-total-time').textContent = totalHours.toFixed(1) + 'h';
+        document.getElementById('modal-total-time').textContent = formatTime(totalHours);
         document.getElementById('modal-sessions').textContent = totalSessions;
-        document.getElementById('modal-avg-time').textContent = avgSession.toFixed(1) + 'h';
+        document.getElementById('modal-avg-time').textContent = formatTime(avgSession);
 
         // Preenche Tabela de Entradas e Saídas
         const tbody = document.getElementById('modal-table-body');
@@ -668,12 +698,16 @@
             
             // Renderiza sessão atual (Em andamento)
             if (isOnline) {
-                const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name === playerName);
-                const eDate = new Date(activeSessions[sKey].enteredAt);
+                let eDateStr = 'Agora';
+                if(sessionKey) {
+                    const eDate = new Date(activeSessions[sessionKey].enteredAt);
+                    eDateStr = eDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+                }
+                
                 tableHtml += `
                 <tr style="background: rgba(52, 199, 89, 0.05);">
-                    <td>${eDate.toLocaleDateString('pt-BR')}</td>
-                    <td>${eDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td>Hoje</td>
+                    <td>${eDateStr}</td>
                     <td style="color:var(--success); font-weight:600;">Ao Vivo</td>
                     <td>Contando...</td>
                 </tr>`;
@@ -688,7 +722,7 @@
                     <td>${d.toLocaleDateString('pt-BR')}</td>
                     <td>${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
                     <td>${l.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
-                    <td>${h.hoursOnline ? h.hoursOnline.toFixed(2) + 'h' : '< 1h'}</td>
+                    <td>${formatTime(h.hoursOnline)}</td>
                 </tr>`;
             }).join('');
             
@@ -696,7 +730,7 @@
         }
 
         document.getElementById('player-modal').classList.add('active');
-        document.body.style.overflow = 'hidden'; // Tranca a rolagem da página atrás
+        document.body.style.overflow = 'hidden'; // Tranca a rolagem
     }
 
     function closeModal() {
