@@ -4,8 +4,6 @@ import path from 'node:path';
 const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
 const OUTPUT = path.resolve('data/player-history.json');
 const NOW = new Date();
-const INGEST_URL = process.env.INGEST_URL || '';
-const INGEST_SECRET = process.env.INGEST_SECRET || '';
 
 async function readJsonSafe(file, fallback) {
   try {
@@ -21,17 +19,6 @@ async function fetchStatus() {
   const res = await fetch(url, { headers: { 'User-Agent': 'forca-aliada-monitor/1.0' } });
   if (!res.ok) throw new Error(`mcstatus failed: ${res.status}`);
   return res.json();
-}
-
-async function fetchQueryStatus() {
-  try {
-    const url = `https://api.mcstatus.io/v2/query/${HOST}`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'forca-aliada-monitor/1.0' } });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
 }
 
 function currentDateKey(dt = new Date()) {
@@ -51,17 +38,6 @@ function normalizePlayers(data) {
   })).filter((p) => p.id);
 }
 
-function normalizeQueryPlayers(queryData) {
-  const names = queryData?.players?.list || queryData?.players || [];
-  if (!Array.isArray(names)) return [];
-  return names.map((name) => ({ id: String(name).toLowerCase(), name: String(name) })).filter((p) => p.id);
-}
-
-function getOnlineCount(data, playersNow) {
-  if (typeof data?.players?.online === 'number') return data.players.online;
-  return playersNow.length;
-}
-
 async function main() {
   const store = await readJsonSafe(OUTPUT, {
     generatedAt: null,
@@ -73,13 +49,7 @@ async function main() {
   });
 
   const status = await fetchStatus();
-  const queryStatus = await fetchQueryStatus();
-  const playersFromStatus = normalizePlayers(status);
-  const playersFromQuery = normalizeQueryPlayers(queryStatus);
-  const merged = [...playersFromStatus];
-  for (const p of playersFromQuery) if (!merged.some((m) => m.id === p.id)) merged.push(p);
-  const playersNow = merged;
-  const onlineCount = getOnlineCount(status, playersNow);
+  const playersNow = normalizePlayers(status);
   const nowIso = NOW.toISOString();
   const dateKey = currentDateKey(NOW);
   const existing = store.activeSessions || {};
@@ -111,7 +81,6 @@ async function main() {
 
   store.activeSessions = existing;
   store.onlinePlayers = playersNow.map((p) => p.name);
-  store.onlineCount = onlineCount;
 
   const joinedToday = store.history.filter((h) => h.enteredAt?.startsWith(dateKey)).length;
   const leftToday = store.history.filter((h) => h.leftAt?.startsWith(dateKey)).length;
@@ -120,18 +89,10 @@ async function main() {
     : 0;
   store.summary = { joinedToday, leftToday, avgHours };
   store.generatedAt = nowIso;
-  // Mantém histórico completo para não perder dados ao longo do tempo.
+  store.history = store.history.slice(0, 300);
 
   await fs.mkdir(path.dirname(OUTPUT), { recursive: true });
   await fs.writeFile(OUTPUT, JSON.stringify(store, null, 2) + '\n', 'utf8');
-
-  if (INGEST_URL && INGEST_SECRET) {
-    await fetch(INGEST_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: INGEST_SECRET, payload: store })
-    });
-  }
 }
 
 main().catch((err) => {
