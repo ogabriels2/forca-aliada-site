@@ -285,6 +285,13 @@
                 <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
             </ul>
         </div>
+
+        <div class="card" id="admin-users-card" style="grid-column: 1 / -1; display:none;">
+            <h3>Contas cadastradas</h3>
+            <ul id="admin-users-list"><li class="list-item"><div class="item-details"><span>Carregando...</span></div></li></ul>
+            <div id="admin-user-editor" style="display:none; margin-top:12px;"></div>
+            <div id="admin-users-msg" style="font-size:13px;"></div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)">
@@ -338,6 +345,8 @@
     let globalHistData = null;
     let globalApiData = null;
     let activityChartInstance = null;
+    const API_BASE = localStorage.getItem('fa_api_base') || 'http://localhost:8787';
+    const token = localStorage.getItem('fa_token');
 
     // --- FUNÇÃO GLOBAL DE CONVERSÃO DE TEMPO ---
     // Transforma números decimais de horas (ex: 1.96) em "1h 57m" legíveis.
@@ -382,7 +391,8 @@
     }
 
     document.body.style.visibility = 'visible';
-    const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'https://minotar.net/helm/Steve/100.png';
+    const mcName = session.minecraft || session.minecraftName || '-';
+    const skinUrl = mcName && mcName !== '-' ? `https://minotar.net/helm/${mcName}/100.png` : 'https://minotar.net/helm/Steve/100.png';
 
     function renderHeader() {
         document.getElementById('auth-header-container').innerHTML = `
@@ -417,7 +427,7 @@
     // --- SETUP DO PERFIL STAFF ---
     document.getElementById('name').textContent = session.username; 
     document.getElementById('email').textContent = session.email || '-'; 
-    document.getElementById('mc').textContent = session.minecraft || '-'; 
+    document.getElementById('mc').textContent = mcName; 
     document.getElementById('photo').src = skinUrl;
     
     const roleEl = document.getElementById('role');
@@ -773,11 +783,40 @@
         msg.textContent = 'Senha atualizada.'; msg.style.color = 'var(--success)';
         setTimeout(() => msg.textContent = '', 3000);
     }
-    function logout() { localStorage.removeItem('fa_session'); location.href = 'login.html'; }
+    function logout() { localStorage.removeItem('fa_session'); localStorage.removeItem('fa_token'); location.href = 'login.html'; }
+
+    
+    async function loadAdminUsers() {
+        if ((session.username || '').toLowerCase() !== 'gabalarca') return;
+        const card = document.getElementById('admin-users-card');
+        const list = document.getElementById('admin-users-list');
+        card.style.display = 'block';
+        const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) { list.innerHTML = '<li class="list-item"><div class="item-details"><span>Erro ao carregar usuários.</span></div></li>'; return; }
+        const users = await res.json();
+        list.innerHTML = users.map(u => `<li class="list-item" data-user-id="${u.id}"><div class="item-details"><strong>${u.username}</strong><span>${u.email} • ${u.role}</span></div></li>`).join('');
+        list.querySelectorAll('[data-user-id]').forEach((item) => item.addEventListener('click', () => openUserEditor(Number(item.dataset.userId))));
+        window.__adminUsers = users;
+    }
+
+    function openUserEditor(id) {
+        const user = (window.__adminUsers || []).find(u => u.id === id);
+        if (!user) return;
+        const el = document.getElementById('admin-user-editor');
+        el.style.display = 'block';
+        el.innerHTML = `<div class="input-group"><label>Usuário</label><input id="au-username" value="${user.username}"></div>
+        <div class="input-group"><label>Email</label><input id="au-email" value="${user.email}"></div>
+        <div class="input-group"><label>Minecraft</label><input id="au-mc" value="${user.minecraft_name || ''}"></div>
+        <div class="input-group"><label>Função</label><select id="au-role"><option value="limited" ${user.role==='limited'?'selected':''}>limited</option><option value="full" ${user.role==='full'?'selected':''}>full</option></select></div>
+        <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn-primary" onclick="saveUser(${user.id})">Salvar</button><button class="btn-primary" style="background:var(--danger);" onclick="deleteUser(${user.id})">Deletar</button></div>`;
+    }
+    async function saveUser(id){const msg=document.getElementById('admin-users-msg'); const body={username:document.getElementById('au-username').value.trim(),email:document.getElementById('au-email').value.trim(),minecraftName:document.getElementById('au-mc').value.trim(),role:document.getElementById('au-role').value}; const res=await fetch(`${API_BASE}/api/admin/users/${id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(body)}); msg.textContent=res.ok?'Usuário atualizado.':'Erro ao atualizar.'; msg.style.color=res.ok?'var(--success)':'var(--danger)'; if(res.ok) loadAdminUsers();}
+    async function deleteUser(id){const msg=document.getElementById('admin-users-msg'); const res=await fetch(`${API_BASE}/api/admin/users/${id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}}); msg.textContent=res.ok?'Usuário removido.':'Erro ao remover.'; msg.style.color=res.ok?'var(--success)':'var(--danger)'; if(res.ok){document.getElementById('admin-user-editor').style.display='none'; loadAdminUsers();}}
 
     // Iniciar
     renderHeader();
     loadData();
+    loadAdminUsers();
     setInterval(loadData, 30000);
 </script>
 </body>

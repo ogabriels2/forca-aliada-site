@@ -101,6 +101,41 @@ app.get('/api/snapshots/latest', auth, (req, res) => {
   res.json(parsed);
 });
 
+
+function requireFull(req, res, next) {
+  if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
+  next();
+}
+
+app.get('/api/admin/users', auth, requireFull, (req, res) => {
+  const users = db.prepare('SELECT id, username, email, minecraft_name, photo_url, role, created_at FROM users ORDER BY id DESC').all();
+  res.json(users);
+});
+
+app.put('/api/admin/users/:id', auth, requireFull, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
+  const { username, email, minecraftName, photoUrl, role } = req.body || {};
+  if (!username || !email) return res.status(400).json({ error: 'missing fields' });
+  try {
+    const info = db.prepare('UPDATE users SET username=?, email=?, minecraft_name=?, photo_url=?, role=? WHERE id=?')
+      .run(String(username).toLowerCase(), String(email).toLowerCase(), minecraftName || username, photoUrl || 'logo.JPG', role === 'full' ? 'full' : 'limited', id);
+    if (!info.changes) return res.status(404).json({ error: 'user not found' });
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'username/email already exists' });
+  }
+});
+
+app.delete('/api/admin/users/:id', auth, requireFull, (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
+  const user = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
+  if (!user) return res.status(404).json({ error: 'user not found' });
+  if (user.username === 'gabalarca') return res.status(400).json({ error: 'cannot delete main admin' });
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  res.json({ ok: true });
+});
 migrate();
 seedAdmin();
 app.listen(8787, () => console.log('API on http://localhost:8787'));
