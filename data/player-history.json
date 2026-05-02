@@ -1,12 +1,10 @@
 {
-  "generatedAt": "2026-05-01T23:30:26.978Z",
-  "onlinePlayers": [
-    "Agiota834"
-  ],
+  "generatedAt": "2026-05-02T01:13:51.895Z",
+  "onlinePlayers": [],
   "summary": {
-    "joinedToday": 9,
-    "leftToday": 8,
-    "avgHours": 1.97
+    "joinedToday": 0,
+    "leftToday": 1,
+    "avgHours": 2.05
   },
   "history": [
     {
@@ -18,8 +16,8 @@
     {
       "player": "Agiota834",
       "enteredAt": "2026-05-01T22:29:49.684Z",
-      "leftAt": null,
-      "hoursOnline": 0
+      "leftAt": "2026-05-02T01:13:51.895Z",
+      "hoursOnline": 2.73
     },
     {
       "player": "Jaqueta_",
@@ -64,14 +62,9 @@
       "hoursOnline": 5.25
     }
   ],
-  "activeSessions": {
-    "00000000-0000-0000-0009-01f9af288133": {
-      "name": "Agiota834",
-      "enteredAt": "2026-05-01T22:29:49.684Z"
-    }
-  },
+  "activeSessions": {},
   "totals": {
-    "sessionsClosedToday": 8,
-    "totalHoursToday": 15.74
+    "sessionsClosedToday": 9,
+    "totalHoursToday": 18.47
   }
 }
