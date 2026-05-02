@@ -25,6 +25,7 @@
 
         body {
             margin: 0;
+            visibility: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-color);
             color: var(--text-primary);
@@ -355,11 +356,32 @@
         return parts.length > 0 ? parts.join(' ') : "Menos de 1m";
     }
 
-    // --- SESSÃO E CABEÇALHO ---
-    let session = JSON.parse(localStorage.getItem('fa_session')); 
-    if(!session) {
-        session = { username: "Administrador", email: "admin@forcaaliada.com", minecraft: "Notch", role: "full" };
+    // --- SESSÃO E CONTROLE DE ACESSO ---
+    const STAFF_ALLOWED_USERS = ['jaqueta', 'gabalarca', 'admin'];
+    let session = null;
+
+    try {
+        const rawSession = localStorage.getItem('fa_session');
+        session = rawSession ? JSON.parse(rawSession) : null;
+    } catch (e) {
+        session = null;
     }
+
+    const normalizedUser = (session?.username || '').trim().toLowerCase();
+    const hasDashboardAccess = STAFF_ALLOWED_USERS.includes(normalizedUser);
+
+    if (!session) {
+        window.location.replace('login.html');
+        throw new Error('Acesso ao dashboard bloqueado: usuário não autenticado.');
+    }
+
+    if (!hasDashboardAccess) {
+        localStorage.setItem('fa_flash_message', 'Você não tem permissão para acessar o painel da staff.');
+        window.location.replace('index.html');
+        throw new Error('Acesso ao dashboard bloqueado: usuário sem permissão.');
+    }
+
+    document.body.style.visibility = 'visible';
     const skinUrl = session.minecraft ? `https://minotar.net/helm/${session.minecraft}/100.png` : 'https://minotar.net/helm/Steve/100.png';
 
     function renderHeader() {

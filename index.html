@@ -650,6 +650,22 @@
             });
         }
 
+
+        function showAccessMessageIfAny() {
+            const msg = localStorage.getItem('fa_flash_message');
+            if (!msg) return;
+
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = 'show';
+            localStorage.removeItem('fa_flash_message');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.className = toast.className.replace('show', '');
+            }, 3500);
+        }
+
         async function fetchStatus() {
             const url = `https://api.mcstatus.io/v2/status/java/${API_JAVA_HOST}`;
             try {
@@ -733,6 +749,7 @@
         // --- 4. INICIALIZAÇÃO ---
         window.onload = () => {
             renderAuthMenu(); // Verifica a sessão ao carregar a página
+            showAccessMessageIfAny();
             reveal();
             fetchStatus();
             setInterval(fetchStatus, 30000);
