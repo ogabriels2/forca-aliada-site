@@ -5,7 +5,6 @@
 - SQLite (`better-sqlite3`)
 - JWT auth
 - Hash de senha com bcrypt
-- Tabelas persistentes para jogadores (`players`) e eventos (`player_events`)
 
 ## Rodar
 ```bash
@@ -27,4 +26,3 @@ API: `http://localhost:8787`
 No workflow/cron, use:
 - `INGEST_URL=http://SEU_BACKEND/api/snapshots/import`
 - `INGEST_SECRET=...`
-- `WRITE_LOCAL=false` (evita usar Git como banco de dados)

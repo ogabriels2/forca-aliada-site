@@ -1,55 +1,430 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login | Força Aliada</title>
-  <style>
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:linear-gradient(160deg,#eef3ff,#f9fafb);min-height:100vh}
-    .header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:700}.brand img{width:30px;height:30px;border-radius:8px}
-    .center{display:grid;place-items:center;min-height:calc(100vh - 52px)}
-    .card{width:min(420px,92vw);background:rgba(255,255,255,.8);backdrop-filter:blur(14px);border:1px solid #e5e7eb;border-radius:24px;padding:28px;box-shadow:0 20px 50px rgba(0,0,0,.08)}
-    h1{margin:0 0 6px;font-size:1.8rem} p{color:#6b7280} input{width:100%;padding:12px;border-radius:12px;border:1px solid #d1d5db;margin-top:10px}
-    button{width:100%;margin-top:14px;padding:12px;border:none;border-radius:999px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}
-    .ghost{background:#eef2ff;color:#1e3a8a}
-    .msg{font-size:.9rem;color:#475569;margin-top:8px;min-height:18px}
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Força Aliada</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --border: #d2d2d7;
+            --radius-lg: 24px;
+            --radius-md: 12px;
+            --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        a { text-decoration: none; color: inherit; }
+
+        header {
+            position: fixed; top: 0; width: 100%; padding: 12px 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+            z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+        .brand-link:hover { opacity: 0.8; }
+        .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+
+        .user-menu-wrapper { position: relative; display: inline-block; }
+
+        .user-btn {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+            transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
+        }
+        .user-btn:hover { background: rgba(0,0,0,0.08); }
+        .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #e5e5ea; }
+        .user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+        .user-btn.active svg { transform: rotate(180deg); }
+
+        .user-dropdown {
+            position: absolute; right: 0; top: calc(100% + 12px);
+            background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            border: 1px solid rgba(0,0,0,0.05); padding: 8px;
+            display: flex; flex-direction: column; min-width: 200px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
+        }
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .user-dropdown button {
+            text-align: left; padding: 12px 16px; border-radius: 10px; border: none;
+            background: transparent; font-size: 14px; font-weight: 500; cursor: pointer;
+            color: var(--text-primary); transition: background 0.2s; display: block; width: 100%;
+        }
+        .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+        .user-dropdown .danger { color: var(--danger); }
+        .user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
+
+        .nav-cta {
+            color: var(--accent) !important; font-weight: 600 !important;
+            background: rgba(0,113,227,0.08); padding: 8px 16px;
+            border-radius: 980px; transition: background 0.2s; font-size: 14px;
+        }
+        .nav-cta:hover { background: rgba(0,113,227,0.15); }
+
+        .login-wrapper {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            padding: 80px 20px 20px;
+        }
+
+        .card {
+            width: 100%; max-width: 400px;
+            background: var(--card-bg);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-radius: var(--radius-lg); padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.4);
+            text-align: center; animation: fadeIn 0.4s ease; position: relative;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .avatar-preview {
+            width: 80px; height: 80px; border-radius: 20px; background: #e5e5ea;
+            margin: 0 auto 20px; object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+        p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
+
+        .form-group { margin-bottom: 16px; text-align: left; }
+
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 14px 16px; border-radius: var(--radius-md);
+            border: 1px solid var(--border); background: rgba(255,255,255,0.9);
+            font-size: 15px; transition: all 0.2s ease; outline: none; color: var(--text-primary);
+        }
+        input::placeholder { color: #a1a1a6; }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
+
+        button.main-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
+            background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        button.main-btn:hover  { background: var(--accent-hover); transform: scale(1.02); }
+        button.main-btn:active { transform: scale(0.98); }
+        button.main-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
+        .footer-text a { color: var(--text-primary); font-weight: 600; transition: color 0.2s; cursor: pointer; }
+        .footer-text a:hover { color: var(--accent); text-decoration: underline; }
+
+        .msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
+        .error   { color: var(--danger); }
+        .success { color: var(--success); }
+
+        #view-loggedin { display: none; }
+        #view-login    { display: block; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .shake-animation { animation: shake 0.4s ease; }
+    </style>
 </head>
 <body>
-  <div class="header"><div class="brand"><img src="assets/images/logo.JPG" alt=""><span>Força Aliada</span></div><a href="index.html">Início</a></div>
-  <div class="center"><div class="card">
-    <h1>Entrar</h1>
-    <p>Acesse sua conta para abrir o painel.</p>
-    <input id="login" placeholder="Usuário ou e-mail">
-    <input id="pass" type="password" placeholder="Senha">
-    <button onclick="doLogin()">Fazer login</button>
-    <button class="ghost" onclick="location.href='signup'">Criar conta</button>
-    <div id="msg" class="msg"></div>
-  </div></div>
-  <script>
-    const API_BASE = window.location.origin;
-    const ALLOWED_USERS = ['gabalarca', 'admin', 'jaqueta', 'jaqueta_'];
-    async function doLogin(){
-      const l=document.getElementById('login').value.trim().toLowerCase(),p=document.getElementById('pass').value;
-      try {
-        const r=await fetch(`${API_BASE}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:l,password:p})});
-        if(!r.ok){document.getElementById('msg').innerText='Credenciais inválidas.';return;}
-        const data=await r.json();
-        const uname=String(data?.user?.username||'').toLowerCase();
-        if(!ALLOWED_USERS.includes(uname)){
-          localStorage.removeItem('fa_api_token');localStorage.removeItem('fa_session');
-          sessionStorage.setItem('fa_denied_msg','Você não tem permissão para acessar o painel da staff.');
-          location.href='index.html';
-          return;
-        }
-        localStorage.setItem('fa_api_token',data.token);
-        localStorage.setItem('fa_session',JSON.stringify(data.user));
-        document.getElementById('msg').innerText='Login feito com sucesso.';
-        setTimeout(()=>location.href='dashboard',400);
-      } catch { document.getElementById('msg').innerText='Erro de conexão com o servidor.'; }
+
+<header>
+    <a href="index.html" class="brand-link" title="Voltar ao site principal">
+        <img src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+        <div class="logo-text">Força Aliada</div>
+    </a>
+
+    <div id="auth-header-container">
+        <a id="header-signup-link" href="signup.html" class="nav-cta">Criar conta</a>
+
+        <div id="header-user-menu" class="user-menu-wrapper" style="display:none;">
+            <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
+                <img id="header-avatar" src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+                <span id="header-username"></span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="user-dropdown" id="user-dropdown-menu">
+                <button onclick="location.href='dashboard.html'">Acessar Dashboard</button>
+                <button class="danger" onclick="forceLogout()">Sair da Conta</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="login-wrapper">
+    <div class="card" id="loginCard">
+
+        <!-- VIEW: LOGADO -->
+        <div id="view-loggedin">
+            <img id="avatar-loggedin" class="avatar-preview"
+                 src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+            <h1 id="loggedin-username"></h1>
+            <p class="subtitle">Você já está conectado.</p>
+            <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+            <div class="footer-text">
+                <a onclick="forceLogout()" style="color:var(--danger);">Entrar com outra conta</a>
+            </div>
+        </div>
+
+        <!-- VIEW: FORMULÁRIO
+             ──────────────────────────────────────────────────────────────
+             Vive no HTML estático desde o carregamento — nunca injetado
+             via innerHTML. O browser escaneia os campos ao carregar a
+             página e ativa autocompletar + gerenciador de senhas.
+
+             name="username" / "password"      → obrigatório para o browser
+                                                  associar campos às credenciais
+             autocomplete="username" /
+                          "current-password"   → diretiva padrão reconhecida
+                                                  por Chrome, Safari e Firefox
+             ────────────────────────────────────────────────────────────── -->
+        <div id="view-login">
+            <img id="avatar-login" class="avatar-preview"
+                 src="logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logotipo">
+
+            <h1>Entrar</h1>
+            <p class="subtitle">Acesse sua conta do painel administrativo.</p>
+
+            <form id="login-form" autocomplete="on" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <input
+                        id="login-input"
+                        name="username"
+                        type="text"
+                        placeholder="Usuário ou e-mail"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <input
+                        id="pass-input"
+                        name="password"
+                        type="password"
+                        placeholder="Senha"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+                <button type="submit" id="btn-login" class="main-btn">Iniciar Sessão</button>
+            </form>
+
+            <div id="msg" class="msg"></div>
+
+            <div class="footer-text">
+                Não possui acesso? <a href="signup.html">Criar conta</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ── BANCO DE DADOS ────────────────────────────────────────────────────────
+    const predefined = [
+        { username: 'admin',     email: '',                                 minecraft: 'admin',     password: 'NovaAlianca+', role: 'limited', photo: 'logo.JPG' },
+        { username: 'gabalarca', email: 'gabalarcadsmoreira2016@gmail.com', minecraft: 'gabalarca', password: 'Famosos1290+', role: 'full',    photo: '' }
+    ];
+
+    let db = JSON.parse(localStorage.getItem('fa_users'));
+    if (!db) {
+        localStorage.setItem('fa_users', JSON.stringify(predefined));
+        db = predefined;
     }
-    document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-  </script>
+
+    let session = JSON.parse(localStorage.getItem('fa_session'));
+
+    // ── RENDERIZAÇÃO ──────────────────────────────────────────────────────────
+    // Alterna display:block/none — o <form> NUNCA é removido do DOM.
+    function renderUI() {
+        const viewLoggedin = document.getElementById('view-loggedin');
+        const viewLogin    = document.getElementById('view-login');
+        const headerSignup = document.getElementById('header-signup-link');
+        const headerMenu   = document.getElementById('header-user-menu');
+
+        if (session) {
+            const skinUrl = session.minecraft
+                ? 'https://minotar.net/helm/' + session.minecraft + '/100.png'
+                : 'logo.JPG';
+
+            document.getElementById('avatar-loggedin').src           = skinUrl;
+            document.getElementById('loggedin-username').textContent  = session.username;
+            document.getElementById('header-avatar').src             = skinUrl;
+            document.getElementById('header-username').textContent   = session.username;
+
+            viewLoggedin.style.display = 'block';
+            viewLogin.style.display    = 'none';
+            headerSignup.style.display = 'none';
+            headerMenu.style.display   = 'inline-block';
+        } else {
+            viewLoggedin.style.display = 'none';
+            viewLogin.style.display    = 'block';
+            headerSignup.style.display = 'inline-block';
+            headerMenu.style.display   = 'none';
+        }
+    }
+
+    // ── AVATAR DO MINECRAFT ───────────────────────────────────────────────────
+    (function () {
+        var loginInput = document.getElementById('login-input');
+        var avatar     = document.getElementById('avatar-login');
+        var timer;
+
+        loginInput.addEventListener('input', function () {
+            clearTimeout(timer);
+            var val = loginInput.value.trim();
+            if (val.length > 2 && val.indexOf('@') === -1) {
+                timer = setTimeout(function () {
+                    avatar.src     = 'https://minotar.net/helm/' + val + '/100.png';
+                    avatar.onerror = function () { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+                }, 400);
+            } else if (val.length === 0) {
+                avatar.src     = 'logo.JPG';
+                avatar.onerror = function () { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+            }
+        });
+    })();
+
+    // ── DROPDOWN ──────────────────────────────────────────────────────────────
+    function toggleUserDropdown(event) {
+        event.stopPropagation();
+        document.getElementById('user-btn-toggle').classList.toggle('active');
+        document.getElementById('user-dropdown-menu').classList.toggle('show');
+    }
+
+    document.addEventListener('click', function () {
+        var menu = document.getElementById('user-dropdown-menu');
+        var btn  = document.getElementById('user-btn-toggle');
+        if (menu && btn) {
+            menu.classList.remove('show');
+            btn.classList.remove('active');
+        }
+    });
+
+    // ── MENSAGEM ──────────────────────────────────────────────────────────────
+    function showMessage(text, type) {
+        var msgEl = document.getElementById('msg');
+        var card  = document.getElementById('loginCard');
+        msgEl.textContent = text;
+        msgEl.className   = 'msg ' + type;
+        if (type === 'error') {
+            card.classList.remove('shake-animation');
+            void card.offsetWidth;
+            card.classList.add('shake-animation');
+        }
+    }
+
+    // ── HANDLELOGIN ───────────────────────────────────────────────────────────
+    //
+    // POR QUE event.preventDefault() é chamado SEMPRE:
+    //   O <form> sem action="" faria um GET para a URL atual ao submeter,
+    //   recarregando a página imediatamente — antes do setTimeout ter
+    //   chance de redirecionar para dashboard.html. Prevenir o default
+    //   mantém o controle do fluxo no JS.
+    //
+    // COMO a senha é salva no browser mesmo assim:
+    //   Chrome/Edge: usamos a Credential Management API (PasswordCredential)
+    //   que aciona o prompt "Salvar senha?" de forma programática.
+    //   Firefox/Safari: detectam a navegação via location.href após interação
+    //   com campos [name="username"] + [name="password"] por heurística.
+    //   Em ambos os casos, autocomplete="username/current-password" e os
+    //   atributos name corretos são o que ativa o preenchimento automático.
+    //
+    //   IMPORTANTE: isso só funciona via HTTP/HTTPS (localhost ou servidor).
+    //   Em file:// o browser bloqueia gerenciadores de senha por segurança.
+    //
+    async function handleLogin(event) {
+        event.preventDefault();
+
+        var loginVal = document.getElementById('login-input').value.trim().toLowerCase();
+        var passVal  = document.getElementById('pass-input').value;
+        var btn      = document.getElementById('btn-login');
+
+        var user = null;
+        for (var i = 0; i < db.length; i++) {
+            var u = db[i];
+            if ((u.username.toLowerCase() === loginVal || u.email.toLowerCase() === loginVal) && u.password === passVal) {
+                user = u;
+                break;
+            }
+        }
+
+        if (user) {
+            showMessage('Autenticado com sucesso. Entrando...', 'success');
+            btn.textContent = 'Carregando...';
+            btn.disabled    = true;
+
+            localStorage.setItem('fa_session', JSON.stringify(user));
+            session = user;
+
+            // Credential Management API — Chrome/Edge
+            if (window.PasswordCredential) {
+                try {
+                    var cred = new PasswordCredential({
+                        id:       user.username,
+                        password: passVal,
+                        name:     user.username
+                    });
+                    await navigator.credentials.store(cred);
+                } catch (e) { /* silencioso */ }
+            }
+
+            setTimeout(function () { location.href = 'dashboard.html'; }, 600);
+
+        } else {
+            showMessage('Usuário ou senha incorretos.', 'error');
+            document.getElementById('pass-input').value = '';
+            document.getElementById('pass-input').focus();
+        }
+    }
+
+    // ── LOGOUT ────────────────────────────────────────────────────────────────
+    function forceLogout() {
+        localStorage.removeItem('fa_session');
+        session = null;
+        var avatar = document.getElementById('avatar-login');
+        if (avatar) {
+            avatar.src     = 'logo.JPG';
+            avatar.onerror = function () { avatar.src = 'https://minotar.net/helm/Steve/100.png'; };
+        }
+        renderUI();
+    }
+
+    // ── INICIAR ───────────────────────────────────────────────────────────────
+    renderUI();
+</script>
 </body>
 </html>
