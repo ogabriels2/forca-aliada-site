@@ -6,11 +6,11 @@
     <meta name="description" content="Força Aliada: O servidor Minecraft Survival Vanilla feito para durar. Sem resets, economia real e ativo desde 2021. Jogue no PC, Mobile e Console.">
     <title>Força Aliada | Construa para Sempre</title>
     
-    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    <link rel="icon" type="image/jpeg" href="assets/images/logo.JPG">
 
     <meta property="og:title" content="Força Aliada | Construa para Sempre">
     <meta property="og:description" content="Um mundo survival sem reset, sem pay-to-win e sem pressa. Ativo desde 2021.">
-    <meta property="og:image" content="hero.png">
+    <meta property="og:image" content="assets/images/hero.png">
     <meta property="og:url" content="https://fa.ogabriels.com">
     <meta name="theme-color" content="#0044CC">
 
@@ -75,7 +75,7 @@
 
         /* --- HERO --- */
         .hero {
-            height: 95vh; background-image: url('hero.png'); 
+            height: 95vh; background-image: url('assets/images/hero.png'); 
             background-size: cover; background-position: center;
             display: flex; align-items: center; justify-content: center; text-align: center; position: relative;
         }
@@ -139,7 +139,7 @@
         .platform-tag:hover { color: var(--azul-profundo); opacity: 1; transform: translateY(-2px); }
 
         /* --- STATUS CHECKER --- */
-        .status-section { background-image: url('status-bg.png'); background-size: cover; background-position: center; background-attachment: fixed; display: flex; justify-content: center; position: relative; padding: 120px 5%; }
+        .status-section { background-image: url('assets/images/status-bg.png'); background-size: cover; background-position: center; background-attachment: fixed; display: flex; justify-content: center; position: relative; padding: 120px 5%; }
         .status-section::before { content:''; position: absolute; inset:0; background: rgba(10, 25, 49, 0.7); }
         .glass-card { position: relative; z-index: 5; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); padding: 60px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.1); text-align: center; color: var(--branco); width: 100%; max-width: 650px; box-shadow: 0 40px 80px rgba(0,0,0,0.3); }
         .connection-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; }
@@ -203,7 +203,7 @@
 
     <header>
         <a href="#inicio" class="brand-link">
-            <img src="logo.jpg" alt="FA Logo" class="logo-img">
+            <img src="assets/images/logo.JPG" alt="FA Logo" class="logo-img">
             <div class="logo-text">Força Aliada</div>
         </a>
         <nav>
@@ -256,7 +256,7 @@
                 </div>
             </div>
             <div class="img-card">
-                <img src="sobre.png" alt="Centro da cidade">
+                <img src="assets/images/sobre.png" alt="Centro da cidade">
             </div>
         </div>
     </section>
@@ -294,13 +294,13 @@
         
         <div class="devices-container">
             <div class="switch-console">
-                <img src="print_mobile.png" alt="Minecraft no Console">
+                <img src="assets/images/print_mobile.PNG" alt="Minecraft no Console">
             </div>
             <div class="device monitor">
-                <img src="print_pc.png" alt="Minecraft no PC">
+                <img src="assets/images/print_pc.png" alt="Minecraft no PC">
             </div>
             <div class="device phone">
-                <img src="print_mobile.png" alt="Minecraft no Celular">
+                <img src="assets/images/print_mobile.PNG" alt="Minecraft no Celular">
             </div>
         </div>
         <div class="platform-list">
@@ -348,13 +348,13 @@
 
         <div class="bento-grid">
             <div class="bento-item item-big" onclick="openLightbox(0)">
-                <img src="galeria1.png" alt="Destaque" loading="lazy">
+                <img src="assets/images/galeria1.jpeg" alt="Destaque" loading="lazy">
             </div>
             <div class="bento-item" onclick="openLightbox(1)">
-                <img src="galeria2.png" alt="Secundário" loading="lazy">
+                <img src="assets/images/galeria2.jpeg" alt="Secundário" loading="lazy">
             </div>
             <div class="bento-item" onclick="openLightbox(2)">
-                <img src="galeria3.png" alt="Terciário" loading="lazy">
+                <img src="assets/images/galeria3.jpeg" alt="Terciário" loading="lazy">
             </div>
         </div>
     </section>
@@ -492,7 +492,7 @@
 
         // LIGHTBOX & SCROLL
         let currentSlide = 0;
-        const galleryImages = ['galeria1.png', 'galeria2.png', 'galeria3.png'];
+        const galleryImages = ['assets/images/galeria1.jpeg', 'assets/images/galeria2.jpeg', 'assets/images/galeria3.jpeg'];
 
         function openLightbox(index) {
             currentSlide = index;
