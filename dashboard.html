@@ -353,6 +353,49 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
   margin-left: 6px;
 }
 
+/* ── SEPARADORES DE SEMANA NA TABELA ── */
+.week-separator-row td { padding: 0; border: none; }
+.week-separator {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 12px 6px;
+}
+.week-separator::before,
+.week-separator::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.week-separator span {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── PAINEL CRIAR CONTA (RECOLHÍVEL) ── */
+.create-account-collapsed {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-radius: 12px;
+  background: #f7f7f8; border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.create-account-collapsed:hover {
+  background: #f0f0f5; border-color: rgba(0,113,227,0.2);
+}
+.create-acc-chevron {
+  color: var(--text-secondary); transition: transform 0.3s cubic-bezier(0.165,0.84,0.44,1);
+  display: flex; align-items: center;
+}
+.create-acc-chevron.open { transform: rotate(180deg); }
+.create-account-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.165,0.84,0.44,1), opacity 0.3s;
+  opacity: 0;
+}
+.create-account-body.open {
+  max-height: 600px; opacity: 1;
+}
+.create-account-body-inner {
+  padding: 16px 0 0;
+}
+
 @media (max-width: 860px) {
   .container { grid-template-columns: 1fr; margin-top: 20px; }
   .filter-bar { grid-template-columns: 1fr; }
@@ -565,7 +608,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
         <!-- Segurança Avançada (acordeão) -->
         <div class="advanced-security-section admin-account-card.edit-mode" id="advanced-security-wrapper" style="display:none;">
           <button class="accordion-btn" id="adv-sec-btn" onclick="toggleAccordion('adv-sec-btn','adv-sec-body')">
-            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Segurança Avançada — Alterar Senha</span>
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span>
             <i class="acc-arrow">▾</i>
           </button>
           <div class="accordion-body" id="adv-sec-body">
@@ -595,40 +638,54 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
       </div>
 
       <!-- Painel: Criar cadastro para jogador sem conta -->
-      <div id="modal-create-account" class="create-account-panel" style="display:none;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <div style="width:32px;height:32px;background:rgba(0,113,227,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;">👤</div>
-          <h4 style="margin:0;">Jogador sem cadastro no painel</h4>
-        </div>
-        <p>Este jogador já entrou no servidor mas ainda não possui uma conta. Você pode criar o cadastro completo aqui — a conta será criada como se a pessoa tivesse registrado, com o nome do Minecraft já vinculado.</p>
-        <div class="create-account-form">
-          <div class="admin-field">
-            <label>Usuário de Login</label>
-            <input type="text" id="ci-username" placeholder="nome_de_usuario">
+      <div id="modal-create-account" style="display:none;margin-bottom:24px;">
+        <!-- Cabeçalho sempre visível -->
+        <div class="create-account-collapsed" id="create-account-header" onclick="toggleCreateAccount()">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:28px;height:28px;background:rgba(0,113,227,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Jogador sem cadastro no painel</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:1px;">Clique para criar uma conta para este jogador</div>
+            </div>
           </div>
-          <div class="admin-field">
-            <label>E-mail</label>
-            <input type="email" id="ci-email" placeholder="email@exemplo.com">
-          </div>
-          <div class="admin-field">
-            <label>Conta Minecraft (preenchida)</label>
-            <input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="background:#f2f2f7;cursor:default;">
-          </div>
-          <div class="admin-field">
-            <label>Permissão de Acesso</label>
-            <select id="ci-role">
-              <option value="limited">Acesso Restrito</option>
-              <option value="full">Acesso Total (Admin)</option>
-            </select>
-          </div>
-          <div class="admin-field" style="grid-column:1/-1;">
-            <label>Senha Inicial (mín. 6 caracteres)</label>
-            <input type="password" id="ci-password" placeholder="Senha para primeiro acesso">
+          <div class="create-acc-chevron" id="create-acc-chevron">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:16px;gap:12px;">
-          <div class="create-form-msg" id="create-form-msg"></div>
-          <button class="btn-primary" onclick="submitCreateAccount()" id="btn-create-account">Criar Cadastro</button>
+
+        <!-- Formulário expansível -->
+        <div class="create-account-body" id="create-account-body">
+          <div style="padding:16px 0 0;">
+          <div class="create-account-form">
+            <div class="admin-field">
+              <label>Usuário de Login</label>
+              <input type="text" id="ci-username" placeholder="nome_de_usuario" style="display:block;">
+            </div>
+            <div class="admin-field">
+              <label>E-mail</label>
+              <input type="email" id="ci-email" placeholder="email@exemplo.com" style="display:block;">
+            </div>
+            <div class="admin-field">
+              <label>Conta Minecraft (preenchida)</label>
+              <input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="display:block;background:#f2f2f7;cursor:default;">
+            </div>
+            <div class="admin-field">
+              <label>Permissão de Acesso</label>
+              <select id="ci-role" style="display:block;">
+                <option value="limited">Acesso Restrito</option>
+                <option value="full">Acesso Total (Admin)</option>
+              </select>
+            </div>
+            <div class="admin-field" style="grid-column:1/-1;">
+              <label>Senha Inicial (mín. 6 caracteres)</label>
+              <input type="password" id="ci-password" placeholder="Senha para primeiro acesso" style="display:block;">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:16px;gap:12px;">
+            <div class="create-form-msg" id="create-form-msg" style="font-size:13px;"></div>
+            <button class="btn-primary" onclick="submitCreateAccount()" id="btn-create-account">Criar Cadastro</button>
+          </div>
+          </div><!-- /padding wrapper -->
         </div>
       </div>
 
@@ -873,39 +930,59 @@ function applyFilters() {
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', nameFilter ? 'Nenhum resultado para a busca.' : 'O servidor está vazio no momento.');
 
-  // Offline
+  // Offline — agrupa por jogador, soma todas as sessões do dia mais recente
   let offlineHistory = (globalHistData.history || []).filter(
     h => !livePlayers.map(n => n.toLowerCase()).includes(h.player.toLowerCase()) && h.leftAt
   );
-  const uniqueOffline = [];
-  const seen = new Set();
+
+  // Agrupa por jogador: pega data do último leftAt e soma todas as sessões naquele mesmo dia
+  const playerDayMap = new Map();
   offlineHistory.sort((a, b) => new Date(b.leftAt) - new Date(a.leftAt));
   for (const h of offlineHistory) {
     const k = h.player.toLowerCase();
-    if (!seen.has(k)) { seen.add(k); uniqueOffline.push(h); }
+    if (!playerDayMap.has(k)) {
+      // Primeiro registro (mais recente) define o dia de referência
+      const lastDay = new Date(h.leftAt).toDateString();
+      playerDayMap.set(k, {
+        player: h.player,
+        leftAt: h.leftAt,
+        dayRef: lastDay,
+        totalHoursDay: 0,
+        sessionsToday: 0
+      });
+    }
+    const entry = playerDayMap.get(k);
+    // Soma apenas as sessões do mesmo dia
+    if (new Date(h.leftAt).toDateString() === entry.dayRef) {
+      entry.totalHoursDay += (h.hoursOnline || 0);
+      entry.sessionsToday++;
+    }
   }
-  let filteredOff = uniqueOffline;
-  if (nameFilter) filteredOff = filteredOff.filter(h => h.player.toLowerCase().includes(nameFilter));
-  if (dateFilter) filteredOff = filteredOff.filter(h => h.enteredAt.startsWith(dateFilter));
+
+  let filteredOff = [...playerDayMap.values()];
+  if (nameFilter) filteredOff = filteredOff.filter(e => e.player.toLowerCase().includes(nameFilter));
+  if (dateFilter) filteredOff = filteredOff.filter(e => e.leftAt.startsWith(dateFilter));
 
   const histUl = document.getElementById('history');
   histUl.innerHTML = filteredOff.length
-    ? filteredOff.slice(0, 15).map(h => {
-        const dStr = new Date(h.leftAt).toLocaleDateString('pt-BR');
-        return `<li class="list-item" onclick="openPlayerProfile('${h.player}')">
-          <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
-          <div class="item-details"><strong>${h.player}</strong><span style="font-size:12px;">Desconectou em ${dStr} (Sessão: ${formatTime(h.hoursOnline)})</span></div>
+    ? filteredOff.slice(0, 15).map(e => {
+        const leftDate = new Date(e.leftAt);
+        const isToday = leftDate.toDateString() === new Date().toDateString();
+        const isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
+        const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
+        const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
+        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')">
+          <img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
+          <div class="item-details">
+            <strong>${e.player}</strong>
+            <span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span>
+          </div>
         </li>`;
       }).join('')
     : emptyStateHTML('📋', 'Nenhum registro encontrado', nameFilter || dateFilter ? 'Tente outros filtros.' : 'Nenhum jogador desconectado recentemente.');
 }
 
 // ── Gráficos ────────────────────────────────────────────────────
-function stringToColor(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  return `hsl(${Math.abs(hash) % 360},70%,55%)`;
-}
 
 function toggleCustomTime() {
   const val = document.getElementById('chart-range').value;
@@ -920,6 +997,19 @@ function toggleCustomTime() {
     ctrl.style.display = 'none';
   }
   updateActivityChart();
+}
+
+// Paleta de cores distintas e harmoniosas — sem preto, sem cinza escuro
+const CHART_PALETTE = [
+  '#0071e3', '#34c759', '#ff9f0a', '#ff3b30', '#af52de',
+  '#5ac8fa', '#ff6b35', '#30b0c7', '#a2845e', '#ff2d55',
+  '#64d2ff', '#ffd60a', '#00c7be', '#bf5af2', '#32ade6'
+];
+function playerColor(playerName, index) {
+  // Usa hash para cor consistente por nome, mas dentro da paleta curada
+  let hash = 0;
+  for (let i = 0; i < playerName.length; i++) hash = playerName.charCodeAt(i) + ((hash << 5) - hash);
+  return CHART_PALETTE[Math.abs(hash) % CHART_PALETTE.length];
 }
 
 function updateActivityChart() {
@@ -961,22 +1051,31 @@ function updateActivityChart() {
     }
   }
 
-  const labels  = [...buckets.keys()].map(k => {
+  const labels = [...buckets.keys()].map(k => {
     const d = new Date(k);
     return grouping === 'day'
       ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
       : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   });
 
-  const datasets = [...players].map(p => ({
-    label: p,
-    data: [...buckets.values()].map(b => b[p] || 0),
-    backgroundColor: stringToColor(p) + '99',
-    borderColor: stringToColor(p),
-    borderWidth: 1.5,
-    tension: 0.35,
-    fill: true,
-  }));
+  const playerList = [...players];
+  const datasets = playerList.map((p, i) => {
+    const color = playerColor(p, i);
+    return {
+      label: p,
+      data: [...buckets.values()].map(b => b[p] || 0),
+      borderColor: color,
+      backgroundColor: color + '18', // fill suave, quase invisível
+      borderWidth: 2,
+      tension: 0.4,
+      fill: false, // SEM fill escuro — linhas limpas
+      pointBackgroundColor: color,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    };
+  });
 
   if (chartInstance) chartInstance.destroy();
   const ctx = document.getElementById('activityChart').getContext('2d');
@@ -984,11 +1083,53 @@ function updateActivityChart() {
     type: 'line',
     data: { labels, datasets },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: players.size <= 8 } },
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: playerList.length > 0 && playerList.length <= 10,
+          labels: {
+            boxWidth: 12,
+            boxHeight: 12,
+            borderRadius: 4,
+            useBorderRadius: true,
+            font: { size: 12 },
+            padding: 16,
+            color: '#1d1d1f',
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.96)',
+          titleColor: '#1d1d1f',
+          bodyColor: '#86868b',
+          borderColor: 'rgba(0,0,0,0.08)',
+          borderWidth: 1,
+          padding: 12,
+          boxPadding: 4,
+          cornerRadius: 10,
+          boxWidth: 10,
+          boxHeight: 10,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${v > 0 ? 'online' : 'offline'}`;
+            }
+          }
+        }
+      },
       scales: {
-        x: { ticks: { maxTicksLimit: 10, font: { size: 11 } } },
-        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        x: {
+          grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+          ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' },
+          border: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, font: { size: 11 }, color: '#86868b' },
+          grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+          border: { display: false }
+        }
       }
     }
   });
@@ -1069,7 +1210,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       document.getElementById('modal-site-account').style.display   = 'block';
       document.getElementById('modal-create-account').style.display = 'none';
     } else {
-      // Sem conta: mostra painel de criação
+      // Sem conta: mostra painel de criação (recolhido por padrão)
       currentEditingAdminId = null;
       document.getElementById('ci-username').value = '';
       document.getElementById('ci-email').value    = '';
@@ -1077,6 +1218,11 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       document.getElementById('ci-role').value     = 'limited';
       document.getElementById('ci-password').value = '';
       document.getElementById('create-form-msg').textContent = '';
+      // Reseta para recolhido
+      const body    = document.getElementById('create-account-body');
+      const chevron = document.getElementById('create-acc-chevron');
+      body.classList.remove('open');
+      chevron.classList.remove('open');
       document.getElementById('modal-create-account').style.display = 'block';
       document.getElementById('modal-site-account').style.display   = 'none';
     }
@@ -1123,7 +1269,38 @@ function renderModalTable() {
     return 0;
   });
 
+  // Calcula semana ISO de uma data
+  function getWeekKey(dateStr) {
+    const d = new Date(dateStr);
+    const jan4 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${weekNum}`;
+  }
+  function getWeekLabel(dateStr) {
+    const d = new Date(dateStr);
+    // Acha início da semana (segunda-feira)
+    const day = d.getDay() || 7;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - day + 1);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = dt => dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    const now = new Date();
+    const thisWeekMonday = new Date(now);
+    thisWeekMonday.setDate(now.getDate() - (now.getDay() || 7) + 1);
+    const lastWeekMonday = new Date(thisWeekMonday);
+    lastWeekMonday.setDate(thisWeekMonday.getDate() - 7);
+    if (monday.toDateString() === thisWeekMonday.toDateString()) return 'Esta semana';
+    if (monday.toDateString() === lastWeekMonday.toDateString()) return 'Semana passada';
+    return `${fmt(monday)} – ${fmt(sunday)}`;
+  }
+
+  const sortDateIcon     = modalSortConfig.key === 'date'     ? (modalSortConfig.asc ? '▲' : '▼') : '';
+  const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
+
   let rows = '';
+
+  // Sessão ao vivo (sempre no topo, sem separador)
   if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) {
     rows += `<tr style="background:rgba(52,199,89,0.05)">
       <td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td>
@@ -1132,18 +1309,30 @@ function renderModalTable() {
     </tr>`;
   }
 
+  // Renderiza sessões com separadores de semana
+  let lastWeekKey = isOnline && activeSess ? getWeekKey(activeSess.enteredAt) : null;
+
   rows += filtered.map(h => {
     if (!h.left_at) return '';
+    const weekKey = getWeekKey(h.entered_at);
+    let separator = '';
+    if (weekKey !== lastWeekKey) {
+      lastWeekKey = weekKey;
+      separator = `<tr class="week-separator-row">
+        <td colspan="3">
+          <div class="week-separator">
+            <span>${getWeekLabel(h.entered_at)}</span>
+          </div>
+        </td>
+      </tr>`;
+    }
     const d = new Date(h.entered_at), l = new Date(h.left_at);
-    return `<tr>
+    return separator + `<tr>
       <td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></td>
       <td>${l.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>
       <td>${formatTime(h.duration_hours)}</td>
     </tr>`;
   }).join('');
-
-  const sortDateIcon     = modalSortConfig.key === 'date'     ? (modalSortConfig.asc ? '▲' : '▼') : '';
-  const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
 
   const tableHTML = `
     <table class="history-table">
@@ -1165,6 +1354,13 @@ function sortModal(key) {
   if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc;
   else { modalSortConfig.key = key; modalSortConfig.asc = false; }
   renderModalTable();
+}
+
+function toggleCreateAccount() {
+  const body    = document.getElementById('create-account-body');
+  const chevron = document.getElementById('create-acc-chevron');
+  const isOpen  = body.classList.toggle('open');
+  chevron.classList.toggle('open', isOpen);
 }
 
 // ── Admin: Edição de conta ──────────────────────────────────────
