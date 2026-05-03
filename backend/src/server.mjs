@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new Database('backend/data/app.db');
+const db = new Database('app.db');
 const JWT_SECRET = process.env.JWT_SECRET || 'trocar-em-producao';
 
 function migrate() {
