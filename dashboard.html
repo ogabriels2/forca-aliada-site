@@ -33,92 +33,24 @@ body {
 a { text-decoration: none; color: inherit; }
 
 /* ── SKELETON ── */
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  background: #e8e8ed !important;
-  border-radius: 8px;
-  color: transparent !important;
-  pointer-events: none;
-  user-select: none;
-}
+.skeleton { position: relative; overflow: hidden; background: #e8e8ed !important; border-radius: 8px; color: transparent !important; pointer-events: none; user-select: none; }
 .skeleton * { visibility: hidden !important; }
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-  animation: shimmer 1.4s infinite;
-}
+.skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
-.skeleton-line {
-  height: 14px;
-  border-radius: 6px;
-  background: #e8e8ed;
-  position: relative;
-  overflow: hidden;
-  margin: 6px 0;
-}
-.skeleton-line::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-  animation: shimmer 1.4s infinite;
-}
-.skeleton-line.w60 { width: 60%; }
-.skeleton-line.w40 { width: 40%; }
-.skeleton-line.w80 { width: 80%; }
-.skeleton-circle {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: #e8e8ed;
-  position: relative; overflow: hidden; flex-shrink: 0;
-}
-.skeleton-circle::after {
-  content: '';
-  position: absolute; inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-  animation: shimmer 1.4s infinite;
-}
+.skeleton-line { height: 14px; border-radius: 6px; background: #e8e8ed; position: relative; overflow: hidden; margin: 6px 0; }
+.skeleton-line::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
+.skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; } .skeleton-line.w80 { width: 80%; }
+.skeleton-circle { width: 40px; height: 40px; border-radius: 50%; background: #e8e8ed; position: relative; overflow: hidden; flex-shrink: 0; }
+.skeleton-circle::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
 
 /* ── EMPTY STATE ── */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 24px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-.empty-state strong {
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
-}
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 24px; text-align: center; color: var(--text-secondary); }
+.empty-state strong { color: var(--text-primary); font-size: 15px; font-weight: 600; }
 .empty-state span { font-size: 13px; }
-.empty-icon {
-  width: 48px; height: 48px;
-  border-radius: 50%;
-  background: #f2f2f7;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
-  margin-bottom: 4px;
-}
+.empty-icon { width: 48px; height: 48px; border-radius: 50%; background: #f2f2f7; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 4px; }
 
 /* ── HEADER ── */
-header {
-  position: sticky; top: 0; width: 100%; padding: 12px 5%;
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  z-index: 1000; border-bottom: 1px solid var(--border);
-}
+header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); z-index: 1000; border-bottom: 1px solid var(--border); }
 .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
 .brand-link:hover { opacity: 0.8; }
 .logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
@@ -126,55 +58,28 @@ header {
 
 /* ── DROPDOWN ── */
 .user-menu-wrapper { position: relative; display: inline-block; }
-.user-btn {
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
-  transition: all 0.2s; border: 1px solid transparent; user-select: none;
-}
+.user-btn { display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px; transition: all 0.2s; border: 1px solid transparent; user-select: none; }
 .user-btn:hover { background: rgba(0,0,0,0.08); }
 .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
 .user-btn span { font-size: 14px; font-weight: 600; }
 .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s; }
 .user-btn.active svg { transform: rotate(180deg); }
-.user-dropdown {
-  position: absolute; right: 0; top: calc(100% + 12px);
-  background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px);
-  border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
-  padding: 8px; display: flex; flex-direction: column; min-width: 200px;
-  opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
-}
+.user-dropdown { position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05); padding: 8px; display: flex; flex-direction: column; min-width: 200px; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao); }
 .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
-.user-dropdown button {
-  text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
-  font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
-  display: block; width: 100%; font-family: inherit;
-}
+.user-dropdown button { text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s; display: block; width: 100%; font-family: inherit; }
 .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
 .user-dropdown .danger { color: var(--danger); }
 .user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
 
 /* ── LAYOUT ── */
-.container {
-  max-width: 1200px; margin: 40px auto; padding: 0 20px;
-  display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;
-}
-.btn-primary {
-  padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600;
-  cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit;
-}
+.container { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+.btn-primary { padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit; }
 .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.btn-secondary {
-  padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600;
-  cursor: pointer; background: #e5e5ea; color: var(--text-primary); transition: all 0.2s; font-family: inherit;
-}
+.btn-secondary { padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: #e5e5ea; color: var(--text-primary); transition: all 0.2s; font-family: inherit; }
 .btn-secondary:hover { background: #d1d1d6; }
-.card {
-  background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 16px;
-}
+.card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
 .card h3 { margin: 0; font-size: 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
 .profile-header { display: flex; align-items: center; gap: 16px; }
@@ -188,20 +93,14 @@ header {
 .pill.limited-status { background: #f2f2f7; color: var(--text-secondary); }
 .input-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .input-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-input, select {
-  width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md);
-  background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; font-family: inherit;
-}
+input, select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; font-family: inherit; }
 input:focus, select:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
 .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
 .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .mini-card .value { font-size: 24px; font-weight: 700; letter-spacing: -1px; }
 ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.list-item {
-  display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color);
-  border-radius: var(--radius-md); border: 1px solid transparent; transition: all 0.2s; cursor: pointer;
-}
+.list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
 .list-item:hover { border-color: var(--border); background: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .mc-head { width: 40px; height: 40px; border-radius: 8px; background: #e5e5ea; }
 .item-details { flex: 1; }
@@ -212,61 +111,30 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .filter-bar { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px; }
 .chart-container { width: 100%; height: 350px; margin-bottom: 20px; }
 
-/* ── ACCORDION (Segurança Avançada) ── */
-.accordion-btn {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; background: none; border: none; padding: 12px 16px;
-  border-radius: var(--radius-md); cursor: pointer; font-family: inherit;
-  font-size: 14px; font-weight: 500; color: var(--text-primary);
-  transition: background 0.2s;
-}
+/* ── ACCORDION ── */
+.accordion-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; padding: 12px 16px; border-radius: var(--radius-md); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-primary); transition: background 0.2s; }
 .accordion-btn:hover { background: rgba(0,0,0,0.04); }
 .accordion-btn .acc-arrow { transition: transform 0.3s; font-style: normal; font-size: 12px; color: var(--text-secondary); }
 .accordion-btn.open .acc-arrow { transform: rotate(180deg); }
-.accordion-body {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 0.35s cubic-bezier(0.165, 0.84, 0.44, 1), opacity 0.25s;
-  opacity: 0;
-}
+.accordion-body { overflow: hidden; max-height: 0; transition: max-height 0.35s cubic-bezier(0.165, 0.84, 0.44, 1), opacity 0.25s; opacity: 0; }
 .accordion-body.open { max-height: 400px; opacity: 1; }
 .accordion-inner { padding: 4px 0 8px; display: flex; flex-direction: column; gap: 12px; }
 
 /* ── MODAL ── */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-  background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
-  z-index: 2000; display: flex; justify-content: center; align-items: center;
-  opacity: 0; visibility: hidden; transition: var(--transicao); padding: 20px;
-}
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: var(--transicao); padding: 20px; }
 .modal-overlay.active { opacity: 1; visibility: visible; }
-.modal-content {
-  background: var(--card-bg); width: 100%; max-width: 750px; max-height: 90vh;
-  border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2);
-  display: flex; flex-direction: column; overflow: hidden;
-  transform: scale(0.95); transition: var(--transicao);
-}
+.modal-content { background: var(--card-bg); width: 100%; max-width: 750px; max-height: 90vh; border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; transform: scale(0.95); transition: var(--transicao); }
 .modal-overlay.active .modal-content { transform: scale(1); }
-.modal-header {
-  padding: 24px; border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: flex-start; background: #fafafa;
-}
+.modal-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: #fafafa; }
 .modal-user-info { display: flex; align-items: center; gap: 16px; }
 .modal-user-info img { width: 80px; height: 80px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .modal-user-info h2 { margin: 0 0 8px; font-size: 24px; }
-.close-modal {
-  background: rgba(0,0,0,0.05); border: none; width: 32px; height: 32px;
-  border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;
-}
+.close-modal { background: rgba(0,0,0,0.05); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
 .close-modal:hover { background: rgba(0,0,0,0.1); }
 .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
 
 /* ── ADMIN ACCOUNT CARD ── */
-.admin-account-card {
-  background: #fafafa; border: 1px solid var(--border);
-  border-radius: 16px; padding: 20px; margin-bottom: 24px;
-  transition: var(--transicao);
-}
+.admin-account-card { background: #fafafa; border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 24px; transition: var(--transicao); }
 .admin-account-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .admin-field-group { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .admin-field label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
@@ -280,40 +148,21 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .action-bar { display: none; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
 .admin-account-card.edit-mode .action-bar { display: flex; }
 .admin-account-card.edit-mode .admin-account-header .btn-text { display: none; }
-
-/* Seção de segurança avançada dentro do modal */
-.advanced-security-section {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  background: #fff;
-}
-.advanced-security-section .accordion-btn {
-  border-radius: 0;
-  border-bottom: 1px solid transparent;
-}
-.advanced-security-section .accordion-btn.open {
-  border-bottom-color: var(--border);
-}
-.advanced-security-section .accordion-inner {
-  padding: 16px;
-}
+.advanced-security-section { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+.advanced-security-section .accordion-btn { border-radius: 0; border-bottom: 1px solid transparent; }
+.advanced-security-section .accordion-btn.open { border-bottom-color: var(--border); }
+.advanced-security-section .accordion-inner { padding: 16px; }
 
 /* ── CREATE ACCOUNT PANEL ── */
-.create-account-panel {
-  background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
-  border: 1px solid rgba(0,113,227,0.15);
-  border-radius: 16px; padding: 24px; margin-bottom: 24px;
-}
-.create-account-panel h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
-.create-account-panel p { margin: 0 0 16px; font-size: 13px; color: var(--text-secondary); }
+.create-account-panel { background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%); border: 1px solid rgba(0,113,227,0.15); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
 .create-account-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.create-account-form .admin-field input,
-.create-account-form .admin-field select {
-  display: block;
-}
-.create-form-msg { font-size: 13px; margin-top: 8px; }
+.create-account-form .admin-field input, .create-account-form .admin-field select { display: block; }
+.create-account-collapsed { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: #f7f7f8; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; user-select: none; }
+.create-account-collapsed:hover { background: #f0f0f5; border-color: rgba(0,113,227,0.2); }
+.create-acc-chevron { color: var(--text-secondary); transition: transform 0.3s cubic-bezier(0.165,0.84,0.44,1); display: flex; align-items: center; }
+.create-acc-chevron.open { transform: rotate(180deg); }
+.create-account-body { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.165,0.84,0.44,1), opacity 0.3s; opacity: 0; }
+.create-account-body.open { max-height: 600px; opacity: 1; }
 
 /* ── STATS & TABLE ── */
 .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
@@ -330,79 +179,51 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .history-table tr:hover td { background: rgba(0,0,0,0.02); }
 
 /* ── TABS NO ADMIN CARD ── */
-.admin-tabs-bar {
-  display: flex; gap: 4px; margin-bottom: 16px;
-  background: #f2f2f7; border-radius: 10px; padding: 4px;
-}
-.admin-tab {
-  flex: 1; padding: 7px 12px; border: none; background: transparent; cursor: pointer;
-  border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit;
-  color: var(--text-secondary); transition: all 0.2s;
-}
-.admin-tab.active {
-  background: #fff; color: var(--text-primary);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-}
+.admin-tabs-bar { display: flex; gap: 4px; margin-bottom: 16px; background: #f2f2f7; border-radius: 10px; padding: 4px; }
+.admin-tab { flex: 1; padding: 7px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; color: var(--text-secondary); transition: all 0.2s; }
+.admin-tab.active { background: #fff; color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.unregistered-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,159,10,0.12); color: var(--warning); font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; padding: 3px 8px; border-radius: 980px; margin-left: 6px; }
 
-/* ── UNREGISTERED BADGE ── */
-.unregistered-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(255,159,10,0.12); color: var(--warning);
-  font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
-  text-transform: uppercase; padding: 3px 8px; border-radius: 980px;
-  margin-left: 6px;
-}
+/* ── SORT BAR para aba Admin ── */
+.sort-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.sort-bar-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
+.sort-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 980px; border: 1px solid var(--border); font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg-color); color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; }
+.sort-chip:hover { border-color: var(--accent); color: var(--accent); }
+.sort-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* ── SEPARADORES DE SEMANA NA TABELA ── */
-.week-separator-row td { padding: 0; border: none; }
-.week-separator {
-  display: flex; align-items: center; gap: 10px;
-  padding: 16px 12px 6px;
-}
-.week-separator::before,
-.week-separator::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
-}
-.week-separator span {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.6px; color: var(--text-secondary);
-  white-space: nowrap;
-}
+/* ── CHART TOOLBAR ── */
+.chart-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 8px; min-height: 24px; }
+.chart-tip { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.chart-tip kbd { display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--bg-color); border: 1px solid var(--border); font-size: 10px; font-family: inherit; font-weight: 600; color: var(--text-primary); }
 
-/* ── PAINEL CRIAR CONTA (RECOLHÍVEL) ── */
-.create-account-collapsed {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px; border-radius: 12px;
-  background: #f7f7f8; border: 1px solid var(--border);
-  cursor: pointer; transition: all 0.2s; user-select: none;
-}
-.create-account-collapsed:hover {
-  background: #f0f0f5; border-color: rgba(0,113,227,0.2);
-}
-.create-acc-chevron {
-  color: var(--text-secondary); transition: transform 0.3s cubic-bezier(0.165,0.84,0.44,1);
-  display: flex; align-items: center;
-}
-.create-acc-chevron.open { transform: rotate(180deg); }
-.create-account-body {
-  max-height: 0; overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.165,0.84,0.44,1), opacity 0.3s;
-  opacity: 0;
-}
-.create-account-body.open {
-  max-height: 600px; opacity: 1;
-}
-.create-account-body-inner {
-  padding: 16px 0 0;
-}
+/* ── MODAL DE CONFIRMAÇÃO COM SENHA ── */
+.confirm-pw-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: opacity 0.25s cubic-bezier(0.165,0.84,0.44,1), visibility 0.25s cubic-bezier(0.165,0.84,0.44,1); }
+.confirm-pw-overlay.active { opacity: 1; visibility: visible; }
+.confirm-pw-sheet { background: #fff; border-radius: 20px; padding: 28px; width: 100%; max-width: 380px; box-shadow: 0 32px 64px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.05); transform: scale(0.93) translateY(8px); transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+.confirm-pw-overlay.active .confirm-pw-sheet { transform: scale(1) translateY(0); }
+.confirm-pw-icon { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 16px; flex-shrink: 0; }
+.confirm-pw-icon.delete  { background: rgba(255,59,48,0.1); }
+.confirm-pw-icon.save    { background: rgba(0,113,227,0.1); }
+.confirm-pw-sheet h4 { margin: 0 0 6px; font-size: 17px; font-weight: 700; text-align: center; }
+.confirm-pw-sheet p  { margin: 0 0 20px; font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.45; }
+.confirm-pw-sheet .pw-field-wrap { position: relative; margin-bottom: 8px; }
+.confirm-pw-sheet input[type="password"], .confirm-pw-sheet input[type="text"] { width: 100%; padding: 13px 44px 13px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; font-family: inherit; outline: none; background: var(--bg-color); transition: border-color 0.2s, box-shadow 0.2s; }
+.confirm-pw-sheet input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.12); }
+.confirm-pw-sheet input.pw-error { border-color: var(--danger); box-shadow: 0 0 0 4px rgba(255,59,48,0.12); animation: shakeInput 0.35s ease; }
+@keyframes shakeInput { 0%,100% { transform: translateX(0); } 20%,60%  { transform: translateX(-4px); } 40%,80%  { transform: translateX(4px); } }
+.pw-toggle-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; display: flex; align-items: center; }
+.pw-toggle-btn:hover { color: var(--text-primary); }
+.confirm-pw-error-msg { font-size: 12px; color: var(--danger); font-weight: 500; min-height: 18px; margin-bottom: 16px; text-align: center; }
+.confirm-pw-actions { display: flex; gap: 10px; }
+.confirm-pw-actions button { flex: 1; padding: 13px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.18s; }
+.confirm-pw-btn-cancel { background: #f2f2f7; color: var(--text-primary); }
+.confirm-pw-btn-cancel:hover { background: #e5e5ea; }
+.confirm-pw-btn-confirm { background: var(--accent); color: #fff; }
+.confirm-pw-btn-confirm:hover { background: var(--accent-hover); transform: scale(1.02); }
+.confirm-pw-btn-confirm.destructive { background: var(--danger); }
+.confirm-pw-btn-confirm.destructive:hover { background: #e0352b; }
 
-@media (max-width: 860px) {
-  .container { grid-template-columns: 1fr; margin-top: 20px; }
-  .filter-bar { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: 1fr; }
-  .admin-field-group { grid-template-columns: 1fr; }
-  .create-account-form { grid-template-columns: 1fr; }
-}
+@media (max-width: 860px) { .container { grid-template-columns: 1fr; margin-top: 20px; } .filter-bar { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr; } .admin-field-group { grid-template-columns: 1fr; } .create-account-form { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -416,7 +237,6 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 </header>
 
 <div class="container">
-  <!-- ── PERFIL ── -->
   <div class="card">
     <div class="profile-header">
       <img id="photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img" alt="Foto de perfil">
@@ -436,7 +256,6 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">
 
-    <!-- Segurança — accordion -->
     <div>
       <button class="accordion-btn" id="security-acc-btn" onclick="toggleAccordion('security-acc-btn','security-acc-body')">
         <span style="font-size:15px;font-weight:600;">Segurança</span>
@@ -459,29 +278,16 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </div>
   </div>
 
-  <!-- ── DASHBOARD ── -->
   <div class="card">
     <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
     <div class="dashboard-grid">
       <div class="mini-card">
         <h4>Status</h4>
-        <div class="value" style="display:flex;align-items:center;gap:8px;">
-          <span class="status-dot" id="server-dot"></span>
-          <span id="server-status">...</span>
-        </div>
+        <div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div>
       </div>
-      <div class="mini-card">
-        <h4>Jogadores Online</h4>
-        <div class="value" id="online-count">-/-</div>
-      </div>
-      <div class="mini-card">
-        <h4>IP do Servidor</h4>
-        <div class="value" style="font-size:16px;">fa.ogabriels.com</div>
-      </div>
-      <div class="mini-card">
-        <h4>Versão</h4>
-        <div class="value" id="server-version" style="font-size:16px;">-</div>
-      </div>
+      <div class="mini-card"><h4>Jogadores Online</h4><div class="value" id="online-count">-/-</div></div>
+      <div class="mini-card"><h4>IP do Servidor</h4><div class="value" style="font-size:16px;">fa.ogabriels.com</div></div>
+      <div class="mini-card"><h4>Versão</h4><div class="value" id="server-version" style="font-size:16px;">-</div></div>
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
@@ -502,16 +308,13 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </div>
 
     <div id="custom-time-controls" style="display:none;gap:12px;margin-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:12px;color:var(--text-secondary);">Início:</span>
-        <input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;">
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:12px;color:var(--text-secondary);">Fim:</span>
-        <input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;">
-      </div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12px;color:var(--text-secondary);">Início:</span><input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;"></div>
+      <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12px;color:var(--text-secondary);">Fim:</span><input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;"></div>
     </div>
 
+    <div class="chart-toolbar">
+      <span class="chart-tip"><kbd>2×clique</kbd> na legenda = isolar &nbsp;·&nbsp; <kbd>1×clique</kbd> = mostrar/ocultar &nbsp;·&nbsp; <kbd>Clique</kbd> na linha = isolar jogador</span>
+    </div>
     <div class="chart-container">
       <canvas id="activityChart"></canvas>
     </div>
@@ -534,20 +337,19 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </ul>
   </div>
 
-  <!-- ── ADMIN: CONTAS ── -->
   <div class="card" id="admin-users-card" style="grid-column:1/-1;display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
       <h3 id="admin-card-title">Contas da Staff</h3>
-      <input type="text" id="admin-search" placeholder="Buscar..." oninput="renderAdminTab()" style="width:250px;padding:8px 12px;">
+      <input type="text" id="admin-search" placeholder="Buscar..." oninput="renderAdminTab()" style="width:220px;padding:8px 12px;">
     </div>
 
-    <!-- Tabs: Cadastrados / Sem cadastro -->
     <div class="admin-tabs-bar">
       <button class="admin-tab active" id="tab-registered" onclick="switchAdminTab('registered')">Cadastrados</button>
-      <button class="admin-tab" id="tab-unregistered" onclick="switchAdminTab('unregistered')">
-        Sem Cadastro <span class="unregistered-badge" id="unreg-count-badge" style="display:none;">0</span>
-      </button>
+      <button class="admin-tab" id="tab-unregistered" onclick="switchAdminTab('unregistered')">Sem Cadastro <span class="unregistered-badge" id="unreg-count-badge" style="display:none;">0</span></button>
     </div>
+
+    <div class="sort-bar" id="admin-sort-bar">
+      </div>
 
     <div id="admin-users-msg" style="font-size:13px;" role="alert"></div>
     <ul id="admin-users-list">
@@ -556,7 +358,6 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
   </div>
 </div>
 
-<!-- ── MODAL ── -->
 <div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true">
   <div class="modal-content">
     <div class="modal-header">
@@ -565,14 +366,15 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
         <div>
           <h2 id="modal-name">-</h2>
           <span id="modal-status" class="pill">-</span>
+          <button id="modal-chart-btn" onclick="focusPlayerInChart(currentModalPlayerName)" title="Ver este jogador no gráfico" style="display:none;margin-top:8px;padding:5px 12px;border:none;border-radius:980px;background:rgba(0,113,227,0.08);color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s;">
+            📊 Ver no gráfico
+          </button>
         </div>
       </div>
       <button class="close-modal" onclick="closeModal()" aria-label="Fechar">×</button>
     </div>
 
     <div class="modal-body">
-
-      <!-- Painel: Conta existente (admin) -->
       <div id="modal-site-account" class="admin-account-card" style="display:none;">
         <div class="admin-account-header">
           <h4 style="margin:0;font-size:15px;">Dados da Conta (Painel)</h4>
@@ -580,51 +382,25 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
         </div>
 
         <div class="admin-field-group">
-          <div class="admin-field">
-            <label>Usuário de Login</label>
-            <div class="view-val" id="av-username">-</div>
-            <input type="text" id="ai-username">
-          </div>
-          <div class="admin-field">
-            <label>E-mail</label>
-            <div class="view-val" id="av-email">-</div>
-            <input type="email" id="ai-email">
-          </div>
-          <div class="admin-field">
-            <label>Conta Minecraft Associada</label>
-            <div class="view-val" id="av-mc">-</div>
-            <input type="text" id="ai-mc" placeholder="Opcional">
-          </div>
-          <div class="admin-field">
-            <label>Permissão de Acesso</label>
-            <div class="view-val" id="av-role">-</div>
-            <select id="ai-role">
-              <option value="limited">Acesso Restrito</option>
-              <option value="full">Acesso Total (Admin)</option>
-            </select>
-          </div>
+          <div class="admin-field"><label>Usuário de Login</label><div class="view-val" id="av-username">-</div><input type="text" id="ai-username"></div>
+          <div class="admin-field"><label>E-mail</label><div class="view-val" id="av-email">-</div><input type="email" id="ai-email"></div>
+          <div class="admin-field"><label>Conta Minecraft Associada</label><div class="view-val" id="av-mc">-</div><input type="text" id="ai-mc" placeholder="Opcional"></div>
+          <div class="admin-field"><label>Permissão de Acesso</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Acesso Total (Admin)</option></select></div>
         </div>
 
-        <!-- Segurança Avançada (acordeão) -->
         <div class="advanced-security-section admin-account-card.edit-mode" id="advanced-security-wrapper" style="display:none;">
           <button class="accordion-btn" id="adv-sec-btn" onclick="toggleAccordion('adv-sec-btn','adv-sec-body')">
-            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span>
-            <i class="acc-arrow">▾</i>
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span><i class="acc-arrow">▾</i>
           </button>
           <div class="accordion-body" id="adv-sec-body">
             <div class="accordion-inner">
-              <div class="admin-field">
-                <label>Nova Senha (mín. 6 caracteres)</label>
-                <input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;">
-              </div>
+              <div class="admin-field"><label>Nova Senha (mín. 6 caracteres)</label><input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;"></div>
             </div>
           </div>
         </div>
 
         <div class="action-bar">
-          <div id="admin-delete-normal">
-            <button class="btn-text danger" style="font-size:13px;" onclick="showAdminDeleteConfirm()">Excluir conta...</button>
-          </div>
+          <div id="admin-delete-normal"><button class="btn-text danger" style="font-size:13px;" onclick="showAdminDeleteConfirm()">Excluir conta...</button></div>
           <div id="admin-delete-confirm" style="display:none;align-items:center;gap:12px;">
             <span style="font-size:13px;color:var(--danger);font-weight:600;">Tem certeza?</span>
             <button class="btn-text danger" style="font-weight:700;" onclick="executeAdminDelete()">Sim, excluir</button>
@@ -637,9 +413,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
         </div>
       </div>
 
-      <!-- Painel: Criar cadastro para jogador sem conta -->
       <div id="modal-create-account" style="display:none;margin-bottom:24px;">
-        <!-- Cabeçalho sempre visível -->
         <div class="create-account-collapsed" id="create-account-header" onclick="toggleCreateAccount()">
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:28px;height:28px;background:rgba(0,113,227,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>
@@ -648,61 +422,37 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
               <div style="font-size:12px;color:var(--text-secondary);margin-top:1px;">Clique para criar uma conta para este jogador</div>
             </div>
           </div>
-          <div class="create-acc-chevron" id="create-acc-chevron">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </div>
+          <div class="create-acc-chevron" id="create-acc-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
         </div>
 
-        <!-- Formulário expansível -->
         <div class="create-account-body" id="create-account-body">
           <div style="padding:16px 0 0;">
           <div class="create-account-form">
-            <div class="admin-field">
-              <label>Usuário de Login</label>
-              <input type="text" id="ci-username" placeholder="nome_de_usuario" style="display:block;">
-            </div>
-            <div class="admin-field">
-              <label>E-mail</label>
-              <input type="email" id="ci-email" placeholder="email@exemplo.com" style="display:block;">
-            </div>
-            <div class="admin-field">
-              <label>Conta Minecraft (preenchida)</label>
-              <input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="display:block;background:#f2f2f7;cursor:default;">
-            </div>
-            <div class="admin-field">
-              <label>Permissão de Acesso</label>
-              <select id="ci-role" style="display:block;">
-                <option value="limited">Acesso Restrito</option>
-                <option value="full">Acesso Total (Admin)</option>
-              </select>
-            </div>
-            <div class="admin-field" style="grid-column:1/-1;">
-              <label>Senha Inicial (mín. 6 caracteres)</label>
-              <input type="password" id="ci-password" placeholder="Senha para primeiro acesso" style="display:block;">
-            </div>
+            <div class="admin-field"><label>Usuário de Login</label><input type="text" id="ci-username" placeholder="nome_de_usuario" style="display:block;"></div>
+            <div class="admin-field"><label>E-mail</label><input type="email" id="ci-email" placeholder="email@exemplo.com" style="display:block;"></div>
+            <div class="admin-field"><label>Conta Minecraft (preenchida)</label><input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="display:block;background:#f2f2f7;cursor:default;"></div>
+            <div class="admin-field"><label>Permissão de Acesso</label><select id="ci-role" style="display:block;"><option value="limited">Acesso Restrito</option><option value="full">Acesso Total (Admin)</option></select></div>
+            <div class="admin-field" style="grid-column:1/-1;"><label>Senha Inicial (mín. 6 caracteres)</label><input type="password" id="ci-password" placeholder="Senha para primeiro acesso" style="display:block;"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:16px;gap:12px;">
             <div class="create-form-msg" id="create-form-msg" style="font-size:13px;"></div>
             <button class="btn-primary" onclick="submitCreateAccount()" id="btn-create-account">Criar Cadastro</button>
           </div>
-          </div><!-- /padding wrapper -->
+          </div>
         </div>
       </div>
 
-      <!-- Skeleton das stats -->
       <div class="stats-grid" id="stats-grid">
         <div class="stat-box skeleton" style="height:82px;"></div>
         <div class="stat-box skeleton" style="height:82px;"></div>
         <div class="stat-box skeleton" style="height:82px;"></div>
       </div>
 
-      <!-- Histórico -->
       <div class="history-tools">
         <h3>Histórico Detalhado</h3>
         <input type="date" id="modal-date-filter" onchange="renderModalTable()">
       </div>
       <div id="modal-table-wrapper">
-        <!-- skeleton da tabela -->
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div>
           <div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div>
@@ -714,8 +464,27 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
   </div>
 </div>
 
+<div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
+  <div class="confirm-pw-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-pw-title">
+    <div class="confirm-pw-icon" id="confirm-pw-icon">🔒</div>
+    <h4 id="confirm-pw-title">Confirmar identidade</h4>
+    <p id="confirm-pw-desc">Digite sua senha para continuar.</p>
+    <div class="pw-field-wrap">
+      <input type="password" id="confirm-pw-input" placeholder="Sua senha atual" autocomplete="current-password" onkeydown="if(event.key==='Enter')confirmPwSubmit()">
+      <button class="pw-toggle-btn" type="button" onclick="toggleConfirmPwVisibility()" aria-label="Mostrar/ocultar senha">
+        <svg id="pw-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <div class="confirm-pw-error-msg" id="confirm-pw-error"></div>
+    <div class="confirm-pw-actions">
+      <button class="confirm-pw-btn-cancel" onclick="closeConfirmPw()">Cancelar</button>
+      <button class="confirm-pw-btn-confirm" id="confirm-pw-submit-btn" onclick="confirmPwSubmit()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ── Constantes & Estado ─────────────────────────────────────────
+// ── Constantes & Autenticação ─────────────────────────────────────────
 const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const TOKEN_KEY   = 'fa_token';
@@ -755,122 +524,125 @@ let currentAdminTab    = 'registered';
 let chartInstance      = null;
 let liveInterval       = null;
 
-// Modal estado
 let modalHistoryData = [];
 let modalSortConfig  = { key: 'date', asc: false };
 let currentEditingAdminId = null;
 let currentModalPlayerName = null;
+let adminSortState = { key: 'name', asc: true };
 
-// ── Init ────────────────────────────────────────────────────────
+// ── Confirmação com Senha ────────────────────────────────────────
+let _confirmPwCallback = null;
+let _confirmPwDestructive = false;
+
+function requirePassword({ title, desc, btnLabel = 'Confirmar', destructive = false, onConfirm }) {
+  _confirmPwCallback = onConfirm;
+  _confirmPwDestructive = destructive;
+  document.getElementById('confirm-pw-title').textContent = title;
+  document.getElementById('confirm-pw-desc').textContent  = desc;
+  document.getElementById('confirm-pw-submit-btn').textContent = btnLabel;
+  document.getElementById('confirm-pw-submit-btn').className = 'confirm-pw-btn-confirm' + (destructive ? ' destructive' : '');
+  const icon = document.getElementById('confirm-pw-icon');
+  icon.className = 'confirm-pw-icon ' + (destructive ? 'delete' : 'save');
+  icon.textContent = destructive ? '⚠️' : '🔒';
+  const input = document.getElementById('confirm-pw-input');
+  input.value = ''; input.type = 'password'; input.classList.remove('pw-error');
+  document.getElementById('confirm-pw-error').textContent = '';
+  document.getElementById('confirm-pw-submit-btn').disabled = false;
+  document.getElementById('pw-eye-icon').innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  document.getElementById('confirm-pw-overlay').classList.add('active');
+  setTimeout(() => input.focus(), 120);
+}
+
+function closeConfirmPw() { document.getElementById('confirm-pw-overlay').classList.remove('active'); _confirmPwCallback = null; }
+function confirmPwOverlayClick(e) { if (e.target.id === 'confirm-pw-overlay') closeConfirmPw(); }
+
+function toggleConfirmPwVisibility() {
+  const input = document.getElementById('confirm-pw-input');
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  document.getElementById('pw-eye-icon').innerHTML = isHidden
+    ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+}
+
+async function confirmPwSubmit() {
+  const input = document.getElementById('confirm-pw-input');
+  const errEl = document.getElementById('confirm-pw-error');
+  const btn   = document.getElementById('confirm-pw-submit-btn');
+  const pw    = input.value;
+  if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
+  btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: session.username, password: pw }) });
+    if (!res.ok) throw new Error('Senha incorreta.');
+    closeConfirmPw();
+    if (_confirmPwCallback) await _confirmPwCallback();
+  } catch (e) {
+    errEl.textContent = 'Senha incorreta. Tente novamente.'; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
+    btn.disabled = false; btn.textContent = _confirmPwDestructive ? document.getElementById('confirm-pw-title').textContent : 'Confirmar';
+    input.focus();
+  }
+}
+
+// ── Dashboard Init ──────────────────────────────────────────────────
 function initDashboard() {
-  renderHeader();
-  renderProfile();
-  loadData();
+  renderHeader(); renderProfile(); loadData();
   if (session.role === 'full') fetchAdminUsers();
   setInterval(loadData, 30000);
-
+  updateSortBarForTab('registered');
   if (liveInterval) clearInterval(liveInterval);
-  liveInterval = setInterval(() => {
-    applyFilters();
-    if (document.getElementById('player-modal').classList.contains('active')) renderModalTable();
-  }, 10000);
+  liveInterval = setInterval(() => { applyFilters(); if (document.getElementById('player-modal').classList.contains('active')) renderModalTable(); }, 10000);
 }
 
-// ── Accordion ──────────────────────────────────────────────────
 function toggleAccordion(btnId, bodyId) {
-  const btn  = document.getElementById(btnId);
-  const body = document.getElementById(bodyId);
-  const open = body.classList.toggle('open');
-  btn.classList.toggle('open', open);
+  const btn = document.getElementById(btnId); const body = document.getElementById(bodyId);
+  const open = body.classList.toggle('open'); btn.classList.toggle('open', open);
 }
 
-// ── Formatação ─────────────────────────────────────────────────
 function formatTime(hoursFloat) {
   if (!hoursFloat || hoursFloat <= 0) return '<1m';
-  const t = Math.floor(hoursFloat * 60);
-  const d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
+  const t = Math.floor(hoursFloat * 60); const d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
   return [d > 0 ? `${d}d` : '', h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : ''].filter(Boolean).join(' ') || '<1m';
 }
-
 function getLiveEntryText(enteredAtStr) {
-  const entered = new Date(enteredAtStr);
-  const diffMs  = Date.now() - entered.getTime();
-  if (diffMs < 60000) return 'Agora mesmo';
+  const entered = new Date(enteredAtStr); if (Date.now() - entered.getTime() < 60000) return 'Agora mesmo';
   return entered.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
-
-function getLiveDuration(enteredAtStr) {
-  return formatTime((Date.now() - new Date(enteredAtStr).getTime()) / 3600000);
-}
+function getLiveDuration(enteredAtStr) { return formatTime((Date.now() - new Date(enteredAtStr).getTime()) / 3600000); }
 
 // ── Header & Perfil ─────────────────────────────────────────────
 function renderHeader() {
-  const skinUrl = session.minecraftName
-    ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
-    : 'https://minotar.net/helm/Steve/100.png';
+  const skinUrl = session.minecraftName ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
   document.getElementById('auth-header-container').innerHTML = `
-    <div class="user-menu-wrapper">
-      <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
-        <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
-        <span>${session.username}</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </div>
-      <div class="user-dropdown" id="user-dropdown-menu">
-        <button onclick="location.href='index.html'">Acessar Site</button>
-        <button class="danger" onclick="logout()">Sair</button>
-      </div>
-    </div>`;
+    <div class="user-menu-wrapper"><div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)"><img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar"><span>${session.username}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
+    <div class="user-dropdown" id="user-dropdown-menu"><button onclick="location.href='index.html'">Acessar Site</button><button class="danger" onclick="logout()">Sair</button></div></div>`;
 }
-
-function toggleDropdown(e) {
-  e.stopPropagation();
-  document.getElementById('user-btn-toggle')?.classList.toggle('active');
-  document.getElementById('user-dropdown-menu')?.classList.toggle('show');
-}
-document.addEventListener('click', () => {
-  document.getElementById('user-dropdown-menu')?.classList.remove('show');
-  document.getElementById('user-btn-toggle')?.classList.remove('active');
-});
+function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
+document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
 
 function renderProfile() {
-  const mcName  = session.minecraftName || '-';
-  const skinUrl = mcName !== '-'
-    ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`
-    : 'https://minotar.net/helm/Steve/100.png';
-  document.getElementById('name').textContent          = session.username;
+  const mcName = session.minecraftName || '-';
+  const skinUrl = mcName !== '-' ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
+  document.getElementById('name').textContent = session.username;
   document.getElementById('email-display').textContent = session.email || '-';
-  document.getElementById('mc-display').textContent    = mcName;
-  document.getElementById('photo').src                 = skinUrl;
+  document.getElementById('mc-display').textContent = mcName;
+  document.getElementById('photo').src = skinUrl;
   const pill = document.getElementById('role-pill');
   pill.textContent = session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito';
-  pill.className   = session.role === 'full' ? 'pill full' : 'pill limited';
+  pill.className = session.role === 'full' ? 'pill full' : 'pill limited';
 }
 
 async function changePass() {
-  const cur = document.getElementById('currentpass').value;
-  const np  = document.getElementById('newpass').value;
-  const msg = document.getElementById('profile-msg');
-
-  if (!cur)            { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
+  const cur = document.getElementById('currentpass').value, np = document.getElementById('newpass').value, msg = document.getElementById('profile-msg');
+  if (!cur) { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
   if (!np || np.length < 6) { msg.textContent = 'A nova senha deve ter ao menos 6 caracteres.'; msg.style.color = 'var(--danger)'; return; }
-
   try {
-    const res = await fetch(`${API_BASE}/api/me/password`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ currentPassword: cur, newPassword: np })
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || 'erro');
-    }
-    msg.textContent = 'Senha atualizada com sucesso!';
-    msg.style.color = 'var(--success)';
-    document.getElementById('currentpass').value = '';
-    document.getElementById('newpass').value = '';
+    const res = await fetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
+    if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'erro'); }
+    msg.textContent = 'Senha atualizada com sucesso!'; msg.style.color = 'var(--success)';
+    document.getElementById('currentpass').value = ''; document.getElementById('newpass').value = '';
   } catch (e) {
-    msg.textContent = e.message === 'invalid current password' ? 'Senha atual incorreta.' : 'Erro ao atualizar senha.';
-    msg.style.color = 'var(--danger)';
+    msg.textContent = e.message === 'invalid current password' ? 'Senha atual incorreta.' : 'Erro ao atualizar senha.'; msg.style.color = 'var(--danger)';
   }
   setTimeout(() => { msg.textContent = ''; }, 4000);
 }
@@ -882,200 +654,145 @@ async function loadData() {
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
     fetch(`${API_BASE}/api/snapshots/latest`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
   ]);
-  globalApiData = apiData;
-  globalHistData = histData;
-  renderDashboard();
-  updateActivityChart();
+  globalApiData = apiData; globalHistData = histData;
+  renderDashboard(); updateActivityChart();
 }
 
 function renderDashboard() {
   if (globalApiData?.online) {
-    document.getElementById('server-status').textContent    = 'Online';
-    document.getElementById('server-dot').className        = 'status-dot';
-    document.getElementById('server-version').textContent  = globalApiData.version || 'Desconhecida';
-    document.getElementById('online-count').textContent    = `${globalApiData.players?.online ?? 0} / ${globalApiData.players?.max ?? 0}`;
+    document.getElementById('server-status').textContent = 'Online'; document.getElementById('server-dot').className = 'status-dot';
+    document.getElementById('server-version').textContent = globalApiData.version || 'Desconhecida';
+    document.getElementById('online-count').textContent = `${globalApiData.players?.online ?? 0} / ${globalApiData.players?.max ?? 0}`;
   } else {
-    document.getElementById('server-status').textContent   = 'Offline';
-    document.getElementById('server-dot').className        = 'status-dot offline';
-    document.getElementById('server-version').textContent  = '-';
-    document.getElementById('online-count').textContent    = '0 / 0';
+    document.getElementById('server-status').textContent = 'Offline'; document.getElementById('server-dot').className = 'status-dot offline';
+    document.getElementById('server-version').textContent = '-'; document.getElementById('online-count').textContent = '0 / 0';
   }
   applyFilters();
 }
 
-// ── Listas ──────────────────────────────────────────────────────
-function emptyStateHTML(icon, title, sub) {
-  return `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${icon}</div><strong>${title}</strong><span>${sub}</span></div></li>`;
-}
+function emptyStateHTML(icon, title, sub) { return `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${icon}</div><strong>${title}</strong><span>${sub}</span></div></li>`; }
 
 function applyFilters() {
   if (!globalHistData) return;
-  const nameFilter  = document.getElementById('search-player').value.toLowerCase().trim();
-  const dateFilter  = document.getElementById('search-date').value;
-  const livePlayers = globalHistData.onlinePlayers || [];
-  const activeSess  = globalHistData.activeSessions || {};
+  const nameFilter = document.getElementById('search-player').value.toLowerCase().trim(), dateFilter = document.getElementById('search-date').value;
+  const livePlayers = globalHistData.onlinePlayers || [], activeSess = globalHistData.activeSessions || {};
 
-  // Online
   const filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
   const onlineUl = document.getElementById('online');
   onlineUl.innerHTML = filteredLive.length
     ? filteredLive.map(pName => {
         const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === pName.toLowerCase())];
         const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')">
-          <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head">
-          <div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div>
-          <span class="status-dot"></span>
-        </li>`;
+        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', nameFilter ? 'Nenhum resultado para a busca.' : 'O servidor está vazio no momento.');
 
-  // Offline — agrupa por jogador, soma todas as sessões do dia mais recente
-  let offlineHistory = (globalHistData.history || []).filter(
-    h => !livePlayers.map(n => n.toLowerCase()).includes(h.player.toLowerCase()) && h.leftAt
-  );
-
-  // Agrupa por jogador: pega data do último leftAt e soma todas as sessões naquele mesmo dia
+  let offlineHistory = (globalHistData.history || []).filter(h => !livePlayers.map(n => n.toLowerCase()).includes(h.player.toLowerCase()) && h.leftAt);
   const playerDayMap = new Map();
   offlineHistory.sort((a, b) => new Date(b.leftAt) - new Date(a.leftAt));
   for (const h of offlineHistory) {
     const k = h.player.toLowerCase();
     if (!playerDayMap.has(k)) {
-      // Primeiro registro (mais recente) define o dia de referência
       const lastDay = new Date(h.leftAt).toDateString();
-      playerDayMap.set(k, {
-        player: h.player,
-        leftAt: h.leftAt,
-        dayRef: lastDay,
-        totalHoursDay: 0,
-        sessionsToday: 0
-      });
+      playerDayMap.set(k, { player: h.player, leftAt: h.leftAt, dayRef: lastDay, totalHoursDay: 0, sessionsToday: 0 });
     }
     const entry = playerDayMap.get(k);
-    // Soma apenas as sessões do mesmo dia
-    if (new Date(h.leftAt).toDateString() === entry.dayRef) {
-      entry.totalHoursDay += (h.hoursOnline || 0);
-      entry.sessionsToday++;
-    }
+    if (new Date(h.leftAt).toDateString() === entry.dayRef) { entry.totalHoursDay += (h.hoursOnline || 0); entry.sessionsToday++; }
   }
 
   let filteredOff = [...playerDayMap.values()];
   if (nameFilter) filteredOff = filteredOff.filter(e => e.player.toLowerCase().includes(nameFilter));
   if (dateFilter) filteredOff = filteredOff.filter(e => e.leftAt.startsWith(dateFilter));
-
   const histUl = document.getElementById('history');
   histUl.innerHTML = filteredOff.length
     ? filteredOff.slice(0, 15).map(e => {
-        const leftDate = new Date(e.leftAt);
-        const isToday = leftDate.toDateString() === new Date().toDateString();
-        const isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
+        const leftDate = new Date(e.leftAt), isToday = leftDate.toDateString() === new Date().toDateString(), isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
-        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')">
-          <img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
-          <div class="item-details">
-            <strong>${e.player}</strong>
-            <span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span>
-          </div>
-        </li>`;
+        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
       }).join('')
     : emptyStateHTML('📋', 'Nenhum registro encontrado', nameFilter || dateFilter ? 'Tente outros filtros.' : 'Nenhum jogador desconectado recentemente.');
 }
 
-// ── Gráficos ────────────────────────────────────────────────────
-
+// ── Gráficos Avançados (Apple Level) ───────────────────────────
 function toggleCustomTime() {
-  const val = document.getElementById('chart-range').value;
-  const ctrl = document.getElementById('custom-time-controls');
+  const val = document.getElementById('chart-range').value, ctrl = document.getElementById('custom-time-controls');
   if (val === 'custom') {
-    ctrl.style.display = 'flex';
-    const now = new Date();
-    const ago = new Date(now - 7 * 86400000);
-    document.getElementById('custom-end').value   = now.toISOString().slice(0, 16);
-    document.getElementById('custom-start').value = ago.toISOString().slice(0, 16);
-  } else {
-    ctrl.style.display = 'none';
-  }
+    ctrl.style.display = 'flex'; const now = new Date(); const ago = new Date(now - 7 * 86400000);
+    document.getElementById('custom-end').value = now.toISOString().slice(0, 16); document.getElementById('custom-start').value = ago.toISOString().slice(0, 16);
+  } else { ctrl.style.display = 'none'; }
   updateActivityChart();
 }
 
-// Paleta de cores distintas e harmoniosas — sem preto, sem cinza escuro
-const CHART_PALETTE = [
-  '#0071e3', '#34c759', '#ff9f0a', '#ff3b30', '#af52de',
-  '#5ac8fa', '#ff6b35', '#30b0c7', '#a2845e', '#ff2d55',
-  '#64d2ff', '#ffd60a', '#00c7be', '#bf5af2', '#32ade6'
-];
-function playerColor(playerName, index) {
-  // Usa hash para cor consistente por nome, mas dentro da paleta curada
-  let hash = 0;
-  for (let i = 0; i < playerName.length; i++) hash = playerName.charCodeAt(i) + ((hash << 5) - hash);
-  return CHART_PALETTE[Math.abs(hash) % CHART_PALETTE.length];
+const CHART_PALETTE = ['#0071e3', '#34c759', '#ff9f0a', '#ff3b30', '#af52de', '#5ac8fa', '#ff6b35', '#30b0c7', '#a2845e', '#ff2d55', '#64d2ff', '#ffd60a', '#00c7be', '#bf5af2', '#32ade6'];
+function playerColor(playerName) { let hash = 0; for (let i = 0; i < playerName.length; i++) hash = playerName.charCodeAt(i) + ((hash << 5) - hash); return CHART_PALETTE[Math.abs(hash) % CHART_PALETTE.length]; }
+
+/** Alterna isolamento do dataset index. */
+function toggleIsolate(chart, targetIndex, forceIsolate = false) {
+  const datasets = chart.data.datasets;
+  // Conta quantos estão atualmente visíveis
+  const visibleCount = datasets.filter((ds, i) => chart.isDatasetVisible(i)).length;
+  // Se ele é o ÚNICO visível atualmente
+  const isOnlyVisible = chart.isDatasetVisible(targetIndex) && visibleCount === 1;
+
+  datasets.forEach((ds, i) => {
+    if (isOnlyVisible && !forceIsolate) {
+      // Restaura todos
+      chart.setDatasetVisibility(i, true);
+    } else {
+      // Isola o clicado
+      chart.setDatasetVisibility(i, i === targetIndex);
+    }
+    // Efeito visual de destaque na espessura da linha
+    ds.borderWidth = chart.isDatasetVisible(i) && (visibleCount > 1 || forceIsolate) && i === targetIndex ? 3 : 2;
+  });
+  chart.update();
+}
+
+/** Chamado no clique do botão 'Ver no gráfico' no modal */
+function focusPlayerInChart(playerName) {
+  closeModal();
+  setTimeout(() => {
+    document.getElementById('activityChart')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (chartInstance) {
+      const dsIndex = chartInstance.data.datasets.findIndex(ds => ds.label === playerName);
+      if (dsIndex !== -1) toggleIsolate(chartInstance, dsIndex, true);
+    }
+  }, 300);
 }
 
 function updateActivityChart() {
   if (!globalHistData) return;
-  const range    = document.getElementById('chart-range').value;
-  const grouping = document.getElementById('chart-grouping').value;
-  const now      = new Date();
+  const range = document.getElementById('chart-range').value, grouping = document.getElementById('chart-grouping').value, now = new Date();
   let startTime;
-
-  if (range === 'custom') {
-    const sv = document.getElementById('custom-start').value;
-    const ev = document.getElementById('custom-end').value;
-    if (!sv || !ev) return;
-    startTime = new Date(sv);
-  } else {
-    const ms = { '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
-    startTime = new Date(now - (ms[range] || ms['24h']));
-  }
-
+  if (range === 'custom') { const sv = document.getElementById('custom-start').value, ev = document.getElementById('custom-end').value; if (!sv || !ev) return; startTime = new Date(sv); }
+  else { const ms = { '24h': 86400000, '7d': 604800000, '30d': 2592000000 }; startTime = new Date(now - (ms[range] || ms['24h'])); }
   const endTime = range === 'custom' ? new Date(document.getElementById('custom-end').value) : now;
-  const allSessions = [
-    ...(globalHistData.history || []).map(h => ({ player: h.player, start: new Date(h.enteredAt), end: new Date(h.leftAt) })),
-    ...Object.values(globalHistData.activeSessions || {}).map(s => ({ player: s.name, start: new Date(s.enteredAt), end: now }))
-  ];
-
+  const allSessions = [...(globalHistData.history || []).map(h => ({ player: h.player, start: new Date(h.enteredAt || h.entered_at), end: new Date(h.leftAt || h.left_at) })), ...Object.values(globalHistData.activeSessions || {}).map(s => ({ player: s.name, start: new Date(s.enteredAt), end: now }))];
   let bucketMs = grouping === 'minute' ? 900000 : grouping === 'hour' ? 3600000 : 86400000;
-  const buckets = new Map();
-  const players = new Set();
+  const buckets = new Map(), players = new Set();
 
   for (let t = startTime.getTime(); t < endTime.getTime(); t += bucketMs) {
-    const key = new Date(t).toISOString();
-    buckets.set(key, {});
-    const bStart = t, bEnd = t + bucketMs;
-    for (const s of allSessions) {
-      if (s.start.getTime() < bEnd && s.end.getTime() > bStart) {
-        players.add(s.player);
-        buckets.get(key)[s.player] = (buckets.get(key)[s.player] || 0) + 1;
-      }
-    }
+    const key = new Date(t).toISOString(); buckets.set(key, {}); const bStart = t, bEnd = t + bucketMs;
+    for (const s of allSessions) { if (s.start.getTime() < bEnd && s.end.getTime() > bStart) { players.add(s.player); buckets.get(key)[s.player] = (buckets.get(key)[s.player] || 0) + (Math.min(bEnd, s.end.getTime()) - Math.max(bStart, s.start.getTime())) / 60000; } }
   }
 
   const labels = [...buckets.keys()].map(k => {
     const d = new Date(k);
-    return grouping === 'day'
-      ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-      : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return grouping === 'day' ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   });
 
-  const playerList = [...players];
-  const datasets = playerList.map((p, i) => {
-    const color = playerColor(p, i);
+  const datasets = [...players].map((p, i) => {
+    const color = playerColor(p);
     return {
-      label: p,
-      data: [...buckets.values()].map(b => b[p] || 0),
-      borderColor: color,
-      backgroundColor: color + '18', // fill suave, quase invisível
-      borderWidth: 2,
-      tension: 0.4,
-      fill: false, // SEM fill escuro — linhas limpas
-      pointBackgroundColor: color,
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5,
+      label: p, data: [...buckets.values()].map(b => b[p] || 0), borderColor: color, backgroundColor: color + '18',
+      borderWidth: 2, tension: 0.4, fill: false, pointBackgroundColor: color, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 6
     };
   });
+
+  // Handler de cliques duplo / simples para a legenda
+  let legendClickTimeout = null;
+  let lastClickedLegendIndex = -1;
 
   if (chartInstance) chartInstance.destroy();
   const ctx = document.getElementById('activityChart').getContext('2d');
@@ -1083,88 +800,90 @@ function updateActivityChart() {
     type: 'line',
     data: { labels, datasets },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      animation: { duration: 300 },
+      onClick: (e, elements, chart) => {
+        // Se clicou exato numa linha, isola ela
+        if (elements.length > 0) { toggleIsolate(chart, elements[0].datasetIndex); }
+      },
       plugins: {
         legend: {
-          display: playerList.length > 0 && playerList.length <= 10,
-          labels: {
-            boxWidth: 12,
-            boxHeight: 12,
-            borderRadius: 4,
-            useBorderRadius: true,
-            font: { size: 12 },
-            padding: 16,
-            color: '#1d1d1f',
+          display: players.size > 0 && players.size <= 15,
+          labels: { boxWidth: 12, boxHeight: 12, borderRadius: 4, useBorderRadius: true, font: { size: 12 }, padding: 16, color: '#1d1d1f' },
+          onClick: (e, legendItem, legend) => {
+            const index = legendItem.datasetIndex;
+            const chart = legend.chart;
+            if (lastClickedLegendIndex === index && legendClickTimeout) {
+              // DUPLO CLIQUE (Isolar/Restaurar)
+              clearTimeout(legendClickTimeout); legendClickTimeout = null; lastClickedLegendIndex = -1;
+              toggleIsolate(chart, index);
+            } else {
+              // CLIQUE SIMPLES (Aguarda para ver se é duplo)
+              if (legendClickTimeout) clearTimeout(legendClickTimeout);
+              lastClickedLegendIndex = index;
+              legendClickTimeout = setTimeout(() => {
+                // Alterna apenas a visibilidade desta linha específica para permitir comparação múltipla
+                chart.setDatasetVisibility(index, !chart.isDatasetVisible(index));
+                chart.update();
+                legendClickTimeout = null; lastClickedLegendIndex = -1;
+              }, 250);
+            }
           }
         },
         tooltip: {
-          backgroundColor: 'rgba(255,255,255,0.96)',
-          titleColor: '#1d1d1f',
-          bodyColor: '#86868b',
-          borderColor: 'rgba(0,0,0,0.08)',
-          borderWidth: 1,
-          padding: 12,
-          boxPadding: 4,
-          cornerRadius: 10,
-          boxWidth: 10,
-          boxHeight: 10,
+          backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', titleFont: { size: 13, weight: '600' }, bodyColor: '#515154', bodyFont: { size: 13, weight: '500' },
+          borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, boxPadding: 6, cornerRadius: 12, usePointStyle: true,
+          itemSort: (a, b) => b.parsed.y - a.parsed.y, // Quem jogou mais tempo sobe no balão
+          filter: (ctx) => {
+            // Ocultação inteligente de offlines: Se o gráfico tem muita gente sendo exibida, só mostra quem está logado nesse ponto.
+            const visibleCount = ctx.chart.data.datasets.filter((_, i) => ctx.chart.isDatasetVisible(i)).length;
+            if (visibleCount <= 5) return true; // Se tem até 5 linhas visíveis, mostra "Offline" para efeito de comparação
+            return ctx.parsed.y > 0;
+          },
           callbacks: {
+            title: ctx => ctx[0]?.label || '',
             label: ctx => {
               const v = ctx.parsed.y;
-              return ` ${ctx.dataset.label}: ${v > 0 ? 'online' : 'offline'}`;
+              if (v > 0) return `${ctx.dataset.label}: ${formatTime(v / 60)} ativos`;
+              return `${ctx.dataset.label}: Offline`;
             }
           }
         }
       },
       scales: {
-        x: {
-          grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
-          ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' },
-          border: { display: false }
-        },
-        y: {
-          beginAtZero: true,
-          ticks: { stepSize: 1, font: { size: 11 }, color: '#86868b' },
-          grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
-          border: { display: false }
-        }
+        x: { grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' }, border: { display: false } },
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 }, color: '#86868b' }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } }
       }
     }
   });
 }
 
-// ── Modal: abertura imediata com skeleton ───────────────────────
+// ── Modal do Jogador (Abertura Imediata + Skeletons) ────────────
 async function openPlayerProfile(playerName, siteAccountId = null) {
   currentModalPlayerName = playerName;
   currentEditingAdminId  = siteAccountId;
 
-  // Determina nome do Minecraft para a skin
   let displayMcName = playerName;
   if (siteAccountId && session.role === 'full') {
     const acc = globalAdminUsers.find(u => u.id === siteAccountId);
     if (acc) displayMcName = acc.minecraft_name || acc.username;
   }
 
-  // ── 1. Abre o modal IMEDIATAMENTE com skeleton ──
+  // Abre IMEDIATAMENTE com skeleton
   document.getElementById('modal-name').textContent = displayMcName;
   document.getElementById('modal-img').src = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`;
   document.getElementById('modal-img').onerror = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
   document.getElementById('modal-status').textContent = '...';
   document.getElementById('modal-status').className   = 'pill limited-status';
 
-  // Reset painéis
   document.getElementById('modal-site-account').style.display   = 'none';
   document.getElementById('modal-create-account').style.display = 'none';
 
-  // Skeleton das stats
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-box skeleton" style="height:82px;"></div>
     <div class="stat-box skeleton" style="height:82px;"></div>
     <div class="stat-box skeleton" style="height:82px;"></div>`;
-
-  // Skeleton da tabela
   document.getElementById('modal-table-wrapper').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:8px;">
       <div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div>
@@ -1172,21 +891,19 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       <div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div>
       <div class="skeleton-line" style="height:40px;width:90%;border-radius:6px;"></div>
     </div>`;
-
-  // Mostra modal
+  
   document.getElementById('player-modal').classList.add('active');
   document.body.style.overflow = 'hidden';
 
-  // ── 2. Carrega dados em paralelo ──
+  // Busca dados assincronamente
   const [historyData] = await Promise.all([
-    fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json()).catch(() => [])
+    fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
   ]);
-
   modalHistoryData = historyData;
 
-  // ── 3. Painel de conta (admin) ──
+  const chartBtn = document.getElementById('modal-chart-btn');
+  if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
+
   if (session.role === 'full') {
     const siteAcc = siteAccountId
       ? globalAdminUsers.find(u => u.id === siteAccountId)
@@ -1194,12 +911,11 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
 
     if (siteAcc) {
       currentEditingAdminId = siteAcc.id;
-      // Preenche visualização
       document.getElementById('av-username').textContent = siteAcc.username;
       document.getElementById('av-email').textContent    = siteAcc.email;
       document.getElementById('av-mc').textContent       = siteAcc.minecraft_name || 'Nenhuma vinculada';
       document.getElementById('av-role').textContent     = siteAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
-      // Preenche inputs
+      
       document.getElementById('ai-username').value = siteAcc.username;
       document.getElementById('ai-email').value    = siteAcc.email;
       document.getElementById('ai-mc').value       = siteAcc.minecraft_name || '';
@@ -1210,7 +926,6 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       document.getElementById('modal-site-account').style.display   = 'block';
       document.getElementById('modal-create-account').style.display = 'none';
     } else {
-      // Sem conta: mostra painel de criação (recolhido por padrão)
       currentEditingAdminId = null;
       document.getElementById('ci-username').value = '';
       document.getElementById('ci-email').value    = '';
@@ -1218,17 +933,16 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       document.getElementById('ci-role').value     = 'limited';
       document.getElementById('ci-password').value = '';
       document.getElementById('create-form-msg').textContent = '';
-      // Reseta para recolhido
+      
       const body    = document.getElementById('create-account-body');
       const chevron = document.getElementById('create-acc-chevron');
-      body.classList.remove('open');
-      chevron.classList.remove('open');
+      body.classList.remove('open'); chevron.classList.remove('open');
+      
       document.getElementById('modal-create-account').style.display = 'block';
       document.getElementById('modal-site-account').style.display   = 'none';
     }
   }
 
-  // ── 4. Renderiza stats e tabela ──
   renderModalStats();
   renderModalTable();
 }
@@ -1269,27 +983,11 @@ function renderModalTable() {
     return 0;
   });
 
-  // Calcula semana ISO de uma data
-  function getWeekKey(dateStr) {
-    const d = new Date(dateStr);
-    const jan4 = new Date(d.getFullYear(), 0, 4);
-    const weekNum = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7);
-    return `${d.getFullYear()}-W${weekNum}`;
-  }
+  function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(), 0, 4); return `${d.getFullYear()}-W${Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7)}`; }
   function getWeekLabel(dateStr) {
-    const d = new Date(dateStr);
-    // Acha início da semana (segunda-feira)
-    const day = d.getDay() || 7;
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - day + 1);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
+    const d = new Date(dateStr), day = d.getDay() || 7, monday = new Date(d); monday.setDate(d.getDate() - day + 1); const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
     const fmt = dt => dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-    const now = new Date();
-    const thisWeekMonday = new Date(now);
-    thisWeekMonday.setDate(now.getDate() - (now.getDay() || 7) + 1);
-    const lastWeekMonday = new Date(thisWeekMonday);
-    lastWeekMonday.setDate(thisWeekMonday.getDate() - 7);
+    const now = new Date(), thisWeekMonday = new Date(now); thisWeekMonday.setDate(now.getDate() - (now.getDay() || 7) + 1); const lastWeekMonday = new Date(thisWeekMonday); lastWeekMonday.setDate(thisWeekMonday.getDate() - 7);
     if (monday.toDateString() === thisWeekMonday.toDateString()) return 'Esta semana';
     if (monday.toDateString() === lastWeekMonday.toDateString()) return 'Semana passada';
     return `${fmt(monday)} – ${fmt(sunday)}`;
@@ -1299,212 +997,100 @@ function renderModalTable() {
   const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
 
   let rows = '';
-
-  // Sessão ao vivo (sempre no topo, sem separador)
   if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) {
-    rows += `<tr style="background:rgba(52,199,89,0.05)">
-      <td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td>
-      <td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td>
-      <td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td>
-    </tr>`;
+    rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td></tr>`;
   }
 
-  // Renderiza sessões com separadores de semana
   let lastWeekKey = isOnline && activeSess ? getWeekKey(activeSess.enteredAt) : null;
-
   rows += filtered.map(h => {
     if (!h.left_at) return '';
-    const weekKey = getWeekKey(h.entered_at);
-    let separator = '';
-    if (weekKey !== lastWeekKey) {
-      lastWeekKey = weekKey;
-      separator = `<tr class="week-separator-row">
-        <td colspan="3">
-          <div class="week-separator">
-            <span>${getWeekLabel(h.entered_at)}</span>
-          </div>
-        </td>
-      </tr>`;
-    }
+    const weekKey = getWeekKey(h.entered_at); let separator = '';
+    if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator-row"><td colspan="3"><div class="week-separator"><span>${getWeekLabel(h.entered_at)}</span></div></td></tr>`; }
     const d = new Date(h.entered_at), l = new Date(h.left_at);
-    return separator + `<tr>
-      <td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></td>
-      <td>${l.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>
-      <td>${formatTime(h.duration_hours)}</td>
-    </tr>`;
+    return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></td><td>${l.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${formatTime(h.duration_hours)}</td></tr>`;
   }).join('');
 
-  const tableHTML = `
-    <table class="history-table">
-      <thead>
-        <tr>
-          <th onclick="sortModal('date')">Entrada <span>${sortDateIcon}</span></th>
-          <th>Saída</th>
-          <th onclick="sortModal('duration')">Duração <span>${sortDurationIcon}</span></th>
-        </tr>
-      </thead>
-      <tbody>${rows || `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Ainda não há sessões registradas para este jogador.</span></div></td></tr>`}</tbody>
-    </table>`;
-
-  document.getElementById('modal-table-wrapper').innerHTML = tableHTML;
+  document.getElementById('modal-table-wrapper').innerHTML = `<table class="history-table"><thead><tr><th onclick="sortModal('date')">Entrada <span style="font-size:10px">${sortDateIcon}</span></th><th>Saída</th><th onclick="sortModal('duration')">Duração <span style="font-size:10px">${sortDurationIcon}</span></th></tr></thead><tbody>${rows || `<tr><td colspan="3">${emptyStateHTML('📅', 'Nenhum registro', 'Ainda não há sessões registradas para este jogador.')}</td></tr>`}</tbody></table>`;
   renderModalStats();
 }
 
-function sortModal(key) {
-  if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc;
-  else { modalSortConfig.key = key; modalSortConfig.asc = false; }
-  renderModalTable();
-}
+function sortModal(key) { if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc; else { modalSortConfig.key = key; modalSortConfig.asc = false; } renderModalTable(); }
 
-function toggleCreateAccount() {
-  const body    = document.getElementById('create-account-body');
-  const chevron = document.getElementById('create-acc-chevron');
-  const isOpen  = body.classList.toggle('open');
-  chevron.classList.toggle('open', isOpen);
-}
+function toggleCreateAccount() { const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); const isOpen = body.classList.toggle('open'); chevron.classList.toggle('open', isOpen); }
 
 // ── Admin: Edição de conta ──────────────────────────────────────
 function setAdminEditMode(isEditing) {
   const card    = document.getElementById('modal-site-account');
   const advWrap = document.getElementById('advanced-security-wrapper');
   if (isEditing) {
-    card.classList.add('edit-mode');
-    advWrap.style.display = 'block';
-    hideAdminDeleteConfirm();
+    card.classList.add('edit-mode'); advWrap.style.display = 'block'; hideAdminDeleteConfirm();
   } else {
-    card.classList.remove('edit-mode');
-    advWrap.style.display = 'none';
-    // Fecha accordion de senha se estiver aberto
-    const body = document.getElementById('adv-sec-body');
-    const btn  = document.getElementById('adv-sec-btn');
+    card.classList.remove('edit-mode'); advWrap.style.display = 'none';
+    const body = document.getElementById('adv-sec-body'), btn = document.getElementById('adv-sec-btn');
     if (body.classList.contains('open')) { body.classList.remove('open'); btn.classList.remove('open'); }
   }
 }
 
-function showAdminDeleteConfirm() {
-  document.getElementById('admin-delete-normal').style.display  = 'block';
-  document.getElementById('admin-delete-confirm').style.display = 'flex';
-  document.getElementById('admin-delete-normal').style.display  = 'none';
-}
-
-function hideAdminDeleteConfirm() {
-  document.getElementById('admin-delete-normal').style.display  = 'block';
-  document.getElementById('admin-delete-confirm').style.display = 'none';
-}
+function showAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display  = 'none'; document.getElementById('admin-delete-confirm').style.display = 'flex'; }
+function hideAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display  = 'block'; document.getElementById('admin-delete-confirm').style.display = 'none'; }
 
 async function saveAdminUser() {
   if (!currentEditingAdminId) return;
-  const body = {
-    username:     document.getElementById('ai-username').value.trim(),
-    email:        document.getElementById('ai-email').value.trim(),
-    minecraftName: document.getElementById('ai-mc').value.trim(),
-    role:         document.getElementById('ai-role').value,
-  };
+  const body = { username: document.getElementById('ai-username').value.trim(), email: document.getElementById('ai-email').value.trim(), minecraftName: document.getElementById('ai-mc').value.trim(), role: document.getElementById('ai-role').value };
   if (!body.username || !body.email) { alert('Preencha usuário e e-mail.'); return; }
-
-  const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
-
-  // Tenta alterar senha se preenchida
   const newPwd = document.getElementById('ai-newpassword').value.trim();
-  if (newPwd) {
-    if (newPwd.length < 6) { alert('A nova senha deve ter ao menos 6 caracteres.'); return; }
-    const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ newPassword: newPwd })
-    });
-    if (!pwRes.ok) { alert('Dados salvos, mas erro ao alterar senha.'); }
-  }
+  if (newPwd && newPwd.length < 6) { alert('A nova senha deve ter ao menos 6 caracteres.'); return; }
 
-  await fetchAdminUsers();
-  // Atualiza visualização
-  document.getElementById('av-username').textContent = body.username;
-  document.getElementById('av-email').textContent    = body.email;
-  document.getElementById('av-mc').textContent       = body.minecraftName || 'Nenhuma vinculada';
-  document.getElementById('av-role').textContent     = body.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
-  setAdminEditMode(false);
+  requirePassword({
+    title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar', destructive: false,
+    onConfirm: async () => {
+      const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+      if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
+      if (newPwd) {
+        const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) });
+        if (!pwRes.ok) { alert('Dados salvos, mas erro ao alterar senha.'); }
+      }
+      await fetchAdminUsers();
+      document.getElementById('av-username').textContent = body.username; document.getElementById('av-email').textContent = body.email; document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = body.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
+      setAdminEditMode(false);
+    }
+  });
 }
 
 async function executeAdminDelete() {
   if (!currentEditingAdminId) return;
-  const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, {
-    method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+  const targetUser = globalAdminUsers.find(u => u.id === currentEditingAdminId);
+  hideAdminDeleteConfirm();
+  requirePassword({
+    title: 'Excluir conta', desc: `Esta ação é permanente e não pode ser desfeita. Digite sua senha para confirmar a exclusão da conta de ${targetUser?.username || 'este usuário'}.`, btnLabel: 'Excluir', destructive: true,
+    onConfirm: async () => {
+      const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) { await fetchAdminUsers(); closeModal(); } else { alert('Erro ao excluir. O admin principal não pode ser removido.'); }
+    }
   });
-  if (res.ok) {
-    await fetchAdminUsers();
-    closeModal();
-  } else {
-    alert('Erro ao excluir. O admin principal não pode ser removido.');
-    hideAdminDeleteConfirm();
-  }
 }
 
 // ── Criar cadastro para jogador sem conta ──────────────────────
 async function submitCreateAccount() {
-  const username     = document.getElementById('ci-username').value.trim();
-  const email        = document.getElementById('ci-email').value.trim();
-  const minecraftName= document.getElementById('ci-mc').value.trim();
-  const role         = document.getElementById('ci-role').value;
-  const password     = document.getElementById('ci-password').value;
-  const msg          = document.getElementById('create-form-msg');
-  const btn          = document.getElementById('btn-create-account');
+  const username = document.getElementById('ci-username').value.trim(), email = document.getElementById('ci-email').value.trim(), minecraftName = document.getElementById('ci-mc').value.trim(), role = document.getElementById('ci-role').value, password = document.getElementById('ci-password').value, msg = document.getElementById('create-form-msg'), btn = document.getElementById('btn-create-account');
+  if (!username || !email || !password) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
+  if (password.length < 6) { msg.textContent = 'A senha deve ter ao menos 6 caracteres.'; msg.style.color = 'var(--danger)'; return; }
 
-  if (!username || !email || !password) {
-    msg.textContent = 'Preencha todos os campos obrigatórios.';
-    msg.style.color = 'var(--danger)';
-    return;
-  }
-  if (password.length < 6) {
-    msg.textContent = 'A senha deve ter ao menos 6 caracteres.';
-    msg.style.color = 'var(--danger)';
-    return;
-  }
-
-  btn.disabled    = true;
-  btn.textContent = 'Criando...';
-
-  const res = await fetch(`${API_BASE}/api/admin/users`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ username, email, minecraftName, password, role })
-  });
-
-  btn.disabled    = false;
-  btn.textContent = 'Criar Cadastro';
+  btn.disabled = true; btn.textContent = 'Criando...';
+  const res = await fetch(`${API_BASE}/api/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
+  btn.disabled = false; btn.textContent = 'Criar Cadastro';
 
   if (res.ok) {
-    const data = await res.json();
-    await fetchAdminUsers();
-    await fetchUnregistered();
-    // Transição suave: esconde painel de criação, mostra conta criada
-    currentEditingAdminId = data.id;
-    const newAcc = globalAdminUsers.find(u => u.id === data.id);
+    await fetchAdminUsers(); await fetchUnregistered();
+    const newAcc = globalAdminUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
     if (newAcc) {
-      document.getElementById('av-username').textContent = newAcc.username;
-      document.getElementById('av-email').textContent    = newAcc.email;
-      document.getElementById('av-mc').textContent       = newAcc.minecraft_name || 'Nenhuma vinculada';
-      document.getElementById('av-role').textContent     = newAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
-      document.getElementById('ai-username').value = newAcc.username;
-      document.getElementById('ai-email').value    = newAcc.email;
-      document.getElementById('ai-mc').value       = newAcc.minecraft_name || '';
-      document.getElementById('ai-role').value     = newAcc.role;
-      document.getElementById('ai-newpassword').value = '';
+      currentEditingAdminId = newAcc.id;
+      document.getElementById('av-username').textContent = newAcc.username; document.getElementById('av-email').textContent = newAcc.email; document.getElementById('av-mc').textContent = newAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = newAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
+      document.getElementById('ai-username').value = newAcc.username; document.getElementById('ai-email').value = newAcc.email; document.getElementById('ai-mc').value = newAcc.minecraft_name || ''; document.getElementById('ai-role').value = newAcc.role; document.getElementById('ai-newpassword').value = '';
     }
-    setAdminEditMode(false);
-    document.getElementById('modal-create-account').style.display = 'none';
-    document.getElementById('modal-site-account').style.display   = 'block';
+    setAdminEditMode(false); document.getElementById('modal-create-account').style.display = 'none'; document.getElementById('modal-site-account').style.display = 'block';
   } else {
-    const data = await res.json();
-    msg.textContent = data.error === 'username/email already exists'
-      ? 'Usuário ou e-mail já cadastrado.'
-      : 'Erro ao criar cadastro.';
-    msg.style.color = 'var(--danger)';
+    const data = await res.json(); msg.textContent = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.'; msg.style.color = 'var(--danger)';
   }
 }
 
@@ -1512,99 +1098,84 @@ async function submitCreateAccount() {
 async function fetchAdminUsers() {
   try {
     const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) {
-      globalAdminUsers = await res.json();
-      renderAdminTab();
-      document.getElementById('admin-users-card').style.display = 'block';
-      fetchUnregistered(); // carrega em paralelo sem bloquear
-    }
+    if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); document.getElementById('admin-users-card').style.display = 'block'; fetchUnregistered(); }
   } catch {}
 }
 
 async function fetchUnregistered() {
-  try {
-    const res = await fetch(`${API_BASE}/api/admin/unregistered-players`, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) {
-      globalUnregistered = await res.json();
-      const badge = document.getElementById('unreg-count-badge');
-      if (globalUnregistered.length > 0) {
-        badge.textContent = globalUnregistered.length;
-        badge.style.display = 'inline-flex';
-      } else {
-        badge.style.display = 'none';
-      }
-      if (currentAdminTab === 'unregistered') renderUnregisteredList();
-    }
-  } catch {}
+  const registeredMcNames = new Set(globalAdminUsers.map(u => (u.minecraft_name || '').toLowerCase()).filter(Boolean));
+  const playerMap = new Map();
+  (globalHistData?.history || []).forEach(h => {
+    if (!h.player) return; const k = h.player.toLowerCase(); if (registeredMcNames.has(k)) return;
+    if (!playerMap.has(k)) playerMap.set(k, { player: h.player, total_sessions: 0, total_hours: 0, last_seen: null, first_seen: null });
+    const entry = playerMap.get(k); entry.total_sessions++; entry.total_hours += (h.hoursOnline || h.duration_hours || 0);
+    const ea = h.enteredAt || h.entered_at, la = h.leftAt || h.left_at;
+    if (!entry.first_seen || (ea && ea < entry.first_seen)) entry.first_seen = ea;
+    if (!entry.last_seen  || (la && la > entry.last_seen))  entry.last_seen  = la;
+  });
+  globalUnregistered = [...playerMap.values()];
+  const badge = document.getElementById('unreg-count-badge');
+  if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
+  if (currentAdminTab === 'unregistered') renderUnregisteredList();
 }
 
 function switchAdminTab(tab) {
   currentAdminTab = tab;
-  document.getElementById('tab-registered').classList.toggle('active', tab === 'registered');
-  document.getElementById('tab-unregistered').classList.toggle('active', tab === 'unregistered');
-  renderAdminTab();
+  document.getElementById('tab-registered').classList.toggle('active', tab === 'registered'); document.getElementById('tab-unregistered').classList.toggle('active', tab === 'unregistered');
+  updateSortBarForTab(tab); renderAdminTab();
 }
 
-function renderAdminTab() {
-  if (currentAdminTab === 'registered') renderRegisteredList();
-  else renderUnregisteredList();
+function updateSortBarForTab(tab) {
+  const bar = document.getElementById('admin-sort-bar');
+  if (tab === 'registered') {
+    bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span><button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='created'?'active':''}" onclick="setSortAdmin('created')">Criação <span class="sort-arrow">${adminSortState.key==='created'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Última sessão <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
+  } else {
+    bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span><button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='sessions'?'active':''}" onclick="setSortAdmin('sessions')">Sessões <span class="sort-arrow">${adminSortState.key==='sessions'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Último acesso <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
+  }
 }
+
+function setSortAdmin(key) { if (adminSortState.key === key) adminSortState.asc = !adminSortState.asc; else { adminSortState.key = key; adminSortState.asc = true; } updateSortBarForTab(currentAdminTab); renderAdminTab(); }
+
+function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
 
 function renderRegisteredList() {
-  const term     = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
-  const list     = document.getElementById('admin-users-list');
-  const filtered = globalAdminUsers.filter(u =>
-    u.username.toLowerCase().includes(term) ||
-    u.email.toLowerCase().includes(term) ||
-    (u.minecraft_name || '').toLowerCase().includes(term)
-  );
-
-  if (!filtered.length) {
-    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">👥</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : 'Nenhum usuário cadastrado ainda.'}</span></div></li>`;
-    return;
-  }
-
-  list.innerHTML = filtered.map(u => `
-    <li class="list-item" onclick="openPlayerProfile('${u.minecraft_name || u.username}', ${u.id})">
-      <img src="https://minotar.net/helm/${u.minecraft_name || 'Steve'}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
-      <div class="item-details">
-        <strong>${u.username} <span class="pill ${u.role === 'full' ? 'full' : 'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span></strong>
-        <span>${u.email}</span>
-      </div>
-    </li>`).join('');
-}
-
-function renderUnregisteredList() {
-  const term     = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
-  const list     = document.getElementById('admin-users-list');
-  const filtered = globalUnregistered.filter(p => p.player.toLowerCase().includes(term));
-
-  if (!filtered.length) {
-    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhum jogador sem cadastro</strong><span>${term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores do servidor já possuem conta no painel.'}</span></div></li>`;
-    return;
-  }
-
-  list.innerHTML = filtered.map(p => {
-    const lastSeen = new Date(p.last_seen).toLocaleDateString('pt-BR');
-    return `<li class="list-item" onclick="openPlayerProfile('${p.player}')">
-      <img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
-      <div class="item-details">
-        <strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong>
-        <span>${p.total_sessions} sessão(ões) · ${formatTime(p.total_hours)} · Último acesso ${lastSeen}</span>
-      </div>
-    </li>`;
+  const term = document.getElementById('admin-search')?.value.toLowerCase().trim() || '', list = document.getElementById('admin-users-list');
+  let filtered = globalAdminUsers.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || (u.minecraft_name || '').toLowerCase().includes(term));
+  const historyMap = {};
+  (globalHistData?.history || []).forEach(h => { const k = h.player?.toLowerCase(); if (!k) return; if (!historyMap[k]) historyMap[k] = { last: h.leftAt || h.left_at }; const la = h.leftAt || h.left_at; if (la && la > historyMap[k].last) historyMap[k].last = la; });
+  filtered.sort((a, b) => {
+    let va, vb; const amc = (a.minecraft_name||'').toLowerCase(), bmc = (b.minecraft_name||'').toLowerCase();
+    if (adminSortState.key === 'name') { va = a.username.toLowerCase(); vb = b.username.toLowerCase(); return adminSortState.asc ? va.localeCompare(vb) : vb.localeCompare(va); }
+    if (adminSortState.key === 'created') { va = new Date(a.created_at||0); vb = new Date(b.created_at||0); }
+    if (adminSortState.key === 'last_session') { va = new Date(historyMap[amc]?.last||0); vb = new Date(historyMap[bmc]?.last||0); }
+    return adminSortState.asc ? va - vb : vb - va;
+  });
+  if (!filtered.length) { list.innerHTML = emptyStateHTML('👥', 'Nenhuma conta encontrada', term ? 'Tente outros termos de busca.' : 'Nenhum usuário cadastrado ainda.'); return; }
+  list.innerHTML = filtered.map(u => {
+    const mc = u.minecraft_name || u.username, hist = historyMap[mc.toLowerCase()], lastStr = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
+    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${u.role === 'full' ? 'full' : 'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span></strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
   }).join('');
 }
 
-function closeModal() {
-  document.getElementById('player-modal').classList.remove('active');
-  document.body.style.overflow = '';
-  currentModalPlayerName = null;
+function renderUnregisteredList() {
+  const term = document.getElementById('admin-search')?.value.toLowerCase().trim() || '', list = document.getElementById('admin-users-list');
+  let filtered = globalUnregistered.filter(p => p.player.toLowerCase().includes(term));
+  filtered.sort((a, b) => {
+    if (adminSortState.key === 'name') return adminSortState.asc ? a.player.localeCompare(b.player) : b.player.localeCompare(a.player);
+    if (adminSortState.key === 'sessions') return adminSortState.asc ? (a.total_sessions||0) - (b.total_sessions||0) : (b.total_sessions||0) - (a.total_sessions||0);
+    if (adminSortState.key === 'last_session') return adminSortState.asc ? new Date(a.last_seen||0) - new Date(b.last_seen||0) : new Date(b.last_seen||0) - new Date(a.last_seen||0);
+    return 0;
+  });
+  if (!filtered.length) { list.innerHTML = emptyStateHTML('✅', 'Nenhum jogador sem cadastro', term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores do servidor já possuem conta no painel.'); return; }
+  list.innerHTML = filtered.map(p => {
+    const lastSeen = p.last_seen ? new Date(p.last_seen).toLocaleDateString('pt-BR') : '-', firstSeen = p.first_seen ? new Date(p.first_seen).toLocaleDateString('pt-BR') : '-';
+    return `<li class="list-item" onclick="openPlayerProfile('${p.player}')"><img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong><span>${p.total_sessions || 0} sessão(ões) · ${formatTime(p.total_hours || 0)} · 1ª vez ${firstSeen} · Último acesso ${lastSeen}</span></div></li>`;
+  }).join('');
 }
+
+function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; currentModalPlayerName = null; }
 function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
-
-
 </script>
 </body>
 </html>
