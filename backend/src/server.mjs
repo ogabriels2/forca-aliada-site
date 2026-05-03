@@ -89,7 +89,60 @@ app.post('/api/me/password', auth, (req, res) => {
 app.post('/api/snapshots/import', (req, res) => {
   const { secret, payload } = req.body;
   if (secret !== (process.env.INGEST_SECRET || 'change-ingest')) return res.status(403).json({ error: 'forbidden' });
-  db.prepare('INSERT INTO player_snapshots (generated_at,payload) VALUES (?,?)').run(new Date().toISOString(), JSON.stringify(payload));
+
+  // 1. Pega o último estado salvo no banco para comparar
+  const lastRow = db.prepare('SELECT payload FROM player_snapshots ORDER BY id DESC LIMIT 1').get();
+  let state = { onlinePlayers: [], history: [], activeSessions: {} };
+
+  if (lastRow) {
+    try { state = JSON.parse(lastRow.payload); } catch(e){}
+  }
+
+  const now = new Date();
+  const currentPlayers = payload.onlinePlayers || [];
+  const activeSessions = state.activeSessions || {};
+  const history = state.history || [];
+
+  // 2. Verifica quem SAIU (estava na sessão ativa, mas não está mais na "foto" atual)
+  for (const p of Object.keys(activeSessions)) {
+    if (!currentPlayers.includes(p)) {
+      const session = activeSessions[p];
+      const enteredAt = new Date(session.enteredAt);
+      const hoursOnline = (now - enteredAt) / 3600000;
+
+      // Adiciona o jogador ao histórico de desconectados
+      history.unshift({
+        player: p,
+        enteredAt: session.enteredAt,
+        leftAt: now.toISOString(),
+        hoursOnline: Number(hoursOnline.toFixed(2))
+      });
+      delete activeSessions[p]; // Remove da lista de ativos
+    }
+  }
+
+  // 3. Verifica quem ENTROU (está online agora, mas não estava antes)
+  for (const p of currentPlayers) {
+    if (!activeSessions[p]) {
+      activeSessions[p] = { name: p, enteredAt: now.toISOString() };
+    }
+  }
+
+  // Limita o histórico a 500 registros para o banco de dados não ficar pesado
+  if (history.length > 500) history.length = 500;
+
+  // 4. Monta o novo formato exato que o seu Dashboard espera ler
+  const newPayload = {
+    generatedAt: now.toISOString(),
+    onlinePlayers: currentPlayers,
+    summary: payload.summary || { onlineNow: currentPlayers.length },
+    history: history,
+    activeSessions: activeSessions
+  };
+
+  // 5. Salva no banco de dados
+  db.prepare('INSERT INTO player_snapshots (generated_at,payload) VALUES (?,?)').run(now.toISOString(), JSON.stringify(newPayload));
+
   res.json({ ok: true });
 });
 
