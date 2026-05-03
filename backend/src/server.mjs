@@ -2,42 +2,48 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Database from 'better-sqlite3';
-import fs from 'node:fs';
+import pg from 'pg';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new Database('app.db');
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || 'trocar-em-producao';
 
-function migrate() {
-  db.exec(`
+async function migrate() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      minecraft_name TEXT,
-      photo_url TEXT DEFAULT 'logo.JPG',
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'limited',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(255) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      minecraft_name VARCHAR(255),
+      photo_url VARCHAR(255) DEFAULT 'logo.JPG',
+      password_hash VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL DEFAULT 'limited',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS player_snapshots (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      generated_at TEXT NOT NULL,
+      id SERIAL PRIMARY KEY,
+      generated_at TIMESTAMP NOT NULL,
       payload TEXT NOT NULL
     );
   `);
 }
 
-function seedAdmin() {
-  const exists = db.prepare('SELECT id FROM users WHERE username = ?').get('gabalarca');
-  if (exists) return;
+async function seedAdmin() {
+  const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', ['gabalarca']);
+  if (rows.length > 0) return;
   const hash = bcrypt.hashSync('Famosos1290+', 10);
-  db.prepare('INSERT INTO users (username,email,minecraft_name,password_hash,role) VALUES (?,?,?,?,?)')
-    .run('gabalarca', 'gabalarcadsmoreira2016@gmail.com', 'gabalarca', hash, 'full');
+  await pool.query(
+    'INSERT INTO users (username,email,minecraft_name,password_hash,role) VALUES ($1,$2,$3,$4,$5)',
+    ['gabalarca', 'gabalarcadsmoreira2016@gmail.com', 'gabalarca', hash, 'full']
+  );
 }
 
 function auth(req, res, next) {
@@ -51,144 +57,150 @@ function auth(req, res, next) {
   }
 }
 
-app.post('/api/auth/signup', (req, res) => {
+app.post('/api/auth/signup', async (req, res) => {
   const { username, email, password, minecraftName } = req.body;
   if (!username || !email || !password) return res.status(400).json({ error: 'missing fields' });
   const hash = bcrypt.hashSync(password, 10);
   try {
-    db.prepare('INSERT INTO users (username,email,minecraft_name,password_hash,role) VALUES (?,?,?,?,?)')
-      .run(username.toLowerCase(), email.toLowerCase(), minecraftName || username, hash, 'limited');
+    await pool.query(
+      'INSERT INTO users (username,email,minecraft_name,password_hash,role) VALUES ($1,$2,$3,$4,$5)',
+      [username.toLowerCase(), email.toLowerCase(), minecraftName || username, hash, 'limited']
+    );
     res.json({ ok: true });
   } catch (e) {
     res.status(409).json({ error: 'username/email already exists' });
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { login, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get((login || '').toLowerCase(), (login || '').toLowerCase());
+  const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $1', [(login || '').toLowerCase()]);
+  const user = rows[0];
   if (!user || !bcrypt.compareSync(password || '', user.password_hash)) return res.status(401).json({ error: 'invalid credentials' });
   const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
 });
 
-app.get('/api/me', auth, (req, res) => {
-  const user = db.prepare('SELECT username,email,minecraft_name,photo_url,role FROM users WHERE id = ?').get(req.user.sub);
-  res.json(user);
+app.get('/api/me', auth, async (req, res) => {
+  const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role FROM users WHERE id = $1', [req.user.sub]);
+  res.json(rows[0] || {});
 });
 
-app.post('/api/me/password', auth, (req, res) => {
+app.post('/api/me/password', auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.sub);
+  const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.sub]);
+  const user = rows[0];
   if (!user || !bcrypt.compareSync(currentPassword || '', user.password_hash)) return res.status(401).json({ error: 'invalid current password' });
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.sub);
+  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.sub]);
   res.json({ ok: true });
 });
 
-app.post('/api/snapshots/import', (req, res) => {
-  const { secret, payload } = req.body;
-  if (secret !== (process.env.INGEST_SECRET || 'change-ingest')) return res.status(403).json({ error: 'forbidden' });
+// ── O NOVO ROBÔ (Roda direto no backend) ──
+app.get('/api/cron', async (req, res) => {
+  // Apenas a sua chave do Render tem permissão para acionar o robô
+  if (req.query.key !== process.env.INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
 
-  // 1. Pega o último estado salvo no banco para comparar
-  const lastRow = db.prepare('SELECT payload FROM player_snapshots ORDER BY id DESC LIMIT 1').get();
-  let state = { onlinePlayers: [], history: [], activeSessions: {} };
+  try {
+    const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
+    const mcRes = await fetch(`https://api.mcstatus.io/v2/status/java/${HOST}`, { headers: { 'User-Agent': 'forca-aliada-monitor/1.0' } });
+    if (!mcRes.ok) throw new Error('Falha api minecraft');
+    const status = await mcRes.json();
 
-  if (lastRow) {
-    try { state = JSON.parse(lastRow.payload); } catch(e){}
-  }
-
-  const now = new Date();
-  const currentPlayers = payload.onlinePlayers || [];
-  const activeSessions = state.activeSessions || {};
-  const history = state.history || [];
-
-  // 2. Verifica quem SAIU (estava na sessão ativa, mas não está mais na "foto" atual)
-  for (const p of Object.keys(activeSessions)) {
-    if (!currentPlayers.includes(p)) {
-      const session = activeSessions[p];
-      const enteredAt = new Date(session.enteredAt);
-      const hoursOnline = (now - enteredAt) / 3600000;
-
-      // Adiciona o jogador ao histórico de desconectados
-      history.unshift({
-        player: p,
-        enteredAt: session.enteredAt,
-        leftAt: now.toISOString(),
-        hoursOnline: Number(hoursOnline.toFixed(2))
-      });
-      delete activeSessions[p]; // Remove da lista de ativos
+    let currentPlayers = [];
+    if (status?.players?.list) {
+        currentPlayers = status.players.list.map(p => p.name_clean || p.name_raw || p.name || 'Desconhecido');
     }
-  }
+    const now = new Date();
 
-  // 3. Verifica quem ENTROU (está online agora, mas não estava antes)
-  for (const p of currentPlayers) {
-    if (!activeSessions[p]) {
-      activeSessions[p] = { name: p, enteredAt: now.toISOString() };
+    const { rows } = await pool.query('SELECT payload FROM player_snapshots ORDER BY id DESC LIMIT 1');
+    let state = { onlinePlayers: [], history: [], activeSessions: {} };
+    if (rows.length > 0) {
+      try { state = JSON.parse(rows[0].payload); } catch(e){}
     }
+
+    const activeSessions = state.activeSessions || {};
+    const history = state.history || [];
+
+    for (const p of Object.keys(activeSessions)) {
+      if (!currentPlayers.includes(p)) {
+        const session = activeSessions[p];
+        const hoursOnline = (now - new Date(session.enteredAt)) / 3600000;
+        history.unshift({
+          player: p, enteredAt: session.enteredAt, leftAt: now.toISOString(), hoursOnline: Number(hoursOnline.toFixed(2))
+        });
+        delete activeSessions[p];
+      }
+    }
+
+    for (const p of currentPlayers) {
+      if (!activeSessions[p]) activeSessions[p] = { name: p, enteredAt: now.toISOString() };
+    }
+
+    if (history.length > 500) history.length = 500;
+
+    const newPayload = {
+      generatedAt: now.toISOString(),
+      onlinePlayers: currentPlayers,
+      summary: { onlineNow: currentPlayers.length, maxPlayers: status?.players?.max || 0 },
+      history: history,
+      activeSessions: activeSessions
+    };
+
+    await pool.query('INSERT INTO player_snapshots (generated_at,payload) VALUES ($1,$2)', [now.toISOString(), JSON.stringify(newPayload)]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-
-  // Limita o histórico a 500 registros para o banco de dados não ficar pesado
-  if (history.length > 500) history.length = 500;
-
-  // 4. Monta o novo formato exato que o seu Dashboard espera ler
-  const newPayload = {
-    generatedAt: now.toISOString(),
-    onlinePlayers: currentPlayers,
-    summary: payload.summary || { onlineNow: currentPlayers.length },
-    history: history,
-    activeSessions: activeSessions
-  };
-
-  // 5. Salva no banco de dados
-  db.prepare('INSERT INTO player_snapshots (generated_at,payload) VALUES (?,?)').run(now.toISOString(), JSON.stringify(newPayload));
-
-  res.json({ ok: true });
 });
 
-app.get('/api/snapshots/latest', auth, (req, res) => {
-  const row = db.prepare('SELECT generated_at,payload FROM player_snapshots ORDER BY id DESC LIMIT 1').get();
-  if (!row) return res.json({ generatedAt: null, onlinePlayers: [], summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
-  const parsed = JSON.parse(row.payload);
+app.get('/api/snapshots/latest', auth, async (req, res) => {
+  const { rows } = await pool.query('SELECT generated_at,payload FROM player_snapshots ORDER BY id DESC LIMIT 1');
+  if (rows.length === 0) return res.json({ generatedAt: null, onlinePlayers: [], summary: { joinedToday: 0, leftToday: 0, avgHours: 0 }, history: [] });
+  const parsed = JSON.parse(rows[0].payload);
   if (req.user.role !== 'full' && Array.isArray(parsed.history)) parsed.history = parsed.history.slice(0, 10);
   res.json(parsed);
 });
-
 
 function requireFull(req, res, next) {
   if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
   next();
 }
 
-app.get('/api/admin/users', auth, requireFull, (req, res) => {
-  const users = db.prepare('SELECT id, username, email, minecraft_name, photo_url, role, created_at FROM users ORDER BY id DESC').all();
-  res.json(users);
+app.get('/api/admin/users', auth, requireFull, async (req, res) => {
+  const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, created_at FROM users ORDER BY id DESC');
+  res.json(rows);
 });
 
-app.put('/api/admin/users/:id', auth, requireFull, (req, res) => {
+app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const { username, email, minecraftName, photoUrl, role } = req.body || {};
   if (!username || !email) return res.status(400).json({ error: 'missing fields' });
   try {
-    const info = db.prepare('UPDATE users SET username=?, email=?, minecraft_name=?, photo_url=?, role=? WHERE id=?')
-      .run(String(username).toLowerCase(), String(email).toLowerCase(), minecraftName || username, photoUrl || 'logo.JPG', role === 'full' ? 'full' : 'limited', id);
-    if (!info.changes) return res.status(404).json({ error: 'user not found' });
+    const result = await pool.query(
+      'UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5 WHERE id=$6',
+      [String(username).toLowerCase(), String(email).toLowerCase(), minecraftName || username, photoUrl || 'logo.JPG', role === 'full' ? 'full' : 'limited', id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'user not found' });
     res.json({ ok: true });
   } catch {
     res.status(409).json({ error: 'username/email already exists' });
   }
 });
 
-app.delete('/api/admin/users/:id', auth, requireFull, (req, res) => {
+app.delete('/api/admin/users/:id', auth, requireFull, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
-  const user = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
-  if (!user) return res.status(404).json({ error: 'user not found' });
-  if (user.username === 'gabalarca') return res.status(400).json({ error: 'cannot delete main admin' });
-  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'user not found' });
+  if (rows[0].username === 'gabalarca') return res.status(400).json({ error: 'cannot delete main admin' });
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
   res.json({ ok: true });
 });
-migrate();
-seedAdmin();
-app.listen(8787, () => console.log('API on http://localhost:8787'));
+
+migrate().then(seedAdmin).catch(console.error);
+
+const PORT = process.env.PORT || 8787;
+app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
