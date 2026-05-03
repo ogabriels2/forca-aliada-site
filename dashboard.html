@@ -649,24 +649,23 @@ function updateActivityChart() {
 }
 
 // ── Modal do jogador ──────────────────────────────────────────────
-function openPlayerProfile(playerName) {
+async function openPlayerProfile(playerName) {
   document.getElementById('modal-name').textContent = playerName;
   document.getElementById('modal-img').src = `https://minotar.net/helm/${playerName}/100.png`;
 
-  const activeSessions = globalHistData?.activeSessions || {};
-  const sKey = Object.keys(activeSessions).find(k => activeSessions[k].name.toLowerCase() === playerName.toLowerCase());
-  const liveList = (globalApiData?.players?.list||[]).map(p=>(typeof p==='string'?p:p.name).toLowerCase());
-  const isOnline = !!sKey || liveList.includes(playerName.toLowerCase());
+  // Agora buscamos o histórico COMPLETO e VITALÍCIO do banco de dados
+  const res = await fetch(`${API_BASE}/api/player/${playerName}/history`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const fullHistory = await res.json();
 
+  const isOnline = globalHistData?.onlinePlayers?.includes(playerName);
   const badge = document.getElementById('modal-status');
   badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline';
   badge.className   = isOnline ? 'pill success' : 'pill limited-status';
 
-  const pHistory = (globalHistData?.history||[]).filter(h=>h.player.toLowerCase()===playerName.toLowerCase());
-  let totalHours = pHistory.reduce((a,h)=>a+(h.hoursOnline||0),0);
-  if (sKey) totalHours += (Date.now()-new Date(activeSessions[sKey].enteredAt))/3600000;
-
-  const totalSessions = pHistory.length + (isOnline?1:0);
+  let totalHours = fullHistory.reduce((a,h)=>a+(h.duration_hours || 0), 0);
+  const totalSessions = fullHistory.length + (isOnline?1:0);
   const avg = totalSessions > 0 ? totalHours/totalSessions : 0;
 
   document.getElementById('modal-total-time').textContent = formatTime(totalHours);
@@ -675,12 +674,11 @@ function openPlayerProfile(playerName) {
 
   let rows = '';
   if (isOnline) {
-    const eTime = sKey ? new Date(activeSessions[sKey].enteredAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : 'Agora';
-    rows += `<tr style="background:rgba(52,199,89,0.05)"><td>Hoje</td><td>${eTime}</td><td style="color:var(--success);font-weight:600;">Ao Vivo</td><td>Contando...</td></tr>`;
+    rows += `<tr style="background:rgba(52,199,89,0.05)"><td>Hoje</td><td>Agora</td><td style="color:var(--success);font-weight:600;">Ao Vivo</td><td>Contando...</td></tr>`;
   }
-  rows += pHistory.filter(h=>h.leftAt).map(h=>{
-    const d = new Date(h.enteredAt), l = new Date(h.leftAt);
-    return `<tr><td>${d.toLocaleDateString('pt-BR')}</td><td>${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.hoursOnline)}</td></tr>`;
+  rows += fullHistory.filter(h => h.left_at).map(h => {
+    const d = new Date(h.entered_at), l = new Date(h.left_at);
+    return `<tr><td>${d.toLocaleDateString('pt-BR')}</td><td>${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours)}</td></tr>`;
   }).join('');
 
   document.getElementById('modal-table-body').innerHTML = rows || '<tr><td colspan="4" style="text-align:center">Sem dados</td></tr>';
