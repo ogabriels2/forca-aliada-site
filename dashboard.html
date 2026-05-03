@@ -985,8 +985,9 @@ async function confirmPwSubmit() {
     });
     if (!res.ok) throw new Error('Senha incorreta.');
 
+    const cb = _confirmPwCallback;
     closeConfirmPw();
-    if (_confirmPwCallback) await _confirmPwCallback();
+    if (cb) await cb();
   } catch (e) {
     errEl.textContent = 'Senha incorreta. Tente novamente.';
     input.value = '';
@@ -1748,7 +1749,6 @@ function toggleCreateAccount() {
   chevron.classList.toggle('open', isOpen);
 }
 
-// ── Admin: Edição de conta ──────────────────────────────────────
 function setAdminEditMode(isEditing) {
   const card    = document.getElementById('modal-site-account');
   const advWrap = document.getElementById('advanced-security-wrapper');
@@ -1778,16 +1778,18 @@ function hideAdminDeleteConfirm() {
 
 async function saveAdminUser() {
   if (!currentEditingAdminId) return;
+  
+  const newPwd = document.getElementById('ai-newpassword').value.trim();
   const body = {
     username:      document.getElementById('ai-username').value.trim(),
     email:         document.getElementById('ai-email').value.trim(),
     minecraftName: document.getElementById('ai-mc').value.trim(),
     role:          document.getElementById('ai-role').value,
   };
+  
+  if (newPwd) body.newPassword = newPwd;
+  
   if (!body.username || !body.email) { alert('Preencha usuário e e-mail.'); return; }
-
-  const newPwd = document.getElementById('ai-newpassword').value.trim();
-
   if (newPwd && newPwd.length < 6) { alert('A nova senha deve ter ao menos 6 caracteres.'); return; }
 
   requirePassword({
@@ -1802,15 +1804,6 @@ async function saveAdminUser() {
         body: JSON.stringify(body)
       });
       if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
-
-      if (newPwd) {
-        const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ newPassword: newPwd })
-        });
-        if (!pwRes.ok) { alert('Dados salvos, mas erro ao alterar senha.'); }
-      }
 
       await fetchAdminUsers();
       document.getElementById('av-username').textContent = body.username;
@@ -1883,7 +1876,6 @@ async function submitCreateAccount() {
   if (res.ok) {
     const data = await res.json();
     await fetchAdminUsers();
-    await fetchUnregistered();
     
     currentEditingAdminId = data.id;
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
