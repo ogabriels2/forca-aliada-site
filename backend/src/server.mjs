@@ -3,6 +3,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
+import util from 'minecraft-server-util';
 
 const app = express();
 app.use(cors());
@@ -28,6 +29,7 @@ async function migrate() {
       role VARCHAR(50) NOT NULL DEFAULT 'limited',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    
     /* NOVA TABELA PROFISSIONAL DE SESSÕES */
     CREATE TABLE IF NOT EXISTS player_sessions (
       id SERIAL PRIMARY KEY,
@@ -61,7 +63,12 @@ function auth(req, res, next) {
   }
 }
 
-// ── ROTAS DE AUTH (Login/Signup) IGUAIS À ANTERIOR ──
+function requireFull(req, res, next) {
+  if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
+  next();
+}
+
+// ── ROTAS DE AUTH (Login/Signup/Senha) ──
 app.post('/api/auth/signup', async (req, res) => {
   const { username, email, password, minecraftName } = req.body;
   if (!username || !email || !password) return res.status(400).json({ error: 'missing fields' });
@@ -86,15 +93,28 @@ app.get('/api/me', auth, async (req, res) => {
   res.json(rows[0] || {});
 });
 
-// ── O NOVO ROBÔ PROFISSIONAL (Registra sessões individuais) ──
+app.post('/api/me/password', auth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.sub]);
+  const user = rows[0];
+  if (!user || !bcrypt.compareSync(currentPassword || '', user.password_hash)) return res.status(401).json({ error: 'invalid current password' });
+  const hash = bcrypt.hashSync(newPassword, 10);
+  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.sub]);
+  res.json({ ok: true });
+});
+
+// ── O NOVO ROBÔ (Ping Direto no Minecraft) ──
 app.get('/api/cron', async (req, res) => {
   if (req.query.key !== process.env.INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
 
   try {
     const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
-    const mcRes = await fetch(`https://api.mcstatus.io/v2/status/java/${HOST}`, { headers: { 'User-Agent': 'forca-aliada-monitor/1.0' } });
-    const status = await mcRes.json();
-    const currentPlayers = (status?.players?.list || []).map(p => p.name_clean || p.name);
+    
+    // Ping direto usando a biblioteca minecraft-server-util
+    const status = await util.status(HOST, 25565, { timeout: 5000, enableSRV: true });
+    
+    // Mapeia os nomes dos jogadores retornados pelo seu próprio servidor
+    const currentPlayers = (status?.players?.sample || []).map(p => p.name);
     const now = new Date();
 
     // 1. Finaliza sessões de quem saiu
@@ -118,12 +138,12 @@ app.get('/api/cron', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── BUSCA DE DADOS PARA O DASHBOARD (Com estrutura compatível) ──
+// ── BUSCA DE DADOS PARA O DASHBOARD (Estrutura compatível) ──
 app.get('/api/snapshots/latest', auth, async (req, res) => {
   const online = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+  // Puxa as últimas 500 para não travar a tela de início do Dashboard
   const history = await pool.query('SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT 500');
 
-  // Remontamos o objeto para o Dashboard não quebrar
   res.json({
     onlinePlayers: online.rows.map(r => r.player),
     activeSessions: online.rows.reduce((acc, r) => {
@@ -139,17 +159,46 @@ app.get('/api/snapshots/latest', auth, async (req, res) => {
   });
 });
 
-// ── NOVA ROTA: BUSCA HISTÓRICO COMPLETO DE UM JOGADOR ──
+// ── ROTA: BUSCA HISTÓRICO COMPLETO DE UM JOGADOR ──
 app.get('/api/player/:name/history', auth, async (req, res) => {
   const { rows } = await pool.query('SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE player = $1 ORDER BY entered_at DESC', [req.params.name]);
   res.json(rows);
 });
 
-// Outras rotas de admin (Users) continuam as mesmas...
-app.get('/api/admin/users', auth, async (req, res) => {
-  const { rows } = await pool.query('SELECT id, username, email, minecraft_name, role FROM users');
+// ── ADMIN: GERENCIAR USUÁRIOS DO PAINEL ──
+app.get('/api/admin/users', auth, requireFull, async (req, res) => {
+  const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, created_at FROM users ORDER BY id DESC');
   res.json(rows);
 });
 
+app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
+  const { username, email, minecraftName, photoUrl, role } = req.body || {};
+  if (!username || !email) return res.status(400).json({ error: 'missing fields' });
+  try {
+    const result = await pool.query(
+      'UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5 WHERE id=$6',
+      [String(username).toLowerCase(), String(email).toLowerCase(), minecraftName || username, photoUrl || 'logo.JPG', role === 'full' ? 'full' : 'limited', id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'user not found' });
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'username/email already exists' });
+  }
+});
+
+app.delete('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
+  const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'user not found' });
+  if (rows[0].username === 'gabalarca') return res.status(400).json({ error: 'cannot delete main admin' });
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  res.json({ ok: true });
+});
+
 migrate().then(seedAdmin).catch(console.error);
-app.listen(process.env.PORT || 8787);
+
+const PORT = process.env.PORT || 8787;
+app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
