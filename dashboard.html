@@ -464,7 +464,9 @@ async function loadData() {
 
   const [apiData, histData] = await Promise.all([
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
-    fetch(`data/player-history.json?t=${Date.now()}`).then(r => r.json()).catch(() => null),
+    fetch(`${API_BASE}/api/snapshots/latest`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json()).catch(() => null),
   ]);
 
   globalApiData  = apiData;
