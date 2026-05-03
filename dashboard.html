@@ -23,7 +23,7 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  visibility: hidden; /* evita flash de conteúdo não autorizado */
+  visibility: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg-color);
   color: var(--text-primary);
@@ -84,7 +84,10 @@ header {
   cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit;
 }
 .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover { background: #d32f2f; }
+.btn-secondary { background: #e5e5ea; color: var(--text-primary); }
+.btn-secondary:hover { background: #d1d1d6; }
 .card {
   background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border);
@@ -127,7 +130,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .filter-bar { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px; }
 .chart-container { width: 100%; height: 350px; margin-bottom: 20px; }
 
-/* MODAL */
+/* MODAL & HISTÓRICO AVANÇADO */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
   background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
@@ -136,7 +139,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 }
 .modal-overlay.active { opacity: 1; visibility: visible; }
 .modal-content {
-  background: var(--card-bg); width: 100%; max-width: 700px; max-height: 90vh;
+  background: var(--card-bg); width: 100%; max-width: 750px; max-height: 90vh;
   border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2);
   display: flex; flex-direction: column; overflow: hidden;
   transform: scale(0.95); transition: var(--transicao);
@@ -155,19 +158,34 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 }
 .close-modal:hover { background: rgba(0,0,0,0.1); }
 .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+.site-account-info { background: #f8f9fa; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; display: none; }
 .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
 .stat-box { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center; }
 .stat-box span { display: block; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
 .stat-box strong { font-size: 20px; }
+.history-tools { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+.history-tools h3 { margin: 0; font-size: 16px; }
+.history-tools input { width: auto; padding: 8px 12px; border-radius: 8px; }
 .history-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.history-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; }
+.history-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; cursor: pointer; user-select: none; }
+.history-table th:hover { color: var(--text-primary); }
 .history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
 .history-table tr:hover td { background: rgba(0,0,0,0.02); }
+
+/* ADMIN USERS GRID */
+.admin-users-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.admin-card { background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.admin-card-header { display: flex; align-items: center; gap: 12px; }
+.admin-card-header img { width: 40px; height: 40px; border-radius: 8px; }
+.admin-card-info strong { display: block; font-size: 15px; }
+.admin-card-info span { font-size: 12px; color: var(--text-secondary); }
+.admin-card-actions { display: flex; gap: 8px; margin-top: auto; }
 
 @media (max-width: 860px) {
   .container { grid-template-columns: 1fr; margin-top: 20px; }
   .filter-bar { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr; }
+  .admin-users-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -182,7 +200,6 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 </header>
 
 <div class="container">
-  <!-- PERFIL -->
   <div class="card">
     <div class="profile-header">
       <img id="photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img" alt="Foto de perfil">
@@ -209,7 +226,6 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     <div id="profile-msg" style="font-size:13px;margin-top:8px;" role="alert"></div>
   </div>
 
-  <!-- DASHBOARD PRINCIPAL -->
   <div class="card">
     <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
     <div class="dashboard-grid">
@@ -283,18 +299,18 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </ul>
   </div>
 
-  <!-- ADMIN: Gerenciar contas (só role=full vê) -->
   <div class="card" id="admin-users-card" style="grid-column:1/-1;display:none;">
-    <h3>Contas Cadastradas</h3>
-    <ul id="admin-users-list">
-      <li class="list-item"><div class="item-details"><span>Carregando...</span></div></li>
-    </ul>
-    <div id="admin-user-editor" style="display:none;margin-top:12px;"></div>
-    <div id="admin-users-msg" style="font-size:13px;" role="alert"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <h3>Contas da Staff Cadastradas</h3>
+      <input type="text" id="admin-search" placeholder="Filtrar contas..." oninput="renderAdminUsers()" style="width:250px;padding:8px 12px;">
+    </div>
+    <div id="admin-users-msg" style="font-size:13px;margin-top:8px;" role="alert"></div>
+    <div id="admin-users-grid" class="admin-users-grid">
+      <span>Carregando...</span>
+    </div>
   </div>
 </div>
 
-<!-- MODAL JOGADOR -->
 <div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true">
   <div class="modal-content">
     <div class="modal-header">
@@ -308,14 +324,33 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
       <button class="close-modal" onclick="closeModal()" aria-label="Fechar">×</button>
     </div>
     <div class="modal-body">
+      <div id="modal-site-account" class="site-account-info">
+        <h4 style="margin:0 0 12px;font-size:14px;color:var(--text-secondary);text-transform:uppercase;">Vínculo com o Site</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><span style="font-size:12px;color:var(--text-secondary);">Email Cadastrado</span><strong style="display:block;font-size:14px;" id="modal-site-email">-</strong></div>
+          <div><span style="font-size:12px;color:var(--text-secondary);">Permissão no Painel</span><strong style="display:block;font-size:14px;" id="modal-site-role">-</strong></div>
+          <div style="grid-column:1/-1;"><span style="font-size:12px;color:var(--text-secondary);">Registrado em</span><strong style="display:block;font-size:14px;" id="modal-site-date">-</strong></div>
+        </div>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-box"><span>Tempo Total Logado</span><strong id="modal-total-time">0h</strong></div>
         <div class="stat-box"><span>Total de Sessões</span><strong id="modal-sessions">0</strong></div>
         <div class="stat-box"><span>Média por Sessão</span><strong id="modal-avg-time">0m</strong></div>
       </div>
-      <h3 style="margin:0 0 16px;font-size:16px;">Registro Detalhado de Sessões</h3>
+
+      <div class="history-tools">
+        <h3>Histórico Detalhado</h3>
+        <input type="date" id="modal-date-filter" onchange="renderModalTable()">
+      </div>
       <table class="history-table">
-        <thead><tr><th>Data</th><th>Entrada</th><th>Saída</th><th>Duração</th></tr></thead>
+        <thead>
+          <tr>
+            <th onclick="sortModal('date')">Entrada <span id="sort-date">▼</span></th>
+            <th>Saída</th>
+            <th onclick="sortModal('duration')">Duração <span id="sort-duration"></span></th>
+          </tr>
+        </thead>
         <tbody id="modal-table-body"></tbody>
       </table>
     </div>
@@ -323,7 +358,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 </div>
 
 <script>
-// ── Constantes ──────────────────────────────────────────────────
+// ── Constantes & Estado ─────────────────────────────────────────
 const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const TOKEN_KEY   = 'fa_token';
@@ -333,30 +368,18 @@ const token = localStorage.getItem(TOKEN_KEY);
 let session = null;
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
-// ── GUARDA DE ACESSO ────────────────────────────────────────────
-// Verificação server-side via JWT: se o token for inválido/expirado,
-// /api/me retornará 401 e o usuário será redirecionado.
-// A lista hardcoded de usuários foi REMOVIDA — o controle é feito no backend.
-
 if (!token && !session) {
   window.location.replace('login.html');
   throw new Error('Não autenticado');
 }
 
-// Verifica token com o backend (assíncrono, antes de mostrar a página)
+// Verifica token com o backend
 (async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error('Token inválido');
     const me = await res.json();
-    session = {
-      username:      me.username,
-      email:         me.email,
-      minecraftName: me.minecraft_name,
-      role:          me.role,
-    };
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
     localStorage.removeItem(TOKEN_KEY);
@@ -364,31 +387,59 @@ if (!token && !session) {
     window.location.replace('login.html');
     return;
   }
-
-  // Página liberada
   document.body.style.visibility = 'visible';
   initDashboard();
 })();
 
-// ── Inicialização ────────────────────────────────────────────────
+// ── Estado Global ────────────────────────────────────────────────
 let globalHistData = null;
 let globalApiData  = null;
+let globalAdminUsers = []; // Para cruzar dados de site com minecraft
 let chartInstance  = null;
+let liveInterval   = null;
+
+// Modal estado
+let modalHistoryData = [];
+let modalSortConfig = { key: 'date', asc: false };
 
 function initDashboard() {
   renderHeader();
   renderProfile();
   loadData();
-  if (session.role === 'full') loadAdminUsers();
-  setInterval(loadData, 30000);
+  if (session.role === 'full') fetchAdminUsers(); // Busca infos do site em background
+  setInterval(loadData, 30000); // Atualiza dados gerais a cada 30s
+  
+  // Ticker para atualizar durações em tempo real a cada segundo
+  if(liveInterval) clearInterval(liveInterval);
+  liveInterval = setInterval(() => {
+    applyFilters(); 
+    if(document.getElementById('player-modal').classList.contains('active')) renderModalTable();
+  }, 10000); // Atualiza labels "Agora" e "Duração" a cada 10s
 }
 
-// ── Header ───────────────────────────────────────────────────────
-function renderHeader() {
-  const skinUrl = session.minecraftName
-    ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
-    : 'https://minotar.net/helm/Steve/100.png';
+// ── Funções de formatação de tempo ────────────────────────────────
+function formatTime(hoursFloat) {
+  if (!hoursFloat || hoursFloat <= 0) return '<1m';
+  const t = Math.floor(hoursFloat * 60);
+  const d = Math.floor(t / 1440), h = Math.floor((t%1440)/60), m = t%60;
+  return [d>0?`${d}d`:'', h>0?`${h}h`:'', m>0?`${m}m`:''].filter(Boolean).join(' ') || '<1m';
+}
 
+function getLiveEntryText(enteredAtStr) {
+  const entered = new Date(enteredAtStr);
+  const diffMs = Date.now() - entered.getTime();
+  if (diffMs < 60000 && new Date().getMinutes() === entered.getMinutes()) return "Agora mesmo";
+  return entered.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function getLiveDuration(enteredAtStr) {
+  const hours = (Date.now() - new Date(enteredAtStr).getTime()) / 3600000;
+  return formatTime(hours);
+}
+
+// ── Header & Perfil ─────────────────────────────────────────────
+function renderHeader() {
+  const skinUrl = session.minecraftName ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
   document.getElementById('auth-header-container').innerHTML = `
     <div class="user-menu-wrapper">
       <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
@@ -403,375 +454,330 @@ function renderHeader() {
     </div>`;
 }
 
-function toggleDropdown(e) {
-  e.stopPropagation();
-  document.getElementById('user-btn-toggle')?.classList.toggle('active');
-  document.getElementById('user-dropdown-menu')?.classList.toggle('show');
-}
-document.addEventListener('click', () => {
-  document.getElementById('user-dropdown-menu')?.classList.remove('show');
-  document.getElementById('user-btn-toggle')?.classList.remove('active');
-});
+function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
+document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
 
-// ── Perfil ───────────────────────────────────────────────────────
 function renderProfile() {
-  const mcName  = session.minecraftName || '-';
-  const skinUrl = mcName !== '-'
-    ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`
-    : 'https://minotar.net/helm/Steve/100.png';
-
-  document.getElementById('name').textContent         = session.username;
+  const mcName = session.minecraftName || '-';
+  const skinUrl = mcName !== '-' ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
+  document.getElementById('name').textContent = session.username;
   document.getElementById('email-display').textContent = session.email || '-';
-  document.getElementById('mc-display').textContent    = mcName;
-  document.getElementById('photo').src                 = skinUrl;
-
+  document.getElementById('mc-display').textContent = mcName;
+  document.getElementById('photo').src = skinUrl;
   const pill = document.getElementById('role-pill');
-  if (session.role === 'full') {
-    pill.textContent = 'Acesso Total'; pill.className = 'pill full';
-  } else {
-    pill.textContent = 'Acesso Restrito'; pill.className = 'pill limited';
-  }
+  pill.textContent = session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito';
+  pill.className = session.role === 'full' ? 'pill full' : 'pill limited';
 }
 
-// ── Alterar senha via API ─────────────────────────────────────────
 async function changePass() {
-  const p   = document.getElementById('newpass').value;
-  const msg = document.getElementById('profile-msg');
-  if (!p || p.length < 6) {
-    msg.textContent = 'A senha deve ter ao menos 6 caracteres.';
-    msg.style.color = 'var(--danger)'; return;
-  }
+  const p = document.getElementById('newpass').value, msg = document.getElementById('profile-msg');
+  if (!p || p.length < 6) { msg.textContent = 'A senha deve ter ao menos 6 caracteres.'; msg.style.color = 'var(--danger)'; return; }
   try {
-    const res = await fetch(`${API_BASE}/api/me/password`, {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ password: p }),
-    });
+    const res = await fetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ password: p }) });
     if (!res.ok) throw new Error();
-    msg.textContent = 'Senha atualizada com sucesso!';
-    msg.style.color = 'var(--success)';
-    document.getElementById('newpass').value = '';
-  } catch {
-    msg.textContent = 'Erro ao atualizar senha.';
-    msg.style.color = 'var(--danger)';
-  }
+    msg.textContent = 'Senha atualizada!'; msg.style.color = 'var(--success)'; document.getElementById('newpass').value = '';
+  } catch { msg.textContent = 'Erro ao atualizar senha.'; msg.style.color = 'var(--danger)'; }
   setTimeout(() => { msg.textContent = ''; }, 3000);
 }
 
-// ── Dados (API Minecraft + JSON de histórico) ────────────────────
+// ── Main Data Load ──────────────────────────────────────────────
 async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
-
   const [apiData, histData] = await Promise.all([
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/snapshots/latest`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json()).catch(() => null),
+    fetch(`${API_BASE}/api/snapshots/latest`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
   ]);
-
-  globalApiData  = apiData;
-  globalHistData = histData;
-  renderDashboard();
-  updateActivityChart();
+  globalApiData = apiData; globalHistData = histData;
+  renderDashboard(); updateActivityChart();
 }
 
 function renderDashboard() {
   if (globalApiData?.online) {
-    document.getElementById('server-status').textContent  = 'Online';
-    document.getElementById('server-dot').className       = 'status-dot';
+    document.getElementById('server-status').textContent = 'Online';
+    document.getElementById('server-dot').className = 'status-dot';
     document.getElementById('server-version').textContent = globalApiData.version || 'Desconhecida';
-    document.getElementById('online-count').textContent   = `${globalApiData.players?.online ?? 0} / ${globalApiData.players?.max ?? 0}`;
+    document.getElementById('online-count').textContent = `${globalApiData.players?.online ?? 0} / ${globalApiData.players?.max ?? 0}`;
   } else {
-    document.getElementById('server-status').textContent  = 'Offline';
-    document.getElementById('server-dot').className       = 'status-dot offline';
+    document.getElementById('server-status').textContent = 'Offline';
+    document.getElementById('server-dot').className = 'status-dot offline';
     document.getElementById('server-version').textContent = '-';
-    document.getElementById('online-count').textContent   = '0 / 0';
+    document.getElementById('online-count').textContent = '0 / 0';
   }
   applyFilters();
 }
 
-// ── Filtros e listas ─────────────────────────────────────────────
+// ── Listas (Online e Offline) ───────────────────────────────────
 function applyFilters() {
+  if (!globalHistData) return;
   const nameFilter = document.getElementById('search-player').value.toLowerCase().trim();
   const dateFilter = document.getElementById('search-date').value;
 
-  let livePlayers = (globalApiData?.players?.list || []).map(p => typeof p === 'string' ? p : p.name);
-  if (!livePlayers.length && globalHistData?.onlinePlayers) livePlayers = globalHistData.onlinePlayers;
+  // Usa estritamente a lista de online providenciada pelo banco para evitar bugs de duplicação
+  const livePlayersNames = globalHistData.onlinePlayers || [];
+  const activeSessions = globalHistData.activeSessions || {};
 
-  const activeSessions = globalHistData?.activeSessions || {};
-  const historyList    = globalHistData?.history || [];
+  // ONLINE
+  const filteredLive = livePlayersNames.filter(p => p.toLowerCase().includes(nameFilter));
+  const onlineUl = document.getElementById('online');
+  onlineUl.innerHTML = filteredLive.length ? filteredLive.map(pName => {
+    const sData = activeSessions[Object.keys(activeSessions).find(k => k.toLowerCase() === pName.toLowerCase())];
+    const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
+    return `<li class="list-item" onclick="openPlayerProfile('${pName}')">
+      <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head">
+      <div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div>
+      <span class="status-dot"></span>
+    </li>`;
+  }).join('') : `<li class="list-item"><div class="item-details"><span>Nenhum jogador online.</span></div></li>`;
 
-  // Online
-  const filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
-  const onlineUl     = document.getElementById('online');
-  onlineUl.innerHTML = filteredLive.length
-    ? filteredLive.map(pName => {
-        const sKey    = Object.keys(activeSessions).find(k => activeSessions[k].name.toLowerCase() === pName.toLowerCase());
-        let timeInfo  = 'Acabou de entrar';
-        if (sKey) {
-          const d = new Date(activeSessions[sKey].enteredAt);
-          timeInfo = `Entrou às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} (há ${formatTime((Date.now()-d)/3600000)})`;
-        }
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')">
-          <img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head">
-          <div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div>
-          <span class="status-dot"></span>
-        </li>`;
-      }).join('')
-    : `<li class="list-item"><div class="item-details"><span>Nenhum jogador online.</span></div></li>`;
+  // OFFLINE (Histórico Agrupado e Limpo)
+  // 1. Remove qualquer um que esteja online atualmente para evitar clones
+  let offlineHistory = (globalHistData.history || []).filter(h => !livePlayersNames.map(n=>n.toLowerCase()).includes(h.player.toLowerCase()) && h.leftAt);
+  
+  // 2. Agrupa por jogador, mantendo apenas a sessão MAIS RECENTE de cada um
+  const uniqueOffline = [];
+  const seenPlayers = new Set();
+  // Ordena por data de saída decrescente antes para garantir que pegamos o último
+  offlineHistory.sort((a,b) => new Date(b.leftAt) - new Date(a.leftAt));
+  for (const h of offlineHistory) {
+    const pKey = h.player.toLowerCase();
+    if (!seenPlayers.has(pKey)) {
+      seenPlayers.add(pKey);
+      uniqueOffline.push(h);
+    }
+  }
 
-  // Histórico
-  let filtered = historyList.filter(h => h.leftAt !== null);
-  if (nameFilter) filtered = filtered.filter(h => h.player.toLowerCase().includes(nameFilter));
-  if (dateFilter) filtered = filtered.filter(h => h.enteredAt.startsWith(dateFilter));
+  // 3. Aplica filtros visuais
+  let filteredOff = uniqueOffline;
+  if (nameFilter) filteredOff = filteredOff.filter(h => h.player.toLowerCase().includes(nameFilter));
+  if (dateFilter) filteredOff = filteredOff.filter(h => h.enteredAt.startsWith(dateFilter));
+  
   const histUl = document.getElementById('history');
-  histUl.innerHTML = filtered.length
-    ? filtered.slice(0,10).map(h => {
-        const e = new Date(h.enteredAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        const l = new Date(h.leftAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        return `<li class="list-item" onclick="openPlayerProfile('${h.player}')">
-          <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
-          <div class="item-details"><strong>${h.player}</strong><span style="font-size:12px;">Jogou por ${formatTime(h.hoursOnline)} (${e} → ${l})</span></div>
-        </li>`;
-      }).join('')
-    : `<li class="list-item"><div class="item-details"><span>Nenhum registro encontrado.</span></div></li>`;
+  histUl.innerHTML = filteredOff.length ? filteredOff.slice(0, 15).map(h => {
+    const dStr = new Date(h.leftAt).toLocaleDateString('pt-BR');
+    const e = new Date(h.enteredAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const l = new Date(h.leftAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return `<li class="list-item" onclick="openPlayerProfile('${h.player}')">
+      <img src="https://minotar.net/helm/${h.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;">
+      <div class="item-details"><strong>${h.player}</strong><span style="font-size:12px;">Desconectou em ${dStr} (Sessão: ${formatTime(h.hoursOnline)})</span></div>
+    </li>`;
+  }).join('') : `<li class="list-item"><div class="item-details"><span>Nenhum registro encontrado.</span></div></li>`;
 }
 
-// ── Gráfico ──────────────────────────────────────────────────────
-function formatTime(hoursFloat) {
-  if (!hoursFloat || hoursFloat <= 0) return '<1m';
-  const t = Math.floor(hoursFloat * 60);
-  const d = Math.floor(t / 1440), h = Math.floor((t%1440)/60), m = t%60;
-  return [d>0?`${d}d`:'', h>0?`${h}h`:'', m>0?`${m}m`:''].filter(Boolean).join(' ') || '<1m';
-}
-
-function stringToColor(str) {
-  let hash = 0;
-  for (let i=0; i<str.length; i++) hash = str.charCodeAt(i) + ((hash<<5)-hash);
-  return `hsl(${Math.abs(hash)%360},70%,55%)`;
-}
+// ── Gráficos ────────────────────────────────────────────────────
+function stringToColor(str) { let hash=0; for(let i=0;i<str.length;i++) hash=str.charCodeAt(i)+((hash<<5)-hash); return `hsl(${Math.abs(hash)%360},70%,55%)`; }
 
 function toggleCustomTime() {
-  const range    = document.getElementById('chart-range').value;
-  const controls = document.getElementById('custom-time-controls');
+  const range = document.getElementById('chart-range').value, controls = document.getElementById('custom-time-controls');
   controls.style.display = range === 'custom' ? 'flex' : 'none';
   if (range === 'custom') {
-    const end   = new Date(), start = new Date(end.getTime()-86400000);
-    const fmt   = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-    document.getElementById('custom-end').value   = fmt(end);
-    document.getElementById('custom-start').value = fmt(start);
+    const end = new Date(), start = new Date(end.getTime()-86400000);
+    const fmt = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    document.getElementById('custom-end').value = fmt(end); document.getElementById('custom-start').value = fmt(start);
   }
   updateActivityChart();
 }
 
 function updateActivityChart() {
   if (!globalHistData) return;
-  const range = document.getElementById('chart-range').value;
-  const grp   = document.getElementById('chart-grouping').value;
-
-  let endTime   = new Date(), startTime = new Date();
-  if      (range === '24h')   startTime.setHours(startTime.getHours()-24);
-  else if (range === '7d')    startTime.setDate(startTime.getDate()-7);
-  else if (range === '30d')   startTime.setDate(startTime.getDate()-30);
+  const range = document.getElementById('chart-range').value, grp = document.getElementById('chart-grouping').value;
+  let endTime = new Date(), startTime = new Date();
+  if (range === '24h') startTime.setHours(startTime.getHours()-24);
+  else if (range === '7d') startTime.setDate(startTime.getDate()-7);
+  else if (range === '30d') startTime.setDate(startTime.getDate()-30);
   else if (range === 'custom') {
-    const s = document.getElementById('custom-start').value;
-    const e = document.getElementById('custom-end').value;
-    if (s) startTime = new Date(s);
-    if (e) endTime   = new Date(e);
+    const s = document.getElementById('custom-start').value, e = document.getElementById('custom-end').value;
+    if (s) startTime = new Date(s); if (e) endTime = new Date(e);
     if (startTime > endTime) startTime = new Date(endTime.getTime()-86400000);
   }
-
-  const bins = [];
-  let curr   = new Date(startTime);
-  if (grp==='hour') curr.setMinutes(0,0,0);
-  if (grp==='day')  curr.setHours(0,0,0,0);
-  if (grp==='minute') { curr.setSeconds(0,0); curr.setMinutes(Math.floor(curr.getMinutes()/15)*15); }
-
+  const bins = []; let curr = new Date(startTime);
+  if (grp==='hour') curr.setMinutes(0,0,0); if (grp==='day') curr.setHours(0,0,0,0); if (grp==='minute') { curr.setSeconds(0,0); curr.setMinutes(Math.floor(curr.getMinutes()/15)*15); }
   while (curr <= endTime) {
     const next = new Date(curr);
-    if (grp==='minute') next.setMinutes(curr.getMinutes()+15);
-    else if (grp==='hour') next.setHours(curr.getHours()+1);
-    else next.setDate(curr.getDate()+1);
-    bins.push({
-      start: curr.getTime(), end: next.getTime(),
-      label: grp==='day'
-        ? curr.toLocaleDateString('pt-BR')
-        : curr.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
-      map: {}
-    });
+    if (grp==='minute') next.setMinutes(curr.getMinutes()+15); else if (grp==='hour') next.setHours(curr.getHours()+1); else next.setDate(curr.getDate()+1);
+    bins.push({ start: curr.getTime(), end: next.getTime(), label: grp==='day' ? curr.toLocaleDateString('pt-BR') : curr.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}), map: {} });
     curr = next;
   }
-
   const sessions = [];
-  (globalHistData.history||[]).forEach(h => {
-    if (h.enteredAt) sessions.push({player:h.player, start:new Date(h.enteredAt).getTime(), end: h.leftAt ? new Date(h.leftAt).getTime() : Date.now()});
-  });
-  Object.values(globalHistData.activeSessions||{}).forEach(s => {
-    sessions.push({player:s.name, start:new Date(s.enteredAt).getTime(), end:Date.now()});
-  });
-
-  bins.forEach(bin => {
-    sessions.forEach(s => {
-      const os = Math.max(bin.start,s.start), oe = Math.min(bin.end,s.end);
-      if (os < oe) { const k = s.player.toUpperCase(); bin.map[k] = (bin.map[k]||0) + (oe-os)/60000; }
-    });
-  });
-
-  const players = new Set();
-  bins.forEach(b => Object.keys(b.map).forEach(p => players.add(p)));
+  (globalHistData.history||[]).forEach(h => { if(h.enteredAt) sessions.push({player:h.player, start:new Date(h.enteredAt).getTime(), end: h.leftAt ? new Date(h.leftAt).getTime() : Date.now()}); });
+  Object.values(globalHistData.activeSessions||{}).forEach(s => { sessions.push({player:s.name, start:new Date(s.enteredAt).getTime(), end:Date.now()}); });
+  bins.forEach(bin => { sessions.forEach(s => { const os = Math.max(bin.start,s.start), oe = Math.min(bin.end,s.end); if (os < oe) { const k = s.player.toUpperCase(); bin.map[k] = (bin.map[k]||0) + (oe-os)/60000; } }); });
+  const players = new Set(); bins.forEach(b => Object.keys(b.map).forEach(p => players.add(p)));
 
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('activityChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: bins.map(b=>b.label),
-      datasets: [...players].map(p => ({
-        label: p,
-        data: bins.map(b=>b.map[p]||0),
-        borderColor: stringToColor(p),
-        backgroundColor: stringToColor(p),
-        borderWidth: 2, fill: false, tension: 0.3, pointRadius: 2, pointHoverRadius: 6
-      }))
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode:'index', intersect:false },
-      plugins: {
-        legend: { position:'bottom', labels:{usePointStyle:true,boxWidth:8,padding:15} },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatTime(ctx.parsed.y/60)}` } }
-      },
-      scales: {
-        y: { beginAtZero:true, title:{display:true,text:'Minutos Ativos'}, grid:{color:'rgba(0,0,0,0.04)'} },
-        x: { grid:{display:false} }
-      }
-    }
+    type: 'line', data: { labels: bins.map(b=>b.label), datasets: [...players].map(p => ({ label: p, data: bins.map(b=>b.map[p]||0), borderColor: stringToColor(p), backgroundColor: stringToColor(p), borderWidth: 2, fill: false, tension: 0.3, pointRadius: 2, pointHoverRadius: 6 })) },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode:'index', intersect:false }, plugins: { legend: { position:'bottom', labels:{usePointStyle:true,boxWidth:8,padding:15} }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatTime(ctx.parsed.y/60)}` } } }, scales: { y: { beginAtZero:true, title:{display:true,text:'Minutos Ativos'}, grid:{color:'rgba(0,0,0,0.04)'} }, x: { grid:{display:false} } } }
   });
 }
 
-// ── Modal do jogador ──────────────────────────────────────────────
+// ── Modal do Jogador (Histórico Avançado) ───────────────────────
 async function openPlayerProfile(playerName) {
   document.getElementById('modal-name').textContent = playerName;
   document.getElementById('modal-img').src = `https://minotar.net/helm/${playerName}/100.png`;
 
-  // Agora buscamos o histórico COMPLETO e VITALÍCIO do banco de dados
-  const res = await fetch(`${API_BASE}/api/player/${playerName}/history`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const fullHistory = await res.json();
+  // Busca histórico infinito
+  const res = await fetch(`${API_BASE}/api/player/${playerName}/history`, { headers: { Authorization: `Bearer ${token}` } });
+  modalHistoryData = await res.json();
 
-  const isOnline = globalHistData?.onlinePlayers?.includes(playerName);
-  const badge = document.getElementById('modal-status');
-  badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline';
-  badge.className   = isOnline ? 'pill success' : 'pill limited-status';
+  // Verifica integração com o site (Admin)
+  const siteAccBox = document.getElementById('modal-site-account');
+  if (session.role === 'full') {
+    const siteAcc = globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
+    if (siteAcc) {
+      document.getElementById('modal-site-email').textContent = siteAcc.email;
+      document.getElementById('modal-site-role').textContent = siteAcc.role === 'full' ? 'Admin Full' : 'Restrito';
+      document.getElementById('modal-site-date').textContent = new Date(siteAcc.created_at).toLocaleDateString('pt-BR');
+      siteAccBox.style.display = 'block';
+    } else siteAccBox.style.display = 'none';
+  } else siteAccBox.style.display = 'none';
 
-  let totalHours = fullHistory.reduce((a,h)=>a+(h.duration_hours || 0), 0);
-  const totalSessions = fullHistory.length + (isOnline?1:0);
-  const avg = totalSessions > 0 ? totalHours/totalSessions : 0;
-
-  document.getElementById('modal-total-time').textContent = formatTime(totalHours);
-  document.getElementById('modal-sessions').textContent   = totalSessions;
-  document.getElementById('modal-avg-time').textContent   = formatTime(avg);
-
-  let rows = '';
-  if (isOnline) {
-    rows += `<tr style="background:rgba(52,199,89,0.05)"><td>Hoje</td><td>Agora</td><td style="color:var(--success);font-weight:600;">Ao Vivo</td><td>Contando...</td></tr>`;
-  }
-  rows += fullHistory.filter(h => h.left_at).map(h => {
-    const d = new Date(h.entered_at), l = new Date(h.left_at);
-    return `<tr><td>${d.toLocaleDateString('pt-BR')}</td><td>${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours)}</td></tr>`;
-  }).join('');
-
-  document.getElementById('modal-table-body').innerHTML = rows || '<tr><td colspan="4" style="text-align:center">Sem dados</td></tr>';
+  renderModalTable(); // Renderiza cálculos e a tabela
   document.getElementById('player-modal').classList.add('active');
   document.body.style.overflow = 'hidden';
 }
 
-function closeModal() {
-  document.getElementById('player-modal').classList.remove('active');
-  document.body.style.overflow = '';
+function renderModalTable() {
+  const isOnline = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === document.getElementById('modal-name').textContent.toLowerCase());
+  const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === document.getElementById('modal-name').textContent.toLowerCase());
+  
+  const badge = document.getElementById('modal-status');
+  badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline';
+  badge.className   = isOnline ? 'pill success' : 'pill limited-status';
+
+  let totalHours = modalHistoryData.reduce((a,h) => a + (h.duration_hours || 0), 0);
+  if (isOnline && activeSess) totalHours += (Date.now() - new Date(activeSess.enteredAt).getTime()) / 3600000;
+  
+  const totalSessions = modalHistoryData.length + (isOnline ? 1 : 0);
+  document.getElementById('modal-total-time').textContent = formatTime(totalHours);
+  document.getElementById('modal-sessions').textContent   = totalSessions;
+  document.getElementById('modal-avg-time').textContent   = formatTime(totalSessions > 0 ? totalHours/totalSessions : 0);
+
+  // Aplica filtro e ordenação local
+  const filterDate = document.getElementById('modal-date-filter').value;
+  let filtered = [...modalHistoryData];
+  if (filterDate) filtered = filtered.filter(h => h.entered_at.startsWith(filterDate));
+
+  filtered.sort((a,b) => {
+    if (modalSortConfig.key === 'date') return modalSortConfig.asc ? new Date(a.entered_at) - new Date(b.entered_at) : new Date(b.entered_at) - new Date(a.entered_at);
+    if (modalSortConfig.key === 'duration') return modalSortConfig.asc ? (a.duration_hours||0) - (b.duration_hours||0) : (b.duration_hours||0) - (a.duration_hours||0);
+    return 0;
+  });
+
+  // Atualiza setas de ordenação visualmente
+  document.getElementById('sort-date').textContent = modalSortConfig.key === 'date' ? (modalSortConfig.asc ? '▲' : '▼') : '';
+  document.getElementById('sort-duration').textContent = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
+
+  let rows = '';
+  // Fixa a sessão online sempre no topo se estiver sem filtros de data conflitantes
+  if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) {
+    const eDate = new Date(activeSess.enteredAt);
+    rows += `<tr style="background:rgba(52,199,89,0.05)">
+      <td><strong>Hoje</strong> <br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td>
+      <td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td>
+      <td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td>
+    </tr>`;
+  }
+
+  rows += filtered.map(h => {
+    if(!h.left_at) return ''; // Prevenção
+    const d = new Date(h.entered_at), l = new Date(h.left_at);
+    return `<tr>
+      <td><strong>${d.toLocaleDateString('pt-BR')}</strong> <br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${formatTime(h.duration_hours)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('modal-table-body').innerHTML = rows || '<tr><td colspan="3" style="text-align:center;padding:20px;">Nenhum registro encontrado</td></tr>';
 }
+
+function sortModal(key) {
+  if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc;
+  else { modalSortConfig.key = key; modalSortConfig.asc = false; }
+  renderModalTable();
+}
+
+function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; }
 function closeModalOutside(e) { if (e.target.id==='player-modal') closeModal(); }
 
-// ── Admin: Gerenciar contas ────────────────────────────────────────
-async function loadAdminUsers() {
-  const card = document.getElementById('admin-users-card');
-  const list = document.getElementById('admin-users-list');
-  card.style.display = 'block';
-
+// ── Admin: Gerenciar contas de Staff ────────────────────────────
+async function fetchAdminUsers() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/users`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error();
-    const users = await res.json();
-    window.__adminUsers = users;
-    list.innerHTML = users.map(u =>
-      `<li class="list-item" data-user-id="${u.id}">
-        <img src="https://minotar.net/helm/${u.minecraft_name||'Steve'}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
-        <div class="item-details"><strong>${u.username}</strong><span>${u.email} • <span class="pill ${u.role==='full'?'full':'limited'}">${u.role}</span></span></div>
-      </li>`
-    ).join('');
-    list.querySelectorAll('[data-user-id]').forEach(item =>
-      item.addEventListener('click', () => openUserEditor(Number(item.dataset.userId)))
-    );
-  } catch {
-    list.innerHTML = '<li class="list-item"><div class="item-details"><span>Erro ao carregar usuários.</span></div></li>';
-  }
+    const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) globalAdminUsers = await res.json();
+    renderAdminUsers();
+    document.getElementById('admin-users-card').style.display = 'flex';
+  } catch(e) {}
 }
 
-function openUserEditor(id) {
-  const user = (window.__adminUsers||[]).find(u=>u.id===id);
-  if (!user) return;
-  const el = document.getElementById('admin-user-editor');
-  el.style.display = 'block';
-  el.innerHTML = `
-    <div class="input-group"><label>Usuário</label><input id="au-username" value="${user.username}"></div>
-    <div class="input-group"><label>Email</label><input id="au-email" value="${user.email}"></div>
-    <div class="input-group"><label>Minecraft</label><input id="au-mc" value="${user.minecraft_name||''}"></div>
-    <div class="input-group"><label>Função</label>
-      <select id="au-role">
-        <option value="limited" ${user.role==='limited'?'selected':''}>limited</option>
-        <option value="full" ${user.role==='full'?'selected':''}>full</option>
-      </select>
+function renderAdminUsers() {
+  const term = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
+  const grid = document.getElementById('admin-users-grid');
+  const filtered = globalAdminUsers.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || (u.minecraft_name||'').toLowerCase().includes(term));
+  
+  grid.innerHTML = filtered.length ? filtered.map(u => `
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <img src="https://minotar.net/helm/${u.minecraft_name||'Steve'}/40.png" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
+        <div class="admin-card-info">
+          <strong>${u.username} <span class="pill ${u.role==='full'?'full':'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span></strong>
+          <span>${u.email}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+        <input id="au-mc-${u.id}" placeholder="Conta Minecraft" value="${u.minecraft_name||''}" style="padding:6px 10px;font-size:13px;">
+        <select id="au-role-${u.id}" style="padding:6px 10px;font-size:13px;">
+          <option value="limited" ${u.role==='limited'?'selected':''}>Acesso Restrito</option>
+          <option value="full" ${u.role==='full'?'selected':''}>Acesso Total (Admin)</option>
+        </select>
+      </div>
+      <div class="admin-card-actions">
+        <button class="btn-primary btn-secondary" onclick="saveUser(${u.id})" style="flex:1;">Salvar</button>
+        <button class="btn-primary btn-danger" id="del-btn-${u.id}" onclick="safeDeleteUser(${u.id})" style="flex:1;">Deletar</button>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="btn-primary" onclick="saveUser(${user.id})">Salvar</button>
-      <button class="btn-primary" style="background:var(--danger);" onclick="deleteUser(${user.id})">Deletar</button>
-    </div>`;
+  `).join('') : '<span>Nenhuma conta encontrada.</span>';
 }
 
 async function saveUser(id) {
-  const msg  = document.getElementById('admin-users-msg');
-  const body = {
-    username:      document.getElementById('au-username').value.trim(),
-    email:         document.getElementById('au-email').value.trim(),
-    minecraftName: document.getElementById('au-mc').value.trim(),
-    role:          document.getElementById('au-role').value,
-  };
-  const res  = await fetch(`${API_BASE}/api/admin/users/${id}`, {
-    method:'PUT', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify(body)
-  });
-  msg.textContent = res.ok ? 'Usuário atualizado.' : 'Erro ao atualizar.';
-  msg.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
-  if (res.ok) loadAdminUsers();
-}
-
-async function deleteUser(id) {
-  if (!confirm('Tem certeza que deseja remover este usuário?')) return;
   const msg = document.getElementById('admin-users-msg');
-  const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
-    method:'DELETE', headers:{Authorization:`Bearer ${token}`}
-  });
-  msg.textContent = res.ok ? 'Usuário removido.' : 'Erro ao remover.';
+  const user = globalAdminUsers.find(u=>u.id===id);
+  const body = {
+    username: user.username, email: user.email,
+    minecraftName: document.getElementById(`au-mc-${id}`).value.trim(),
+    role: document.getElementById(`au-role-${id}`).value,
+  };
+  const res = await fetch(`${API_BASE}/api/admin/users/${id}`, { method:'PUT', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`}, body:JSON.stringify(body) });
+  msg.textContent = res.ok ? 'Atualizado com sucesso.' : 'Erro ao atualizar.';
   msg.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
-  if (res.ok) { document.getElementById('admin-user-editor').style.display='none'; loadAdminUsers(); }
+  if (res.ok) fetchAdminUsers(); setTimeout(()=>msg.textContent='', 3000);
 }
 
-function logout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  location.href = 'login.html';
+// Lógica de "Dois Cliques" para deletar com segurança
+let deleteTimeout = {};
+function safeDeleteUser(id) {
+  const btn = document.getElementById(`del-btn-${id}`);
+  if (deleteTimeout[id]) {
+    clearTimeout(deleteTimeout[id]); delete deleteTimeout[id];
+    executeDelete(id); // Confirmação feita, deletar!
+  } else {
+    btn.textContent = 'Tem certeza?'; btn.style.background = '#8b0000';
+    deleteTimeout[id] = setTimeout(() => {
+      btn.textContent = 'Deletar'; btn.style.background = '';
+      delete deleteTimeout[id];
+    }, 3000); // 3 segundos para confirmar
+  }
 }
+
+async function executeDelete(id) {
+  const msg = document.getElementById('admin-users-msg');
+  const res = await fetch(`${API_BASE}/api/admin/users/${id}`, { method:'DELETE', headers:{Authorization:`Bearer ${token}`} });
+  msg.textContent = res.ok ? 'Conta removida.' : 'Erro ao remover.';
+  msg.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
+  if (res.ok) fetchAdminUsers(); setTimeout(()=>msg.textContent='', 3000);
+}
+
+function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
 </script>
 </body>
 </html>
