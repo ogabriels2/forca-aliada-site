@@ -238,29 +238,18 @@ function showMessage(text, type) {
 }
 
 async function handleLogin(event) {
-  event.preventDefault();
-  const loginVal = document.getElementById('login-input').value.trim();
-  const passVal  = document.getElementById('pass-input').value;
-  const btn      = document.getElementById('btn-login');
-
-  if (!loginVal || !passVal) {
-    showMessage('Preencha todos os campos.', 'error');
-    return;
-  }
-
-  btn.disabled    = true;
-  btn.textContent = 'Entrando...';
-
+  // ... código anterior de validação
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
-      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      credentials: 'include', // CRÍTICO: Agora ativado pelo backend
+      headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ login: loginVal, password: passVal }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
 
+    // CRÍTICO: Guardando o Token no LocalStorage!
+    localStorage.setItem('fa_token', data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Autenticado com sucesso! Redirecionando...', 'success');
