@@ -181,42 +181,33 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 </div>
 
 <script>
-const API_BASE   = 'https://forca-aliada-site.onrender.com';
+const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
+const TOKEN_KEY   = 'fa_token';
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return '';
-}
-
-function csrfHeaders(extra = {}) {
-  const csrf = getCookie('fa_csrf');
-  return csrf ? { ...extra, 'X-CSRF-Token': csrf } : extra;
-}
-
-function showView(isLoggedIn, session) {
+// Controla as vistas da página (formulário ou "já logado")
+function showView(isLoggedIn, sessionData) {
   const viewLoggedin = document.getElementById('view-loggedin');
   const viewLogin    = document.getElementById('view-login');
   const headerRight  = document.getElementById('header-right');
 
-  if (isLoggedIn && session) {
-    const skinUrl = session.minecraftName
-      ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
+  if (isLoggedIn && sessionData) {
+    const skinUrl = sessionData.minecraftName
+      ? `https://minotar.net/helm/${encodeURIComponent(sessionData.minecraftName)}/100.png`
       : 'assets/images/logo.JPG';
 
     document.getElementById('avatar-loggedin').src = skinUrl;
-    document.getElementById('loggedin-username').textContent = session.username;
+    document.getElementById('loggedin-username').textContent = sessionData.username;
     viewLoggedin.style.display = 'block';
     viewLogin.style.display    = 'none';
+    
     headerRight.replaceChildren();
     const hello = document.createElement('span');
     hello.style.fontSize = '14px';
     hello.style.color = 'var(--text-secondary)';
     hello.append('Olá, ');
     const strong = document.createElement('strong');
-    strong.textContent = session.username;
+    strong.textContent = sessionData.username;
     hello.appendChild(strong);
     headerRight.appendChild(hello);
   } else {
@@ -232,31 +223,48 @@ function showMessage(text, type) {
   msgEl.className   = `msg ${type}`;
   if (type === 'error') {
     card.classList.remove('shake-animation');
-    void card.offsetWidth; // reflow para reiniciar animação
+    void card.offsetWidth; // Reflow para reiniciar a animação
     card.classList.add('shake-animation');
   }
 }
 
 async function handleLogin(event) {
-  // ... código anterior de validação
+  event.preventDefault(); // Impede o recarregamento da página
+  
+  const loginVal = document.getElementById('login-input').value.trim();
+  const passVal  = document.getElementById('pass-input').value;
+  const btn      = document.getElementById('btn-login');
+
+  if (!loginVal || !passVal) {
+    showMessage('Por favor, preencha todos os campos.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Aguarde...';
+
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ login: loginVal, password: passVal }),
     });
+    
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
 
-    // CRÍTICO: Guardando o Token no LocalStorage!
-    localStorage.setItem('fa_token', data.token);
+    // SALVAMENTO SEGURO: Guarda o Token e os dados básicos no LocalStorage
+    localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Autenticado com sucesso! Redirecionando...', 'success');
+    
+    // Pequeno atraso para o utilizador ver a mensagem de sucesso
     setTimeout(() => { location.href = 'dashboard.html'; }, 600);
 
   } catch (err) {
-    showMessage(err.message, 'error');
+    const errorMsg = err.message === 'invalid credentials' ? 'Usuário ou senha incorretos.' : err.message;
+    showMessage(errorMsg, 'error');
     document.getElementById('pass-input').value = '';
   } finally {
     btn.disabled    = false;
@@ -264,31 +272,43 @@ async function handleLogin(event) {
   }
 }
 
-async function forceLogout() {
-  try {
-    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-  } catch {}
+function forceLogout() {
+  localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
   showView(false, null);
 }
 
-// Ao carregar, verifica se já tem sessão válida via cookie
+// ── Verificação Automática ao Carregar a Página ──
 (async () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  
+  if (!token) {
+    showView(false, null);
+    return;
+  }
+
   try {
+    // Tenta validar o token existente pedindo os dados do utilizador ao backend
     const res = await fetch(`${API_BASE}/api/me`, {
-      credentials: 'include'
+      headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!res.ok) throw new Error();
+    
+    if (!res.ok) throw new Error('Sessão expirada');
+    
     const me = await res.json();
-    const session = {
+    const sessionData = {
       username:      me.username,
       email:         me.email,
       minecraftName: me.minecraft_name,
       role:          me.role,
     };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    showView(true, session);
+    
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+    showView(true, sessionData);
+    
   } catch {
+    // Se o token for inválido/expirado, limpa o armazenamento e mostra login
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
     showView(false, null);
   }
