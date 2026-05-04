@@ -76,7 +76,6 @@ function parseCookies(req) {
   }));
 }
 
-// CRÍTICO: Configurado sameSite: 'none' e secure: true para funcionar em domínios diferentes
 function issueAuthCookies(res, token) {
   res.cookie('fa_auth', token, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
   res.cookie('fa_csrf', crypto.randomBytes(24).toString('hex'), { httpOnly: false, secure: true, sameSite: 'none', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
@@ -160,6 +159,54 @@ function requireFull(req, res, next) {
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
+// ── ROTA DO CRON-JOB.ORG Restaurada e Segura ───────────────────
+app.get('/api/cron', async (req, res) => {
+  const key = req.query.key || req.headers['x-ingest-secret'];
+  
+  if (key !== INGEST_SECRET) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  try {
+    // O próprio backend vai na internet buscar quem está online, ignorando falsificações
+    const host = process.env.MC_HOST || 'fa.ogabriels.com';
+    const response = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`, {
+      headers: { 'User-Agent': 'forca-aliada-backend/1.0' }
+    });
+    
+    if (!response.ok) throw new Error('Falha na API externa');
+    
+    const data = await response.json();
+    const list = data?.players?.list || [];
+    const onlinePlayers = list.map(p => p.name_clean || p.name_raw || p.name).filter(Boolean);
+    const now = new Date();
+
+    const activeFromDB = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+    
+    for (const row of activeFromDB.rows) {
+      if (!onlinePlayers.includes(row.player)) {
+        const duration = (now - new Date(row.entered_at)) / 3600000;
+        await pool.query(
+          'UPDATE player_sessions SET left_at = $1, duration_hours = $2 WHERE player = $3 AND left_at IS NULL',
+          [now, Number(duration.toFixed(2)), row.player]
+        );
+      }
+    }
+
+    for (const p of onlinePlayers) {
+      const isAlreadyActive = activeFromDB.rows.some((r) => r.player === p);
+      if (!isAlreadyActive) {
+        await pool.query('INSERT INTO player_sessions (player, entered_at) VALUES ($1, $2)', [String(p), now]);
+      }
+    }
+
+    res.json({ ok: true, online: onlinePlayers.length });
+  } catch (err) {
+    console.error('Erro no cron:', err);
+    res.status(500).json({ error: 'Falha ao atualizar dados' });
+  }
+});
+
 app.post('/api/auth/signup', authLimiter, async (req, res) => {
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
@@ -222,6 +269,7 @@ async function changeMyPassword(req, res) {
 app.post('/api/me/password', auth, requireCsrf, changeMyPassword);
 app.put('/api/me/password', auth, requireCsrf, changeMyPassword);
 
+// Mantém a rota /import por compatibilidade caso mude de ideia depois
 app.post('/api/snapshots/import', async (req, res) => {
   const authHeader = req.headers.authorization || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
