@@ -124,7 +124,6 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 <div class="login-wrapper">
   <div class="card" id="loginCard">
 
-    <!-- VIEW: JÁ LOGADO -->
     <div id="view-loggedin">
       <img id="avatar-loggedin" class="avatar-preview"
            src="assets/images/logo.JPG"
@@ -138,9 +137,6 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       </div>
     </div>
 
-    <!-- VIEW: FORMULÁRIO
-      Formulário estático no HTML (nunca injetado via innerHTML)
-      para que gerenciadores de senhas e autocompletar do browser funcionem. -->
     <div id="view-login">
       <img id="avatar-login" class="avatar-preview"
            src="assets/images/logo.JPG"
@@ -258,13 +254,13 @@ async function handleLogin(event) {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      credentials: 'include',
+      credentials: 'include', // CRÍTICO: Agora ativado pelo backend
       body:    JSON.stringify({ login: loginVal, password: passVal }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
 
-        localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Autenticado com sucesso! Redirecionando...', 'success');
     setTimeout(() => { location.href = 'dashboard.html'; }, 600);
@@ -278,12 +274,15 @@ async function handleLogin(event) {
   }
 }
 
-function forceLogout() {
-    localStorage.removeItem(SESSION_KEY);
+async function forceLogout() {
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+  } catch {}
+  localStorage.removeItem(SESSION_KEY);
   showView(false, null);
 }
 
-// Ao carregar, verifica se já tem sessão válida
+// Ao carregar, verifica se já tem sessão válida via cookie
 (async () => {
   try {
     const res = await fetch(`${API_BASE}/api/me`, {
@@ -300,7 +299,7 @@ function forceLogout() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     showView(true, session);
   } catch {
-        localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
     showView(false, null);
   }
 })();

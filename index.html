@@ -509,17 +509,13 @@ const API_JAVA_HOST  = 'fa.ogabriels.com';
 const BEDROCK_PORT   = '19132';
 // URL do backend Cloudflare Worker — atualize após o deploy
 const API_BASE       = 'https://forca-aliada-site.onrender.com';
-const TOKEN_KEY      = 'fa_token';
 const SESSION_KEY    = 'fa_session';
 
 // ── Autenticação ────────────────────────────────────────────
+// CRÍTICO: Atualizado para funcionar apenas com Cookies
 async function getSession() {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) return null;
   try {
-    const res = await fetch(`${API_BASE}/api/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
     if (!res.ok) throw new Error('Sessão expirada');
     const me = await res.json();
     const session = {
@@ -531,7 +527,6 @@ async function getSession() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
   } catch {
-    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
     return null;
   }
@@ -578,8 +573,10 @@ function toggleUserDropdown(event) {
   document.getElementById('user-dropdown-menu')?.classList.toggle('show');
 }
 
-function doLogout() {
-  localStorage.removeItem(TOKEN_KEY);
+async function doLogout() {
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+  } catch {}
   localStorage.removeItem(SESSION_KEY);
   renderAuthMenu(null);
   document.getElementById('mobile-nav')?.classList.remove('active');
