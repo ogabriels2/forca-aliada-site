@@ -565,7 +565,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
             <input id="currentpass" type="password" placeholder="Sua senha atual">
           </div>
           <div class="input-group">
-            <label>Nova Senha (mín. 6 caracteres)</label>
+            <label>Nova Senha (mín. 8 caracteres)</label>
             <input id="newpass" type="password" placeholder="Nova senha">
           </div>
           <button class="btn-primary" onclick="changePass()" style="width:100%;margin-top:4px;">Atualizar Senha</button>
@@ -748,7 +748,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
           <div class="accordion-body" id="adv-sec-body">
             <div class="accordion-inner">
               <div class="admin-field">
-                <label>Nova Senha (mín. 6 caracteres)</label>
+                <label>Nova Senha (mín. 8 caracteres)</label>
                 <input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;">
               </div>
             </div>
@@ -808,7 +808,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
               </select>
             </div>
             <div class="admin-field" style="grid-column:1/-1;">
-              <label>Senha Inicial (mín. 6 caracteres)</label>
+              <label>Senha Inicial (mín. 8 caracteres)</label>
               <input type="password" id="ci-password" placeholder="Senha para primeiro acesso" style="display:block;">
             </div>
           </div>
@@ -866,27 +866,35 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 // ── Constantes & Estado ─────────────────────────────────────────
 const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
-const TOKEN_KEY   = 'fa_token';
 const SESSION_KEY = 'fa_session';
 
-const token = localStorage.getItem(TOKEN_KEY);
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+}
+
+function csrfHeaders(extra = {}) {
+  const csrf = getCookie('fa_csrf');
+  return csrf ? { ...extra, 'X-CSRF-Token': csrf } : extra;
+}
+
 let session = null;
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
-if (!token && !session) {
+if (!session) {
   window.location.replace('login.html');
-  throw new Error('Não autenticado');
 }
 
 (async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
     if (!res.ok) throw new Error('Token inválido');
     const me = await res.json();
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
-    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
     window.location.replace('login.html');
     return;
@@ -1089,12 +1097,13 @@ async function changePass() {
   const msg = document.getElementById('profile-msg');
 
   if (!cur)            { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
-  if (!np || np.length < 6) { msg.textContent = 'A nova senha deve ter ao menos 6 caracteres.'; msg.style.color = 'var(--danger)'; return; }
+  if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
 
   try {
     const res = await fetch(`${API_BASE}/api/me/password`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
       body: JSON.stringify({ currentPassword: cur, newPassword: np })
     });
     if (!res.ok) {
@@ -1116,7 +1125,7 @@ async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
   const [apiData, histData] = await Promise.all([
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/snapshots/latest`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
+    fetch(`${API_BASE}/api/snapshots/latest`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
   ]);
   globalApiData = apiData;
   globalHistData = histData;
@@ -1561,7 +1570,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
 
   const [historyData] = await Promise.all([
     fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     }).then(r => r.json()).catch(() => [])
   ]);
 
@@ -1790,7 +1799,7 @@ async function saveAdminUser() {
   if (newPwd) body.newPassword = newPwd;
   
   if (!body.username || !body.email) { alert('Preencha usuário e e-mail.'); return; }
-  if (newPwd && newPwd.length < 6) { alert('A nova senha deve ter ao menos 6 caracteres.'); return; }
+  if (newPwd && newPwd.length < 8) { alert('A nova senha deve ter ao menos 8 caracteres.'); return; }
 
   requirePassword({
     title:       'Confirmar alterações',
@@ -1800,7 +1809,8 @@ async function saveAdminUser() {
     onConfirm:   async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
         body: JSON.stringify(body)
       });
       if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
@@ -1829,7 +1839,7 @@ async function executeAdminDelete() {
     destructive: true,
     onConfirm:   async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+        method: 'DELETE', headers: csrfHeaders(), credentials: 'include'
       });
       if (res.ok) {
         await fetchAdminUsers();
@@ -1855,8 +1865,8 @@ async function submitCreateAccount() {
     msg.style.color = 'var(--danger)';
     return;
   }
-  if (password.length < 6) {
-    msg.textContent = 'A senha deve ter ao menos 6 caracteres.';
+  if (password.length < 8) {
+    msg.textContent = 'A senha deve ter ao menos 8 caracteres.';
     msg.style.color = 'var(--danger)';
     return;
   }
@@ -1866,7 +1876,8 @@ async function submitCreateAccount() {
 
   const res = await fetch(`${API_BASE}/api/admin/users`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
     body: JSON.stringify({ username, email, minecraftName, password, role })
   });
 
@@ -1905,7 +1916,7 @@ async function submitCreateAccount() {
 // ── Admin: gerenciar lista ──────────────────────────────────────
 async function fetchAdminUsers() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' });
     if (res.ok) {
       globalAdminUsers = await res.json();
       renderAdminTab();
@@ -2106,7 +2117,13 @@ function closeModal() {
   currentModalPlayerName = null;
 }
 function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
-function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+async function logout() {
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', headers: csrfHeaders(), credentials: 'include' });
+  } catch {}
+  localStorage.removeItem(SESSION_KEY);
+  location.href = 'login.html';
+}
 
 </script>
 </body>
