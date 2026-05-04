@@ -40,15 +40,21 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be s
 const INGEST_SECRET = process.env.INGEST_SECRET;
 if (!INGEST_SECRET || INGEST_SECRET.length < 16) throw new Error('INGEST_SECRET must be set with at least 16 characters');
 
-// ── Configuração do E-mail (Nodemailer) ──
+// ── Configuração do E-mail Blindada e à prova de travamentos ──
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 465,
+  port: Number(process.env.SMTP_PORT) || 587,
   secure: Number(process.env.SMTP_PORT) === 465,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.SMTP_USER, // Ex: contato@ogabriels.com
+    pass: process.env.SMTP_PASS, // Senha real do contato
   },
+  tls: {
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000
 });
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
@@ -193,28 +199,28 @@ app.get('/api/cron', async (req, res) => {
 
 // ── ROTAS DE RECUPERAÇÃO DE PALAVRA-PASSE ──
 
-// 1. Pede o código de recuperação
 app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
   const email = sanitizeInput(req.body?.email).toLowerCase();
   if (!validateEmail(email)) return res.status(400).json({ error: 'E-mail inválido' });
 
-  // Apaga códigos antigos deste e-mail
   await pool.query('DELETE FROM password_resets WHERE email = $1 OR expires_at < NOW()', [email]);
 
   const { rows } = await pool.query('SELECT username FROM users WHERE email = $1', [email]);
   if (rows.length === 0) {
-    // Retorna OK na mesma para não vazar quais e-mails estão registados
     return res.json({ ok: true }); 
   }
 
-  // Gera código de 6 dígitos
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
   
   await pool.query('INSERT INTO password_resets (email, code, expires_at) VALUES ($1, $2, $3)', [email, code, expiresAt]);
 
+  // CRÍTICO: Aqui definimos que o remetente é o SMTP_FROM (no-reply) 
+  // e se ele não existir, cai para o SMTP_USER.
+  const senderEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+
   const mailOptions = {
-    from: `"Segurança | Força Aliada" <${process.env.SMTP_USER}>`,
+    from: `"Segurança | Força Aliada" <${senderEmail}>`,
     to: email,
     subject: 'Código de Recuperação de Palavra-passe',
     html: `
@@ -235,11 +241,10 @@ app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
     res.json({ ok: true });
   } catch (error) {
     console.error("SMTP Error:", error);
-    res.status(500).json({ error: 'Erro ao enviar e-mail. Contacte um administrador.' });
+    res.status(500).json({ error: 'Erro de conexão com servidor de e-mail.' });
   }
 });
 
-// 2. Valida o código e altera a senha
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const code = sanitizeInput(req.body?.code);
