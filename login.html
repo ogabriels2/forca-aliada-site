@@ -213,7 +213,15 @@ function showView(isLoggedIn, session) {
     document.getElementById('loggedin-username').textContent = session.username;
     viewLoggedin.style.display = 'block';
     viewLogin.style.display    = 'none';
-    headerRight.innerHTML = `<span style="font-size:14px;color:var(--text-secondary);">Olá, <strong>${session.username}</strong></span>`;
+    headerRight.replaceChildren();
+    const hello = document.createElement('span');
+    hello.style.fontSize = '14px';
+    hello.style.color = 'var(--text-secondary)';
+    hello.append('Olá, ');
+    const strong = document.createElement('strong');
+    strong.textContent = session.username;
+    hello.appendChild(strong);
+    headerRight.appendChild(hello);
   } else {
     viewLoggedin.style.display = 'none';
     viewLogin.style.display    = 'block';
