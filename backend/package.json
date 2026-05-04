@@ -13,7 +13,6 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "minecraft-server-util": "^5.4.2",
-    "nodemailer": "^6.9.13",
     "pg": "^8.11.3"
   }
 }
