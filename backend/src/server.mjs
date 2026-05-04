@@ -216,8 +216,8 @@ async function changeMyPassword(req, res) {
   res.json({ ok: true });
 }
 
-app.post('/api/me/password', auth, changeMyPassword);
-app.put('/api/me/password', auth, changeMyPassword);
+app.post('/api/me/password', auth, requireCsrf, changeMyPassword);
+app.put('/api/me/password', auth, requireCsrf, changeMyPassword);
 
 app.post('/api/snapshots/import', async (req, res) => {
   const secret = req.headers['x-ingest-secret'] || req.body?.secret;
@@ -282,7 +282,7 @@ app.get('/api/admin/users', auth, requireFull, async (_req, res) => {
   res.json(rows);
 });
 
-app.post('/api/admin/users', auth, requireFull, async (req, res) => {
+app.post('/api/admin/users', auth, requireFull, requireCsrf, async (req, res) => {
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
@@ -302,7 +302,7 @@ app.post('/api/admin/users', auth, requireFull, async (req, res) => {
   }
 });
 
-app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+app.put('/api/admin/users/:id', auth, requireFull, requireCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const username = sanitizeInput(req.body?.username).toLowerCase();
@@ -331,7 +331,7 @@ app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+app.delete('/api/admin/users/:id', auth, requireFull, requireCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);

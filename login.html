@@ -185,8 +185,19 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 <script>
 const API_BASE   = 'https://forca-aliada-site.onrender.com';
-const TOKEN_KEY  = 'fa_token';
 const SESSION_KEY = 'fa_session';
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+}
+
+function csrfHeaders(extra = {}) {
+  const csrf = getCookie('fa_csrf');
+  return csrf ? { ...extra, 'X-CSRF-Token': csrf } : extra;
+}
 
 function showView(isLoggedIn, session) {
   const viewLoggedin = document.getElementById('view-loggedin');
@@ -238,14 +249,14 @@ async function handleLogin(event) {
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
       body:    JSON.stringify({ login: loginVal, password: passVal }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
 
-    localStorage.setItem(TOKEN_KEY, data.token);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Autenticado com sucesso! Redirecionando...', 'success');
     setTimeout(() => { location.href = 'dashboard.html'; }, 600);
@@ -260,18 +271,15 @@ async function handleLogin(event) {
 }
 
 function forceLogout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
   showView(false, null);
 }
 
 // Ao carregar, verifica se já tem sessão válida
 (async () => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) { showView(false, null); return; }
   try {
     const res = await fetch(`${API_BASE}/api/me`, {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     });
     if (!res.ok) throw new Error();
     const me = await res.json();
@@ -284,8 +292,7 @@ function forceLogout() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     showView(true, session);
   } catch {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
     showView(false, null);
   }
 })();
