@@ -340,10 +340,12 @@ app.delete('/api/admin/users/:id', auth, requireFull, requireCsrf, async (req, r
   res.json({ ok: true });
 });
 
-app.post('/api/auth/logout', requireCsrf, (req, res) => {
+app.post('/api/auth/logout', (req, res) => {
   clearAuthCookies(res);
   res.json({ ok: true });
 });
+
+app.use(requireCsrf);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
