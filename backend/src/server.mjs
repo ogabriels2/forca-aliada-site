@@ -6,6 +6,7 @@ import pg from 'pg';
 import util from 'minecraft-server-util';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 
 const app = express();
 app.use(helmet());
@@ -21,6 +22,7 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -60,6 +62,34 @@ function validatePassword(password) {
 
 function validateUsername(username) {
   return /^[a-z0-9_]{3,32}$/i.test(username);
+}
+
+function parseCookies(req) {
+  const raw = req.headers.cookie || '';
+  return Object.fromEntries(raw.split(';').map((v) => v.trim()).filter(Boolean).map((part) => {
+    const idx = part.indexOf('=');
+    return [decodeURIComponent(part.slice(0, idx)), decodeURIComponent(part.slice(idx + 1))];
+  }));
+}
+
+function issueAuthCookies(res, token) {
+  const secure = process.env.NODE_ENV === 'production';
+  res.cookie('fa_auth', token, { httpOnly: true, secure, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+  res.cookie('fa_csrf', crypto.randomBytes(24).toString('hex'), { httpOnly: false, secure, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+}
+
+function clearAuthCookies(res) {
+  const secure = process.env.NODE_ENV === 'production';
+  res.clearCookie('fa_auth', { httpOnly: true, secure, sameSite: 'lax', path: '/' });
+  res.clearCookie('fa_csrf', { httpOnly: false, secure, sameSite: 'lax', path: '/' });
+}
+
+function requireCsrf(req, res, next) {
+  if (['GET','HEAD','OPTIONS'].includes(req.method)) return next();
+  const cookies = parseCookies(req);
+  const headerToken = req.headers['x-csrf-token'];
+  if (!cookies.fa_csrf || !headerToken || cookies.fa_csrf !== headerToken) return res.status(403).json({ error: 'csrf check failed' });
+  next();
 }
 
 async function migrate() {
@@ -109,7 +139,8 @@ async function seedAdmin() {
 }
 
 function auth(req, res, next) {
-  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  const cookies = parseCookies(req);
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || cookies.fa_auth;
   if (!token) return res.status(401).json({ error: 'missing token' });
   try {
     req.user = jwt.verify(token, JWT_SECRET);
@@ -160,7 +191,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   }
 
   const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
+  issueAuthCookies(res, token);
+  res.json({ user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
 });
 
 app.get('/api/me', auth, async (req, res) => {
@@ -184,11 +216,13 @@ async function changeMyPassword(req, res) {
   res.json({ ok: true });
 }
 
-app.post('/api/me/password', auth, changeMyPassword);
-app.put('/api/me/password', auth, changeMyPassword);
+app.post('/api/me/password', auth, requireCsrf, changeMyPassword);
+app.put('/api/me/password', auth, requireCsrf, changeMyPassword);
 
 app.post('/api/snapshots/import', async (req, res) => {
-  const secret = req.headers['x-ingest-secret'] || req.body?.secret;
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const secret = req.headers['x-ingest-secret'] || bearer;
   if (secret !== INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
 
   const payload = req.body?.payload;
@@ -216,18 +250,6 @@ app.post('/api/snapshots/import', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/cron', async (req, res) => {
-  if (req.query.key !== INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
-  try {
-    const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
-    const status = await util.status(HOST, 25565, { timeout: 5000, enableSRV: true });
-    const payload = { onlinePlayers: (status?.players?.sample || []).map((p) => p.name) };
-    req.body = { secret: INGEST_SECRET, payload };
-    return app._router.handle(req, res, () => undefined);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-});
 
 app.get('/api/snapshots/latest', auth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);
@@ -250,7 +272,7 @@ app.get('/api/admin/users', auth, requireFull, async (_req, res) => {
   res.json(rows);
 });
 
-app.post('/api/admin/users', auth, requireFull, async (req, res) => {
+app.post('/api/admin/users', auth, requireFull, requireCsrf, async (req, res) => {
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
@@ -270,7 +292,7 @@ app.post('/api/admin/users', auth, requireFull, async (req, res) => {
   }
 });
 
-app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+app.put('/api/admin/users/:id', auth, requireFull, requireCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const username = sanitizeInput(req.body?.username).toLowerCase();
@@ -299,12 +321,17 @@ app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+app.delete('/api/admin/users/:id', auth, requireFull, requireCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);
   if (rows.length === 0) return res.status(404).json({ error: 'user not found' });
   await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/logout', requireCsrf, (req, res) => {
+  clearAuthCookies(res);
   res.json({ ok: true });
 });
 
