@@ -9,6 +9,9 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 
 const app = express();
+
+// IMPORTANTE: Necessário para o rate-limit funcionar corretamente atrás do Render.com
+app.set('trust proxy', 1);
 app.use(helmet());
 
 const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -18,7 +21,8 @@ app.use(cors({
     if (corsOrigins.length === 0) return cb(new Error('CORS blocked: no allowed origins configured'));
     if (corsOrigins.includes(origin)) return cb(null, true);
     return cb(new Error('CORS blocked by policy'));
-  }
+  },
+  credentials: true // CRÍTICO: Permite o tráfego de cookies entre GitHub Pages e Render
 }));
 
 app.use(express.json({ limit: '1mb' }));
@@ -72,16 +76,15 @@ function parseCookies(req) {
   }));
 }
 
+// CRÍTICO: Configurado sameSite: 'none' e secure: true para funcionar em domínios diferentes
 function issueAuthCookies(res, token) {
-  const secure = process.env.NODE_ENV === 'production';
-  res.cookie('fa_auth', token, { httpOnly: true, secure, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
-  res.cookie('fa_csrf', crypto.randomBytes(24).toString('hex'), { httpOnly: false, secure, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+  res.cookie('fa_auth', token, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+  res.cookie('fa_csrf', crypto.randomBytes(24).toString('hex'), { httpOnly: false, secure: true, sameSite: 'none', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
 }
 
 function clearAuthCookies(res) {
-  const secure = process.env.NODE_ENV === 'production';
-  res.clearCookie('fa_auth', { httpOnly: true, secure, sameSite: 'lax', path: '/' });
-  res.clearCookie('fa_csrf', { httpOnly: false, secure, sameSite: 'lax', path: '/' });
+  res.clearCookie('fa_auth', { httpOnly: true, secure: true, sameSite: 'none', path: '/' });
+  res.clearCookie('fa_csrf', { httpOnly: false, secure: true, sameSite: 'none', path: '/' });
 }
 
 function requireCsrf(req, res, next) {
@@ -250,7 +253,6 @@ app.post('/api/snapshots/import', async (req, res) => {
   res.json({ ok: true });
 });
 
-
 app.get('/api/snapshots/latest', auth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);
   const online = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
@@ -334,8 +336,6 @@ app.post('/api/auth/logout', (req, res) => {
   clearAuthCookies(res);
   res.json({ ok: true });
 });
-
-app.use(requireCsrf);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
