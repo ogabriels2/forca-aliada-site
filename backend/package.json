@@ -11,6 +11,8 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
-    "minecraft-server-util": "^5.4.2"
+    "minecraft-server-util": "^5.4.2",
+    "helmet": "^8.1.0",
+    "express-rate-limit": "^7.5.0"
   }
 }

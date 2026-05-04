@@ -36,8 +36,8 @@ async function main() {
 
   const res = await fetch(INGEST_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret: INGEST_SECRET, payload })
+    headers: { 'Content-Type': 'application/json', 'X-Ingest-Secret': INGEST_SECRET },
+    body: JSON.stringify({ payload })
   });
 
   if (!res.ok) {
