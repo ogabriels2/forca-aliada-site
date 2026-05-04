@@ -220,7 +220,9 @@ app.post('/api/me/password', auth, requireCsrf, changeMyPassword);
 app.put('/api/me/password', auth, requireCsrf, changeMyPassword);
 
 app.post('/api/snapshots/import', async (req, res) => {
-  const secret = req.headers['x-ingest-secret'] || req.body?.secret;
+  const authHeader = req.headers.authorization || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const secret = req.headers['x-ingest-secret'] || bearer;
   if (secret !== INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
 
   const payload = req.body?.payload;
@@ -248,18 +250,6 @@ app.post('/api/snapshots/import', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/cron', async (req, res) => {
-  if (req.query.key !== INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
-  try {
-    const HOST = process.env.MC_HOST || 'fa.ogabriels.com';
-    const status = await util.status(HOST, 25565, { timeout: 5000, enableSRV: true });
-    const payload = { onlinePlayers: (status?.players?.sample || []).map((p) => p.name) };
-    req.body = { secret: INGEST_SECRET, payload };
-    return app._router.handle(req, res, () => undefined);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-});
 
 app.get('/api/snapshots/latest', auth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);

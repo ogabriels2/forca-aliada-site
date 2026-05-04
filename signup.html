@@ -189,9 +189,9 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
             id="f-password"
             name="password"
             type="password"
-            placeholder="Crie uma senha segura (mín. 6 caracteres)"
+            placeholder="Crie uma senha segura (mín. 8 caracteres)"
             autocomplete="new-password"
-            minlength="6"
+            minlength="8"
             required
           >
         </div>
@@ -266,8 +266,8 @@ async function handleSignup(event) {
     showMessage('E-mail inválido.', 'error');
     return;
   }
-  if (password.length < 6) {
-    showMessage('A senha deve ter ao menos 6 caracteres.', 'error');
+  if (password.length < 8) {
+    showMessage('A senha deve ter ao menos 8 caracteres.', 'error');
     return;
   }
 

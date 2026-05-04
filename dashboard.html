@@ -565,7 +565,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
             <input id="currentpass" type="password" placeholder="Sua senha atual">
           </div>
           <div class="input-group">
-            <label>Nova Senha (mín. 6 caracteres)</label>
+            <label>Nova Senha (mín. 8 caracteres)</label>
             <input id="newpass" type="password" placeholder="Nova senha">
           </div>
           <button class="btn-primary" onclick="changePass()" style="width:100%;margin-top:4px;">Atualizar Senha</button>
@@ -748,7 +748,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
           <div class="accordion-body" id="adv-sec-body">
             <div class="accordion-inner">
               <div class="admin-field">
-                <label>Nova Senha (mín. 6 caracteres)</label>
+                <label>Nova Senha (mín. 8 caracteres)</label>
                 <input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;">
               </div>
             </div>
@@ -808,7 +808,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
               </select>
             </div>
             <div class="admin-field" style="grid-column:1/-1;">
-              <label>Senha Inicial (mín. 6 caracteres)</label>
+              <label>Senha Inicial (mín. 8 caracteres)</label>
               <input type="password" id="ci-password" placeholder="Senha para primeiro acesso" style="display:block;">
             </div>
           </div>
@@ -1097,7 +1097,7 @@ async function changePass() {
   const msg = document.getElementById('profile-msg');
 
   if (!cur)            { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
-  if (!np || np.length < 6) { msg.textContent = 'A nova senha deve ter ao menos 6 caracteres.'; msg.style.color = 'var(--danger)'; return; }
+  if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
 
   try {
     const res = await fetch(`${API_BASE}/api/me/password`, {
@@ -1799,7 +1799,7 @@ async function saveAdminUser() {
   if (newPwd) body.newPassword = newPwd;
   
   if (!body.username || !body.email) { alert('Preencha usuário e e-mail.'); return; }
-  if (newPwd && newPwd.length < 6) { alert('A nova senha deve ter ao menos 6 caracteres.'); return; }
+  if (newPwd && newPwd.length < 8) { alert('A nova senha deve ter ao menos 8 caracteres.'); return; }
 
   requirePassword({
     title:       'Confirmar alterações',
@@ -1865,8 +1865,8 @@ async function submitCreateAccount() {
     msg.style.color = 'var(--danger)';
     return;
   }
-  if (password.length < 6) {
-    msg.textContent = 'A senha deve ter ao menos 6 caracteres.';
+  if (password.length < 8) {
+    msg.textContent = 'A senha deve ter ao menos 8 caracteres.';
     msg.style.color = 'var(--danger)';
     return;
   }
