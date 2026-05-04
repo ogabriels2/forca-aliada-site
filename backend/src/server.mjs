@@ -7,7 +7,6 @@ import util from 'minecraft-server-util';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
 
 const app = express();
 
@@ -39,23 +38,6 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be s
 
 const INGEST_SECRET = process.env.INGEST_SECRET;
 if (!INGEST_SECRET || INGEST_SECRET.length < 16) throw new Error('INGEST_SECRET must be set with at least 16 characters');
-
-// ── Configuração do E-mail Blindada e à prova de travamentos ──
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: Number(process.env.SMTP_PORT) === 465,
-  auth: {
-    user: process.env.SMTP_USER, // Ex: contato@ogabriels.com
-    pass: process.env.SMTP_PASS, // Senha real do contato
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000
-});
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
 const emailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 3, standardHeaders: true, legacyHeaders: false, message: { error: 'Muitas tentativas. Tente novamente mais tarde.' } });
@@ -197,7 +179,7 @@ app.get('/api/cron', async (req, res) => {
   }
 });
 
-// ── ROTAS DE RECUPERAÇÃO DE PALAVRA-PASSE ──
+// ── ROTAS DE RECUPERAÇÃO DE PALAVRA-PASSE (Via API Resend) ──
 
 app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
   const email = sanitizeInput(req.body?.email).toLowerCase();
@@ -211,38 +193,53 @@ app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
   }
 
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   
   await pool.query('INSERT INTO password_resets (email, code, expires_at) VALUES ($1, $2, $3)', [email, code, expiresAt]);
 
-  // CRÍTICO: Aqui definimos que o remetente é o SMTP_FROM (no-reply) 
-  // e se ele não existir, cai para o SMTP_USER.
-  const senderEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const senderEmail = process.env.EMAIL_FROM || 'no-reply@ogabriels.com';
+  const resendApiKey = process.env.RESEND_API_KEY;
 
-  const mailOptions = {
-    from: `"Segurança | Força Aliada" <${senderEmail}>`,
-    to: email,
-    subject: 'Código de Recuperação de Palavra-passe',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e5ea; border-radius: 12px;">
-        <h2 style="color: #1d1d1f;">Força Aliada</h2>
-        <p style="color: #1d1d1f; font-size: 16px;">Olá <strong>${rows[0].username}</strong>,</p>
-        <p style="color: #86868b; font-size: 15px;">Recebemos um pedido para repor a palavra-passe da sua conta. Utilize o código de 6 dígitos abaixo no site:</p>
-        <div style="background: #f2f2f7; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
-          <strong style="font-size: 32px; letter-spacing: 4px; color: #0071e3;">${code}</strong>
-        </div>
-        <p style="color: #86868b; font-size: 13px;">Este código expira em 15 minutos. Se não pediu esta alteração, por favor ignore este e-mail.</p>
-      </div>
-    `
-  };
+  if (resendApiKey) {
+    try {
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: senderEmail,
+          to: email,
+          subject: 'Código de Recuperação de Palavra-passe',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e5ea; border-radius: 12px;">
+              <h2 style="color: #1d1d1f;">Força Aliada</h2>
+              <p style="color: #1d1d1f; font-size: 16px;">Olá <strong>${rows[0].username}</strong>,</p>
+              <p style="color: #86868b; font-size: 15px;">Recebemos um pedido para repor a palavra-passe da sua conta. Utilize o código de 6 dígitos abaixo no site:</p>
+              <div style="background: #f2f2f7; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
+                <strong style="font-size: 32px; letter-spacing: 4px; color: #0071e3;">${code}</strong>
+              </div>
+              <p style="color: #86868b; font-size: 13px;">Este código expira em 15 minutos. Se não pediu esta alteração, por favor ignore este e-mail.</p>
+            </div>
+          `
+        })
+      });
 
-  try {
-    if (process.env.SMTP_USER) await transporter.sendMail(mailOptions);
-    res.json({ ok: true });
-  } catch (error) {
-    console.error("SMTP Error:", error);
-    res.status(500).json({ error: 'Erro de conexão com servidor de e-mail.' });
+      if (!emailRes.ok) {
+        const errorText = await emailRes.text();
+        console.error("Resend API Error:", errorText);
+        throw new Error('Falha na API de e-mail');
+      }
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      return res.status(500).json({ error: 'Erro de conexão com o servidor de e-mail.' });
+    }
+  } else {
+    console.warn("Aviso: RESEND_API_KEY não configurada. Código gerado, mas e-mail não enviado.");
   }
+
+  res.json({ ok: true });
 });
 
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
