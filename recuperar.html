@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recuperar Conta | Força Aliada</title>
+<style>
+:root {
+  --bg-color: #f5f5f7;
+  --card-bg: rgba(255,255,255,0.85);
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --danger: #ff3b30;
+  --success: #34c759;
+  --border: #d2d2d7;
+  --radius-lg: 24px;
+  --radius-md: 12px;
+  --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+a { text-decoration: none; color: inherit; }
+
+header {
+  position: fixed; top: 0; width: 100%; padding: 12px 5%;
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+.brand-link:hover { opacity: 0.8; }
+.logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
+.logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+.nav-cta {
+  color: var(--accent) !important; font-weight: 600 !important;
+  background: rgba(0,113,227,0.08); padding: 8px 16px;
+  border-radius: 980px; transition: background 0.2s; font-size: 14px;
+}
+.nav-cta:hover { background: rgba(0,113,227,0.15); }
+
+.login-wrapper {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 100px 20px 40px;
+}
+.card {
+  width: 100%; max-width: 400px;
+  background: var(--card-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-radius: var(--radius-lg); padding: 40px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  border: 1px solid rgba(255,255,255,0.4);
+  text-align: center; animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; }
+p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
+.form-group { margin-bottom: 16px; text-align: left; }
+input {
+  width: 100%; padding: 14px 16px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: rgba(255,255,255,0.9);
+  font-size: 15px; transition: all 0.2s; outline: none; color: var(--text-primary);
+  font-family: inherit;
+}
+input::placeholder { color: #a1a1a6; }
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
+button.main-btn {
+  width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
+  background: var(--text-primary); color: #fff; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+button.main-btn:hover { background: #000; transform: scale(1.02); }
+button.main-btn:active { transform: scale(0.98); }
+button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
+.footer-text a { color: var(--text-primary); font-weight: 600; }
+.footer-text a:hover { color: var(--accent); text-decoration: underline; }
+.msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
+.error { color: var(--danger); }
+.success { color: var(--success); }
+
+/* Código PIN Style */
+.pin-input { font-size: 24px; font-weight: 600; letter-spacing: 6px; text-align: center; text-transform: uppercase; }
+
+#step2 { display: none; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60%  { transform: translateX(-5px); }
+  40%, 80%  { transform: translateX(5px); }
+}
+.shake-animation { animation: shake 0.4s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="brand-link">
+    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+    <div class="logo-text">Força Aliada</div>
+  </a>
+  <div id="header-right">
+    <a href="login.html" class="nav-cta">Fazer login</a>
+  </div>
+</header>
+
+<div class="login-wrapper">
+  <div class="card" id="recoverCard">
+
+    <div id="step1">
+      <div style="font-size: 48px; margin-bottom: 12px;">✉️</div>
+      <h1>Recuperar Conta</h1>
+      <p class="subtitle">Insira o e-mail associado à sua conta para receber o código de recuperação.</p>
+
+      <form id="form-step1" onsubmit="requestReset(event)">
+        <div class="form-group">
+          <input id="email-input" type="email" placeholder="O seu e-mail" required>
+        </div>
+        <button type="submit" id="btn-step1" class="main-btn">Enviar Código</button>
+      </form>
+      <div id="msg1" class="msg" role="alert"></div>
+    </div>
+
+    <div id="step2">
+      <div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
+      <h1>Criar Nova Senha</h1>
+      <p class="subtitle">Enviámos um código de 6 dígitos para o seu e-mail. Ele expira em 15 minutos.</p>
+
+      <form id="form-step2" onsubmit="submitReset(event)">
+        <div class="form-group">
+          <input id="code-input" class="pin-input" type="text" placeholder="000000" maxlength="6" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <input id="newpass-input" type="password" placeholder="Nova palavra-passe (mín. 8 caracteres)" minlength="8" required>
+        </div>
+        <button type="submit" id="btn-step2" class="main-btn">Redefinir Palavra-passe</button>
+      </form>
+      <div id="msg2" class="msg" role="alert"></div>
+    </div>
+
+    <div class="footer-text">
+      Lembrou-se da senha? <a href="login.html">Voltar ao Login</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API_BASE = 'https://forca-aliada-site.onrender.com';
+let userEmail = '';
+
+function showMessage(step, text, type) {
+  const msgEl = document.getElementById(`msg${step}`);
+  const card  = document.getElementById('recoverCard');
+  msgEl.textContent = text;
+  msgEl.className   = `msg ${type}`;
+  if (type === 'error') {
+    card.classList.remove('shake-animation');
+    void card.offsetWidth;
+    card.classList.add('shake-animation');
+  }
+}
+
+async function requestReset(event) {
+  event.preventDefault();
+  const email = document.getElementById('email-input').value.trim();
+  const btn = document.getElementById('btn-step1');
+
+  if (!email) { showMessage(1, 'Introduza o seu e-mail.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'A enviar...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao pedir código.');
+
+    userEmail = email; // Guarda para o passo 2
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+    
+  } catch (err) {
+    showMessage(1, err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Enviar Código';
+  }
+}
+
+async function submitReset(event) {
+  event.preventDefault();
+  const code = document.getElementById('code-input').value.trim();
+  const newPassword = document.getElementById('newpass-input').value;
+  const btn = document.getElementById('btn-step2');
+
+  if (!code || code.length !== 6) { showMessage(2, 'Introduza o código de 6 dígitos.', 'error'); return; }
+  if (newPassword.length < 8) { showMessage(2, 'A palavra-passe tem de ter no mínimo 8 caracteres.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'A redefinir...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, code, newPassword })
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Código inválido ou expirado.');
+
+    showMessage(2, 'Palavra-passe alterada com sucesso! A redirecionar...', 'success');
+    setTimeout(() => { location.href = 'login.html'; }, 1500);
+    
+  } catch (err) {
+    showMessage(2, err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Redefinir Palavra-passe';
+  }
+}
+</script>
+</body>
+</html>
