@@ -7,10 +7,10 @@ import util from 'minecraft-server-util';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 const app = express();
 
-// IMPORTANTE: Necessário para o rate-limit funcionar corretamente atrás do Render.com
 app.set('trust proxy', 1);
 app.use(helmet());
 
@@ -22,7 +22,7 @@ app.use(cors({
     if (corsOrigins.includes(origin)) return cb(null, true);
     return cb(new Error('CORS blocked by policy'));
   },
-  credentials: true // CRÍTICO: Permite o tráfego de cookies entre GitHub Pages e Render
+  credentials: true
 }));
 
 app.use(express.json({ limit: '1mb' }));
@@ -35,38 +35,29 @@ const pool = new Pool({
 });
 
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET.length < 32) {
-  throw new Error('JWT_SECRET must be set with at least 32 characters');
-}
+if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be set with at least 32 characters');
 
 const INGEST_SECRET = process.env.INGEST_SECRET;
-if (!INGEST_SECRET || INGEST_SECRET.length < 16) {
-  throw new Error('INGEST_SECRET must be set with at least 16 characters');
-}
+if (!INGEST_SECRET || INGEST_SECRET.length < 16) throw new Error('INGEST_SECRET must be set with at least 16 characters');
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'too many auth attempts, try again later' }
+// ── Configuração do E-mail (Nodemailer) ──
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 465,
+  secure: Number(process.env.SMTP_PORT) === 465,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });
 
-function sanitizeInput(v) {
-  return String(v || '').trim();
-}
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const emailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 3, standardHeaders: true, legacyHeaders: false, message: { error: 'Muitas tentativas. Tente novamente mais tarde.' } });
 
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function validatePassword(password) {
-  return typeof password === 'string' && password.length >= 8 && password.length <= 128;
-}
-
-function validateUsername(username) {
-  return /^[a-z0-9_]{3,32}$/i.test(username);
-}
+function sanitizeInput(v) { return String(v || '').trim(); }
+function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function validatePassword(password) { return typeof password === 'string' && password.length >= 8 && password.length <= 128; }
+function validateUsername(username) { return /^[a-z0-9_]{3,32}$/i.test(username); }
 
 function parseCookies(req) {
   const raw = req.headers.cookie || '';
@@ -114,8 +105,17 @@ async function migrate() {
       left_at TIMESTAMP,
       duration_hours FLOAT
     );
+    
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      code VARCHAR(6) NOT NULL,
+      expires_at TIMESTAMP NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_player_name ON player_sessions(player);
     CREATE INDEX IF NOT EXISTS idx_player_active ON player_sessions(left_at);
+    CREATE INDEX IF NOT EXISTS idx_pw_reset_email ON password_resets(email);
   `);
 }
 
@@ -125,10 +125,7 @@ async function seedAdmin() {
   const adminPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD || '';
 
   if (!adminUsername || !adminEmail || !adminPassword) return;
-  if (!validateUsername(adminUsername) || !validateEmail(adminEmail) || !validatePassword(adminPassword)) {
-    console.warn('Skipping bootstrap admin: invalid BOOTSTRAP_ADMIN_* values');
-    return;
-  }
+  if (!validateUsername(adminUsername) || !validateEmail(adminEmail) || !validatePassword(adminPassword)) return;
 
   const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [adminUsername.toLowerCase()]);
   if (rows.length > 0) return;
@@ -159,21 +156,13 @@ function requireFull(req, res, next) {
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
-// ── ROTA DO CRON-JOB.ORG Restaurada e Segura ───────────────────
 app.get('/api/cron', async (req, res) => {
   const key = req.query.key || req.headers['x-ingest-secret'];
-  
-  if (key !== INGEST_SECRET) {
-    return res.status(403).json({ error: 'Acesso negado' });
-  }
+  if (key !== INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
 
   try {
-    // O próprio backend vai na internet buscar quem está online, ignorando falsificações
     const host = process.env.MC_HOST || 'fa.ogabriels.com';
-    const response = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`, {
-      headers: { 'User-Agent': 'forca-aliada-backend/1.0' }
-    });
-    
+    const response = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`, { headers: { 'User-Agent': 'forca-aliada-backend/1.0' } });
     if (!response.ok) throw new Error('Falha na API externa');
     
     const data = await response.json();
@@ -186,18 +175,13 @@ app.get('/api/cron', async (req, res) => {
     for (const row of activeFromDB.rows) {
       if (!onlinePlayers.includes(row.player)) {
         const duration = (now - new Date(row.entered_at)) / 3600000;
-        await pool.query(
-          'UPDATE player_sessions SET left_at = $1, duration_hours = $2 WHERE player = $3 AND left_at IS NULL',
-          [now, Number(duration.toFixed(2)), row.player]
-        );
+        await pool.query('UPDATE player_sessions SET left_at = $1, duration_hours = $2 WHERE player = $3 AND left_at IS NULL', [now, Number(duration.toFixed(2)), row.player]);
       }
     }
 
     for (const p of onlinePlayers) {
       const isAlreadyActive = activeFromDB.rows.some((r) => r.player === p);
-      if (!isAlreadyActive) {
-        await pool.query('INSERT INTO player_sessions (player, entered_at) VALUES ($1, $2)', [String(p), now]);
-      }
+      if (!isAlreadyActive) await pool.query('INSERT INTO player_sessions (player, entered_at) VALUES ($1, $2)', [String(p), now]);
     }
 
     res.json({ ok: true, online: onlinePlayers.length });
@@ -206,6 +190,78 @@ app.get('/api/cron', async (req, res) => {
     res.status(500).json({ error: 'Falha ao atualizar dados' });
   }
 });
+
+// ── ROTAS DE RECUPERAÇÃO DE PALAVRA-PASSE ──
+
+// 1. Pede o código de recuperação
+app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
+  const email = sanitizeInput(req.body?.email).toLowerCase();
+  if (!validateEmail(email)) return res.status(400).json({ error: 'E-mail inválido' });
+
+  // Apaga códigos antigos deste e-mail
+  await pool.query('DELETE FROM password_resets WHERE email = $1 OR expires_at < NOW()', [email]);
+
+  const { rows } = await pool.query('SELECT username FROM users WHERE email = $1', [email]);
+  if (rows.length === 0) {
+    // Retorna OK na mesma para não vazar quais e-mails estão registados
+    return res.json({ ok: true }); 
+  }
+
+  // Gera código de 6 dígitos
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+  
+  await pool.query('INSERT INTO password_resets (email, code, expires_at) VALUES ($1, $2, $3)', [email, code, expiresAt]);
+
+  const mailOptions = {
+    from: `"Segurança | Força Aliada" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: 'Código de Recuperação de Palavra-passe',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e5ea; border-radius: 12px;">
+        <h2 style="color: #1d1d1f;">Força Aliada</h2>
+        <p style="color: #1d1d1f; font-size: 16px;">Olá <strong>${rows[0].username}</strong>,</p>
+        <p style="color: #86868b; font-size: 15px;">Recebemos um pedido para repor a palavra-passe da sua conta. Utilize o código de 6 dígitos abaixo no site:</p>
+        <div style="background: #f2f2f7; padding: 16px; border-radius: 8px; text-align: center; margin: 24px 0;">
+          <strong style="font-size: 32px; letter-spacing: 4px; color: #0071e3;">${code}</strong>
+        </div>
+        <p style="color: #86868b; font-size: 13px;">Este código expira em 15 minutos. Se não pediu esta alteração, por favor ignore este e-mail.</p>
+      </div>
+    `
+  };
+
+  try {
+    if (process.env.SMTP_USER) await transporter.sendMail(mailOptions);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("SMTP Error:", error);
+    res.status(500).json({ error: 'Erro ao enviar e-mail. Contacte um administrador.' });
+  }
+});
+
+// 2. Valida o código e altera a senha
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  const email = sanitizeInput(req.body?.email).toLowerCase();
+  const code = sanitizeInput(req.body?.code);
+  const newPassword = req.body?.newPassword;
+
+  if (!validateEmail(email) || !code || !validatePassword(newPassword)) {
+    return res.status(400).json({ error: 'Dados inválidos' });
+  }
+
+  const { rows } = await pool.query('SELECT * FROM password_resets WHERE email = $1 AND code = $2 AND expires_at > NOW()', [email, code]);
+  if (rows.length === 0) {
+    return res.status(400).json({ error: 'Código inválido ou expirado' });
+  }
+
+  const hash = await bcrypt.hash(newPassword, 12);
+  await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [hash, email]);
+  await pool.query('DELETE FROM password_resets WHERE email = $1', [email]);
+
+  res.json({ ok: true });
+});
+
+// ── ROTAS DE AUTENTICAÇÃO EXISTENTES ──
 
 app.post('/api/auth/signup', authLimiter, async (req, res) => {
   const username = sanitizeInput(req.body?.username).toLowerCase();
@@ -219,10 +275,7 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 12);
-    await pool.query(
-      'INSERT INTO users (username,email,minecraft_name,password_hash,role) VALUES ($1,$2,$3,$4,$5)',
-      [username, email, minecraftName, hash, 'limited']
-    );
+    await pool.query('INSERT INTO users (username,email,minecraft_name,password_hash,role) VALUES ($1,$2,$3,$4,$5)', [username, email, minecraftName, hash, 'limited']);
     res.json({ ok: true });
   } catch {
     res.status(409).json({ error: 'username/email already exists' });
@@ -236,9 +289,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
   const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $1', [login]);
   const user = rows[0];
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-    return res.status(401).json({ error: 'invalid credentials' });
-  }
+  if (!user || !(await bcrypt.compare(password, user.password_hash))) return res.status(401).json({ error: 'invalid credentials' });
 
   const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
   issueAuthCookies(res, token);
@@ -257,9 +308,7 @@ async function changeMyPassword(req, res) {
 
   const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.sub]);
   const user = rows[0];
-  if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
-    return res.status(401).json({ error: 'invalid current password' });
-  }
+  if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) return res.status(401).json({ error: 'invalid current password' });
 
   const hash = await bcrypt.hash(newPassword, 12);
   await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.sub]);
@@ -269,7 +318,6 @@ async function changeMyPassword(req, res) {
 app.post('/api/me/password', auth, requireCsrf, changeMyPassword);
 app.put('/api/me/password', auth, requireCsrf, changeMyPassword);
 
-// Mantém a rota /import por compatibilidade caso mude de ideia depois
 app.post('/api/snapshots/import', async (req, res) => {
   const authHeader = req.headers.authorization || '';
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
@@ -284,18 +332,13 @@ app.post('/api/snapshots/import', async (req, res) => {
   for (const row of activeFromDB.rows) {
     if (!onlinePlayers.includes(row.player)) {
       const duration = (now - new Date(row.entered_at)) / 3600000;
-      await pool.query(
-        'UPDATE player_sessions SET left_at = $1, duration_hours = $2 WHERE player = $3 AND left_at IS NULL',
-        [now, Number(duration.toFixed(2)), row.player]
-      );
+      await pool.query('UPDATE player_sessions SET left_at = $1, duration_hours = $2 WHERE player = $3 AND left_at IS NULL', [now, Number(duration.toFixed(2)), row.player]);
     }
   }
 
   for (const p of onlinePlayers) {
     const isAlreadyActive = activeFromDB.rows.some((r) => r.player === p);
-    if (!isAlreadyActive) {
-      await pool.query('INSERT INTO player_sessions (player, entered_at) VALUES ($1, $2)', [String(p), now]);
-    }
+    if (!isAlreadyActive) await pool.query('INSERT INTO player_sessions (player, entered_at) VALUES ($1, $2)', [String(p), now]);
   }
 
   res.json({ ok: true });
@@ -329,9 +372,7 @@ app.post('/api/admin/users', auth, requireFull, requireCsrf, async (req, res) =>
   const password = req.body?.password || '';
   const role = req.body?.role === 'full' ? 'full' : 'limited';
 
-  if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password)) {
-    return res.status(400).json({ error: 'invalid fields' });
-  }
+  if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password)) return res.status(400).json({ error: 'invalid fields' });
 
   try {
     const hash = await bcrypt.hash(password, 12);
@@ -364,7 +405,6 @@ app.put('/api/admin/users/:id', auth, requireFull, requireCsrf, async (req, res)
       const result = await pool.query('UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5 WHERE id=$6', [username, email, minecraftName, photoUrl, role, id]);
       if (result.rowCount === 0) return res.status(404).json({ error: 'user not found' });
     }
-
     res.json({ ok: true });
   } catch {
     res.status(409).json({ error: 'username/email already exists' });
