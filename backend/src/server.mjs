@@ -47,7 +47,6 @@ function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 function validatePassword(password) { return typeof password === 'string' && password.length >= 8 && password.length <= 128; }
 function validateUsername(username) { return /^[a-z0-9_]{3,32}$/i.test(username); }
 
-// Função centralizada para envio de E-mails
 async function sendSystemEmail(email, username, code, type = 'verify') {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -82,9 +81,7 @@ async function migrate() {
       role VARCHAR(50) NOT NULL DEFAULT 'limited' CHECK (role IN ('full', 'limited')),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
-
     CREATE TABLE IF NOT EXISTS player_sessions (
       id SERIAL PRIMARY KEY,
       player VARCHAR(255) NOT NULL,
@@ -92,21 +89,18 @@ async function migrate() {
       left_at TIMESTAMP,
       duration_hours FLOAT
     );
-    
     CREATE TABLE IF NOT EXISTS password_resets (
       id SERIAL PRIMARY KEY,
       email VARCHAR(255) NOT NULL,
       code VARCHAR(6) NOT NULL,
       expires_at TIMESTAMP NOT NULL
     );
-
     CREATE TABLE IF NOT EXISTS email_verifications (
       id SERIAL PRIMARY KEY,
       email VARCHAR(255) NOT NULL,
       code VARCHAR(6) NOT NULL,
       expires_at TIMESTAMP NOT NULL
     );
-
     CREATE INDEX IF NOT EXISTS idx_player_name ON player_sessions(player);
   `);
 }
@@ -127,14 +121,24 @@ async function seedAdmin() {
   );
 }
 
-function auth(req, res, next) {
+// ── PROTEÇÃO COM BANCO DE DADOS (Real-Time Auth) ──
+async function auth(req, res, next) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'missing token' });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); } 
+  try { 
+    const decoded = jwt.verify(token, JWT_SECRET); 
+    // Segurança Ativa: Verifica se o usuário ainda existe e pega o cargo atualizado
+    const { rows } = await pool.query('SELECT role, is_verified FROM users WHERE id = $1', [decoded.sub]);
+    if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
+    
+    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified };
+    next(); 
+  } 
   catch { res.status(401).json({ error: 'invalid token' }); }
 }
 
 function requireFull(req, res, next) {
+  // Como o auth lê o BD sempre, req.user.role é sempre 100% fiel à realidade!
   if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
   next();
 }
@@ -220,13 +224,11 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 12);
-    // Cria a conta bloqueada (is_verified = false)
     const { rows } = await pool.query(
       'INSERT INTO users (username,email,minecraft_name,password_hash,role,is_verified) VALUES ($1,$2,$3,$4,$5,FALSE) RETURNING username', 
       [username, email, minecraftName, hash, 'limited']
     );
 
-    // Gera o código de verificação
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await pool.query('DELETE FROM email_verifications WHERE email = $1', [email]);
@@ -240,7 +242,6 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
   }
 });
 
-// Nova rota para processar o PIN e liberar a conta
 app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const code = sanitizeInput(req.body?.code);
@@ -256,7 +257,6 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
   const user = updateRes.rows[0];
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
-  // Faz o login automático após verificar
   const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
 });
@@ -270,7 +270,6 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   const user = rows[0];
   if (!user || !(await bcrypt.compare(password, user.password_hash))) return res.status(401).json({ error: 'invalid credentials' });
 
-  // Bloqueia e reenvia código se não estiver verificado
   if (user.is_verified === false) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -286,8 +285,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 });
 
 app.get('/api/me', auth, async (req, res) => {
-  const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role FROM users WHERE id = $1', [req.user.sub]);
-  res.json(rows[0] || {});
+  const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role,is_verified FROM users WHERE id = $1', [req.user.sub]);
+  if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
+  res.json(rows[0]);
 });
 
 async function changeMyPassword(req, res) {
@@ -325,7 +325,7 @@ app.get('/api/player/:name/history', auth, async (req, res) => {
 
 // ── ADMIN ──
 app.get('/api/admin/users', auth, requireFull, async (_req, res) => {
-  const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, created_at FROM users ORDER BY id DESC');
+  const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users ORDER BY id DESC');
   res.json(rows);
 });
 
@@ -340,7 +340,6 @@ app.post('/api/admin/users', auth, requireFull, async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 12);
-    // Contas criadas por ADMIN já nascem verificadas
     const { rows } = await pool.query('INSERT INTO users (username,email,minecraft_name,password_hash,role,is_verified) VALUES ($1,$2,$3,$4,$5,TRUE) RETURNING id', [username, email, minecraftName, hash, role]);
     res.json(rows[0]);
   } catch {
