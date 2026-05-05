@@ -186,6 +186,10 @@ const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
+function getCookie(name) { return document.cookie.split(';').map(p => p.trim()).find(p => p.startsWith(`${name}=`))?.slice(name.length + 1) || ''; }
+function apiHeaders(headers = {}) { const csrf = getCookie('fa_csrf'); return csrf ? { ...headers, 'X-CSRF-Token': decodeURIComponent(csrf) } : headers; }
+function apiFetch(url, options = {}) { return fetch(url, { ...options, credentials: 'include', headers: apiHeaders(options.headers || {}) }); }
+
 let pendingEmail = '';
 
 // Se a pessoa for redirecionada do login para cá com um e-mail pendente
@@ -204,7 +208,7 @@ document.getElementById('f-minecraft').addEventListener('input', () => {
   const av   = document.getElementById('avatar');
   clearTimeout(skinTimer);
   
-  if (name.length >= 3) {
+  if (/^[a-z0-9_]{3,16}$/i.test(name)) {
     av.classList.remove('inactive');
     skinTimer = setTimeout(() => { 
       av.src = `https://minotar.net/helm/${encodeURIComponent(name)}/100.png`; 
@@ -224,7 +228,7 @@ function showMessage(text, type, isHtml = false, isVerify = false) {
   const msgEl = document.getElementById(isVerify ? 'msg-verify' : 'msg');
   const card  = document.getElementById('signupCard');
   
-  if (isHtml) msgEl.innerHTML = text; 
+  if (isHtml) { msgEl.replaceChildren(); const span = document.createElement('span'); span.textContent = 'Este e-mail ou utilizador já está registado.'; const link = document.createElement('a'); link.href = 'login.html'; link.style.color = 'var(--accent)'; link.style.textDecoration = 'underline'; link.style.display = 'inline-block'; link.style.marginTop = '8px'; link.textContent = 'Fazer login com esta conta?'; msgEl.append(span, document.createElement('br'), link); }
   else msgEl.textContent = text;
   
   msgEl.className = `msg ${type}`;
@@ -246,7 +250,8 @@ async function handleSignup(event) {
   const btn           = document.getElementById('btn-signup');
 
   if (!username || !email || !minecraftName || !password) { showMessage('Preencha todos os campos.', 'error'); return; }
-  if (username.length < 3) { showMessage('O nome de usuário deve ter ao menos 3 caracteres.', 'error'); return; }
+  if (!/^[a-z0-9_]{3,32}$/i.test(username)) { showMessage('O nome de usuário deve ter 3 a 32 caracteres e usar apenas letras, números ou _.', 'error'); return; }
+  if (!/^[a-z0-9_]{1,16}$/i.test(minecraftName)) { showMessage('Nome Minecraft inválido.', 'error'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage('E-mail inválido.', 'error'); return; }
   if (password.length < 8) { showMessage('A senha deve ter ao menos 8 caracteres.', 'error'); return; }
 
@@ -254,7 +259,7 @@ async function handleSignup(event) {
   btn.textContent = 'Aguarde...';
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/signup`, {
+    const res = await apiFetch(`${API_BASE}/api/auth/signup`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ username, email, minecraftName, password }),
@@ -280,7 +285,7 @@ async function handleSignup(event) {
       
       // LOGIN SILENCIOSO: Tenta logar em background para ver se a conta está apenas não-verificada
       try {
-        const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
+        const loginRes = await apiFetch(`${API_BASE}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ login: email, password })
@@ -300,7 +305,7 @@ async function handleSignup(event) {
 
         // Se retornar 200, a pessoa recriou uma conta que já existia e a senha estava certa!
         if (loginRes.ok) {
-          localStorage.setItem(TOKEN_KEY, loginData.token);
+          localStorage.removeItem(TOKEN_KEY);
           localStorage.setItem(SESSION_KEY, JSON.stringify(loginData.user));
           location.href = 'dashboard.html';
           return;
@@ -331,7 +336,7 @@ async function handleVerify(event) {
   btn.textContent = 'Verificando...';
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/verify-email`, {
+    const res = await apiFetch(`${API_BASE}/api/auth/verify-email`, {
       method:  'POST', 
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email: pendingEmail, code }),
@@ -341,7 +346,7 @@ async function handleVerify(event) {
     if (!res.ok) throw new Error(data.error || 'Código inválido ou expirado.');
 
     // Salva o login no navegador e entra direto
-    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Conta ativada com sucesso! A entrar...', 'success', false, true);
@@ -364,13 +369,10 @@ function forceLogout() {
 
 // ── Auto-Login ────────────────────────────────────────────────
 (async () => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token || pendingEmail) return; 
+  if (pendingEmail) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { 
-      headers: { 'Authorization': `Bearer ${token}` } 
-    });
+    const res = await apiFetch(`${API_BASE}/api/me`);
     
     if (!res.ok) throw new Error('Token expirado');
     
