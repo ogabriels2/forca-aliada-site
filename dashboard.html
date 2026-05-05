@@ -391,10 +391,33 @@ const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
 let session = null;
-const token = localStorage.getItem(TOKEN_KEY);
+const legacyToken = localStorage.getItem(TOKEN_KEY);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
-if (!token || !session) { window.location.replace('login.html'); }
+function getCookie(name) {
+  return document.cookie.split(';').map(p => p.trim()).find(p => p.startsWith(`${name}=`))?.slice(name.length + 1) || '';
+}
+function apiHeaders(headers = {}) {
+  const next = { ...headers };
+  const csrf = getCookie('fa_csrf');
+  if (csrf) next['X-CSRF-Token'] = decodeURIComponent(csrf);
+  if (legacyToken) next.Authorization = `Bearer ${legacyToken}`;
+  return next;
+}
+function apiFetch(url, options = {}) {
+  return fetch(url, { ...options, credentials: 'include', headers: apiHeaders(options.headers || {}) });
+}
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"]|'/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+function safeMcName(value) {
+  const name = String(value || '').trim();
+  return /^[a-z0-9_]{1,16}$/i.test(name) ? name : 'Steve';
+}
+function safeMcUrl(value, size = 48) {
+  return `https://minotar.net/helm/${encodeURIComponent(safeMcName(value))}/${size}.png`;
+}
+function safeRole(role) { return role === 'full' ? 'full' : 'limited'; }
 
 let globalHistData     = null;
 let globalApiData      = null;
@@ -412,7 +435,7 @@ let adminSortState = { key: 'name', asc: true };
 
 (async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`${API_BASE}/api/me`);
     if (!res.ok) throw new Error('Sessão inválida');
     const me = await res.json();
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
@@ -435,7 +458,7 @@ function initDashboard() {
   if (liveInterval) clearInterval(liveInterval);
   liveInterval = setInterval(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await apiFetch(`${API_BASE}/api/me`);
       if (!res.ok) throw new Error('Sessão inválida ou deletada');
       const me = await res.json();
       if (session.role !== me.role) {
@@ -490,7 +513,7 @@ async function confirmPwSubmit() {
   if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
   btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: session.username, password: pw }) });
+    const res = await apiFetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: session.username, password: pw }) });
     if (!res.ok) throw new Error('Senha incorreta.');
     const cb = _confirmPwCallback; closeConfirmPw(); if (cb) await cb();
   } catch (e) {
@@ -518,15 +541,15 @@ function getLiveEntryText(enteredAtStr) {
 function getLiveDuration(enteredAtStr) { return formatTime((Date.now() - new Date(enteredAtStr).getTime()) / 3600000); }
 
 function renderHeader() {
-  const skinUrl = session.minecraftName ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
-  document.getElementById('auth-header-container').innerHTML = `<div class="user-menu-wrapper"><div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)"><img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar"><span>${session.username}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div><div class="user-dropdown" id="user-dropdown-menu"><button onclick="location.href='index.html'">Acessar Site</button><button class="danger" onclick="logout()">Sair</button></div></div>`;
+  const skinUrl = session.minecraftName ? safeMcUrl(session.minecraftName, 100) : 'https://minotar.net/helm/Steve/100.png';
+  document.getElementById('auth-header-container').innerHTML = `<div class="user-menu-wrapper"><div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)"><img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar"><span>${escapeHtml(session.username)}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div><div class="user-dropdown" id="user-dropdown-menu"><button onclick="location.href='index.html'">Acessar Site</button><button class="danger" onclick="logout()">Sair</button></div></div>`;
 }
 
 function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
 document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
 
 function renderProfile() {
-  const mcName = session.minecraftName || '-'; const skinUrl = mcName !== '-' ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
+  const mcName = session.minecraftName ? safeMcName(session.minecraftName) : '-'; const skinUrl = mcName !== '-' ? safeMcUrl(mcName, 100) : 'https://minotar.net/helm/Steve/100.png';
   document.getElementById('name').textContent = session.username; document.getElementById('email-display').textContent = session.email || '-'; document.getElementById('mc-display').textContent = mcName; document.getElementById('photo').src = skinUrl;
   const pill = document.getElementById('role-pill'); pill.textContent = session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito'; pill.className = session.role === 'full' ? 'pill full' : 'pill limited';
 }
@@ -536,10 +559,11 @@ async function changePass() {
   if (!cur) { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
   if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
   try {
-    const res = await fetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
+    const res = await apiFetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
     if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'erro'); }
-    msg.textContent = 'Senha atualizada com sucesso!'; msg.style.color = 'var(--success)';
+    msg.textContent = 'Senha atualizada com sucesso! Faça login novamente.'; msg.style.color = 'var(--success)';
     document.getElementById('currentpass').value = ''; document.getElementById('newpass').value = '';
+    setTimeout(() => logout(), 1500);
   } catch (e) {
     msg.textContent = e.message === 'invalid current password' ? 'Senha atual incorreta.' : 'Erro ao atualizar senha.'; msg.style.color = 'var(--danger)';
   }
@@ -550,7 +574,7 @@ async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
   const [apiData, histData] = await Promise.all([
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
+    apiFetch(`${API_BASE}/api/snapshots/latest`).then(r => r.json()).catch(() => null),
   ]);
   globalApiData = apiData; globalHistData = histData;
   if (session.role === 'full') fetchUnregistered();
@@ -576,7 +600,7 @@ function applyFilters() {
   const dateFilter = document.getElementById('search-date').value;
   const durationFilter = parseInt(document.getElementById('search-duration').value) || 0;
   
-  const livePlayers = globalHistData.onlinePlayers || [];
+  const livePlayers = (globalHistData.onlinePlayers || []).map(safeMcName);
   const activeSess = globalHistData.activeSessions || {};
 
   const hasData = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
@@ -597,7 +621,7 @@ function applyFilters() {
     ? filteredLive.map(pName => {
         const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === pName.toLowerCase())];
         const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
+        const safeName = safeMcName(pName); return `<li class="list-item" onclick="openPlayerProfile('${safeName}')"><img src="${safeMcUrl(safeName, 48)}" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${escapeHtml(safeName)}</strong><span>${escapeHtml(timeInfo)}</span></div><span class="status-dot"></span></li>`;
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', (nameFilter || durationFilter > 0) ? 'Nenhum resultado para os filtros atuais.' : 'O servidor está vazio no momento.');
 
@@ -623,7 +647,7 @@ function applyFilters() {
         const leftDate = new Date(e.leftAt); const isToday = leftDate.toDateString() === new Date().toDateString(); const isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
-        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
+        const safeName = safeMcName(e.player); return `<li class="list-item" onclick="openPlayerProfile('${safeName}')"><img src="${safeMcUrl(safeName, 32)}" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${escapeHtml(safeName)}</strong><span style="font-size:12px;">${escapeHtml(formatTime(e.totalHoursDay))}${escapeHtml(sessLabel)} · saiu ${escapeHtml(dLabel)}</span></div></li>`;
       }).join('')
     : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : 'Nenhum jogador desconectado recentemente.');
 }
@@ -660,7 +684,7 @@ function updateChartFocusIndicator() {
   const container = document.getElementById('chart-focus-indicator'); if (!container) return;
   if (chartFocusedPlayer) {
     const color = playerColor(chartFocusedPlayer, 0); container.style.display = 'inline-flex';
-    container.innerHTML = `<div class="chart-focus-badge"><span class="focus-dot" style="background:${color}"></span>${chartFocusedPlayer}<button class="focus-clear" onclick="focusChartPlayer('${chartFocusedPlayer}')" title="Mostrar todos">×</button></div>`;
+    container.innerHTML = `<div class="chart-focus-badge"><span class="focus-dot" style="background:${color}"></span>${escapeHtml(chartFocusedPlayer)}<button class="focus-clear" onclick="focusChartPlayer('${safeMcName(chartFocusedPlayer)}')" title="Mostrar todos">×</button></div>`;
   } else { container.style.display = 'none'; container.innerHTML = ''; }
 }
 
@@ -740,17 +764,17 @@ function updateActivityChart() {
 }
 
 async function openPlayerProfile(playerName, siteAccountId = null) {
-  currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId; let displayMcName = playerName;
+  currentModalPlayerName = safeMcName(playerName); currentEditingAdminId = siteAccountId; let displayMcName = currentModalPlayerName;
   if (siteAccountId && session.role === 'full') { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
 
-  document.getElementById('modal-name').textContent = displayMcName; document.getElementById('modal-img').src = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`; document.getElementById('modal-img').onerror = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
+  document.getElementById('modal-name').textContent = displayMcName; document.getElementById('modal-img').src = safeMcUrl(displayMcName, 100); document.getElementById('modal-img').onerror = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
   document.getElementById('modal-site-account').style.display = 'none'; document.getElementById('modal-create-account').style.display = 'none';
   document.getElementById('stats-grid').innerHTML = `<div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div>`;
   document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:90%;border-radius:6px;"></div></div>`;
   document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
 
-  const [historyData] = await Promise.all([ fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => []) ]);
+  const [historyData] = await Promise.all([ apiFetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`).then(r => r.json()).catch(() => []) ]);
   modalHistoryData = historyData; const chartBtn = document.getElementById('modal-chart-btn'); if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
 
   if (session.role === 'full') {
@@ -760,7 +784,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       document.getElementById('ai-username').value = siteAcc.username; document.getElementById('ai-email').value = siteAcc.email; document.getElementById('ai-mc').value = siteAcc.minecraft_name || ''; document.getElementById('ai-role').value = siteAcc.role; document.getElementById('ai-newpassword').value = '';
       setAdminEditMode(false); document.getElementById('modal-site-account').style.display = 'block'; document.getElementById('modal-create-account').style.display = 'none';
     } else {
-      currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = playerName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
+      currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = displayMcName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
       const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); body.classList.remove('open'); chevron.classList.remove('open');
       document.getElementById('modal-create-account').style.display = 'block'; document.getElementById('modal-site-account').style.display = 'none';
     }
@@ -831,9 +855,9 @@ async function saveAdminUser() {
   requirePassword({
     title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar', destructive: false,
     onConfirm: async () => {
-      const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+      const res = await apiFetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
-      if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) alert('Dados salvos, mas erro ao alterar senha.'); }
+      if (newPwd) { const pwRes = await apiFetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) alert('Dados salvos, mas erro ao alterar senha.'); }
       await fetchAdminUsers(); document.getElementById('av-username').textContent = body.username; document.getElementById('av-email').textContent = body.email; document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = body.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito'; setAdminEditMode(false);
     }
   });
@@ -846,7 +870,7 @@ async function executeAdminDelete() {
   requirePassword({
     title: 'Excluir conta', desc: `Esta ação é permanente e não pode ser desfeita. Digite sua senha para confirmar a exclusão da conta de ${targetName}.`, btnLabel: 'Excluir', destructive: true,
     onConfirm: async () => {
-      const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await apiFetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE' });
       if (res.ok) { await fetchAdminUsers(); closeModal(); } else { alert('Erro ao excluir. O admin principal não pode ser removido.'); }
     }
   });
@@ -858,7 +882,7 @@ async function submitCreateAccount() {
   if (password.length < 8) { msg.textContent = 'A senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
   btn.disabled = true; btn.textContent = 'Criando...';
   
-  const res = await fetch(`${API_BASE}/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
+  const res = await apiFetch(`${API_BASE}/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
   btn.disabled = false; btn.textContent = 'Criar Cadastro';
   
   if (res.ok) {
@@ -873,7 +897,7 @@ async function submitCreateAccount() {
 
 async function fetchAdminUsers() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`${API_BASE}/api/admin/users`);
     if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); fetchUnregistered(); }
   } catch {}
 }
@@ -942,9 +966,10 @@ function renderRegisteredList() {
   if (!filtered.length) { list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">👥</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`; return; }
 
   list.innerHTML = filtered.map(u => {
-    const mc = u.minecraft_name || u.username, hist = historyMap[mc.toLowerCase()], lastStr = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
+    const mc = safeMcName(u.minecraft_name || u.username), hist = historyMap[mc.toLowerCase()], lastStr = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
+    const role = safeRole(u.role);
     const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
-    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${u.role === 'full' ? 'full' : 'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span> ${verifiedBadge}</strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
+    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${Number(u.id) || 0})"><img src="${safeMcUrl(mc, 40)}" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${escapeHtml(u.username)} <span class="pill ${role}" style="margin-left:4px;font-size:10px;">${escapeHtml(role)}</span> ${verifiedBadge}</strong><span>${escapeHtml(u.email)}${hist?.last ? ` · Último acesso ${escapeHtml(lastStr)}` : ''}</span></div></li>`;
   }).join('');
 }
 
@@ -961,13 +986,13 @@ function renderUnregisteredList() {
   if (!filtered.length) { list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhum jogador sem cadastro</strong><span>${term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores do servidor já possuem conta no painel.'}</span></div></li>`; return; }
   list.innerHTML = filtered.map(p => {
     const lastSeen = p.last_seen ? new Date(p.last_seen).toLocaleDateString('pt-BR') : '-', firstSeen = p.first_seen ? new Date(p.first_seen).toLocaleDateString('pt-BR') : '-';
-    return `<li class="list-item" onclick="openPlayerProfile('${p.player}')"><img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong><span>${p.total_sessions || 0} sessão(ões) · ${formatTime(p.total_hours || 0)} · 1ª vez ${firstSeen} · Último acesso ${lastSeen}</span></div></li>`;
+    const safeName = safeMcName(p.player); return `<li class="list-item" onclick="openPlayerProfile('${safeName}')"><img src="${safeMcUrl(safeName, 40)}" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${escapeHtml(safeName)} <span class="unregistered-badge">Sem conta</span></strong><span>${Number(p.total_sessions || 0)} sessão(ões) · ${escapeHtml(formatTime(p.total_hours || 0))} · 1ª vez ${escapeHtml(firstSeen)} · Último acesso ${escapeHtml(lastSeen)}</span></div></li>`;
   }).join('');
 }
 
 function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; currentModalPlayerName = null; }
 function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
-function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+async function logout() { try { await apiFetch(`${API_BASE}/api/auth/logout`, { method: 'POST' }); } catch {} localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
 </script>
 </body>
 </html>

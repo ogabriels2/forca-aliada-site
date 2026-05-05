@@ -162,12 +162,13 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 <script>
 const API_BASE = 'https://forca-aliada-site.onrender.com';
 const TOKEN_KEY = 'fa_token';
+
+function getCookie(name) { return document.cookie.split(';').map(p => p.trim()).find(p => p.startsWith(`${name}=`))?.slice(name.length + 1) || ''; }
+function apiHeaders(headers = {}) { const csrf = getCookie('fa_csrf'); return csrf ? { ...headers, 'X-CSRF-Token': decodeURIComponent(csrf) } : headers; }
+function apiFetch(url, options = {}) { return fetch(url, { ...options, credentials: 'include', headers: apiHeaders(options.headers || {}) }); }
 let userEmail = '';
 
 // Verifica se já está logado, se sim, redireciona para o painel.
-if (localStorage.getItem(TOKEN_KEY)) {
-  window.location.replace('dashboard.html');
-}
 
 function showMessage(step, text, type) {
   const msgEl = document.getElementById(`msg${step}`);
@@ -192,7 +193,7 @@ async function requestReset(event) {
   btn.textContent = 'A enviar...';
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+    const res = await apiFetch(`${API_BASE}/api/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -225,7 +226,7 @@ async function submitReset(event) {
   btn.textContent = 'A redefinir...';
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+    const res = await apiFetch(`${API_BASE}/api/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail, code, newPassword })
