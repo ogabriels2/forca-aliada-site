@@ -131,7 +131,7 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   <div class="card" id="signupCard">
 
     <div id="view-loggedin">
-      <img id="avatar-loggedin" class="avatar-preview" src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+      <img id="avatar-loggedin" class="avatar-preview" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
       <h1 id="loggedin-name"></h1>
       <p class="subtitle">Você já possui uma conta ativa.</p>
       <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
@@ -188,7 +188,7 @@ const TOKEN_KEY   = 'fa_token';
 
 let pendingEmail = '';
 
-// Verifica se a pessoa foi redirecionada do login com um e-mail pendente de verificação (ex: signup.html?verify=email@exemplo.com)
+// Se a pessoa for redirecionada do login para cá com um e-mail pendente
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.has('verify')) {
   pendingEmail = urlParams.get('verify');
@@ -197,19 +197,26 @@ if (urlParams.has('verify')) {
   document.getElementById('view-verify').style.display = 'block';
 }
 
-// ── Preview dinâmica da skin ──────────────────────────────────
+// ── Preview dinâmica da skin (padrão absoluto: Steve) ─────────
 let skinTimer;
 document.getElementById('f-minecraft').addEventListener('input', () => {
   const name = document.getElementById('f-minecraft').value.trim();
   const av   = document.getElementById('avatar');
   clearTimeout(skinTimer);
+  
   if (name.length >= 3) {
     av.classList.remove('inactive');
-    skinTimer = setTimeout(() => { av.src = `https://minotar.net/helm/${encodeURIComponent(name)}/100.png`; }, 400);
+    skinTimer = setTimeout(() => { 
+      av.src = `https://minotar.net/helm/${encodeURIComponent(name)}/100.png`; 
+    }, 400);
   } else {
     av.src = 'https://minotar.net/helm/Steve/100.png';
     av.classList.add('inactive');
   }
+});
+// Evitar imagens quebradas
+document.getElementById('avatar').addEventListener('error', function() {
+  this.src = 'https://minotar.net/helm/Steve/100.png';
 });
 
 // ── Mostrar Mensagens ─────────────────────────────────────────
@@ -224,12 +231,12 @@ function showMessage(text, type, isHtml = false, isVerify = false) {
   
   if (type === 'error') {
     card.classList.remove('shake-animation');
-    void card.offsetWidth; // Reflow forçado para reiniciar a animação
+    void card.offsetWidth; // Reflow
     card.classList.add('shake-animation');
   }
 }
 
-// ── Criação da Conta (Passo 1) ────────────────────────────────
+// ── Criação da Conta & Login Silencioso ───────────────────────
 async function handleSignup(event) {
   event.preventDefault();
   const username      = document.getElementById('f-username').value.trim();
@@ -262,15 +269,47 @@ async function handleSignup(event) {
       throw new Error(data.error || 'Erro ao criar conta.');
     }
 
-    // SUCESSO - O Backend agora retorna requireVerification: true
-    // Vamos esconder o form de cadastro e mostrar o form de verificação
-    pendingEmail = data.email || email; // Pega o email retornado ou o digitado
+    // Sucesso - Mostra a tela de verificação
+    pendingEmail = data.email || email;
     document.getElementById('view-signup').style.display = 'none';
     document.getElementById('verify-email-display').textContent = pendingEmail;
     document.getElementById('view-verify').style.display = 'block';
 
   } catch (err) {
     if (err.message === 'ACCOUNT_EXISTS') {
+      
+      // LOGIN SILENCIOSO: Tenta logar em background para ver se a conta está apenas não-verificada
+      try {
+        const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: email, password })
+        });
+        const loginData = await loginRes.json();
+
+        // Se retornar 403 (Email não verificado), o backend envia automaticamente um novo código!
+        if (loginRes.status === 403 && loginData.error === 'unverified_email') {
+          pendingEmail = loginData.email || email;
+          document.getElementById('view-signup').style.display = 'none';
+          document.getElementById('verify-email-display').textContent = pendingEmail;
+          document.getElementById('view-verify').style.display = 'block';
+          
+          showMessage('Enviamos um novo código para o seu e-mail.', 'success', false, true);
+          return; // Para a execução, o fluxo de erro não é mostrado
+        }
+
+        // Se retornar 200, a pessoa recriou uma conta que já existia e a senha estava certa!
+        if (loginRes.ok) {
+          localStorage.setItem(TOKEN_KEY, loginData.token);
+          localStorage.setItem(SESSION_KEY, JSON.stringify(loginData.user));
+          location.href = 'dashboard.html';
+          return;
+        }
+      } catch (e) {
+        // Falhas na rede do login silencioso são ignoradas para mostrar a mensagem de erro padrão
+      }
+
+      // Mensagem normal de conta existente (se a senha for diferente da original)
       showMessage('Este e-mail ou utilizador já está registado.<br><a href="login.html" style="color:var(--accent); text-decoration:underline; display:inline-block; margin-top:8px;">Fazer login com esta conta?</a>', 'error', true);
     } else { 
       showMessage(err.message, 'error'); 
@@ -280,7 +319,7 @@ async function handleSignup(event) {
   }
 }
 
-// ── Verificação do Código PIN (Passo 2) ───────────────────────
+// ── Verificação do Código PIN ─────────────────────────────────
 async function handleVerify(event) {
   event.preventDefault();
   const code = document.getElementById('v-code').value.trim();
@@ -301,7 +340,7 @@ async function handleVerify(event) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Código inválido ou expirado.');
 
-    // CONTA VERIFICADA! Salva o login no navegador e entra direto
+    // Salva o login no navegador e entra direto
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
@@ -323,10 +362,9 @@ function forceLogout() {
   document.getElementById('view-signup').style.display = 'block';
 }
 
-// ── Auto-Login (Verifica se já tem sessão ativa) ──────────────
+// ── Auto-Login ────────────────────────────────────────────────
 (async () => {
   const token = localStorage.getItem(TOKEN_KEY);
-  // Se não tem token ou se está a meio de uma verificação (veio pela URL), não tenta auto-login
   if (!token || pendingEmail) return; 
 
   try {
@@ -345,11 +383,14 @@ function forceLogout() {
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
-    // Oculta o formulário e mostra a tela de "Já possui sessão"
     const skinUrl = session.minecraftName 
       ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` 
-      : 'assets/images/logo.JPG';
-    document.getElementById('avatar-loggedin').src = skinUrl;
+      : 'https://minotar.net/helm/Steve/100.png';
+      
+    const avatarImg = document.getElementById('avatar-loggedin');
+    avatarImg.src = skinUrl;
+    avatarImg.onerror = () => { avatarImg.src = 'https://minotar.net/helm/Steve/100.png'; };
+    
     document.getElementById('loggedin-name').textContent = session.username;
     document.getElementById('view-loggedin').style.display = 'block';
     document.getElementById('view-signup').style.display   = 'none';
