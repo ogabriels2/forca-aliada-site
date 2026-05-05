@@ -512,17 +512,18 @@ const API_BASE       = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY    = 'fa_session';
 const TOKEN_KEY      = 'fa_token';
 
-function getCookie(name) { return document.cookie.split(';').map(p => p.trim()).find(p => p.startsWith(`${name}=`))?.slice(name.length + 1) || ''; }
-function apiHeaders(headers = {}) { const csrf = getCookie('fa_csrf'); return csrf ? { ...headers, 'X-CSRF-Token': decodeURIComponent(csrf) } : headers; }
-function apiFetch(url, options = {}) { return fetch(url, { ...options, credentials: 'include', headers: apiHeaders(options.headers || {}) }); }
-function escapeHtml(value) { return String(value ?? '').replace(/[&<>"]|'/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
-function safeMcName(value) { const name = String(value || '').trim(); return /^[a-z0-9_]{1,16}$/i.test(name) ? name : 'Steve'; }
-function safeMcUrl(value, size = 100) { return `https://minotar.net/helm/${encodeURIComponent(safeMcName(value))}/${size}.png`; }
-
 // ── Autenticação ────────────────────────────────────────────
 async function getSession() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+  
   try {
-    const res = await apiFetch(`${API_BASE}/api/me`);
+    const res = await fetch(`${API_BASE}/api/me`, { 
+      headers: { 'Authorization': `Bearer ${token}` } 
+    });
     if (!res.ok) throw new Error('Sessão expirada');
     
     const me = await res.json();
@@ -548,14 +549,14 @@ function renderAuthMenu(session) {
 
   if (session) {
     const skinUrl = session.minecraftName
-      ? safeMcUrl(session.minecraftName, 100)
+      ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
       : 'assets/images/logo.JPG';
 
     container.innerHTML = `
       <div class="user-menu-wrapper">
         <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
-          <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar de ${escapeHtml(session.username)}">
-          <span>${escapeHtml(session.username)}</span>
+          <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar de ${session.username}">
+          <span>${session.username}</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="user-dropdown" id="user-dropdown-menu">
@@ -567,7 +568,7 @@ function renderAuthMenu(session) {
     mobileContainer.innerHTML = `
       <a href="dashboard.html" style="font-size:20px;display:flex;flex-direction:column;align-items:center;gap:8px;">
         <img src="${skinUrl}" style="width:48px;height:48px;border-radius:50%;" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
-        Painel (${escapeHtml(session.username)})
+        Painel (${session.username})
       </a>
       <a href="#" onclick="doLogout();return false;" style="font-size:16px;color:var(--danger);margin-top:10px;">Encerrar Sessão</a>`;
   } else {
@@ -583,7 +584,6 @@ function toggleUserDropdown(event) {
 }
 
 async function doLogout() {
-  try { await apiFetch(`${API_BASE}/api/auth/logout`, { method: 'POST' }); } catch {}
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
   renderAuthMenu(null);

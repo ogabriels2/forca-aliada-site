@@ -185,10 +185,6 @@ const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
-function getCookie(name) { return document.cookie.split(';').map(p => p.trim()).find(p => p.startsWith(`${name}=`))?.slice(name.length + 1) || ''; }
-function apiHeaders(headers = {}) { const csrf = getCookie('fa_csrf'); return csrf ? { ...headers, 'X-CSRF-Token': decodeURIComponent(csrf) } : headers; }
-function apiFetch(url, options = {}) { return fetch(url, { ...options, credentials: 'include', headers: apiHeaders(options.headers || {}) }); }
-
 function showView(isLoggedIn, sessionData) {
   const viewLoggedin = document.getElementById('view-loggedin');
   const viewLogin    = document.getElementById('view-login');
@@ -247,7 +243,7 @@ async function handleLogin(event) {
   btn.textContent = 'Aguarde...';
 
   try {
-    const res = await apiFetch(`${API_BASE}/api/auth/login`, {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ login: loginVal, password: passVal }),
@@ -264,7 +260,7 @@ async function handleLogin(event) {
 
     if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
 
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Autenticado com sucesso! Redirecionando...', 'success');
@@ -288,8 +284,17 @@ function forceLogout() {
 
 // ── Verificação Automática ao Carregar a Página ──
 (async () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  
+  if (!token) {
+    showView(false, null);
+    return;
+  }
+
   try {
-    const res = await apiFetch(`${API_BASE}/api/me`);
+    const res = await fetch(`${API_BASE}/api/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     
     if (!res.ok) throw new Error('Sessão expirada');
     
