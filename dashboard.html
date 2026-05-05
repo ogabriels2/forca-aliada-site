@@ -786,7 +786,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
       document.getElementById('ai-username').value = siteAcc.username; document.getElementById('ai-email').value = siteAcc.email; document.getElementById('ai-mc').value = siteAcc.minecraft_name || ''; document.getElementById('ai-role').value = siteAcc.role; document.getElementById('ai-newpassword').value = '';
       setAdminEditMode(false); document.getElementById('modal-site-account').style.display = 'block'; document.getElementById('modal-create-account').style.display = 'none';
     } else {
-      currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = playerName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
+      currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = displayMcName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
       const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); body.classList.remove('open'); chevron.classList.remove('open');
       document.getElementById('modal-create-account').style.display = 'block'; document.getElementById('modal-site-account').style.display = 'none';
     }
