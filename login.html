@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login | Força Aliada</title>
+<style>
+:root {
+  --bg-color: #f5f5f7;
+  --card-bg: rgba(255,255,255,0.85);
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --danger: #ff3b30;
+  --success: #34c759;
+  --border: #d2d2d7;
+  --radius-lg: 24px;
+  --radius-md: 12px;
+  --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+a { text-decoration: none; color: inherit; }
+
+header {
+  position: fixed; top: 0; width: 100%; padding: 12px 5%;
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+.brand-link:hover { opacity: 0.8; }
+.logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
+.logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+.nav-cta {
+  color: var(--accent) !important; font-weight: 600 !important;
+  background: rgba(0,113,227,0.08); padding: 8px 16px;
+  border-radius: 980px; transition: background 0.2s; font-size: 14px;
+}
+.nav-cta:hover { background: rgba(0,113,227,0.15); }
+
+.login-wrapper {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 100px 20px 40px;
+}
+.card {
+  width: 100%; max-width: 400px;
+  background: var(--card-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-radius: var(--radius-lg); padding: 40px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  border: 1px solid rgba(255,255,255,0.4);
+  text-align: center; animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.avatar-preview {
+  width: 80px; height: 80px; border-radius: 20px; background: #e5e5ea;
+  margin: 0 auto 20px; object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;
+}
+h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; }
+p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
+.form-group { margin-bottom: 16px; text-align: left; }
+input[type="text"], input[type="password"] {
+  width: 100%; padding: 14px 16px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: rgba(255,255,255,0.9);
+  font-size: 15px; transition: all 0.2s; outline: none; color: var(--text-primary);
+  font-family: inherit;
+}
+input::placeholder { color: #a1a1a6; }
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
+button.main-btn {
+  width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
+  background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
+button.main-btn:active { transform: scale(0.98); }
+button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
+.footer-text a { color: var(--text-primary); font-weight: 600; }
+.footer-text a:hover { color: var(--accent); text-decoration: underline; }
+.msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
+.error { color: var(--danger); }
+.success { color: var(--success); }
+#view-loggedin { display: none; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60%  { transform: translateX(-5px); }
+  40%, 80%  { transform: translateX(5px); }
+}
+.shake-animation { animation: shake 0.4s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="brand-link">
+    <img src="assets/images/logo.JPG"
+         onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+         alt="FA Logo" class="logo-img">
+    <div class="logo-text">Força Aliada</div>
+  </a>
+  <div id="header-right">
+    <a href="signup.html" class="nav-cta">Criar conta</a>
+  </div>
+</header>
+
+<div class="login-wrapper">
+  <div class="card" id="loginCard">
+
+    <div id="view-loggedin">
+      <img id="avatar-loggedin" class="avatar-preview"
+           src="assets/images/logo.JPG"
+           onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+           alt="Seu avatar">
+      <h1 id="loggedin-username"></h1>
+      <p class="subtitle">Você já está conectado.</p>
+      <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+      <div class="footer-text">
+        <a onclick="forceLogout()" style="color:var(--danger);cursor:pointer;">Entrar com outra conta</a>
+      </div>
+    </div>
+
+    <div id="view-login">
+      <img id="avatar-login" class="avatar-preview"
+           src="assets/images/logo.JPG"
+           onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+           alt="Logotipo">
+      <h1>Entrar</h1>
+      <p class="subtitle">Acesse o painel administrativo.</p>
+
+      <form id="login-form" autocomplete="on" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <input
+            id="login-input"
+            name="username"
+            type="text"
+            placeholder="Usuário ou e-mail"
+            autocomplete="username"
+            required
+          >
+        </div>
+        <div class="form-group">
+          <input
+            id="pass-input"
+            name="password"
+            type="password"
+            placeholder="Senha"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+        <button type="submit" id="btn-login" class="main-btn">Iniciar Sessão</button>
+      </form>
+
+      <div id="msg" class="msg" role="alert" aria-live="assertive"></div>
+
+      <div class="footer-text">
+        <a href="recuperar.html" style="font-weight: 500; margin-bottom: 12px; display: inline-block;">Esqueci-me da palavra-passe</a><br>
+        Não possui acesso? <a href="signup.html">Criar conta</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API_BASE    = 'https://forca-aliada-site.onrender.com';
+const SESSION_KEY = 'fa_session';
+const TOKEN_KEY   = 'fa_token';
+
+function showView(isLoggedIn, sessionData) {
+  const viewLoggedin = document.getElementById('view-loggedin');
+  const viewLogin    = document.getElementById('view-login');
+  const headerRight  = document.getElementById('header-right');
+
+  if (isLoggedIn && sessionData) {
+    const skinUrl = sessionData.minecraftName
+      ? `https://minotar.net/helm/${encodeURIComponent(sessionData.minecraftName)}/100.png`
+      : 'assets/images/logo.JPG';
+
+    document.getElementById('avatar-loggedin').src = skinUrl;
+    document.getElementById('loggedin-username').textContent = sessionData.username;
+    viewLoggedin.style.display = 'block';
+    viewLogin.style.display    = 'none';
+    
+    headerRight.replaceChildren();
+    const hello = document.createElement('span');
+    hello.style.fontSize = '14px';
+    hello.style.color = 'var(--text-secondary)';
+    hello.append('Olá, ');
+    const strong = document.createElement('strong');
+    strong.textContent = sessionData.username;
+    hello.appendChild(strong);
+    headerRight.appendChild(hello);
+  } else {
+    viewLoggedin.style.display = 'none';
+    viewLogin.style.display    = 'block';
+  }
+}
+
+function showMessage(text, type) {
+  const msgEl = document.getElementById('msg');
+  const card  = document.getElementById('loginCard');
+  msgEl.textContent = text;
+  msgEl.className   = `msg ${type}`;
+  if (type === 'error') {
+    card.classList.remove('shake-animation');
+    void card.offsetWidth; // Reflow para reiniciar a animação
+    card.classList.add('shake-animation');
+  }
+}
+
+async function handleLogin(event) {
+  event.preventDefault(); 
+  
+  const loginVal = document.getElementById('login-input').value.trim();
+  const passVal  = document.getElementById('pass-input').value;
+  const btn      = document.getElementById('btn-login');
+
+  if (!loginVal || !passVal) {
+    showMessage('Por favor, preencha todos os campos.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Aguarde...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ login: loginVal, password: passVal }),
+    });
+    
+    const data = await res.json();
+
+    // Lógica para interceptar contas não verificadas
+    if (res.status === 403 && data.error === 'unverified_email') {
+      showMessage('Conta não verificada. A redirecionar...', 'error');
+      setTimeout(() => { location.href = `signup.html?verify=${encodeURIComponent(data.email)}`; }, 1500);
+      return;
+    }
+
+    if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
+
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+
+    showMessage('Autenticado com sucesso! Redirecionando...', 'success');
+    
+    setTimeout(() => { location.href = 'dashboard.html'; }, 600);
+
+  } catch (err) {
+    const errorMsg = err.message === 'invalid credentials' ? 'Usuário ou senha incorretos.' : err.message;
+    showMessage(errorMsg, 'error');
+    document.getElementById('pass-input').value = '';
+    btn.disabled    = false;
+    btn.textContent = 'Iniciar Sessão';
+  }
+}
+
+function forceLogout() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  showView(false, null);
+}
+
+// ── Verificação Automática ao Carregar a Página ──
+(async () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  
+  if (!token) {
+    showView(false, null);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!res.ok) throw new Error('Sessão expirada');
+    
+    const me = await res.json();
+    const sessionData = {
+      username:      me.username,
+      email:         me.email,
+      minecraftName: me.minecraft_name,
+      role:          me.role,
+    };
+    
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+    showView(true, sessionData);
+    
+  } catch {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    showView(false, null);
+  }
+})();
+</script>
+</body>
+</html>
