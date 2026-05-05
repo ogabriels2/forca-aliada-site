@@ -80,10 +80,10 @@ input::placeholder { color: #a1a1a6; }
 input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
 button.main-btn {
   width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
-  background: var(--text-primary); color: #fff; font-size: 15px; font-weight: 600;
+  background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
   cursor: pointer; transition: all 0.2s; font-family: inherit;
 }
-button.main-btn:hover { background: #000; transform: scale(1.02); }
+button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
 button.main-btn:active { transform: scale(0.98); }
 button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
@@ -161,7 +161,13 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 <script>
 const API_BASE = 'https://forca-aliada-site.onrender.com';
+const TOKEN_KEY = 'fa_token';
 let userEmail = '';
+
+// Verifica se já está logado, se sim, redireciona para o painel.
+if (localStorage.getItem(TOKEN_KEY)) {
+  window.location.replace('dashboard.html');
+}
 
 function showMessage(step, text, type) {
   const msgEl = document.getElementById(`msg${step}`);
@@ -170,7 +176,7 @@ function showMessage(step, text, type) {
   msgEl.className   = `msg ${type}`;
   if (type === 'error') {
     card.classList.remove('shake-animation');
-    void card.offsetWidth;
+    void card.offsetWidth; // Força o reflow
     card.classList.add('shake-animation');
   }
 }
@@ -195,7 +201,7 @@ async function requestReset(event) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao pedir código.');
 
-    userEmail = email; // Guarda para o passo 2
+    userEmail = email; // Guarda o email para o passo 2
     document.getElementById('step1').style.display = 'none';
     document.getElementById('step2').style.display = 'block';
     
