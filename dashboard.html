@@ -300,7 +300,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
   padding: 16px;
 }
 
-/* ── CREATE ACCOUNT PANEL ── */
+/* ── CREATE ACCOUNT PANEL (RECOLHÍVEL) ── */
 .create-account-panel {
   background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
   border: 1px solid rgba(0,113,227,0.15);
@@ -816,7 +816,8 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
             <div class="create-form-msg" id="create-form-msg" style="font-size:13px;"></div>
             <button class="btn-primary" onclick="submitCreateAccount()" id="btn-create-account">Criar Cadastro</button>
           </div>
-          </div></div>
+          </div>
+        </div>
       </div>
 
       <div class="stats-grid" id="stats-grid">
@@ -867,34 +868,28 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
-
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return '';
-}
-
-function csrfHeaders(extra = {}) {
-  const csrf = getCookie('fa_csrf');
-  return csrf ? { ...extra, 'X-CSRF-Token': csrf } : extra;
-}
+const TOKEN_KEY   = 'fa_token';
 
 let session = null;
+const token = localStorage.getItem(TOKEN_KEY);
+
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
-if (!session) {
+if (!token || !session) {
   window.location.replace('login.html');
 }
 
 (async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/api/me`, { 
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     if (!res.ok) throw new Error('Token inválido');
     const me = await res.json();
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
     window.location.replace('login.html');
     return;
@@ -1096,14 +1091,13 @@ async function changePass() {
   const np  = document.getElementById('newpass').value;
   const msg = document.getElementById('profile-msg');
 
-  if (!cur)            { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
+  if (!cur)                 { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
   if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
 
   try {
     const res = await fetch(`${API_BASE}/api/me/password`, {
       method: 'PUT',
-      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ currentPassword: cur, newPassword: np })
     });
     if (!res.ok) {
@@ -1125,7 +1119,7 @@ async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
   const [apiData, histData] = await Promise.all([
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/snapshots/latest`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    fetch(`${API_BASE}/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
   ]);
   globalApiData = apiData;
   globalHistData = histData;
@@ -1570,7 +1564,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
 
   const [historyData] = await Promise.all([
     fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, {
-      credentials: 'include'
+      headers: { 'Authorization': `Bearer ${token}` }
     }).then(r => r.json()).catch(() => [])
   ]);
 
@@ -1775,9 +1769,8 @@ function setAdminEditMode(isEditing) {
 }
 
 function showAdminDeleteConfirm() {
-  document.getElementById('admin-delete-normal').style.display  = 'block';
-  document.getElementById('admin-delete-confirm').style.display = 'flex';
   document.getElementById('admin-delete-normal').style.display  = 'none';
+  document.getElementById('admin-delete-confirm').style.display = 'flex';
 }
 
 function hideAdminDeleteConfirm() {
@@ -1809,8 +1802,7 @@ async function saveAdminUser() {
     onConfirm:   async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, {
         method: 'PUT',
-        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(body)
       });
       if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
@@ -1839,7 +1831,7 @@ async function executeAdminDelete() {
     destructive: true,
     onConfirm:   async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, {
-        method: 'DELETE', headers: csrfHeaders(), credentials: 'include'
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         await fetchAdminUsers();
@@ -1874,10 +1866,9 @@ async function submitCreateAccount() {
   btn.disabled    = true;
   btn.textContent = 'Criando...';
 
-  const res = await fetch(`${API_BASE}/api/admin/users`, {
+  const res = await fetch(`${API_BASE}/api/auth/signup`, {
     method: 'POST',
-    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({ username, email, minecraftName, password, role })
   });
 
@@ -1916,7 +1907,7 @@ async function submitCreateAccount() {
 // ── Admin: gerenciar lista ──────────────────────────────────────
 async function fetchAdminUsers() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (res.ok) {
       globalAdminUsers = await res.json();
       renderAdminTab();
@@ -2116,11 +2107,11 @@ function closeModal() {
   document.body.style.overflow = '';
   currentModalPlayerName = null;
 }
+
 function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
+
 async function logout() {
-  try {
-    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', headers: csrfHeaders(), credentials: 'include' });
-  } catch {}
+  localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
   location.href = 'login.html';
 }
