@@ -394,6 +394,8 @@ let session = null;
 const legacyToken = localStorage.getItem(TOKEN_KEY);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
+if (!session) { window.location.replace('login.html'); }
+
 function getCookie(name) {
   return document.cookie.split(';').map(p => p.trim()).find(p => p.startsWith(`${name}=`))?.slice(name.length + 1) || '';
 }

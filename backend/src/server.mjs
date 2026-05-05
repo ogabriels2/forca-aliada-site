@@ -339,7 +339,7 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
 
   const { rows } = await pool.query('SELECT * FROM password_resets WHERE email = $1 AND expires_at > NOW() ORDER BY id DESC LIMIT 1', [email]);
   const reset = rows[0];
-  if (!reset || reset.attempts >= 5 || !safeEqual(reset.code_hash, hashCode(code))) {
+  if (!reset || reset.attempts >= 5 || reset.code_hash !== hashCode(code)) {
     await pool.query('UPDATE password_resets SET attempts = attempts + 1 WHERE email = $1 AND expires_at > NOW()', [email]);
     return res.status(400).json({ error: 'Código inválido ou expirado' });
   }
@@ -387,7 +387,7 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
 
   const { rows } = await pool.query('SELECT * FROM email_verifications WHERE email = $1 AND expires_at > NOW() ORDER BY id DESC LIMIT 1', [email]);
   const verification = rows[0];
-  if (!verification || verification.attempts >= 5 || !safeEqual(verification.code_hash, hashCode(code))) {
+  if (!verification || verification.attempts >= 5 || verification.code_hash !== hashCode(code)) {
     await pool.query('UPDATE email_verifications SET attempts = attempts + 1 WHERE email = $1 AND expires_at > NOW()', [email]);
     return res.status(400).json({ error: 'Código inválido ou expirado.' });
   }
@@ -511,10 +511,6 @@ app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'user not found' });
     }
-    if (id === Number(req.user.sub) && current.role !== role) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'cannot change own role' });
-    }
     if (current.role === 'full' && role !== 'full' && await countFullAdmins(client) <= 1) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'cannot demote last full admin' });
@@ -541,7 +537,6 @@ app.put('/api/admin/users/:id/password', auth, requireFull, async (req, res) => 
   const result = await pool.query('UPDATE users SET password_hash=$1, token_version = token_version + 1 WHERE id=$2', [hash, id]);
   if (result.rowCount === 0) return res.status(404).json({ error: 'user not found' });
   await logAudit(req.user.sub, 'admin.user.password', id);
-  if (id === Number(req.user.sub)) clearAuthCookies(res);
   res.json({ ok: true });
 });
 
