@@ -185,7 +185,6 @@ const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
-// Controla as vistas da página (formulário ou "já logado")
 function showView(isLoggedIn, sessionData) {
   const viewLoggedin = document.getElementById('view-loggedin');
   const viewLogin    = document.getElementById('view-login');
@@ -229,7 +228,7 @@ function showMessage(text, type) {
 }
 
 async function handleLogin(event) {
-  event.preventDefault(); // Impede o recarregamento da página
+  event.preventDefault(); 
   
   const loginVal = document.getElementById('login-input').value.trim();
   const passVal  = document.getElementById('pass-input').value;
@@ -251,22 +250,27 @@ async function handleLogin(event) {
     });
     
     const data = await res.json();
+
+    // Lógica para interceptar contas não verificadas
+    if (res.status === 403 && data.error === 'unverified_email') {
+      showMessage('Conta não verificada. A redirecionar...', 'error');
+      setTimeout(() => { location.href = `signup.html?verify=${encodeURIComponent(data.email)}`; }, 1500);
+      return;
+    }
+
     if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
 
-    // SALVAMENTO SEGURO: Guarda o Token e os dados básicos no LocalStorage
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
     showMessage('Autenticado com sucesso! Redirecionando...', 'success');
     
-    // Pequeno atraso para o utilizador ver a mensagem de sucesso
     setTimeout(() => { location.href = 'dashboard.html'; }, 600);
 
   } catch (err) {
     const errorMsg = err.message === 'invalid credentials' ? 'Usuário ou senha incorretos.' : err.message;
     showMessage(errorMsg, 'error');
     document.getElementById('pass-input').value = '';
-  } finally {
     btn.disabled    = false;
     btn.textContent = 'Iniciar Sessão';
   }
@@ -288,7 +292,6 @@ function forceLogout() {
   }
 
   try {
-    // Tenta validar o token existente pedindo os dados do utilizador ao backend
     const res = await fetch(`${API_BASE}/api/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -307,7 +310,6 @@ function forceLogout() {
     showView(true, sessionData);
     
   } catch {
-    // Se o token for inválido/expirado, limpa o armazenamento e mostra login
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
     showView(false, null);
