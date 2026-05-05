@@ -67,6 +67,7 @@ header {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 .avatar-preview {
   width: 80px; height: 80px; border-radius: 20px; background: #e5e5ea;
   margin: 0 auto 20px; object-fit: cover;
@@ -86,6 +87,10 @@ input {
 }
 input::placeholder { color: #a1a1a6; }
 input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
+
+.pin-input { font-size: 24px; font-weight: 600; letter-spacing: 6px; text-align: center; text-transform: uppercase; }
+
+/* Botão principal em Azul (--accent) */
 button.main-btn {
   width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
   background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
@@ -94,6 +99,7 @@ button.main-btn {
 button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
 button.main-btn:active { transform: scale(0.98); }
 button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
 .footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
 .footer-text a { color: var(--text-primary); font-weight: 600; }
 .footer-text a:hover { color: var(--accent); text-decoration: underline; }
@@ -101,8 +107,8 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .error   { color: var(--danger); }
 .success { color: var(--success); }
 
-/* View quando já logado */
-#view-loggedin { display: none; }
+/* Vistas ocultas por defeito */
+#view-loggedin, #view-verify { display: none; }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
@@ -116,9 +122,7 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/logo.JPG"
-         onerror="this.src='https://minotar.net/helm/Steve/100.png'"
-         alt="FA Logo" class="logo-img">
+    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
     <div class="logo-text">Força Aliada</div>
   </a>
   <a href="login.html" class="nav-cta">Fazer login</a>
@@ -128,10 +132,7 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   <div class="card" id="signupCard">
 
     <div id="view-loggedin">
-      <img id="avatar-loggedin" class="avatar-preview"
-           src="assets/images/logo.JPG"
-           onerror="this.src='https://minotar.net/helm/Steve/100.png'"
-           alt="Seu avatar">
+      <img id="avatar-loggedin" class="avatar-preview" src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
       <h1 id="loggedin-name"></h1>
       <p class="subtitle">Você já possui uma conta ativa.</p>
       <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
@@ -141,63 +142,41 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
     </div>
 
     <div id="view-signup">
-      <img id="avatar" class="avatar-preview inactive"
-           src="https://minotar.net/helm/Steve/100.png"
-           alt="Prévia da skin">
+      <img id="avatar" class="avatar-preview inactive" src="https://minotar.net/helm/Steve/100.png" alt="Prévia da skin">
       <h1>Criar sua conta</h1>
       <p class="subtitle">Acesso ao painel da Staff Força Aliada</p>
 
       <form id="signup-form" autocomplete="on" onsubmit="handleSignup(event)" novalidate>
         <div class="form-group">
-          <input
-            id="f-username"
-            name="username"
-            type="text"
-            placeholder="Nome de usuário"
-            autocomplete="username"
-            minlength="3" maxlength="32"
-            required
-          >
+          <input id="f-username" name="username" type="text" placeholder="Nome de usuário" autocomplete="username" minlength="3" maxlength="32" required>
         </div>
         <div class="form-group">
-          <input
-            id="f-email"
-            name="email"
-            type="email"
-            placeholder="E-mail de contato"
-            autocomplete="email"
-            required
-          >
+          <input id="f-email" name="email" type="email" placeholder="E-mail de contato" autocomplete="email" required>
         </div>
         <div class="form-group">
-          <input
-            id="f-minecraft"
-            name="minecraft"
-            type="text"
-            placeholder="Nome exato no Minecraft"
-            autocomplete="off"
-            required
-          >
+          <input id="f-minecraft" name="minecraft" type="text" placeholder="Nome exato no Minecraft" autocomplete="off" required>
         </div>
         <div class="form-group">
-          <input
-            id="f-password"
-            name="password"
-            type="password"
-            placeholder="Crie uma senha (mín. 8 caracteres)"
-            autocomplete="new-password"
-            minlength="8"
-            required
-          >
+          <input id="f-password" name="password" type="password" placeholder="Crie uma senha (mín. 8 caracteres)" autocomplete="new-password" minlength="8" required>
         </div>
         <button type="submit" id="btn-signup" class="main-btn">Criar Conta</button>
       </form>
-
       <div id="msg" class="msg" role="alert" aria-live="assertive"></div>
+      <div class="footer-text">Já faz parte da equipe? <a href="login.html">Faça login aqui</a></div>
+    </div>
 
-      <div class="footer-text">
-        Já faz parte da equipe? <a href="login.html">Faça login aqui</a>
-      </div>
+    <div id="view-verify">
+      <div style="font-size: 48px; margin-bottom: 12px;">✉️</div>
+      <h1>Verifique seu e-mail</h1>
+      <p class="subtitle">Enviamos um código de 6 dígitos para <strong id="verify-email-display"></strong>. Insira-o abaixo para ativar sua conta.</p>
+
+      <form id="verify-form" autocomplete="off" onsubmit="handleVerify(event)">
+        <div class="form-group">
+          <input id="v-code" class="pin-input" type="text" placeholder="000000" maxlength="6" required>
+        </div>
+        <button type="submit" id="btn-verify" class="main-btn">Verificar Conta</button>
+      </form>
+      <div id="msg-verify" class="msg" role="alert"></div>
     </div>
 
   </div>
@@ -208,6 +187,17 @@ const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
+let pendingEmail = '';
+
+// Verifica se a pessoa foi redirecionada do login com um e-mail pendente de verificação
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('verify')) {
+  pendingEmail = urlParams.get('verify');
+  document.getElementById('view-signup').style.display = 'none';
+  document.getElementById('verify-email-display').textContent = pendingEmail;
+  document.getElementById('view-verify').style.display = 'block';
+}
+
 // ── Preview dinâmica da skin ──────────────────────────────────
 let skinTimer;
 document.getElementById('f-minecraft').addEventListener('input', () => {
@@ -216,21 +206,19 @@ document.getElementById('f-minecraft').addEventListener('input', () => {
   clearTimeout(skinTimer);
   if (name.length >= 3) {
     av.classList.remove('inactive');
-    skinTimer = setTimeout(() => {
-      av.src = `https://minotar.net/helm/${encodeURIComponent(name)}/100.png`;
-    }, 400);
+    skinTimer = setTimeout(() => { av.src = `https://minotar.net/helm/${encodeURIComponent(name)}/100.png`; }, 400);
   } else {
     av.src = 'https://minotar.net/helm/Steve/100.png';
     av.classList.add('inactive');
   }
 });
 
-// ── Mensagens de feedback (suporta HTML para links) ───────────
-function showMessage(text, type, isHtml = false) {
-  const msgEl = document.getElementById('msg');
+// ── Mostrar Mensagens ─────────────────────────────────────────
+function showMessage(text, type, isHtml = false, isVerify = false) {
+  const msgEl = document.getElementById(isVerify ? 'msg-verify' : 'msg');
   const card  = document.getElementById('signupCard');
   
-  if (isHtml) msgEl.innerHTML = text;
+  if (isHtml) msgEl.innerHTML = text; 
   else msgEl.textContent = text;
   
   msgEl.className = `msg ${type}`;
@@ -242,36 +230,22 @@ function showMessage(text, type, isHtml = false) {
   }
 }
 
-// ── Envio do formulário ───────────────────────────────────────
+// ── Criação da Conta ──────────────────────────────────────────
 async function handleSignup(event) {
   event.preventDefault();
-
   const username      = document.getElementById('f-username').value.trim();
   const email         = document.getElementById('f-email').value.trim();
   const minecraftName = document.getElementById('f-minecraft').value.trim();
   const password      = document.getElementById('f-password').value;
   const btn           = document.getElementById('btn-signup');
 
-  // Validações client-side
-  if (!username || !email || !minecraftName || !password) {
-    showMessage('Preencha todos os campos.', 'error');
-    return;
-  }
-  if (username.length < 3) {
-    showMessage('O nome de usuário deve ter ao menos 3 caracteres.', 'error');
-    return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showMessage('E-mail inválido.', 'error');
-    return;
-  }
-  if (password.length < 8) {
-    showMessage('A senha deve ter ao menos 8 caracteres.', 'error');
-    return;
-  }
+  if (!username || !email || !minecraftName || !password) { showMessage('Preencha todos os campos.', 'error'); return; }
+  if (username.length < 3) { showMessage('O nome de usuário deve ter ao menos 3 caracteres.', 'error'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage('E-mail inválido.', 'error'); return; }
+  if (password.length < 8) { showMessage('A senha deve ter ao menos 8 caracteres.', 'error'); return; }
 
-  btn.disabled    = true;
-  btn.textContent = 'Criando conta...';
+  btn.disabled = true; 
+  btn.textContent = 'Aguarde...';
 
   try {
     const res = await fetch(`${API_BASE}/api/auth/signup`, {
@@ -283,70 +257,105 @@ async function handleSignup(event) {
     const data = await res.json();
     
     if (!res.ok) {
-      // Se a conta já existir (Status 409)
       if (res.status === 409 || data.error === 'username/email already exists') {
         throw new Error('ACCOUNT_EXISTS');
       }
       throw new Error(data.error || 'Erro ao criar conta.');
     }
 
-    showMessage('Conta criada com sucesso! Redirecionando para o login...', 'success');
-    setTimeout(() => { location.href = 'login.html'; }, 1500);
+    // Sucesso - Mostra a tela de verificação do PIN
+    pendingEmail = data.email;
+    document.getElementById('view-signup').style.display = 'none';
+    document.getElementById('verify-email-display').textContent = pendingEmail;
+    document.getElementById('view-verify').style.display = 'block';
 
   } catch (err) {
     if (err.message === 'ACCOUNT_EXISTS') {
-      showMessage(
-        'Este e-mail ou usuário já está cadastrado.<br><a href="login.html" style="color:var(--accent); text-decoration:underline; display:inline-block; margin-top:8px;">Fazer login com esta conta?</a>', 
-        'error', 
-        true
-      );
-    } else {
-      showMessage(err.message, 'error');
+      // Exibe a mensagem amigável perguntando se a pessoa quer fazer login
+      showMessage('Este e-mail ou utilizador já está registado.<br><a href="login.html" style="color:var(--accent); text-decoration:underline; display:inline-block; margin-top:8px;">Fazer login com esta conta?</a>', 'error', true);
+    } else { 
+      showMessage(err.message, 'error'); 
     }
-    
-    btn.disabled    = false;
+    btn.disabled = false; 
     btn.textContent = 'Criar Conta';
   }
 }
 
-// ── Logout forçado ────────────────────────────────────────────
-async function forceLogout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  document.getElementById('view-loggedin').style.display = 'none';
-  document.getElementById('view-signup').style.display   = 'block';
-}
+// ── Verificação do Código PIN ─────────────────────────────────
+async function handleVerify(event) {
+  event.preventDefault();
+  const code = document.getElementById('v-code').value.trim();
+  const btn  = document.getElementById('btn-verify');
 
-// ── Ao carregar: verifica se já está logado ───────────────────
-(async () => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) return; // Se não tem token, mantém a view de criar conta
+  if (!code || code.length !== 6) { showMessage('Digite o código de 6 dígitos.', 'error', false, true); return; }
+
+  btn.disabled = true; 
+  btn.textContent = 'Verificando...';
 
   try {
-    const res = await fetch(`${API_BASE}/api/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+    const res = await fetch(`${API_BASE}/api/auth/verify-email`, {
+      method:  'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: pendingEmail, code }),
     });
-    if (!res.ok) throw new Error();
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Código inválido ou expirado.');
+
+    // Salva o login no navegador e entra direto
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+
+    showMessage('Conta ativada com sucesso! A entrar...', 'success', false, true);
+    setTimeout(() => { location.href = 'dashboard.html'; }, 1000);
+
+  } catch (err) {
+    showMessage(err.message, 'error', false, true);
+    btn.disabled = false; 
+    btn.textContent = 'Verificar Conta';
+  }
+}
+
+// ── Logout Manual ─────────────────────────────────────────────
+async function forceLogout() {
+  localStorage.removeItem(TOKEN_KEY); 
+  localStorage.removeItem(SESSION_KEY);
+  document.getElementById('view-loggedin').style.display = 'none'; 
+  document.getElementById('view-signup').style.display = 'block';
+}
+
+// ── Auto-Login (Verifica se já tem sessão ativa) ──────────────
+(async () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  // Se não tem token ou se está a meio de uma verificação (veio pela URL), não tenta auto-login
+  if (!token || pendingEmail) return; 
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, { 
+      headers: { 'Authorization': `Bearer ${token}` } 
+    });
+    
+    if (!res.ok) throw new Error('Token expirado');
     
     const me = await res.json();
-    const session = {
-      username:      me.username,
-      email:         me.email,
-      minecraftName: me.minecraft_name,
-      role:          me.role,
+    const session = { 
+      username: me.username, 
+      email: me.email, 
+      minecraftName: me.minecraft_name, 
+      role: me.role 
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
-    // Mostra view "já logado"
-    const skinUrl = session.minecraftName
-      ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
+    // Oculta o formulário e mostra a tela de "Já possui sessão"
+    const skinUrl = session.minecraftName 
+      ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` 
       : 'assets/images/logo.JPG';
     document.getElementById('avatar-loggedin').src = skinUrl;
     document.getElementById('loggedin-name').textContent = session.username;
     document.getElementById('view-loggedin').style.display = 'block';
     document.getElementById('view-signup').style.display   = 'none';
   } catch {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY); 
     localStorage.removeItem(SESSION_KEY);
   }
 })();
