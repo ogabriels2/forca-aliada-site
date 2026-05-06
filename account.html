@@ -17,7 +17,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
 .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
 
-/* Menu Dropdown Superior */
+/* Novo Dropdown Superior Direito (Premium) */
 .user-menu-wrapper { position: relative; display: inline-block; }
 .user-btn { display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px; transition: var(--transicao); border: 1px solid transparent; user-select: none; }
 .user-btn:hover { background: rgba(0,0,0,0.08); }
@@ -57,8 +57,6 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
 .nav-item.logout-btn { margin-top: auto; color: var(--danger); background: transparent; }
 .nav-item.logout-btn:hover { background: rgba(255,59,48,0.1); }
-
-.mobile-sidebar-toggle { display: none; }
 
 /* Conteúdo */
 .content-area { min-width: 0; }
@@ -152,6 +150,11 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 input:checked + .slider { background-color: var(--success); }
 input:checked + .slider:before { transform: translateX(20px); }
 
+/* Danger Zone */
+.danger-zone { border: 1px solid rgba(255,59,48,0.3); border-radius: var(--radius-md); padding: 24px; background: rgba(255,59,48,0.02); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.danger-zone-text h4 { margin: 0 0 4px; color: var(--danger); font-size: 16px; }
+.danger-zone-text p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+
 /* Empty States */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 24px; text-align: center; }
 .empty-icon { width: 64px; height: 64px; border-radius: 50%; background: #f2f2f7; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
@@ -180,19 +183,15 @@ input:checked + .slider:before { transform: translateX(20px); }
 .confirm-pw-btn-confirm { background: var(--accent); color: #fff; }
 .confirm-pw-btn-confirm.btn-danger { background: var(--danger); }
 
+/* Footer */
+footer { text-align: center; padding: 32px 20px; font-size: 13px; color: var(--text-secondary); margin-top: auto; border-top: 1px solid var(--border); }
+
 @media (max-width: 768px) {
   .account-layout { grid-template-columns: 1fr; gap: 24px; margin-top: 24px; }
-  
-  .mobile-sidebar-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 14px 16px; border-radius: var(--radius-md); background: var(--card-bg); border: 1px solid var(--border); font-size: 15px; font-weight: 600; color: var(--text-primary); cursor: pointer; margin-bottom: 8px; transition: var(--transicao); }
-  .mobile-sidebar-toggle svg { transition: transform 0.3s; color: var(--text-secondary); }
-  .mobile-sidebar-toggle.active svg { transform: rotate(180deg); }
-  
-  .sidebar { display: none; flex-direction: column; height: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px; gap: 4px; position: static; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-  .sidebar.show { display: flex; animation: fadeIn 0.2s ease; }
-  
-  .nav-item { width: 100%; justify-content: flex-start; }
-  .nav-item.highlight { margin-top: 4px; margin-left: 0; }
-  .nav-item.logout-btn { margin-top: 4px; }
+  .sidebar { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 8px; height: auto; }
+  .nav-item { white-space: nowrap; padding: 10px 14px; }
+  .nav-item.highlight { margin-top: 0; margin-left: auto; }
+  .nav-item.logout-btn { margin-top: 0; }
 }
 </style>
 </head>
@@ -235,45 +234,38 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 <main class="main-content">
   <div class="account-layout">
-    <div>
-      <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()">
-        <span id="mobile-sidebar-active-text">Informações Pessoais</span>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    <aside class="sidebar">
+      <button class="nav-item active" id="nav-btn-perfil" onclick="switchTab('perfil', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Informações Pessoais
+      </button>
+      <button class="nav-item" onclick="switchTab('atividade', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        Sua Atividade
+      </button>
+      <button class="nav-item" onclick="switchTab('conexoes', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Conexões & Redes
+      </button>
+      <button class="nav-item" onclick="switchTab('seguranca', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Segurança
+      </button>
+      <button class="nav-item" onclick="switchTab('amigos', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Amigos
       </button>
       
-      <aside class="sidebar">
-        <button class="nav-item active" id="nav-btn-perfil" onclick="switchTab('perfil', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          Informações Pessoais
-        </button>
-        <button class="nav-item" onclick="switchTab('atividade', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-          Sua Atividade
-        </button>
-        <button class="nav-item" onclick="switchTab('conexoes', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          Conexões & Redes
-        </button>
-        <button class="nav-item" onclick="switchTab('seguranca', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          Segurança
-        </button>
-        <button class="nav-item" onclick="switchTab('amigos', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          Amigos
-        </button>
-        
-        <button class="nav-item highlight" id="nav-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg>
-          Painel da Staff
-        </button>
+      <button class="nav-item highlight" id="nav-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg>
+        Painel da Staff
+      </button>
 
-        <button class="nav-item logout-btn" onclick="logout()">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          Sair da Conta
-        </button>
-      </aside>
-    </div>
+      <button class="nav-item logout-btn" onclick="logout()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        Sair da Conta
+      </button>
+    </aside>
 
     <div class="content-area">
       
@@ -477,12 +469,12 @@ input:checked + .slider:before { transform: translateX(20px); }
           </div>
         </div>
 
-        <div class="card">
-          <h3 class="card-title" style="color: var(--danger);">Excluir Conta</h3>
-          <div style="display:flex; flex-direction:column; gap:16px; max-width:100%;">
-            <p style="margin:0; font-size:14px; color:var(--text-secondary); line-height:1.5;">Ao excluir sua conta, todos os seus dados vinculados ao site serão perdidos de forma permanente. Esta ação não pode ser desfeita.</p>
-            <button class="btn-primary" style="background:var(--danger); width:fit-content;" onclick="showDeleteAccountModal()">Excluir minha conta</button>
+        <div class="danger-zone">
+          <div class="danger-zone-text">
+            <h4>Excluir Conta</h4>
+            <p>Depois de excluir sua conta, não há volta. Por favor, tenha certeza.</p>
           </div>
+          <button class="btn-primary" style="background:var(--danger); margin:0;" onclick="showDeleteAccountModal()">Excluir minha conta</button>
         </div>
       </section>
 
@@ -505,6 +497,11 @@ input:checked + .slider:before { transform: translateX(20px); }
     </div>
   </div>
 </main>
+
+<footer>
+  <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
+  <p>Contato: <a href="mailto:forcaaliada@ogabriels.com" style="color:var(--text-primary); font-weight:500;">forcaaliada@ogabriels.com</a></p>
+</footer>
 
 <div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
   <div class="confirm-pw-sheet" role="dialog" aria-modal="true">
@@ -560,12 +557,6 @@ let myChartInstance = null;
   fetchMyActivity();
 })();
 
-// Lógica de Toggle do Mobile
-function toggleMobileSidebar() {
-  document.querySelector('.mobile-sidebar-toggle').classList.toggle('active');
-  document.querySelector('.sidebar').classList.toggle('show');
-}
-
 // Navegação de Abas
 function switchTab(tabId, btnElement) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
@@ -573,15 +564,6 @@ function switchTab(tabId, btnElement) {
   
   document.getElementById(`tab-${tabId}`).classList.add('active');
   btnElement.classList.add('active');
-
-  // Atualiza o texto do botão mobile e recolhe o menu
-  const mobileToggle = document.querySelector('.mobile-sidebar-toggle');
-  const sidebar = document.querySelector('.sidebar');
-  if (mobileToggle && sidebar) {
-    document.getElementById('mobile-sidebar-active-text').textContent = btnElement.textContent.trim();
-    sidebar.classList.remove('show');
-    mobileToggle.classList.remove('active');
-  }
   
   if(tabId !== 'perfil') toggleEditMode(false);
 }
@@ -931,6 +913,5 @@ function renderMyTable(history, activeSession) {
   tbody.innerHTML = rows;
 }
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"02d45179931d4058825bff08c3fd243b","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
