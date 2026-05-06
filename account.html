@@ -126,7 +126,8 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .connection-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; transition: all 0.2s; }
 .connection-item:hover { border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
 .connection-info { display: flex; align-items: center; gap: 16px; }
-.connection-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+.connection-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; flex-shrink: 0; }
+.connection-icon svg { width: 22px; height: 22px; }
 .connection-icon.discord { background: #5865F2; }
 .connection-icon.xbox { background: #107C10; }
 .connection-icon.google { background: #fff; border: 1px solid var(--border); }
@@ -143,6 +144,28 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .community-card.discord { background: linear-gradient(to bottom, #ffffff, #f5f6ff); border-color: rgba(88,101,242,0.2); }
 .community-card.insta { background: linear-gradient(to bottom, #ffffff, #fff5f8); border-color: rgba(225,48,108,0.2); }
 .community-card.wpp { background: linear-gradient(to bottom, #ffffff, #f0fdf4); border-color: rgba(37,211,102,0.2); }
+
+/* Danger Zone Card (Excluir Conta) */
+.danger-zone-card {
+  background: #fffcfc;
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.danger-zone-text h3 { margin: 0 0 6px; color: var(--danger); font-size: 17px; font-weight: 600; }
+.danger-zone-text p { margin: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+.danger-zone-btn {
+  background: var(--danger); color: #fff; padding: 12px 24px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transicao); white-space: nowrap; font-family: inherit;
+}
+.danger-zone-btn:hover { background: #e0352b; transform: scale(1.02); }
+@media (max-width: 640px) {
+  .danger-zone-card { flex-direction: column; align-items: flex-start; padding: 20px; }
+  .danger-zone-btn { width: 100%; text-align: center; }
+}
 
 /* Controles de Toggle */
 .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
@@ -180,26 +203,31 @@ input:checked + .slider:before { transform: translateX(20px); }
 .confirm-pw-btn-confirm { background: var(--accent); color: #fff; }
 .confirm-pw-btn-confirm.btn-danger { background: var(--danger); }
 
-/* Responsividade e Dropdown Mobile */
+/* Responsividade e Dropdown Mobile Melhorado */
 @media (max-width: 768px) {
-  .account-layout { grid-template-columns: 1fr; margin-top: 24px; position: relative; }
-  .sidebar-mobile-wrapper { display: block; position: relative; z-index: 100; margin-bottom: 24px; }
-  .mobile-menu-btn { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.04); font-weight: 600; font-size: 15px; cursor: pointer; }
+  .account-layout { grid-template-columns: 1fr; margin-top: 16px; gap: 16px; position: relative; }
+  .sidebar-mobile-wrapper { display: block; position: relative; z-index: 100; margin-bottom: 12px; }
+  .mobile-menu-btn { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03); font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s; }
+  .mobile-menu-btn:active { background: #f9f9f9; transform: scale(0.98); }
   .mobile-menu-btn svg { width: 18px; height: 18px; color: var(--text-secondary); transition: transform 0.3s; }
   .mobile-menu-btn.active svg { transform: rotate(180deg); }
   
-  .sidebar { display: none; flex-direction: column; position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: #fff; border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.12); border: 1px solid var(--border); padding: 8px; z-index: 101; height: auto; }
-  .sidebar.show { display: flex; }
-  .nav-item { padding: 12px 16px; margin: 2px 0; }
-  .nav-item.highlight { margin-top: 8px; margin-left: 0; }
-  .nav-item.logout-btn { margin-top: 8px; }
+  .sidebar { display: none; flex-direction: column; position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04); padding: 6px; z-index: 101; height: auto; }
+  .sidebar.show { display: flex; animation: slideDown 0.2s cubic-bezier(0.165, 0.84, 0.44, 1); }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .nav-item { padding: 12px 14px; margin: 2px 0; font-size: 14px; border-radius: 10px; }
+  .nav-item.highlight { margin-top: 4px; margin-left: 0; }
+  .nav-item.logout-btn { margin-top: 4px; }
+  .page-header { margin-bottom: 20px; }
 }
 
-/* Footer */
-footer { text-align: center; padding: 32px 20px; font-size: 13px; color: var(--text-secondary); margin-top: auto; border-top: 1px solid var(--border); }
+/* Footer (Branco com Links Interativos) */
+footer { background: #ffffff; text-align: center; padding: 32px 20px; font-size: 13px; color: var(--text-secondary); margin-top: auto; border-top: 1px solid var(--border); }
+footer p { margin: 0 0 10px 0; }
 footer a { color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
-footer a:hover { color: var(--text-primary); }
-.footer-links { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+footer a:hover { color: var(--text-primary); text-decoration: underline; }
+.footer-links { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .footer-dot { color: #d2d2d7; }
 </style>
 </head>
@@ -423,7 +451,7 @@ footer a:hover { color: var(--text-primary); }
           <div class="connection-item">
             <div class="connection-info">
               <div class="connection-icon google">
-                <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
               </div>
               <div class="connection-text">
                 <h4>Google</h4>
@@ -484,10 +512,12 @@ footer a:hover { color: var(--text-primary); }
           </div>
         </div>
 
-        <div class="card" style="border-color: rgba(255,59,48,0.3); background: rgba(255,59,48,0.02);">
-          <h3 class="card-title" style="color: var(--danger); margin-bottom: 8px;">Excluir Conta</h3>
-          <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.5;">Ao excluir sua conta, todos os seus dados vinculados ao site serão perdidos de forma permanente. Esta ação não pode ser desfeita.</p>
-          <button class="btn-primary" style="background: var(--danger); margin: 0;" onclick="showDeleteAccountModal()">Excluir minha conta</button>
+        <div class="danger-zone-card">
+          <div class="danger-zone-text">
+            <h3>Excluir Conta</h3>
+            <p>Ao excluir sua conta, todos os seus dados vinculados ao site serão perdidos de forma permanente. Esta ação não pode ser desfeita.</p>
+          </div>
+          <button class="danger-zone-btn" onclick="showDeleteAccountModal()">Excluir minha conta</button>
         </div>
       </section>
 
@@ -518,7 +548,7 @@ footer a:hover { color: var(--text-primary); }
     <span class="footer-dot">&bull;</span>
     <a href="#">Termos de Uso</a>
     <span class="footer-dot">&bull;</span>
-    <a href="#">Contato</a>
+    <a href="mailto:forcaaliada@ogabriels.com">Contato</a>
   </div>
 </footer>
 
