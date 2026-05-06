@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minha Conta | Força Aliada</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 :root { --bg-color: #f5f5f7; --card-bg: #ffffff; --text-primary: #1d1d1f; --text-secondary: #86868b; --accent: #0071e3; --accent-hover: #0077ed; --danger: #ff3b30; --success: #34c759; --border: rgba(0,0,0,0.08); --radius-lg: 20px; --radius-md: 12px; --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
 * { box-sizing: border-box; }
@@ -28,13 +29,13 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
 
 /* Layout da Conta */
-.account-layout { max-width: 1100px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 260px 1fr; gap: 40px; align-items: start; }
+.account-layout { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 260px 1fr; gap: 40px; align-items: start; }
 
 /* Menu Lateral */
 .sidebar { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 100px; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 15px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; border: none; background: transparent; text-align: left; font-family: inherit; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; border: none; background: transparent; text-align: left; font-family: inherit; }
 .nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text-primary); }
-.nav-item.active { background: #e3f2fd; color: var(--accent); font-weight: 600; }
+.nav-item.active { background: #e3f2fd; color: var(--accent); }
 .nav-item.highlight { background: linear-gradient(135deg, rgba(0,113,227,0.1) 0%, rgba(48,176,199,0.1) 100%); color: var(--accent); border: 1px solid rgba(0,113,227,0.2); margin-top: 16px; }
 .nav-item.highlight:hover { background: linear-gradient(135deg, rgba(0,113,227,0.15) 0%, rgba(48,176,199,0.15) 100%); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,113,227,0.1); }
 .nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
@@ -50,6 +51,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .page-header p { margin: 0; color: var(--text-secondary); font-size: 15px; }
 
 .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); margin-bottom: 24px; }
+.card-title { margin: 0 0 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
 
 /* Perfil & Formulários */
 .profile-overview { display: flex; align-items: center; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
@@ -59,6 +61,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .pill.owner { background: #f4e8ff; color: #af52de; }
 .pill.full { background: #e3f2fd; color: var(--accent); }
 .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
+.pill.success { background: #e8f8f0; color: var(--success); }
 
 .data-list { display: flex; flex-direction: column; }
 .data-row { display: flex; flex-direction: column; gap: 4px; padding: 16px 0; border-bottom: 1px solid var(--border); transition: background 0.2s; }
@@ -82,6 +85,38 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .btn-secondary { padding: 12px 24px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: #e5e5ea; color: var(--text-primary); transition: all 0.2s; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; }
 .btn-secondary:hover { background: #d1d1d6; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); padding: 10px 18px; border-radius: 980px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-outline:hover { border-color: var(--text-primary); }
+
+/* Estatísticas e Tabela */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-box { background: var(--bg-color); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border); text-align: center; }
+.stat-box span { display: block; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
+.stat-box strong { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.chart-container { width: 100%; height: 280px; margin-bottom: 24px; }
+
+.history-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.history-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; }
+.history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+.history-table tr:hover td { background: rgba(0,0,0,0.02); }
+.week-separator td { padding: 16px 12px 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); background: #fafafa; }
+
+/* Seções de Conexões/Preferências */
+.connection-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; transition: all 0.2s; }
+.connection-item:hover { border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+.connection-info { display: flex; align-items: center; gap: 16px; }
+.connection-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+.connection-icon.discord { background: #5865F2; }
+.connection-text h4 { margin: 0 0 4px; font-size: 15px; }
+.connection-text p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+
+/* Controles de Toggle */
+.toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e5e5ea; transition: .3s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+input:checked + .slider { background-color: var(--success); }
+input:checked + .slider:before { transform: translateX(20px); }
 
 /* Empty States */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 24px; text-align: center; }
@@ -89,7 +124,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .empty-state h3 { margin: 0; font-size: 18px; font-weight: 600; }
 .empty-state p { margin: 0; color: var(--text-secondary); font-size: 14px; max-width: 300px; line-height: 1.5; }
 
-/* Senha Modal */
+/* Modal Senha */
 .confirm-pw-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s; }
 .confirm-pw-overlay.active { opacity: 1; visibility: visible; }
 .confirm-pw-sheet { background: #fff; border-radius: 20px; padding: 28px; width: 100%; max-width: 380px; box-shadow: 0 32px 64px rgba(0,0,0,0.22); transform: scale(0.93) translateY(8px); transition: transform 0.3s; }
@@ -142,6 +177,14 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       Informações Pessoais
     </button>
+    <button class="nav-item" onclick="switchTab('atividade', this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+      Sua Atividade
+    </button>
+    <button class="nav-item" onclick="switchTab('conexoes', this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Conexões & Ajustes
+    </button>
     <button class="nav-item" onclick="switchTab('seguranca', this)">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
       Segurança
@@ -152,7 +195,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
     </button>
     
     <button class="nav-item highlight" id="nav-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg>
       Acessar Painel da Staff
     </button>
   </aside>
@@ -204,6 +247,101 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
       </div>
     </section>
 
+    <section id="tab-atividade" class="tab-pane">
+      <div class="page-header">
+        <h1>Sua Atividade</h1>
+        <p>Acompanhe seu engajamento no servidor, tempo jogado e histórico de conexões.</p>
+      </div>
+
+      <div class="stats-grid" id="my-stats">
+        <div class="stat-box"><span>Tempo Total Logado</span><strong>-</strong></div>
+        <div class="stat-box"><span>Total de Sessões</span><strong>-</strong></div>
+        <div class="stat-box"><span>Média por Sessão</span><strong>-</strong></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Tempo Jogado (Últimos 30 Dias)</span>
+        </div>
+        <div class="chart-container"><canvas id="myActivityChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Histórico de Conexões</div>
+        <div style="overflow-x:auto;">
+          <table class="history-table">
+            <thead>
+              <tr><th>Data / Entrada</th><th>Saída</th><th>Duração</th></tr>
+            </thead>
+            <tbody id="my-history-body">
+              <tr><td colspan="3" style="text-align:center;color:var(--text-secondary);">Carregando histórico...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-conexoes" class="tab-pane">
+      <div class="page-header">
+        <h1>Conexões & Preferências</h1>
+        <p>Vincule contas de outras plataformas e gerencie como nós nos comunicamos com você.</p>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Contas Vinculadas</h3>
+        
+        <div class="connection-item">
+          <div class="connection-info">
+            <div class="connection-icon discord">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+            </div>
+            <div class="connection-text">
+              <h4>Discord</h4>
+              <p>Integre seu perfil para ganhar cargos no servidor e acessar chats exclusivos.</p>
+            </div>
+          </div>
+          <button class="btn-outline" onclick="alert('Funcionalidade em desenvolvimento! Em breve você poderá vincular sua conta do Discord.')">Vincular Conta</button>
+        </div>
+        
+        <div class="connection-item">
+          <div class="connection-info">
+            <div class="connection-icon" style="background: #9146FF;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+            </div>
+            <div class="connection-text">
+              <h4>Twitch</h4>
+              <p>Mostre para a comunidade quando você estiver fazendo stream no servidor.</p>
+            </div>
+          </div>
+          <button class="btn-outline" onclick="alert('Integração com a Twitch estará disponível em atualizações futuras.')">Vincular Conta</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Preferências</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid var(--border);">
+          <div class="connection-text">
+            <h4>E-mails Importantes</h4>
+            <p>Avisos sobre segurança, redefinição de senha e confirmações de conta.</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked disabled>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0;">
+          <div class="connection-text">
+            <h4>Novidades e Atualizações</h4>
+            <p>Receber e-mails sobre novidades do servidor, eventos e wipedays.</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked id="pref-news">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
     <section id="tab-seguranca" class="tab-pane">
       <div class="page-header">
         <h1>Segurança</h1>
@@ -211,7 +349,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
       </div>
 
       <div class="card">
-        <h3 style="margin:0 0 20px; font-size:18px;">Alterar Senha</h3>
+        <h3 class="card-title">Alterar Senha</h3>
         <div style="display:flex; flex-direction:column; gap:16px; max-width:400px;">
           <div class="data-row" style="padding:0; border:none;">
             <span class="data-label">Senha Atual</span>
@@ -237,7 +375,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
         <div class="empty-state">
           <div class="empty-icon">🤝</div>
           <h3>Novidade a caminho!</h3>
-          <p>Em breve você poderá adicionar amigos, ver quem está online no momento e compartilhar estatísticas. Fique ligado nas próximas atualizações do painel.</p>
+          <p>Em breve você poderá adicionar amigos, ver quem está online no momento e comparar estatísticas e horas de jogo. Fique ligado!</p>
           <button class="btn-secondary" disabled style="margin-top: 12px; opacity: 0.5;">Aguarde as novidades</button>
         </div>
       </div>
@@ -276,6 +414,9 @@ try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch
 
 if (!token || !session) { window.location.replace('login.html'); }
 
+let myHistoryData = [];
+let myChartInstance = null;
+
 (async () => {
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -288,6 +429,7 @@ if (!token || !session) { window.location.replace('login.html'); }
   }
   document.body.style.visibility = 'visible';
   renderData();
+  fetchMyActivity();
 })();
 
 // Navegação de Abas
@@ -298,7 +440,6 @@ function switchTab(tabId, btnElement) {
   document.getElementById(`tab-${tabId}`).classList.add('active');
   btnElement.classList.add('active');
   
-  // Se mudar de aba, sai do modo edição do perfil
   if(tabId !== 'perfil') toggleEditMode(false);
 }
 
@@ -308,31 +449,25 @@ function renderData() {
   const displayMcName = session.minecraftName ? session.minecraftName : 'Não vinculada';
   const skinUrl = `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`;
   
-  // Topbar
   document.getElementById('nav-name').textContent = session.username;
   document.getElementById('nav-photo').src = skinUrl;
   
-  // Profile Hero
   document.getElementById('main-name').textContent = session.username;
   document.getElementById('main-photo').src = skinUrl;
   
-  // Read-only values
   document.getElementById('view-username').textContent = session.username;
   document.getElementById('view-email').textContent = session.email || '-';
   document.getElementById('view-mc').textContent = displayMcName;
 
-  // Inputs
   document.getElementById('edit-username').value = session.username;
   document.getElementById('edit-email').value = session.email || '';
   document.getElementById('edit-mc').value = session.minecraftName || '';
   
-  // Role Badge
   const pill = document.getElementById('role-pill');
   if (session.role === 'owner') { pill.textContent = 'Dono'; pill.className = 'pill owner'; }
   else if (session.role === 'full') { pill.textContent = 'Admin'; pill.className = 'pill full'; }
   else { pill.textContent = 'Acesso Restrito'; pill.className = 'pill limited'; }
 
-  // Exibe botão de Dashboard se tiver acesso
   if (session.role === 'owner' || session.role === 'full') {
     document.getElementById('nav-painel').style.display = 'flex';
   }
@@ -345,20 +480,17 @@ document.addEventListener('click', () => { document.getElementById('user-dropdow
 function toggleEditMode(isEditing) {
   const card = document.getElementById('profile-card');
   const msg = document.getElementById('profile-msg');
-  msg.textContent = ''; // Limpa mensagens de erro/sucesso
-  
-  if (isEditing) {
-    card.classList.add('edit-mode');
-  } else {
+  msg.textContent = ''; 
+  if (isEditing) { card.classList.add('edit-mode'); } 
+  else {
     card.classList.remove('edit-mode');
-    // Reseta valores não salvos
     document.getElementById('edit-username').value = session.username;
     document.getElementById('edit-email').value = session.email || '';
     document.getElementById('edit-mc').value = session.minecraftName || '';
   }
 }
 
-// Lógica de Confirmação de Senha Modal
+// Lógica de Modal e Salvar
 let _confirmPwCallback = null;
 function requirePassword(onConfirm) {
   _confirmPwCallback = onConfirm;
@@ -378,11 +510,9 @@ async function confirmPwSubmit() {
   const input = document.getElementById('confirm-pw-input'); const errEl = document.getElementById('confirm-pw-error'); const btn = document.getElementById('confirm-pw-submit-btn'); const pw = input.value;
   if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
   btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
-  
   if (_confirmPwCallback) { await _confirmPwCallback(pw); }
 }
 
-// Salvar Perfil
 function saveProfile() {
   const username = document.getElementById('edit-username').value.trim();
   const email = document.getElementById('edit-email').value.trim();
@@ -403,45 +533,180 @@ function saveProfile() {
       });
       if (!res.ok) {
          if (res.status === 401) throw new Error('Senha incorreta.');
-         throw new Error('Nome de usuário ou email já estão em uso por outra conta.');
+         throw new Error('Nome de usuário ou email já estão em uso.');
       }
       closeConfirmPw();
       session.username = username; session.email = email; session.minecraftName = mc;
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      renderData();
-      toggleEditMode(false);
+      renderData(); toggleEditMode(false);
       msg.textContent = 'Perfil atualizado com sucesso!'; msg.style.color = 'var(--success)';
       setTimeout(() => msg.textContent = '', 4000);
+      fetchMyActivity(); // Atualiza histórico se a conta MC mudou
     } catch (e) {
       if (e.message === 'Senha incorreta.') {
         errEl.textContent = 'Senha incorreta. Tente novamente.'; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
         btn.disabled = false; btn.textContent = 'Confirmar'; input.focus();
       } else {
-        closeConfirmPw();
-        msg.textContent = e.message; msg.style.color = 'var(--danger)';
+        closeConfirmPw(); msg.textContent = e.message; msg.style.color = 'var(--danger)';
       }
     }
   });
 }
 
-// Alterar Senha
 async function changePass() {
   const cur = document.getElementById('currentpass').value; const np = document.getElementById('newpass').value; const msg = document.getElementById('pw-msg');
   if (!cur) { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
   if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter no mínimo 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
-  
   try {
     const res = await fetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
     if (!res.ok) throw new Error('invalid');
     msg.textContent = 'Sua senha foi alterada com segurança!'; msg.style.color = 'var(--success)';
     document.getElementById('currentpass').value = ''; document.getElementById('newpass').value = '';
   } catch (e) {
-    msg.textContent = 'Senha atual incorreta. Tente novamente.'; msg.style.color = 'var(--danger)';
+    msg.textContent = 'Senha atual incorreta.'; msg.style.color = 'var(--danger)';
   }
   setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+
+// ---- HISTÓRICO & ATIVIDADE (NOVO) ----
+
+function formatTime(hoursFloat) {
+  if (!hoursFloat || hoursFloat <= 0) return '<1m';
+  const t = Math.floor(hoursFloat * 60); const d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
+  return [d > 0 ? `${d}d` : '', h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : ''].filter(Boolean).join(' ') || '<1m';
+}
+
+async function fetchMyActivity() {
+  if (!session.minecraftName) {
+    renderMyStats([], null); return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/me/history`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) {
+      const data = await res.json();
+      renderMyStats(data.history, data.activeSession);
+      renderMyChart(data.history, data.activeSession);
+      renderMyTable(data.history, data.activeSession);
+    }
+  } catch (e) { console.error('Erro ao buscar atividade'); }
+}
+
+function renderMyStats(history, activeSession) {
+  let totalHours = history.reduce((a, h) => a + (h.duration_hours || 0), 0);
+  if (activeSession) totalHours += (Date.now() - new Date(activeSession).getTime()) / 3600000;
+  const totalSessions = history.length + (activeSession ? 1 : 0);
+  
+  const statsDiv = document.getElementById('my-stats');
+  if (totalSessions === 0) {
+    statsDiv.innerHTML = `<div class="stat-box"><span>Tempo Total Logado</span><strong>0h</strong></div><div class="stat-box"><span>Total de Sessões</span><strong>0</strong></div><div class="stat-box"><span>Média por Sessão</span><strong>0h</strong></div>`;
+    return;
+  }
+  
+  statsDiv.innerHTML = `
+    <div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div>
+    <div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div>
+    <div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalHours / totalSessions)}</strong></div>
+  `;
+}
+
+function renderMyChart(history, activeSession) {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now - 30 * 86400000);
+  
+  // Agrupa horas por dia nos ultimos 30 dias
+  const daysMap = new Map();
+  for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
+    daysMap.set(d.toDateString(), 0);
+  }
+
+  const sessions = [...history.map(h => ({ start: new Date(h.entered_at), end: new Date(h.left_at) }))];
+  if (activeSession) sessions.push({ start: new Date(activeSession), end: now });
+
+  sessions.forEach(s => {
+    // simplificação para não quebrar dias no meio. (Para precisão exata usar algoritimo do admin, mas para o usuario isso basta)
+    const ds = s.start.toDateString();
+    if (daysMap.has(ds)) {
+      const durationMs = s.end.getTime() - s.start.getTime();
+      daysMap.set(ds, daysMap.get(ds) + durationMs);
+    }
+  });
+
+  const labels = []; const data = [];
+  daysMap.forEach((val, key) => {
+    const d = new Date(key);
+    labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+    data.push(val / 3600000); // converte ms pra horas
+  });
+
+  if (myChartInstance) myChartInstance.destroy();
+  const ctx = document.getElementById('myActivityChart').getContext('2d');
+  
+  myChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Horas Jogadas',
+        data,
+        backgroundColor: '#0071e3',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', bodyColor: '#86868b', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, cornerRadius: 10,
+          callbacks: { label: ctx => ` ${formatTime(ctx.raw)}` }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' } },
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false }, ticks: { font: { size: 11 }, color: '#86868b' } }
+      }
+    }
+  });
+}
+
+function renderMyTable(history, activeSession) {
+  const tbody = document.getElementById('my-history-body');
+  if (history.length === 0 && !activeSession) {
+    tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Sua conta do Minecraft não possui histórico no servidor.</span></div></td></tr>`;
+    return;
+  }
+
+  function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(), 0, 4); return `${d.getFullYear()}-W${Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7)}`; }
+  function getWeekLabel(dateStr) {
+    const d = new Date(dateStr), day = d.getDay() || 7, monday = new Date(d); monday.setDate(d.getDate() - day + 1); const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    const fmt = dt => dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); const now = new Date(), thisWeekMonday = new Date(now); thisWeekMonday.setDate(now.getDate() - (now.getDay() || 7) + 1); const lastWeekMonday = new Date(thisWeekMonday); lastWeekMonday.setDate(thisWeekMonday.getDate() - 7);
+    if (monday.toDateString() === thisWeekMonday.toDateString()) return 'Esta semana'; if (monday.toDateString() === lastWeekMonday.toDateString()) return 'Semana passada'; return `${fmt(monday)} – ${fmt(sunday)}`;
+  }
+
+  let rows = '';
+  let lastWeekKey = null;
+
+  if (activeSession) {
+    const liveDur = formatTime((Date.now() - new Date(activeSession).getTime()) / 3600000);
+    const ent = new Date(activeSession);
+    const eTxt = Date.now() - ent.getTime() < 60000 ? 'Agora mesmo' : ent.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    lastWeekKey = getWeekKey(activeSession);
+    rows += `<tr class="week-separator"><td colspan="3">${getWeekLabel(activeSession)}</td></tr>`;
+    rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${eTxt}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${liveDur}</strong></td></tr>`;
+  }
+
+  rows += history.map(h => {
+    const eAt = h.entered_at;
+    const weekKey = getWeekKey(eAt); let separator = '';
+    if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator"><td colspan="3">${getWeekLabel(eAt)}</td></tr>`; }
+    const d = new Date(eAt), l = new Date(h.left_at);
+    return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></td><td>${l.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${formatTime(h.duration_hours)}</td></tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows;
+}
 </script>
 </body>
 </html>
