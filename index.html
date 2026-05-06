@@ -59,7 +59,7 @@ ul { list-style: none; }
 .section-header h2 { font-size: 2.8rem; letter-spacing: -0.03em; margin-bottom: 12px; font-weight: 700; }
 .section-header p { color: var(--text-secondary); font-size: 1.2rem; line-height: 1.5; }
 
-/* --- HEADER --- */
+/* --- HEADER & NAVEGAÇÃO --- */
 header {
   position: fixed; top: 0; width: 100%; padding: 12px 5%;
   display: flex; justify-content: space-between; align-items: center;
@@ -70,41 +70,11 @@ header {
 .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; z-index: 1002; }
 .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); object-fit: cover; }
 .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
-nav ul { display: flex; gap: 28px; align-items: center; margin: 0; padding: 0; }
-nav a { font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: color 0.2s; }
-nav a:hover { color: var(--text-primary); }
-.nav-cta { color: var(--accent) !important; font-weight: 600 !important; background: rgba(0,113,227,0.08); padding: 8px 16px; border-radius: 980px; transition: background 0.2s; }
-.nav-cta:hover { background: rgba(0,113,227,0.15); }
+.desktop-nav ul { display: flex; gap: 28px; align-items: center; margin: 0; padding: 0; }
+.desktop-nav a { font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: color 0.2s; }
+.desktop-nav a:hover { color: var(--text-primary); }
 
-/* --- DROPDOWN USUÁRIO --- */
-.user-menu-wrapper { position: relative; display: inline-block; }
-.user-btn {
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
-  transition: all 0.2s ease; border: 1px solid transparent;
-}
-.user-btn:hover { background: rgba(0,0,0,0.08); }
-.user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-.user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
-.user-btn.active svg { transform: rotate(180deg); }
-.user-dropdown {
-  position: absolute; right: 0; top: calc(100% + 12px);
-  background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px);
-  border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05);
-  padding: 8px; display: flex; flex-direction: column; min-width: 180px;
-  opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-.user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
-.user-dropdown a, .user-dropdown button {
-  text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent;
-  font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
-  display: block; width: 100%;
-}
-.user-dropdown a:hover, .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
-.user-dropdown .danger { color: var(--danger); }
-.user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
+.header-actions { display: flex; align-items: center; gap: 16px; }
 
 /* Status pill */
 .status-pill {
@@ -114,6 +84,48 @@ nav a:hover { color: var(--text-primary); }
 }
 .status-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .dot { width: 8px; height: 8px; background: #999; border-radius: 50%; }
+
+/* --- DROPDOWN USUÁRIO (Premium) --- */
+.user-menu-wrapper { position: relative; display: inline-block; }
+.user-btn, .btn-login {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
+  transition: all 0.2s ease; border: 1px solid transparent; user-select: none;
+  color: var(--text-primary); font-weight: 600; font-size: 14px;
+}
+.btn-login { padding: 8px 16px; background: rgba(0,113,227,0.08); color: var(--accent); }
+.user-btn:hover, .btn-login:hover { background: rgba(0,0,0,0.08); }
+.btn-login:hover { background: rgba(0,113,227,0.15); }
+.user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
+.user-btn.active svg { transform: rotate(180deg); }
+
+.user-dropdown {
+  position: absolute; right: 0; top: calc(100% + 12px);
+  background: rgba(255,255,255,0.95); backdrop-filter: saturate(180%) blur(24px);
+  border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
+  padding: 8px; display: flex; flex-direction: column; min-width: 260px;
+  opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+.user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+
+.dropdown-header { padding: 12px 8px; display: flex; align-items: center; gap: 12px; }
+.dropdown-header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+.dropdown-header-info { display: flex; flex-direction: column; overflow: hidden; }
+.dropdown-header-info strong { font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.dropdown-header-info span { font-size: 13px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.dropdown-divider { height: 1px; background: var(--border); margin: 8px 0; }
+.dropdown-item {
+  text-align: left; padding: 10px 12px; border-radius: 8px; border: none; background: transparent;
+  font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
+  display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: inherit;
+}
+.dropdown-item svg { width: 16px; height: 16px; color: var(--text-secondary); }
+.dropdown-item:hover { background: rgba(0,0,0,0.05); }
+.dropdown-item.danger { color: var(--danger); }
+.dropdown-item.danger svg { color: var(--danger); }
+.dropdown-item.danger:hover { background: rgba(255,59,48,0.1); }
 
 /* --- MENU MOBILE --- */
 .mobile-menu-btn { display: none; font-size: 24px; cursor: pointer; z-index: 1002; background: none; border: none; }
@@ -254,8 +266,16 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   .bento-grid { grid-template-rows: auto; gap: 16px; }
   .bento-item { height: 250px; }
   .item-big { height: 400px; }
+  
+  /* Ajustes do Header Mobile */
+  .desktop-nav { display: none; }
+  .status-pill { display: none !important; }
+  .desktop-only-text { display: none !important; }
+  .user-btn, .btn-login { padding: 4px; }
+  .user-btn span { display: none; }
+  .user-btn svg { display: none; }
+  
   .mobile-menu-btn { display: block; }
-  nav, .status-pill { display: none; }
   .stats-strip { flex-direction: column; gap: 30px; }
   .connection-info { grid-template-columns: 1fr; }
   .devices-container { flex-direction: column; align-items: center; gap: 30px; }
@@ -275,7 +295,6 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
     <li><a href="#status" onclick="toggleMenu()" style="color: var(--accent);">Jogar Agora</a></li>
-    <li id="mobile-auth-container" style="margin-top: 20px; border-top: 1px solid #d2d2d7; padding-top: 20px;"></li>
   </ul>
   <div class="mobile-status-card" onclick="document.getElementById('status').scrollIntoView(); toggleMenu();">
     <div class="dot" id="mobile-status-dot"></div>
@@ -296,21 +315,28 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
          alt="FA Logo" class="logo-img">
     <div class="logo-text">Força Aliada</div>
   </a>
-  <nav aria-label="Navegação principal">
+  
+  <nav aria-label="Navegação principal" class="desktop-nav">
     <ul>
       <li><a href="#sobre">Legado</a></li>
       <li><a href="#cidades">Tríade</a></li>
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
-      <li id="auth-container"></li>
     </ul>
   </nav>
-  <div class="status-pill" onclick="document.getElementById('status').scrollIntoView();" role="button" tabindex="0" aria-label="Ver status do servidor">
-    <div class="dot" id="status-dot"></div>
-    <span id="header-players">Verificando...</span>
+
+  <div class="header-actions">
+    <div class="status-pill" onclick="document.getElementById('status').scrollIntoView();" role="button" tabindex="0" aria-label="Ver status do servidor">
+      <div class="dot" id="status-dot"></div>
+      <span id="header-players">Verificando...</span>
+    </div>
+    
+    <div id="auth-header-container">
+      </div>
+    
+    <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Abrir menu">&#9776;</button>
   </div>
-  <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Abrir menu">&#9776;</button>
 </header>
 
 <section class="hero reveal" id="inicio" aria-label="Início">
@@ -428,7 +454,6 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       </div>
     </div>
     <p style="margin-top: 24px; font-size: 13px; color: rgba(255,255,255,0.6);">Clique nos quadros para copiar o endereço.</p>
-    <button class="admin-entry" onclick="location.href='dashboard.html'">Painel da Staff</button>
   </div>
 </section>
 
@@ -486,7 +511,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   <button class="btn btn-primary" style="margin-top: 24px;" onclick="window.open('https://discord.gg/xZmRkB7PWd', '_blank')">Entrar no Discord</button>
   <div class="social-icons">
     <a href="https://whatsapp.com/channel/0029VbC3kNoAzNc1wXb0130e" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="WhatsApp">
-      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437-9.885-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767-.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437-9.885-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
     </a>
     <a href="https://instagram.com/forcaaliada" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Instagram">
       <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
@@ -507,7 +532,6 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 const DISPLAY_HOST   = 'fa.ogabriels.com';
 const API_JAVA_HOST  = 'fa.ogabriels.com';
 const BEDROCK_PORT   = '19132';
-// URL do backend Cloudflare Worker — atualize após o deploy
 const API_BASE       = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY    = 'fa_session';
 const TOKEN_KEY      = 'fa_token';
@@ -543,37 +567,56 @@ async function getSession() {
 }
 
 function renderAuthMenu(session) {
-  const container       = document.getElementById('auth-container');
-  const mobileContainer = document.getElementById('mobile-auth-container');
-  if (!container || !mobileContainer) return;
+  const container = document.getElementById('auth-header-container');
+  if (!container) return;
 
   if (session) {
     const skinUrl = session.minecraftName
       ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
-      : 'assets/images/logo.JPG';
+      : 'https://minotar.net/helm/Steve/100.png';
+
+    let adminLink = '';
+    if (session.role === 'full' || session.role === 'owner') {
+      adminLink = `
+        <a href="dashboard.html" class="dropdown-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg> Painel da Staff
+        </a>
+        <div class="dropdown-divider"></div>
+      `;
+    }
 
     container.innerHTML = `
       <div class="user-menu-wrapper">
         <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
           <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar de ${session.username}">
-          <span>${session.username}</span>
+          <span class="desktop-only-text">${session.username}</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="user-dropdown" id="user-dropdown-menu">
-          <a href="dashboard.html">Acessar Dashboard</a>
-          <button class="danger" onclick="doLogout()">Sair da Conta</button>
+          <div class="dropdown-header">
+            <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+            <div class="dropdown-header-info">
+              <strong>${session.username}</strong>
+              <span>${session.email || 'Sem e-mail'}</span>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a href="account.html" class="dropdown-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
+          </a>
+          <div class="dropdown-divider"></div>
+          ${adminLink}
+          <button class="dropdown-item danger" onclick="doLogout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Sair da Conta
+          </button>
         </div>
       </div>`;
-
-    mobileContainer.innerHTML = `
-      <a href="dashboard.html" style="font-size:20px;display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <img src="${skinUrl}" style="width:48px;height:48px;border-radius:50%;" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
-        Painel (${session.username})
-      </a>
-      <a href="#" onclick="doLogout();return false;" style="font-size:16px;color:var(--danger);margin-top:10px;">Encerrar Sessão</a>`;
   } else {
-    container.innerHTML = `<a href="login.html" class="nav-cta" style="margin-left:8px;">Entrar</a>`;
-    mobileContainer.innerHTML = `<a href="login.html" style="font-size:22px;color:var(--accent);">Acesso Staff</a>`;
+    container.innerHTML = `
+      <a href="login.html" class="btn-login">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+        <span class="desktop-only-text">Entrar</span>
+      </a>`;
   }
 }
 
@@ -587,7 +630,6 @@ async function doLogout() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
   renderAuthMenu(null);
-  document.getElementById('mobile-nav')?.classList.remove('active');
 }
 
 document.addEventListener('click', () => {
