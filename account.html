@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minha Conta | Força Aliada</title>
+<style>
+:root { --bg-color: #f5f5f7; --card-bg: #ffffff; --text-primary: #1d1d1f; --text-secondary: #86868b; --accent: #0071e3; --accent-hover: #0077ed; --danger: #ff3b30; --success: #34c759; --border: rgba(0,0,0,0.08); --radius-lg: 20px; --radius-md: 12px; --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
+* { box-sizing: border-box; }
+body { margin: 0; visibility: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+a { text-decoration: none; color: inherit; }
+header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); z-index: 1000; border-bottom: 1px solid var(--border); }
+.brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
+.brand-link:hover { opacity: 0.8; }
+.logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
+.logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+.user-menu-wrapper { position: relative; display: inline-block; }
+.user-btn { display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px; transition: all 0.2s; border: 1px solid transparent; user-select: none; }
+.user-btn:hover { background: rgba(0,0,0,0.08); }
+.user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.user-btn span { font-size: 14px; font-weight: 600; }
+.user-dropdown { position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05); padding: 8px; display: flex; flex-direction: column; min-width: 200px; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao); }
+.user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.user-dropdown button { text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s; display: block; width: 100%; font-family: inherit; }
+.user-dropdown button:hover { background: rgba(0,0,0,0.05); }
+.user-dropdown .danger { color: var(--danger); }
+.user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
+.container { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+.btn-primary { padding: 12px 24px; border: none; border-radius: 980px; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit; width: 100%; }
+.btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
+.card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 24px; }
+.profile-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; margin-bottom: 8px; }
+.profile-img { width: 96px; height: 96px; border-radius: 24px; object-fit: cover; background: #e5e5ea; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+.profile-info h2 { margin: 0 0 8px; font-size: 24px; font-weight: 700; }
+.pill { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 980px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.pill.owner   { background: #f4e8ff; color: #af52de; }
+.pill.full    { background: #e3f2fd; color: var(--accent); }
+.pill.limited { background: #f2f2f7; color: var(--text-secondary); }
+.input-group { display: flex; flex-direction: column; gap: 8px; }
+.input-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+input { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 15px; transition: all 0.2s; outline: none; font-family: inherit; }
+input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
+.accordion-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; padding: 16px; border-radius: var(--radius-md); cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--text-primary); transition: background 0.2s; border: 1px solid var(--border); }
+.accordion-btn:hover { background: rgba(0,0,0,0.02); }
+.accordion-btn .acc-arrow { transition: transform 0.3s; font-style: normal; font-size: 14px; color: var(--text-secondary); }
+.accordion-btn.open .acc-arrow { transform: rotate(180deg); }
+.accordion-body { overflow: hidden; max-height: 0; transition: max-height 0.35s cubic-bezier(0.165, 0.84, 0.44, 1), opacity 0.25s; opacity: 0; }
+.accordion-body.open { max-height: 400px; opacity: 1; }
+.accordion-inner { padding: 16px 0 0; display: flex; flex-direction: column; gap: 16px; }
+.dashboard-banner { display: none; background: linear-gradient(135deg, #0071e3 0%, #30b0c7 100%); border-radius: var(--radius-md); padding: 24px; color: #fff; text-align: center; margin-bottom: 24px; cursor: pointer; transition: transform 0.2s; }
+.dashboard-banner:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,113,227,0.3); }
+.dashboard-banner h3 { margin: 0 0 8px; font-size: 20px; }
+.dashboard-banner p { margin: 0; font-size: 14px; opacity: 0.9; }
+
+/* Confirm password overlay (copiado do painel) */
+.confirm-pw-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s; }
+.confirm-pw-overlay.active { opacity: 1; visibility: visible; }
+.confirm-pw-sheet { background: #fff; border-radius: 20px; padding: 28px; width: 100%; max-width: 380px; box-shadow: 0 32px 64px rgba(0,0,0,0.22); transform: scale(0.93) translateY(8px); transition: transform 0.3s; }
+.confirm-pw-overlay.active .confirm-pw-sheet { transform: scale(1) translateY(0); }
+.confirm-pw-icon { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 16px; flex-shrink: 0; background: rgba(0,113,227,0.1); }
+.confirm-pw-sheet h4 { margin: 0 0 6px; font-size: 17px; font-weight: 700; text-align: center; }
+.confirm-pw-sheet p  { margin: 0 0 20px; font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.45; }
+.pw-field-wrap { position: relative; margin-bottom: 8px; }
+.confirm-pw-sheet input { padding-right: 44px; }
+.pw-toggle-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; display: flex; align-items: center; }
+.confirm-pw-error-msg { font-size: 12px; color: var(--danger); font-weight: 500; min-height: 18px; margin-bottom: 16px; text-align: center; }
+.confirm-pw-actions { display: flex; gap: 10px; }
+.confirm-pw-actions button { flex: 1; padding: 13px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.18s; }
+.confirm-pw-btn-cancel { background: #f2f2f7; color: var(--text-primary); }
+.confirm-pw-btn-confirm { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-link">
+    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+    <div class="logo-text">Força Aliada</div>
+  </div>
+  <div class="user-menu-wrapper">
+    <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
+      <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+      <span id="nav-name">...</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+    <div class="user-dropdown" id="user-dropdown-menu">
+      <button class="danger" onclick="logout()">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div id="admin-banner" class="dashboard-banner" onclick="window.location.href='dashboard.html'">
+    <h3>📊 Acessar Painel da Staff</h3>
+    <p>Visualize as estatísticas do servidor, histórico de jogadores e gerenciamento da equipe.</p>
+  </div>
+
+  <div class="card">
+    <div class="profile-header">
+      <img id="photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img" alt="Foto de perfil">
+      <div class="profile-info">
+        <h2 id="name">Carregando...</h2>
+        <span id="role-pill" class="pill limited">Staff</span>
+      </div>
+    </div>
+    
+    <div style="margin-top: 8px;">
+      <div class="input-group"><label>Usuário de Login</label><input type="text" id="edit-username"></div>
+      <div class="input-group"><label>E-mail de Contato</label><input type="email" id="edit-email"></div>
+      <div class="input-group"><label>Conta Minecraft</label><input type="text" id="edit-mc"></div>
+      
+      <div id="profile-msg" style="font-size:13px; margin-top:12px; text-align:center; min-height: 18px;"></div>
+      <button class="btn-primary" onclick="saveProfile()" style="margin-top:12px;">Salvar Alterações</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">
+    
+    <div>
+      <button class="accordion-btn" id="security-acc-btn" onclick="toggleAccordion('security-acc-btn','security-acc-body')">
+        <span>🔒 Alterar Senha</span><i class="acc-arrow">▾</i>
+      </button>
+      <div class="accordion-body" id="security-acc-body">
+        <div class="accordion-inner">
+          <div class="input-group"><label>Senha Atual</label><input id="currentpass" type="password" placeholder="Sua senha atual"></div>
+          <div class="input-group"><label>Nova Senha (mín. 8 caracteres)</label><input id="newpass" type="password" placeholder="Nova senha"></div>
+          <div id="pw-msg" style="font-size:13px; text-align:center; min-height:18px;"></div>
+          <button class="btn-primary" onclick="changePass()" style="background:#1d1d1f;">Atualizar Senha</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
+  <div class="confirm-pw-sheet" role="dialog" aria-modal="true">
+    <div class="confirm-pw-icon">🔒</div>
+    <h4 id="confirm-pw-title">Confirmar identidade</h4>
+    <p id="confirm-pw-desc">Digite sua senha atual para salvar suas informações de perfil.</p>
+    <div class="pw-field-wrap">
+      <input type="password" id="confirm-pw-input" placeholder="Sua senha atual" onkeydown="if(event.key==='Enter')confirmPwSubmit()">
+      <button class="pw-toggle-btn" type="button" onclick="toggleConfirmPwVisibility()"><svg id="pw-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </div>
+    <div class="confirm-pw-error-msg" id="confirm-pw-error"></div>
+    <div class="confirm-pw-actions">
+      <button class="confirm-pw-btn-cancel" onclick="closeConfirmPw()">Cancelar</button>
+      <button class="confirm-pw-btn-confirm" id="confirm-pw-submit-btn" onclick="confirmPwSubmit()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'https://forca-aliada-site.onrender.com';
+const SESSION_KEY = 'fa_session';
+const TOKEN_KEY = 'fa_token';
+
+let session = null;
+const token = localStorage.getItem(TOKEN_KEY);
+try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
+
+if (!token || !session) { window.location.replace('login.html'); }
+
+(async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Sessão inválida');
+    const me = await res.json();
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch {
+    logout(); return;
+  }
+  document.body.style.visibility = 'visible';
+  renderPage();
+})();
+
+function renderPage() {
+  const mcName = session.minecraftName || 'Steve';
+  const skinUrl = `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`;
+  
+  document.getElementById('nav-name').textContent = session.username;
+  document.getElementById('nav-photo').src = skinUrl;
+  
+  document.getElementById('name').textContent = session.username;
+  document.getElementById('photo').src = skinUrl;
+  
+  document.getElementById('edit-username').value = session.username;
+  document.getElementById('edit-email').value = session.email || '';
+  document.getElementById('edit-mc').value = session.minecraftName || '';
+  
+  const pill = document.getElementById('role-pill');
+  if (session.role === 'owner') { pill.textContent = 'Dono'; pill.className = 'pill owner'; }
+  else if (session.role === 'full') { pill.textContent = 'Admin'; pill.className = 'pill full'; }
+  else { pill.textContent = 'Acesso Restrito'; pill.className = 'pill limited'; }
+
+  if (session.role === 'owner' || session.role === 'full') {
+    document.getElementById('admin-banner').style.display = 'block';
+  }
+}
+
+function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
+document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
+function toggleAccordion(btnId, bodyId) { const btn = document.getElementById(btnId); const body = document.getElementById(bodyId); const open = body.classList.toggle('open'); btn.classList.toggle('open', open); }
+
+let _confirmPwCallback = null;
+function requirePassword(onConfirm) {
+  _confirmPwCallback = onConfirm;
+  const input = document.getElementById('confirm-pw-input');
+  input.value = ''; input.type = 'password'; input.classList.remove('pw-error');
+  document.getElementById('confirm-pw-error').textContent = '';
+  document.getElementById('confirm-pw-submit-btn').disabled = false;
+  document.getElementById('pw-eye-icon').innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  document.getElementById('confirm-pw-overlay').classList.add('active');
+  setTimeout(() => input.focus(), 120);
+}
+function closeConfirmPw() { document.getElementById('confirm-pw-overlay').classList.remove('active'); _confirmPwCallback = null; }
+function confirmPwOverlayClick(e) { if (e.target.id === 'confirm-pw-overlay') closeConfirmPw(); }
+function toggleConfirmPwVisibility() { const input = document.getElementById('confirm-pw-input'); const isHidden = input.type === 'password'; input.type = isHidden ? 'text' : 'password'; document.getElementById('pw-eye-icon').innerHTML = isHidden ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'; }
+
+async function confirmPwSubmit() {
+  const input = document.getElementById('confirm-pw-input'); const errEl = document.getElementById('confirm-pw-error'); const btn = document.getElementById('confirm-pw-submit-btn'); const pw = input.value;
+  if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
+  btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
+  
+  if (_confirmPwCallback) {
+     await _confirmPwCallback(pw);
+  }
+}
+
+function saveProfile() {
+  const username = document.getElementById('edit-username').value.trim();
+  const email = document.getElementById('edit-email').value.trim();
+  const mc = document.getElementById('edit-mc').value.trim();
+  const msg = document.getElementById('profile-msg');
+  
+  if (!username || !email) { msg.textContent = 'Preencha Usuário e Email.'; msg.style.color = 'var(--danger)'; return; }
+  
+  requirePassword(async (password) => {
+    const btn = document.getElementById('confirm-pw-submit-btn');
+    const input = document.getElementById('confirm-pw-input');
+    const errEl = document.getElementById('confirm-pw-error');
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/me`, { 
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+        body: JSON.stringify({ username, email, minecraftName: mc, currentPassword: password }) 
+      });
+      if (!res.ok) {
+         if (res.status === 401) throw new Error('Senha incorreta.');
+         throw new Error('Usuário ou email já em uso.');
+      }
+      closeConfirmPw();
+      session.username = username; session.email = email; session.minecraftName = mc;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      renderPage();
+      msg.textContent = 'Dados salvos com sucesso!'; msg.style.color = 'var(--success)';
+      setTimeout(() => msg.textContent = '', 4000);
+    } catch (e) {
+      if (e.message === 'Senha incorreta.') {
+        errEl.textContent = 'Senha incorreta. Tente novamente.'; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
+        btn.disabled = false; btn.textContent = 'Confirmar'; input.focus();
+      } else {
+        closeConfirmPw();
+        msg.textContent = e.message; msg.style.color = 'var(--danger)';
+      }
+    }
+  });
+}
+
+async function changePass() {
+  const cur = document.getElementById('currentpass').value; const np = document.getElementById('newpass').value; const msg = document.getElementById('pw-msg');
+  if (!cur) { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
+  if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
+    if (!res.ok) throw new Error('invalid');
+    msg.textContent = 'Senha atualizada com sucesso!'; msg.style.color = 'var(--success)';
+    document.getElementById('currentpass').value = ''; document.getElementById('newpass').value = '';
+  } catch (e) {
+    msg.textContent = 'Senha atual incorreta ou erro no servidor.'; msg.style.color = 'var(--danger)';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
+
+function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+</script>
+</body>
+</html>
