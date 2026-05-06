@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel Staff | Força Aliada</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 :root { --bg-color: #f5f5f7; --card-bg: #ffffff; --text-primary: #1d1d1f; --text-secondary: #86868b; --accent: #0071e3; --accent-hover: #0077ed; --danger: #ff3b30; --success: #34c759; --warning: #ff9f0a; --border: rgba(0,0,0,0.08); --radius-lg: 20px; --radius-md: 12px; --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
@@ -52,6 +52,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .profile-info h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .profile-info p { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
 .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.pill.owner   { background: #f4e8ff; color: #af52de; }
 .pill.full    { background: #e3f2fd; color: var(--accent); }
 .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
 .pill.success { background: #e8f8f0; color: var(--success); }
@@ -213,7 +214,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
   </div>
 
   <div class="card">
-    <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+    <h3 id="dashboard-main-title">Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
     <div class="dashboard-grid">
       <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
       <div class="mini-card"><h4>Jogadores Online</h4><div class="value" id="online-count">-/-</div></div>
@@ -222,7 +223,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <h3 style="margin:0;font-size:16px;">Análise de Atividade</h3>
+      <h3 id="chart-section-title" style="margin:0;font-size:16px;">Análise de Atividade</h3>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
         <select id="chart-range" onchange="onRangeChange()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
           <option value="1h">Última 1 hora</option>
@@ -249,11 +250,11 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 
     <div class="chart-toolbar" id="chart-toolbar">
       <div id="chart-focus-indicator" style="display:none;"></div>
-      <span class="chart-tip"><kbd>2×clique</kbd> na legenda = isolar &nbsp;·&nbsp; <kbd>1×clique</kbd> = ocultar</span>
+      <span class="chart-tip" id="chart-tip-controls"><kbd>2×clique</kbd> na legenda = isolar &nbsp;·&nbsp; <kbd>1×clique</kbd> = ocultar</span>
     </div>
     <div class="chart-container"><canvas id="activityChart"></canvas></div>
 
-    <h3 style="margin-top:24px;margin-bottom:12px;">Buscar Jogador</h3>
+    <h3 id="search-player-title" style="margin-top:24px;margin-bottom:12px;">Buscar Jogador</h3>
     <div class="filter-bar" id="dashboard-filters" style="display:none;">
       <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
       <input type="date" id="search-date" onchange="applyFilters()">
@@ -269,7 +270,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
       <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
     </ul>
 
-    <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Últimos Desconectados</h4>
+    <h4 id="history-section-title" style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Últimos Desconectados</h4>
     <ul id="history">
       <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
     </ul>
@@ -317,17 +318,26 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
           <h4 style="margin:0;font-size:15px;">Dados da Conta (Painel)</h4>
           <button class="btn-text" id="btn-edit-account" onclick="setAdminEditMode(true)">Editar Cadastro</button>
         </div>
-        <div class="admin-field-group">
+        
+        <div id="admin-lock-screen" style="display:none; text-align:center; padding: 24px 0;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🔒</div>
+          <h4 style="margin:0 0 8px;">Dados Protegidos</h4>
+          <p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">Confirme sua senha para visualizar informações desta conta.</p>
+          <button class="btn-primary" onclick="unlockAdminData()">Ver Dados</button>
+        </div>
+        
+        <div id="admin-data-content" class="admin-field-group">
           <div class="admin-field"><label>Usuário de Login</label><div class="view-val" id="av-username">-</div><input type="text" id="ai-username"></div>
           <div class="admin-field"><label>E-mail</label><div class="view-val" id="av-email">-</div><input type="email" id="ai-email"></div>
           <div class="admin-field"><label>Conta Minecraft</label><div class="view-val" id="av-mc">-</div><input type="text" id="ai-mc" placeholder="Opcional"></div>
-          <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Acesso Total (Admin)</option></select></div>
+          <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
         </div>
+        
         <div class="advanced-security-section" id="advanced-security-wrapper" style="display:none;">
           <button class="accordion-btn" id="adv-sec-btn" onclick="toggleAccordion('adv-sec-btn','adv-sec-body')"><span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span><i class="acc-arrow">▾</i></button>
           <div class="accordion-body" id="adv-sec-body"><div class="accordion-inner"><div class="admin-field"><label>Nova Senha (mín. 8 caracteres)</label><input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;"></div></div></div>
         </div>
-        <div class="action-bar">
+        <div class="action-bar" id="action-bar-edit">
           <div id="admin-delete-normal"><button class="btn-text danger" style="font-size:13px;" onclick="showAdminDeleteConfirm()">Excluir conta...</button></div>
           <div id="admin-delete-confirm" style="display:none;align-items:center;gap:12px;"><span style="font-size:13px;color:var(--danger);font-weight:600;">Tem certeza?</span><button class="btn-text danger" style="font-weight:700;" onclick="executeAdminDelete()">Sim, excluir</button><button class="btn-text" onclick="hideAdminDeleteConfirm()">Cancelar</button></div>
           <div style="display:flex;gap:12px;margin-left:auto;"><button class="btn-secondary" style="padding:8px 16px;border-radius:8px;border:none;font-weight:600;font-size:13px;cursor:pointer;" onclick="setAdminEditMode(false)">Cancelar</button><button class="btn-primary" style="padding:8px 16px;border-radius:8px;" onclick="saveAdminUser()">Salvar Alterações</button></div>
@@ -345,7 +355,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
               <div class="admin-field"><label>Usuário de Login</label><input type="text" id="ci-username" placeholder="nome_de_usuario" style="display:block;"></div>
               <div class="admin-field"><label>E-mail</label><input type="email" id="ci-email" placeholder="email@exemplo.com" style="display:block;"></div>
               <div class="admin-field"><label>Conta Minecraft</label><input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="display:block;background:#f2f2f7;cursor:default;"></div>
-              <div class="admin-field"><label>Permissão</label><select id="ci-role" style="display:block;"><option value="limited">Acesso Restrito</option><option value="full">Acesso Total (Admin)</option></select></div>
+              <div class="admin-field"><label>Permissão</label><select id="ci-role" style="display:block;"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
               <div class="admin-field" style="grid-column:1/-1;"><label>Senha Inicial (mín. 8 caracteres)</label><input type="password" id="ci-password" placeholder="Senha inicial" style="display:block;"></div>
             </div>
             <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:16px;gap:12px;">
@@ -426,7 +436,8 @@ let adminSortState = { key: 'name', asc: true };
 
 function initDashboard() {
   renderHeader(); renderProfile(); loadData();
-  if (session.role === 'full') {
+  
+  if (session.role === 'owner' || session.role === 'full') {
     document.getElementById('admin-users-card').style.display = 'block';
     fetchAdminUsers();
   }
@@ -442,7 +453,7 @@ function initDashboard() {
          session.role = me.role;
          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
          renderProfile();
-         if (session.role === 'full') { document.getElementById('admin-users-card').style.display = 'block'; fetchAdminUsers(); }
+         if (session.role === 'owner' || session.role === 'full') { document.getElementById('admin-users-card').style.display = 'block'; fetchAdminUsers(); }
          else document.getElementById('admin-users-card').style.display = 'none';
       }
     } catch { logout(); return; }
@@ -528,7 +539,11 @@ document.addEventListener('click', () => { document.getElementById('user-dropdow
 function renderProfile() {
   const mcName = session.minecraftName || '-'; const skinUrl = mcName !== '-' ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
   document.getElementById('name').textContent = session.username; document.getElementById('email-display').textContent = session.email || '-'; document.getElementById('mc-display').textContent = mcName; document.getElementById('photo').src = skinUrl;
-  const pill = document.getElementById('role-pill'); pill.textContent = session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito'; pill.className = session.role === 'full' ? 'pill full' : 'pill limited';
+  
+  const pill = document.getElementById('role-pill');
+  if (session.role === 'owner') { pill.textContent = 'Dono'; pill.className = 'pill owner'; }
+  else if (session.role === 'full') { pill.textContent = 'Admin'; pill.className = 'pill full'; }
+  else { pill.textContent = 'Staff'; pill.className = 'pill limited'; }
 }
 
 async function changePass() {
@@ -553,7 +568,18 @@ async function loadData() {
     fetch(`${API_BASE}/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
   ]);
   globalApiData = apiData; globalHistData = histData;
-  if (session.role === 'full') fetchUnregistered();
+  if (session.role === 'owner' || session.role === 'full') fetchUnregistered();
+  
+  // Adapta a UI se o usuário não for o dono
+  if (session.role !== 'owner') {
+    document.getElementById('dashboard-main-title').innerHTML = `Seu Desempenho no Servidor <span>Atualizado: <b id="meta">${new Date().toLocaleTimeString('pt-BR')}</b></span>`;
+    document.getElementById('chart-section-title').textContent = "Sua Atividade";
+    document.getElementById('search-player-title').style.display = 'none';
+    document.getElementById('dashboard-filters').style.display = 'none';
+    document.getElementById('chart-tip-controls').style.display = 'none';
+    document.getElementById('history-section-title').textContent = "Seu Histórico de Desconexões";
+  }
+
   renderDashboard(); updateActivityChart();
 }
 
@@ -572,15 +598,19 @@ function emptyStateHTML(icon, title, sub) { return `<li style="list-style:none;"
 
 function applyFilters() {
   if (!globalHistData) return;
-  const nameFilter = document.getElementById('search-player').value.toLowerCase().trim();
-  const dateFilter = document.getElementById('search-date').value;
-  const durationFilter = parseInt(document.getElementById('search-duration').value) || 0;
+  const isOwner = session.role === 'owner';
+  
+  const nameFilter = isOwner ? document.getElementById('search-player').value.toLowerCase().trim() : '';
+  const dateFilter = isOwner ? document.getElementById('search-date').value : '';
+  const durationFilter = isOwner ? (parseInt(document.getElementById('search-duration').value) || 0) : 0;
   
   const livePlayers = globalHistData.onlinePlayers || [];
   const activeSess = globalHistData.activeSessions || {};
 
-  const hasData = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
-  document.getElementById('dashboard-filters').style.display = hasData ? 'grid' : 'none';
+  if (isOwner) {
+    const hasData = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
+    document.getElementById('dashboard-filters').style.display = hasData ? 'grid' : 'none';
+  }
 
   let filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
   if (durationFilter > 0) {
@@ -595,9 +625,14 @@ function applyFilters() {
   const onlineUl = document.getElementById('online');
   onlineUl.innerHTML = filteredLive.length
     ? filteredLive.map(pName => {
+        // Se for owner, mostra link e dados detalhados. Se não, apenas exibe a pessoa na lista simplificada
         const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === pName.toLowerCase())];
-        const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
+        const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : (isOwner ? 'Conectando...' : 'Online no servidor');
+        
+        const onClick = isOwner ? `onclick="openPlayerProfile('${pName}')"` : '';
+        const cursor = isOwner ? '' : 'style="cursor:default;"';
+
+        return `<li class="list-item" ${onClick} ${cursor}><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', (nameFilter || durationFilter > 0) ? 'Nenhum resultado para os filtros atuais.' : 'O servidor está vazio no momento.');
 
@@ -623,9 +658,12 @@ function applyFilters() {
         const leftDate = new Date(e.leftAt); const isToday = leftDate.toDateString() === new Date().toDateString(); const isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
-        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
+        const onClick = isOwner ? `onclick="openPlayerProfile('${e.player}')"` : '';
+        const cursor = isOwner ? '' : 'style="cursor:default;"';
+
+        return `<li class="list-item" ${onClick} ${cursor}><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
       }).join('')
-    : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : 'Nenhum jogador desconectado recentemente.');
+    : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : (isOwner ? 'Nenhum jogador desconectado recentemente.' : 'Você não possui registros recentes de desconexão.'));
 }
 
 let chartFocusedPlayer = null;
@@ -646,7 +684,7 @@ const CHART_PALETTE = ['#0071e3', '#34c759', '#ff9f0a', '#ff3b30', '#af52de', '#
 function playerColor(playerName) { let hash = 0; for (let i = 0; i < playerName.length; i++) hash = playerName.charCodeAt(i) + ((hash << 5) - hash); return CHART_PALETTE[Math.abs(hash) % CHART_PALETTE.length]; }
 
 function focusChartPlayer(playerName) {
-  if (!chartInstance) return;
+  if (!chartInstance || session.role !== 'owner') return;
   const same = chartFocusedPlayer === playerName; chartFocusedPlayer = same ? null : playerName;
   chartInstance.data.datasets.forEach(ds => {
     if (chartFocusedPlayer === null) { ds.hidden = false; ds.borderWidth = 2; ds.borderColor = playerColor(ds.label, 0); ds.backgroundColor = playerColor(ds.label, 0) + '18'; } 
@@ -690,6 +728,7 @@ function updateActivityChart() {
   const dblClickLegendPlugin = {
     id: 'dblClickLegend', _lastClick: { time: 0, label: '' },
     afterEvent(chart, args) {
+      if (session.role !== 'owner') return; // Desativa cliques para não donos
       const e = args.event; if (e.type !== 'click') return;
       const legendItems = chart.legend?.legendItems || [], legendHitBoxes = chart.legend?.legendHitBoxes || [];
       for (let i = 0; i < legendHitBoxes.length; i++) {
@@ -712,6 +751,7 @@ function updateActivityChart() {
           display: playerList.length > 0 && playerList.length <= 12,
           labels: { boxWidth: 12, boxHeight: 12, borderRadius: 4, useBorderRadius: true, font: { size: 12 }, padding: 16, color: '#1d1d1f', generateLabels(chart) { return Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { if (chartFocusedPlayer && item.text !== chartFocusedPlayer) { item.fontColor = '#ccc'; } return item; }); } },
           onClick(e, legendItem, legend) {
+            if (session.role !== 'owner') return;
             const index = legendItem.datasetIndex; const meta = legend.chart.getDatasetMeta(index); meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : !meta.hidden;
             if (chartFocusedPlayer === legendItem.text) { chartFocusedPlayer = null; updateChartFocusIndicator(); } legend.chart.update();
           }
@@ -724,6 +764,7 @@ function updateActivityChart() {
       },
       scales: { x: { grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' }, border: { display: false } }, y: { beginAtZero: true, title: { display: true, text: isDay ? 'Horas Jogadas' : 'Minutos Jogados', font: { size: 11 }, color: '#86868b' }, ticks: { stepSize: isDay ? 1 : 15, font: { size: 11 }, color: '#86868b' }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } } },
       onClick(e, elements, chart) {
+        if (session.role !== 'owner') return;
         const nearest = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
         if (nearest.length > 0) {
           const dsIndex = nearest[0].datasetIndex; const dataIndex = nearest[0].index; const clickedValue = chart.data.datasets[dsIndex].data[dataIndex];
@@ -740,8 +781,10 @@ function updateActivityChart() {
 }
 
 async function openPlayerProfile(playerName, siteAccountId = null) {
+  if (session.role !== 'owner' && session.role !== 'full') return; // Impede limited de abrir perfis.
+  
   currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId; let displayMcName = playerName;
-  if (siteAccountId && session.role === 'full') { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
+  if (siteAccountId && (session.role === 'full' || session.role === 'owner')) { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
 
   document.getElementById('modal-name').textContent = displayMcName; document.getElementById('modal-img').src = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`; document.getElementById('modal-img').onerror = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
@@ -753,19 +796,55 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   const [historyData] = await Promise.all([ fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => []) ]);
   modalHistoryData = historyData; const chartBtn = document.getElementById('modal-chart-btn'); if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
 
-  if (session.role === 'full') {
+  if (session.role === 'owner' || session.role === 'full') {
     const siteAcc = siteAccountId ? globalAdminUsers.find(u => u.id === siteAccountId) : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
     if (siteAcc) {
-      currentEditingAdminId = siteAcc.id; document.getElementById('av-username').textContent = siteAcc.username; document.getElementById('av-email').textContent = siteAcc.email; document.getElementById('av-mc').textContent = siteAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = siteAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
+      currentEditingAdminId = siteAcc.id; 
+      document.getElementById('av-username').textContent = siteAcc.username; 
+      document.getElementById('av-email').textContent = siteAcc.email; 
+      document.getElementById('av-mc').textContent = siteAcc.minecraft_name || 'Nenhuma vinculada'; 
+      document.getElementById('av-role').textContent = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      
       document.getElementById('ai-username').value = siteAcc.username; document.getElementById('ai-email').value = siteAcc.email; document.getElementById('ai-mc').value = siteAcc.minecraft_name || ''; document.getElementById('ai-role').value = siteAcc.role; document.getElementById('ai-newpassword').value = '';
-      setAdminEditMode(false); document.getElementById('modal-site-account').style.display = 'block'; document.getElementById('modal-create-account').style.display = 'none';
+      
+      document.getElementById('modal-site-account').style.display = 'block'; 
+      document.getElementById('modal-create-account').style.display = 'none';
+
+      // Controle de exibição baseada no cargo
+      if (session.role === 'full') {
+        document.getElementById('admin-lock-screen').style.display = 'block';
+        document.getElementById('admin-data-content').style.display = 'none';
+        document.getElementById('btn-edit-account').style.display = 'none';
+        document.getElementById('adv-sec-btn').style.display = 'none';
+        document.getElementById('action-bar-edit').style.display = 'none';
+        setAdminEditMode(false);
+      } else {
+        document.getElementById('admin-lock-screen').style.display = 'none';
+        document.getElementById('admin-data-content').style.display = 'grid';
+        document.getElementById('btn-edit-account').style.display = 'block';
+        document.getElementById('adv-sec-btn').style.display = 'flex';
+        setAdminEditMode(false);
+      }
     } else {
       currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = playerName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
       const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); body.classList.remove('open'); chevron.classList.remove('open');
-      document.getElementById('modal-create-account').style.display = 'block'; document.getElementById('modal-site-account').style.display = 'none';
+      document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none'; 
+      document.getElementById('modal-site-account').style.display = 'none';
     }
   }
   renderModalStats(); renderModalTable();
+}
+
+function unlockAdminData() {
+  requirePassword({
+    title: 'Visualizar Dados',
+    desc: 'Confirme sua senha para visualizar as informações de contato desta pessoa.',
+    btnLabel: 'Desbloquear',
+    onConfirm: () => {
+      document.getElementById('admin-lock-screen').style.display = 'none';
+      document.getElementById('admin-data-content').style.display = 'grid';
+    }
+  });
 }
 
 function renderModalStats() {
@@ -834,7 +913,12 @@ async function saveAdminUser() {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
       if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) alert('Dados salvos, mas erro ao alterar senha.'); }
-      await fetchAdminUsers(); document.getElementById('av-username').textContent = body.username; document.getElementById('av-email').textContent = body.email; document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = body.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito'; setAdminEditMode(false);
+      await fetchAdminUsers(); 
+      document.getElementById('av-username').textContent = body.username; 
+      document.getElementById('av-email').textContent = body.email; 
+      document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; 
+      document.getElementById('av-role').textContent = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito'); 
+      setAdminEditMode(false);
     }
   });
 }
@@ -864,7 +948,7 @@ async function submitCreateAccount() {
   if (res.ok) {
     const data = await res.json(); await fetchAdminUsers(); currentEditingAdminId = data.id;
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
-    if (newAcc) { document.getElementById('av-username').textContent = newAcc.username; document.getElementById('av-email').textContent = newAcc.email; document.getElementById('av-mc').textContent = newAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = newAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito'; document.getElementById('ai-username').value = newAcc.username; document.getElementById('ai-email').value = newAcc.email; document.getElementById('ai-mc').value = newAcc.minecraft_name || ''; document.getElementById('ai-role').value = newAcc.role; document.getElementById('ai-newpassword').value = ''; }
+    if (newAcc) { document.getElementById('av-username').textContent = newAcc.username; document.getElementById('av-email').textContent = newAcc.email; document.getElementById('av-mc').textContent = newAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito'); document.getElementById('ai-username').value = newAcc.username; document.getElementById('ai-email').value = newAcc.email; document.getElementById('ai-mc').value = newAcc.minecraft_name || ''; document.getElementById('ai-role').value = newAcc.role; document.getElementById('ai-newpassword').value = ''; }
     setAdminEditMode(false); document.getElementById('modal-create-account').style.display = 'none'; document.getElementById('modal-site-account').style.display = 'block';
   } else {
     const data = await res.json(); msg.textContent = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.'; msg.style.color = 'var(--danger)';
@@ -944,7 +1028,11 @@ function renderRegisteredList() {
   list.innerHTML = filtered.map(u => {
     const mc = u.minecraft_name || u.username, hist = historyMap[mc.toLowerCase()], lastStr = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
     const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
-    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${u.role === 'full' ? 'full' : 'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span> ${verifiedBadge}</strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
+    
+    const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
+    const roleText = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
+    
+    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${pillClass}" style="margin-left:4px;font-size:10px;">${roleText}</span> ${verifiedBadge}</strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
   }).join('');
 }
 
