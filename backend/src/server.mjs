@@ -83,7 +83,6 @@ async function migrate() {
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
     
-    -- Atualiza as restrições para suportar o cargo owner
     ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
     ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner', 'full', 'limited'));
 
@@ -120,43 +119,38 @@ async function seedAdmin() {
   if (rows.length > 0) return;
 
   const hash = await bcrypt.hash(adminPassword, 12);
-  // O usuário de bootstrap agora é owner (Dono)
   await pool.query(
     'INSERT INTO users (username,email,minecraft_name,password_hash,role,is_verified) VALUES ($1,$2,$3,$4,$5,$6)',
     [adminUsername.toLowerCase(), adminEmail, adminUsername, hash, 'owner', true]
   );
 }
 
-// ── MIDDLEWARES DE AUTENTICAÇÃO E CARGOS ──
 async function auth(req, res, next) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'missing token' });
   try { 
     const decoded = jwt.verify(token, JWT_SECRET); 
-    const { rows } = await pool.query('SELECT role, is_verified FROM users WHERE id = $1', [decoded.sub]);
+    const { rows } = await pool.query('SELECT role, is_verified, minecraft_name FROM users WHERE id = $1', [decoded.sub]);
     if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
     
-    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified };
+    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified, minecraft_name: rows[0].minecraft_name };
     next(); 
   } 
   catch { res.status(401).json({ error: 'invalid token' }); }
 }
 
 function requireAdmin(req, res, next) {
-  // Permite Admin (full) e Dono (owner)
   if (!['full', 'owner'].includes(req.user?.role)) return res.status(403).json({ error: 'forbidden' });
   next();
 }
 
 function requireOwner(req, res, next) {
-  // Permite Apenas Dono (owner)
   if (req.user?.role !== 'owner') return res.status(403).json({ error: 'forbidden' });
   next();
 }
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
-// ── ROBÔ DO GITHUB ACTIONS / DESPERTADOR ──
 app.get('/api/cron', async (req, res) => {
   const key = req.query.key || req.headers['x-ingest-secret'];
   if (key !== INGEST_SECRET) return res.status(403).json({ error: 'Acesso negado' });
@@ -191,7 +185,6 @@ app.get('/api/cron', async (req, res) => {
   }
 });
 
-// ── RECUPERAÇÃO DE PALAVRA-PASSE ──
 app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
   const email = sanitizeInput(req.body?.email).toLowerCase();
   if (!validateEmail(email)) return res.status(400).json({ error: 'E-mail inválido' });
@@ -203,7 +196,6 @@ app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   await pool.query('INSERT INTO password_resets (email, code, expires_at) VALUES ($1, $2, $3)', [email, code, expiresAt]);
-
   await sendSystemEmail(email, rows[0].username, code, 'reset');
   res.json({ ok: true });
 });
@@ -214,7 +206,6 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   const newPassword = req.body?.newPassword;
 
   if (!validateEmail(email) || !code || !validatePassword(newPassword)) return res.status(400).json({ error: 'Dados inválidos' });
-
   const { rows } = await pool.query('SELECT * FROM password_resets WHERE email = $1 AND code = $2 AND expires_at > NOW()', [email, code]);
   if (rows.length === 0) return res.status(400).json({ error: 'Código inválido ou expirado' });
 
@@ -224,7 +215,6 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── AUTENTICAÇÃO E VERIFICAÇÃO ──
 app.post('/api/auth/signup', authLimiter, async (req, res) => {
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
@@ -246,7 +236,6 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
     await pool.query('INSERT INTO email_verifications (email, code, expires_at) VALUES ($1, $2, $3)', [email, code, expiresAt]);
 
     await sendSystemEmail(email, rows[0].username, code, 'verify');
-
     res.json({ ok: true, requireVerification: true, email });
   } catch {
     res.status(409).json({ error: 'username/email already exists' });
@@ -258,7 +247,6 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
   const code = sanitizeInput(req.body?.code);
 
   if (!validateEmail(email) || !code) return res.status(400).json({ error: 'Dados inválidos' });
-
   const { rows } = await pool.query('SELECT * FROM email_verifications WHERE email = $1 AND code = $2 AND expires_at > NOW()', [email, code]);
   if (rows.length === 0) return res.status(400).json({ error: 'Código inválido ou expirado.' });
 
@@ -287,7 +275,6 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     await pool.query('DELETE FROM email_verifications WHERE email = $1', [user.email]);
     await pool.query('INSERT INTO email_verifications (email, code, expires_at) VALUES ($1, $2, $3)', [user.email, code, expiresAt]);
     await sendSystemEmail(user.email, user.username, code, 'verify');
-
     return res.status(403).json({ error: 'unverified_email', email: user.email });
   }
 
@@ -295,7 +282,6 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
 });
 
-// ── GERENCIAMENTO DA PRÓPRIA CONTA ──
 app.get('/api/me', auth, async (req, res) => {
   const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role,is_verified FROM users WHERE id = $1', [req.user.sub]);
   if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
@@ -310,7 +296,6 @@ app.put('/api/me', auth, async (req, res) => {
 
   if (!validateUsername(username) || !validateEmail(email)) return res.status(400).json({ error: 'Dados inválidos' });
 
-  // Confirmação de segurança via senha
   const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.sub]);
   if (!rows[0] || !(await bcrypt.compare(currentPassword, rows[0].password_hash))) {
     return res.status(401).json({ error: 'invalid current password' });
@@ -324,6 +309,8 @@ app.put('/api/me', auth, async (req, res) => {
   }
 });
 
+app.post('/api/me/password', auth, changeMyPassword);
+app.put('/api/me/password', auth, changeMyPassword);
 async function changeMyPassword(req, res) {
   const currentPassword = req.body?.currentPassword || '';
   const newPassword = req.body?.newPassword || '';
@@ -337,10 +324,21 @@ async function changeMyPassword(req, res) {
   await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.sub]);
   res.json({ ok: true });
 }
-app.post('/api/me/password', auth, changeMyPassword);
-app.put('/api/me/password', auth, changeMyPassword);
 
-// ── DADOS GLOBAIS DO DASHBOARD (Apenas Admin/Dono) ──
+// ── NOVO: HISTÓRICO DA PRÓPRIA CONTA ──
+app.get('/api/me/history', auth, async (req, res) => {
+  if (!req.user.minecraft_name) return res.json({ history: [], activeSession: null });
+  const mcName = req.user.minecraft_name.toLowerCase();
+  
+  const historyQuery = await pool.query('SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE LOWER(player) = $1 AND left_at IS NOT NULL ORDER BY entered_at DESC', [mcName]);
+  const activeQuery = await pool.query('SELECT entered_at FROM player_sessions WHERE LOWER(player) = $1 AND left_at IS NULL', [mcName]);
+  
+  res.json({
+    history: historyQuery.rows,
+    activeSession: activeQuery.rows.length > 0 ? activeQuery.rows[0].entered_at : null
+  });
+});
+
 app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);
   const online = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
@@ -357,20 +355,16 @@ app.get('/api/player/:name/history', auth, requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
-// ── ADMINISTRAÇÃO DE CONTAS DA STAFF ──
 app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
-  // Admin e Dono podem LER a lista completa
   const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users ORDER BY id DESC');
   res.json(rows);
 });
 
 app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
-  // Apenas o Dono pode CRIAR novas contas da staff manualmente
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
   const password = req.body?.password || '';
-  
   const allowedRoles = ['owner', 'full', 'limited'];
   const role = allowedRoles.includes(req.body?.role) ? req.body.role : 'limited';
 
@@ -386,14 +380,12 @@ app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
-  // Apenas o Dono pode EDITAR os dados de terceiros
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
   const photoUrl = sanitizeInput(req.body?.photoUrl || 'logo.JPG');
-  
   const allowedRoles = ['owner', 'full', 'limited'];
   const role = allowedRoles.includes(req.body?.role) ? req.body.role : 'limited';
   
@@ -409,7 +401,6 @@ app.put('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id/password', auth, requireOwner, async (req, res) => {
-  // Apenas o Dono pode FORÇAR alteração de senha de terceiros
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const newPassword = req.body?.newPassword || '';
@@ -422,7 +413,6 @@ app.put('/api/admin/users/:id/password', auth, requireOwner, async (req, res) =>
 });
 
 app.delete('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
-  // Apenas o Dono pode EXCLUIR contas
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);
