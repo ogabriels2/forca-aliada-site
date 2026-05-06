@@ -76,14 +76,18 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 
 /* Card de Resumo de Conta (Sidebar) */
 .account-summary-card { padding: 24px; gap: 0; position: sticky; top: 100px; }
-.summary-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.summary-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
 .summary-header img { width: 88px; height: 88px; border-radius: 24px; object-fit: cover; box-shadow: 0 8px 24px rgba(0,0,0,0.1); background: #e5e5ea; }
 .summary-header h2 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
-.summary-details { display: flex; flex-direction: column; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--border); }
-.detail-item { display: flex; flex-direction: column; gap: 4px; }
-.detail-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-.detail-val { font-size: 14px; font-weight: 500; color: var(--text-primary); word-break: break-all; }
-.summary-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 20px; }
+.summary-details { background: #fafafa; border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; margin: 20px 0; }
+.summary-details .detail-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; }
+.summary-details .detail-item:first-child { padding-top: 0; border-bottom: 1px solid var(--border); }
+.summary-details .detail-item:last-child { padding-bottom: 0; }
+.detail-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+.detail-val { font-size: 14px; font-weight: 600; color: var(--text-primary); text-align: left; display: flex; align-items: center; width: 100%; overflow: hidden; white-space: nowrap; }
+.truncate-local { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.truncate-domain { white-space: nowrap; flex-shrink: 0; }
+.summary-actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* Pílulas (Badges) */
 .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
@@ -298,11 +302,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         <div class="summary-details">
           <div class="detail-item">
             <span class="detail-label">E-mail</span>
-            <span class="detail-val" id="sidebar-email">-</span>
+            <div class="detail-val" id="sidebar-email">-</div>
           </div>
           <div class="detail-item">
-            <span class="detail-label">Minecraft</span>
-            <span class="detail-val" id="sidebar-mc">-</span>
+            <span class="detail-label">Conta Minecraft</span>
+            <div class="detail-val" id="sidebar-mc">-</div>
           </div>
         </div>
         <div class="summary-actions">
@@ -596,7 +600,18 @@ function renderProfile() {
   if(sbName) sbName.textContent = session.username;
   
   const sbEmail = document.getElementById('sidebar-email');
-  if(sbEmail) sbEmail.textContent = session.email || '-';
+  if(sbEmail) {
+    if (session.email) {
+      const parts = session.email.split('@');
+      if (parts.length === 2) {
+        sbEmail.innerHTML = `<span class="truncate-local">${parts[0]}</span><span class="truncate-domain">@${parts[1]}</span>`;
+      } else {
+        sbEmail.textContent = session.email;
+      }
+    } else {
+      sbEmail.textContent = '-';
+    }
+  }
   
   const sbMc = document.getElementById('sidebar-mc');
   if(sbMc) sbMc.textContent = displayMcName;
