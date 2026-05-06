@@ -56,7 +56,7 @@ async function sendSystemEmail(email, username, code, type = 'verify') {
   const senderEmail = process.env.EMAIL_FROM || 'no-reply@ogabriels.com';
   const subject = type === 'verify' ? 'Verifique sua conta' : 'Código de Recuperação';
   const title = type === 'verify' ? 'Bem-vindo à Força Aliada!' : 'Força Aliada';
-  const subtitle = type === 'verify' ? 'Use o código abaixo para ativar o seu cadastro de Staff:' : 'Utilize o código de 6 dígitos abaixo no site:';
+  const subtitle = type === 'verify' ? 'Use o código abaixo para ativar o seu cadastro:' : 'Utilize o código de 6 dígitos abaixo no site:';
 
   const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e5e5ea;border-radius:12px;"><h2 style="color:#1d1d1f;">${title}</h2><p style="color:#1d1d1f;font-size:16px;">Olá <strong>${username}</strong>,</p><p style="color:#86868b;font-size:15px;">${subtitle}</p><div style="background:#f2f2f7;padding:16px;border-radius:8px;text-align:center;margin:24px 0;"><strong style="font-size:32px;letter-spacing:4px;color:#0071e3;">${code}</strong></div><p style="color:#86868b;font-size:13px;">Este código expira em 15 minutos.</p></div>`;
 
@@ -282,8 +282,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
 });
 
+// ── GERENCIAMENTO DA PRÓPRIA CONTA ──
 app.get('/api/me', auth, async (req, res) => {
-  const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role,is_verified FROM users WHERE id = $1', [req.user.sub]);
+  const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role,is_verified,created_at FROM users WHERE id = $1', [req.user.sub]);
   if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
   res.json(rows[0]);
 });
@@ -325,7 +326,20 @@ async function changeMyPassword(req, res) {
   res.json({ ok: true });
 }
 
-// ── NOVO: HISTÓRICO DA PRÓPRIA CONTA ──
+app.delete('/api/me', auth, async (req, res) => {
+  const email = sanitizeInput(req.body?.email).toLowerCase();
+  const password = req.body?.password || '';
+
+  const { rows } = await pool.query('SELECT email, password_hash FROM users WHERE id = $1', [req.user.sub]);
+  if (rows.length === 0) return res.status(404).json({ error: 'user not found' });
+  
+  if (rows[0].email !== email) return res.status(400).json({ error: 'email mismatch' });
+  if (!(await bcrypt.compare(password, rows[0].password_hash))) return res.status(401).json({ error: 'invalid password' });
+
+  await pool.query('DELETE FROM users WHERE id = $1', [req.user.sub]);
+  res.json({ ok: true });
+});
+
 app.get('/api/me/history', auth, async (req, res) => {
   if (!req.user.minecraft_name) return res.json({ history: [], activeSession: null });
   const mcName = req.user.minecraft_name.toLowerCase();
