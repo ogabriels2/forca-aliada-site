@@ -15,7 +15,6 @@
   --accent-hover: #0077ed;
   --danger: #ff3b30;
   --success: #34c759;
-  --warning: #ff9f0a;
   --border: rgba(0,0,0,0.08);
   --radius-lg: 20px;
   --radius-md: 12px;
@@ -25,15 +24,28 @@
 html, body { height: 100%; }
 body {
   margin: 0;
+  visibility: hidden;
   display: flex;
   flex-direction: column;
-  visibility: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg-color);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
 a { text-decoration: none; color: inherit; }
+
+/* SKELETONS & EMPTY STATES */
+.skeleton { position: relative; overflow: hidden; background: #e8e8ed !important; border-radius: 8px; color: transparent !important; pointer-events: none; user-select: none; }
+.skeleton * { visibility: hidden !important; }
+.skeleton::after, .skeleton-line::after, .skeleton-circle::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.skeleton-line { height: 14px; border-radius: 6px; background: #e8e8ed; position: relative; overflow: hidden; margin: 6px 0; }
+.skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; } .skeleton-line.w80 { width: 80%; }
+.skeleton-circle { width: 40px; height: 40px; border-radius: 50%; background: #e8e8ed; position: relative; overflow: hidden; flex-shrink: 0; }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 24px; text-align: center; color: var(--text-secondary); }
+.empty-state strong { color: var(--text-primary); font-size: 15px; font-weight: 600; }
+.empty-state span { font-size: 13px; }
+.empty-icon { width: 48px; height: 48px; border-radius: 50%; background: #f2f2f7; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 4px; }
 
 /* HEADER */
 header {
@@ -48,12 +60,12 @@ header {
 .logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
 .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
 
-/* DROPDOWN USUÁRIO (NOVO PADRÃO) */
+/* DROPDOWN USUÁRIO (ESTILO APPLE/GOOGLE) */
 .user-menu-wrapper { position: relative; display: inline-block; }
 .user-btn {
   display: flex; align-items: center; gap: 8px; cursor: pointer;
   background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
-  transition: var(--transicao); border: 1px solid transparent; user-select: none;
+  transition: all 0.2s; border: 1px solid transparent; user-select: none;
 }
 .user-btn:hover { background: rgba(0,0,0,0.08); }
 .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
@@ -70,7 +82,6 @@ header {
   opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao);
 }
 .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
-
 .dropdown-header { padding: 12px 8px; display: flex; align-items: center; gap: 12px; }
 .dropdown-header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
 .dropdown-header-info { display: flex; flex-direction: column; overflow: hidden; }
@@ -88,28 +99,14 @@ header {
 .dropdown-item.danger svg { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(255,59,48,0.1); }
 
-/* LAYOUT PRINCIPAL */
-.main-content { flex: 1; }
+/* LAYOUT */
+.main-wrapper { flex: 1; }
 .container {
   max-width: 1200px; margin: 40px auto; padding: 0 20px;
   display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;
 }
-.btn-primary {
-  padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600;
-  cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit;
-}
-.btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
-.btn-secondary { background: #e5e5ea; color: var(--text-primary); border: none; padding: 10px 18px; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
-.btn-secondary:hover { background: #d1d1d6; }
-.card {
-  background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 16px;
-}
-.card h3 { margin: 0; font-size: 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-.card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
 
-/* WIDGET DE PERFIL LATERAL (NOVO) */
+/* WIDGET LATERAL DE CONTA (O NOVO COMPONENTE) */
 .account-summary-card {
   text-align: center;
   padding: 32px 24px;
@@ -119,78 +116,77 @@ header {
   object-fit: cover; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   margin: 0 auto 16px; display: block; border: 4px solid #fff;
 }
-.account-summary-card h2 { margin: 0 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-.account-summary-card .pill { margin-bottom: 24px; }
-.summary-details {
-  display: flex; flex-direction: column; gap: 12px; text-align: left;
-  background: #fafafa; padding: 16px; border-radius: 16px;
-  border: 1px solid var(--border); margin-bottom: 24px;
-}
-.detail-item { display: flex; flex-direction: column; gap: 4px; }
-.detail-item:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-.detail-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-.detail-val { font-size: 14px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.summary-actions { display: flex; flex-direction: column; gap: 10px; }
-.btn-danger-outline { background: transparent; border: 1px solid rgba(255,59,48,0.3); color: var(--danger); }
-.btn-danger-outline:hover { background: rgba(255,59,48,0.1); border-color: rgba(255,59,48,0.4); }
+.account-summary-card h2 { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
 
+.role-badge {
+  display: block; width: 100%; padding: 8px; border-radius: 980px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 24px;
+}
+.role-badge.owner { background: #f4e8ff; color: #af52de; }
+.role-badge.full { background: #e3f2fd; color: #0071e3; }
+.role-badge.limited { background: #f2f2f7; color: var(--text-secondary); }
+
+.summary-details-box {
+  width: 100%; background: #fbfbfd; border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left; margin-bottom: 24px;
+}
+.summary-detail-item { display: flex; flex-direction: column; gap: 4px; }
+.summary-detail-item:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.summary-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.summary-val { font-size: 14px; font-weight: 500; color: var(--text-primary); word-break: break-all; }
+
+.summary-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.btn-manage { background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 980px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.2s; font-family: inherit; }
+.btn-manage:hover { background: var(--accent-hover); transform: scale(1.02); }
+.btn-logout { background: transparent; color: var(--danger); border: 1px solid rgba(255,59,48,0.3); padding: 12px; border-radius: 980px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.2s; font-family: inherit; }
+.btn-logout:hover { background: rgba(255,59,48,0.05); border-color: var(--danger); transform: scale(1.02); }
+
+
+/* BOTÕES GERAIS E CARDS */
+.btn-primary { padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit; }
+.btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
+.btn-secondary { padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: #e5e5ea; color: var(--text-primary); transition: all 0.2s; font-family: inherit; }
+.btn-secondary:hover { background: #d1d1d6; }
+.card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
+.card h3 { margin: 0; font-size: 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+
+/* LISTAS E GRÁFICOS DO DASHBOARD */
 .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
 .pill.full    { background: #e3f2fd; color: var(--accent); }
+.pill.owner   { background: #f4e8ff; color: #af52de; }
 .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
 .pill.success { background: #e8f8f0; color: var(--success); }
-.pill.owner   { background: #f4e8ff; color: #af52de; }
 .pill.limited-status { background: #f2f2f7; color: var(--text-secondary); }
 
-input, select {
-  width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md);
-  background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; font-family: inherit;
-}
+input, select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; font-family: inherit; }
 input:focus, select:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
 .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
 .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .mini-card .value { font-size: 24px; font-weight: 700; letter-spacing: -1px; }
 ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.list-item {
-  display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color);
-  border-radius: var(--radius-md); border: 1px solid transparent; transition: all 0.2s; cursor: pointer;
-}
+.list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
 .list-item:hover { border-color: var(--border); background: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .mc-head { width: 40px; height: 40px; border-radius: 8px; background: #e5e5ea; }
 .item-details { flex: 1; }
 .item-details strong { display: block; font-size: 14px; margin-bottom: 2px; }
 .item-details span { font-size: 13px; color: var(--text-secondary); }
-.status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; }
+.status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .status-dot.offline { background: var(--danger); }
 .filter-bar { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px; }
 .chart-container { width: 100%; height: 350px; margin-bottom: 20px; }
 
 /* MODAL & HISTÓRICO AVANÇADO */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-  background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
-  z-index: 2000; display: flex; justify-content: center; align-items: center;
-  opacity: 0; visibility: hidden; transition: var(--transicao); padding: 20px;
-}
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: var(--transicao); padding: 20px; }
 .modal-overlay.active { opacity: 1; visibility: visible; }
-.modal-content {
-  background: var(--card-bg); width: 100%; max-width: 750px; max-height: 90vh;
-  border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2);
-  display: flex; flex-direction: column; overflow: hidden;
-  transform: scale(0.95); transition: var(--transicao);
-}
+.modal-content { background: var(--card-bg); width: 100%; max-width: 750px; max-height: 90vh; border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; transform: scale(0.95); transition: var(--transicao); }
 .modal-overlay.active .modal-content { transform: scale(1); }
-.modal-header {
-  padding: 24px; border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: flex-start; background: #fafafa;
-}
+.modal-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: #fafafa; }
 .modal-user-info { display: flex; align-items: center; gap: 16px; }
 .modal-user-info img { width: 80px; height: 80px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .modal-user-info h2 { margin: 0 0 8px; font-size: 24px; }
-.close-modal {
-  background: rgba(0,0,0,0.05); border: none; width: 32px; height: 32px;
-  border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;
-}
+.close-modal { background: rgba(0,0,0,0.05); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
 .close-modal:hover { background: rgba(0,0,0,0.1); }
 .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
 
@@ -203,12 +199,12 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .admin-field input, .admin-field select { padding: 8px 12px; border-radius: 8px; font-size: 14px; display: none; }
 .admin-account-card.edit-mode .view-val { display: none; }
 .admin-account-card.edit-mode input, .admin-account-card.edit-mode select { display: block; }
-.btn-text { background: none; border: none; color: var(--accent); font-weight: 500; cursor: pointer; font-size: 14px; padding: 0; transition: color 0.2s; }
+.btn-text { background: none; border: none; color: var(--accent); font-weight: 500; cursor: pointer; font-size: 14px; padding: 0; transition: color 0.2s; font-family: inherit; }
 .btn-text:hover { text-decoration: underline; }
 .btn-text.danger { color: var(--danger); }
 .action-bar { display: none; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
 .admin-account-card.edit-mode .action-bar { display: flex; }
-.admin-account-card.edit-mode .admin-account-header .btn-text { display: none; }
+.admin-account-card.edit-mode .admin-account-header .btn-text { display: none; } 
 
 .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
 .stat-box { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center; }
@@ -231,6 +227,28 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 .footer-links { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .footer-dot { color: #d2d2d7; }
 
+/* OVERLAYS E SENHA */
+.confirm-pw-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s; }
+.confirm-pw-overlay.active { opacity: 1; visibility: visible; }
+.confirm-pw-sheet { background: #fff; border-radius: 20px; padding: 28px; width: 100%; max-width: 380px; box-shadow: 0 32px 64px rgba(0,0,0,0.22); transform: scale(0.93) translateY(8px); transition: transform 0.3s; }
+.confirm-pw-overlay.active .confirm-pw-sheet { transform: scale(1) translateY(0); }
+.confirm-pw-icon { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 16px; flex-shrink: 0; background: rgba(0,113,227,0.1); }
+.confirm-pw-icon.danger { background: rgba(255,59,48,0.1); }
+.confirm-pw-sheet h4 { margin: 0 0 6px; font-size: 17px; font-weight: 700; text-align: center; }
+.confirm-pw-sheet p  { margin: 0 0 20px; font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.45; }
+.pw-field-wrap { position: relative; margin-bottom: 8px; }
+.confirm-pw-sheet input { width: 100%; padding: 13px 44px 13px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; font-family: inherit; outline: none; background: var(--bg-color); transition: border-color 0.2s, box-shadow 0.2s; }
+.confirm-pw-sheet input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.12); }
+.confirm-pw-sheet input.pw-error { border-color: var(--danger); box-shadow: 0 0 0 4px rgba(255,59,48,0.12); animation: shakeInput 0.35s ease; }
+@keyframes shakeInput { 0%,100% { transform: translateX(0); } 20%,60%  { transform: translateX(-4px); } 40%,80%  { transform: translateX(4px); } }
+.pw-toggle-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; display: flex; align-items: center; }
+.confirm-pw-error-msg { font-size: 12px; color: var(--danger); font-weight: 500; min-height: 18px; margin-bottom: 16px; text-align: center; }
+.confirm-pw-actions { display: flex; gap: 10px; }
+.confirm-pw-actions button { flex: 1; padding: 13px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.18s; }
+.confirm-pw-btn-cancel { background: #f2f2f7; color: var(--text-primary); }
+.confirm-pw-btn-confirm { background: var(--accent); color: #fff; }
+.confirm-pw-btn-confirm.btn-danger { background: var(--danger); }
+
 @media (max-width: 860px) {
   .container { grid-template-columns: 1fr; margin-top: 20px; }
   .filter-bar { grid-template-columns: 1fr; }
@@ -250,116 +268,119 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
     </div>
 </header>
 
-<main class="main-content">
+<div class="main-wrapper">
   <div class="container">
     
     <aside class="card account-summary-card">
       <img id="photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img" alt="Foto de perfil">
       <h2 id="name">Carregando...</h2>
-      <span id="role-pill" class="pill limited">Staff</span>
+      <div id="role-badge" class="role-badge limited">Staff</div>
       
-      <div class="summary-details">
-        <div class="detail-item">
-          <span class="detail-label">E-mail de Contato</span>
-          <span class="detail-val" id="email-display">-</span>
+      <div class="summary-details-box">
+        <div class="summary-detail-item">
+          <span class="summary-label">E-mail de Contato</span>
+          <span class="summary-val" id="email-display">-</span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Conta Minecraft</span>
-          <span class="detail-val" id="mc-display">-</span>
+        <div class="summary-detail-item">
+          <span class="summary-label">Conta Minecraft</span>
+          <span class="summary-val" id="mc-display">-</span>
         </div>
       </div>
       
       <div class="summary-actions">
-        <button class="btn-primary" onclick="window.location.href='account.html'" style="width: 100%;">Gerenciar Conta</button>
-        <button class="btn-secondary btn-danger-outline" onclick="logout()" style="width: 100%;">Sair da Conta</button>
+        <button class="btn-manage" onclick="window.location.href='account.html'">Gerenciar Conta</button>
+        <button class="btn-logout" onclick="logout()">Sair da Conta</button>
       </div>
     </aside>
 
-    <div class="card">
-      <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
-      <div class="dashboard-grid">
-        <div class="mini-card">
-          <h4>Status</h4>
-          <div class="value" style="display:flex;align-items:center;gap:8px;">
-            <span class="status-dot" id="server-dot"></span>
-            <span id="server-status">...</span>
+    <div style="display:flex; flex-direction:column; gap:24px;">
+      
+      <div class="card">
+        <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+        <div class="dashboard-grid">
+          <div class="mini-card">
+            <h4>Status</h4>
+            <div class="value" style="display:flex;align-items:center;gap:8px;">
+              <span class="status-dot" id="server-dot"></span>
+              <span id="server-status">...</span>
+            </div>
+          </div>
+          <div class="mini-card">
+            <h4>Jogadores Online</h4>
+            <div class="value" id="online-count">-/-</div>
+          </div>
+          <div class="mini-card">
+            <h4>IP do Servidor</h4>
+            <div class="value" style="font-size:16px;">fa.ogabriels.com</div>
+          </div>
+          <div class="mini-card">
+            <h4>Versão</h4>
+            <div class="value" id="server-version" style="font-size:16px;">-</div>
           </div>
         </div>
-        <div class="mini-card">
-          <h4>Jogadores Online</h4>
-          <div class="value" id="online-count">-/-</div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <h3 style="margin:0;font-size:16px;">Análise de Atividade</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <select id="chart-range" onchange="toggleCustomTime()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
+              <option value="24h" selected>Últimas 24h</option>
+              <option value="7d">Últimos 7 dias</option>
+              <option value="30d">Últimos 30 dias</option>
+              <option value="custom">Personalizado...</option>
+            </select>
+            <select id="chart-grouping" onchange="updateActivityChart()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
+              <option value="minute">Por 15 Minutos</option>
+              <option value="hour" selected>Por Hora</option>
+              <option value="day">Por Dia</option>
+            </select>
+          </div>
         </div>
-        <div class="mini-card">
-          <h4>IP do Servidor</h4>
-          <div class="value" style="font-size:16px;">fa.ogabriels.com</div>
+
+        <div id="custom-time-controls" style="display:none;gap:12px;margin-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;color:var(--text-secondary);">Início:</span>
+            <input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;">
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;color:var(--text-secondary);">Fim:</span>
+            <input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;">
+          </div>
         </div>
-        <div class="mini-card">
-          <h4>Versão</h4>
-          <div class="value" id="server-version" style="font-size:16px;">-</div>
+
+        <div class="chart-container">
+          <canvas id="activityChart"></canvas>
         </div>
+
+        <h3 style="margin-top:24px;margin-bottom:12px;">Buscar Jogador</h3>
+        <div class="filter-bar">
+          <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
+          <input type="date" id="search-date" onchange="applyFilters()">
+        </div>
+
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Conectados Agora</h4>
+        <ul id="online" style="margin-bottom:24px;">
+          <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
+        </ul>
+
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Últimos Desconectados</h4>
+        <ul id="history">
+          <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
+        </ul>
       </div>
 
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <h3 style="margin:0;font-size:16px;">Análise de Atividade</h3>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <select id="chart-range" onchange="toggleCustomTime()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
-            <option value="24h" selected>Últimas 24h</option>
-            <option value="7d">Últimos 7 dias</option>
-            <option value="30d">Últimos 30 dias</option>
-            <option value="custom">Personalizado...</option>
-          </select>
-          <select id="chart-grouping" onchange="updateActivityChart()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
-            <option value="minute">Por 15 Minutos</option>
-            <option value="hour" selected>Por Hora</option>
-            <option value="day">Por Dia</option>
-          </select>
+      <div class="card" id="admin-users-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
+          <h3>Contas da Staff Cadastradas</h3>
+          <input type="text" id="admin-search" placeholder="Buscar staff..." oninput="renderAdminUsers()" style="width:250px;padding:8px 12px;">
         </div>
+        <div id="admin-users-msg" style="font-size:13px;" role="alert"></div>
+        <ul id="admin-users-list">
+          <li class="list-item"><div class="item-details"><span>Carregando...</span></div></li>
+        </ul>
       </div>
-
-      <div id="custom-time-controls" style="display:none;gap:12px;margin-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:12px;color:var(--text-secondary);">Início:</span>
-          <input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;">
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:12px;color:var(--text-secondary);">Fim:</span>
-          <input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;">
-        </div>
-      </div>
-
-      <div class="chart-container">
-        <canvas id="activityChart"></canvas>
-      </div>
-
-      <h3 style="margin-top:24px;margin-bottom:12px;">Buscar Jogador</h3>
-      <div class="filter-bar">
-        <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
-        <input type="date" id="search-date" onchange="applyFilters()">
-      </div>
-
-      <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Conectados Agora</h4>
-      <ul id="online" style="margin-bottom:24px;">
-        <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
-      </ul>
-
-      <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Últimos Desconectados</h4>
-      <ul id="history">
-        <li class="list-item"><div class="item-details"><span>Buscando...</span></div></li>
-      </ul>
-    </div>
-
-    <div class="card" id="admin-users-card" style="grid-column:1/-1;display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
-        <h3>Contas da Staff Cadastradas</h3>
-        <input type="text" id="admin-search" placeholder="Buscar staff..." oninput="renderAdminUsers()" style="width:250px;padding:8px 12px;">
-      </div>
-      <div id="admin-users-msg" style="font-size:13px;" role="alert"></div>
-      <ul id="admin-users-list">
-        <li class="list-item"><div class="item-details"><span>Carregando...</span></div></li>
-      </ul>
     </div>
   </div>
-</main>
+</div>
 
 <footer>
   <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
@@ -501,13 +522,13 @@ let liveInterval   = null;
 // Modal estado
 let modalHistoryData = [];
 let modalSortConfig = { key: 'date', asc: false };
-let currentEditingAdminId = null; 
+let currentEditingAdminId = null; // ID da conta do site atualmente aberta no modal
 
 function initDashboard() {
   renderHeader();
   renderProfile();
   loadData();
-  if (session.role === 'full' || session.role === 'owner') fetchAdminUsers(); 
+  if (session.role === 'full') fetchAdminUsers(); 
   setInterval(loadData, 30000); 
   
   if(liveInterval) clearInterval(liveInterval);
@@ -536,7 +557,7 @@ function getLiveDuration(enteredAtStr) {
   return formatTime(hours);
 }
 
-// ── Header, Dropdown e Perfil (Premium Apple/Google Style) ──────
+// ── Header & Perfil ─────────────────────────────────────────────
 function renderHeader() {
   const skinUrl = session.minecraftName ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
   document.getElementById('auth-header-container').innerHTML = `
@@ -577,10 +598,10 @@ function renderProfile() {
   document.getElementById('mc-display').textContent = mcName;
   document.getElementById('photo').src = skinUrl;
   
-  const pill = document.getElementById('role-pill');
-  if (session.role === 'owner') { pill.textContent = 'Dono'; pill.className = 'pill owner'; }
-  else if (session.role === 'full') { pill.textContent = 'Admin'; pill.className = 'pill full'; }
-  else { pill.textContent = 'Acesso Restrito'; pill.className = 'pill limited'; }
+  const badge = document.getElementById('role-badge');
+  if (session.role === 'owner') { badge.textContent = 'Dono'; badge.className = 'role-badge owner'; }
+  else if (session.role === 'full') { badge.textContent = 'Admin'; badge.className = 'role-badge full'; }
+  else { badge.textContent = 'Acesso Restrito'; badge.className = 'role-badge limited'; }
 }
 
 // ── Main Data Load ──────────────────────────────────────────────
@@ -658,45 +679,171 @@ function applyFilters() {
 
 // ── Gráficos ────────────────────────────────────────────────────
 function stringToColor(str) { let hash=0; for(let i=0;i<str.length;i++) hash=str.charCodeAt(i)+((hash<<5)-hash); return `hsl(${Math.abs(hash)%360},70%,55%)`; }
-function toggleCustomTime() { /*... mantido igual ...*/ }
-function updateActivityChart() { /*... mantido igual ...*/ }
+
+function toggleCustomTime() {
+  const range = document.getElementById('chart-range').value;
+  const customControls = document.getElementById('custom-time-controls');
+  if (range === 'custom') {
+    customControls.style.display = 'flex';
+    const now = new Date();
+    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localNow = new Date(now - tzOffset).toISOString().slice(0,16);
+    const localStart = new Date(start - tzOffset).toISOString().slice(0,16);
+    document.getElementById('custom-start').value = localStart;
+    document.getElementById('custom-end').value = localNow;
+  } else {
+    customControls.style.display = 'none';
+  }
+  updateActivityChart();
+}
+
+function updateActivityChart() {
+  if (!globalHistData) return;
+  const range = document.getElementById('chart-range').value;
+  const grouping = document.getElementById('chart-grouping').value;
+  
+  let startDate = new Date();
+  let endDate = new Date();
+
+  if (range === 'custom') {
+    const startVal = document.getElementById('custom-start').value;
+    const endVal = document.getElementById('custom-end').value;
+    if (!startVal || !endVal) return;
+    startDate = new Date(startVal);
+    endDate = new Date(endVal);
+  } else {
+    const msMap = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
+    startDate = new Date(endDate.getTime() - msMap[range]);
+  }
+
+  const allSessions = [];
+  if (globalHistData.history) {
+    globalHistData.history.forEach(h => {
+      allSessions.push({ player: h.player, start: new Date(h.enteredAt), end: new Date(h.leftAt) });
+    });
+  }
+  if (globalHistData.activeSessions) {
+    Object.values(globalHistData.activeSessions).forEach(s => {
+      allSessions.push({ player: s.name, start: new Date(s.enteredAt), end: endDate });
+    });
+  }
+
+  const groupMs = { 'minute': 900000, 'hour': 3600000, 'day': 86400000 }[grouping] || 3600000;
+  
+  const timeline = [];
+  for (let t = startDate.getTime(); t <= endDate.getTime(); t += groupMs) {
+    timeline.push(t);
+  }
+
+  const playersData = {};
+  allSessions.forEach(s => {
+    const sStart = s.start.getTime();
+    const sEnd = s.end.getTime();
+    if (sEnd < startDate.getTime() || sStart > endDate.getTime()) return;
+
+    if (!playersData[s.player]) {
+      playersData[s.player] = new Array(timeline.length - 1).fill(0);
+    }
+
+    for (let i = 0; i < timeline.length - 1; i++) {
+      const bStart = timeline[i];
+      const bEnd = timeline[i+1];
+      
+      const overlapStart = Math.max(sStart, bStart);
+      const overlapEnd = Math.min(sEnd, bEnd);
+      
+      if (overlapEnd > overlapStart) {
+        playersData[s.player][i] += (overlapEnd - overlapStart) / 60000; // minutes
+      }
+    }
+  });
+
+  const labels = [];
+  for (let i = 0; i < timeline.length - 1; i++) {
+    const d = new Date(timeline[i]);
+    if (grouping === 'day') labels.push(d.toLocaleDateString('pt-BR'));
+    else labels.push(d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+  }
+
+  const datasets = Object.keys(playersData).map(p => ({
+    label: p,
+    data: playersData[p],
+    backgroundColor: stringToColor(p),
+    borderColor: stringToColor(p),
+    borderWidth: 1,
+    fill: false,
+    tension: 0.3
+  }));
+
+  const ctx = document.getElementById('activityChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: datasets.length <= 15, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', bodyColor: '#86868b', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, cornerRadius: 10,
+          filter: function(tooltipItem) { return tooltipItem.raw > 0; }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+        y: { beginAtZero: true, title: { display: true, text: 'Minutos Jogados', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.04)' } }
+      }
+    }
+  });
+}
 
 // ── Modal do Jogador & Sistema de Conta da Staff ────────────────
 async function openPlayerProfile(playerName, siteAccountId = null) {
   let displayMinecraftName = playerName;
   currentEditingAdminId = siteAccountId; // Salva quem estamos editando
   
-  if (siteAccountId && (session.role === 'full' || session.role === 'owner')) {
+  // Se viemos do clique da lista de Admin, tentamos priorizar o nome do Minecraft para a Skin
+  if (siteAccountId && session.role === 'full') {
       const siteAcc = globalAdminUsers.find(u => u.id === siteAccountId);
-      if (siteAcc) { displayMinecraftName = siteAcc.minecraft_name || siteAcc.username; }
+      if (siteAcc) {
+          displayMinecraftName = siteAcc.minecraft_name || siteAcc.username;
+      }
   }
 
   document.getElementById('modal-name').textContent = displayMinecraftName;
   document.getElementById('modal-img').src = `https://minotar.net/helm/${displayMinecraftName}/100.png`;
 
+  // Busca histórico infinito do Minecraft
   const res = await fetch(`${API_BASE}/api/player/${displayMinecraftName}/history`, { headers: { Authorization: `Bearer ${token}` } });
   modalHistoryData = await res.json();
 
+  // Verifica integração com o site e prepara o Painel de Conta
   const siteAccBox = document.getElementById('modal-site-account');
-  if (session.role === 'full' || session.role === 'owner') {
+  if (session.role === 'full') {
+    // Tenta encontrar a conta pelo ID (se veio da lista Admin) OU pelo nome do Minecraft
     const siteAcc = siteAccountId 
       ? globalAdminUsers.find(u => u.id === siteAccountId)
       : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
 
     if (siteAcc) {
-      currentEditingAdminId = siteAcc.id; 
+      currentEditingAdminId = siteAcc.id; // Garante que temos o ID
       
+      // Preenche os valores de Visualização
       document.getElementById('av-username').textContent = siteAcc.username;
       document.getElementById('av-email').textContent = siteAcc.email;
       document.getElementById('av-mc').textContent = siteAcc.minecraft_name || 'Nenhuma (Apenas site)';
-      document.getElementById('av-role').innerHTML = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      document.getElementById('av-role').innerHTML = siteAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
 
+      // Preenche os valores de Edição (Inputs)
       document.getElementById('ai-username').value = siteAcc.username;
       document.getElementById('ai-email').value = siteAcc.email;
       document.getElementById('ai-mc').value = siteAcc.minecraft_name || '';
       document.getElementById('ai-role').value = siteAcc.role;
 
-      setAdminEditMode(false);
+      setAdminEditMode(false); // Reseta a UI para modo de visualização limpo
       siteAccBox.style.display = 'block';
     } else {
       currentEditingAdminId = null;
@@ -713,8 +860,12 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
 
 function setAdminEditMode(isEditing) {
   const card = document.getElementById('modal-site-account');
-  if (isEditing) { card.classList.add('edit-mode'); hideAdminDeleteConfirm(); } 
-  else { card.classList.remove('edit-mode'); }
+  if (isEditing) {
+    card.classList.add('edit-mode');
+    hideAdminDeleteConfirm(); // Reseta o botão de excluir se estava aberto
+  } else {
+    card.classList.remove('edit-mode');
+  }
 }
 
 function showAdminDeleteConfirm() {
@@ -741,12 +892,15 @@ async function saveAdminUser() {
   });
   
   if (res.ok) {
-    await fetchAdminUsers(); 
+    await fetchAdminUsers(); // Atualiza a lista por trás
+    
+    // Atualiza a visualização com os dados que acabamos de salvar
     document.getElementById('av-username').textContent = body.username;
     document.getElementById('av-email').textContent = body.email;
     document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma (Apenas site)';
-    document.getElementById('av-role').textContent = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito');
-    setAdminEditMode(false);
+    document.getElementById('av-role').textContent = body.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
+    
+    setAdminEditMode(false); // Volta para modo visualização
   } else {
     alert('Erro ao atualizar. Verifique se o e-mail ou usuário já existem.');
   }
@@ -825,7 +979,7 @@ function sortModal(key) {
 function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; }
 function closeModalOutside(e) { if (e.target.id==='player-modal') closeModal(); }
 
-// ── Admin: Gerenciar contas de Staff ────────────────
+// ── Admin: Gerenciar contas de Staff (Nova Lista) ────────────────
 async function fetchAdminUsers() {
   try {
     const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
@@ -842,18 +996,15 @@ function renderAdminUsers() {
   const list = document.getElementById('admin-users-list');
   const filtered = globalAdminUsers.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || (u.minecraft_name||'').toLowerCase().includes(term));
   
-  list.innerHTML = filtered.length ? filtered.map(u => {
-    const roleText = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Restrito');
-    const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
-    return `
+  list.innerHTML = filtered.length ? filtered.map(u => `
     <li class="list-item" onclick="openPlayerProfile('${u.minecraft_name || u.username}', ${u.id})">
       <img src="https://minotar.net/helm/${u.minecraft_name||'Steve'}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
       <div class="item-details">
-        <strong>${u.username} <span class="pill ${pillClass}" style="margin-left:4px;font-size:10px;">${roleText}</span></strong>
+        <strong>${u.username} <span class="pill ${u.role==='full'?'full':'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span></strong>
         <span>${u.email}</span>
       </div>
     </li>
-  `}).join('') : '<li class="list-item"><div class="item-details"><span>Nenhuma conta encontrada.</span></div></li>';
+  `).join('') : '<li class="list-item"><div class="item-details"><span>Nenhuma conta encontrada.</span></div></li>';
 }
 
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
