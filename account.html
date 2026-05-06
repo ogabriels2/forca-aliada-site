@@ -6,7 +6,7 @@
 <style>
 :root { --bg-color: #f5f5f7; --card-bg: #ffffff; --text-primary: #1d1d1f; --text-secondary: #86868b; --accent: #0071e3; --accent-hover: #0077ed; --danger: #ff3b30; --success: #34c759; --border: rgba(0,0,0,0.08); --radius-lg: 20px; --radius-md: 12px; --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
 * { box-sizing: border-box; }
-body { margin: 0; visibility: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+body { margin: 0; visibility: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-primary); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; min-height: 100vh; }
 a { text-decoration: none; color: inherit; }
 
 /* Cabeçalho */
@@ -15,33 +15,50 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .brand-link:hover { opacity: 0.8; }
 .logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
 .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+
+/* Dropdown Universal do Usuário */
 .user-menu-wrapper { position: relative; display: inline-block; }
 .user-btn { display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px; transition: all 0.2s; border: 1px solid transparent; user-select: none; }
 .user-btn:hover { background: rgba(0,0,0,0.08); }
 .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
 .user-btn span { font-size: 14px; font-weight: 600; }
-.user-dropdown { position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(20px); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.05); padding: 8px; display: flex; flex-direction: column; min-width: 200px; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao); }
-.user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
-.user-dropdown button { text-align: left; padding: 12px 16px; border-radius: 10px; border: none; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s; display: block; width: 100%; font-family: inherit; }
-.user-dropdown button:hover { background: rgba(0,0,0,0.05); }
-.user-dropdown .danger { color: var(--danger); }
-.user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
+.user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s; }
+.user-btn.active svg { transform: rotate(180deg); }
 
-/* Layout da Conta */
+.user-dropdown { position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.95); backdrop-filter: saturate(180%) blur(30px); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.08); width: 260px; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao); overflow: hidden; }
+.user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.dropdown-header { padding: 16px; display: flex; align-items: center; gap: 12px; background: #fafafa; border-bottom: 1px solid var(--border); }
+.dropdown-header img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; }
+.dropdown-header-info { display: flex; flex-direction: column; overflow: hidden; }
+.dropdown-header-info strong { font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.dropdown-header-info span { font-size: 13px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.dropdown-list { padding: 8px; display: flex; flex-direction: column; }
+.dropdown-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s; border: none; background: transparent; text-align: left; font-family: inherit; width: 100%; }
+.dropdown-item:hover { background: rgba(0,0,0,0.05); }
+.dropdown-item svg { width: 16px; height: 16px; color: var(--text-secondary); opacity: 0.8; }
+.dropdown-divider { height: 1px; background: var(--border); margin: 4px 8px; }
+.dropdown-item.danger { color: var(--danger); }
+.dropdown-item.danger svg { color: var(--danger); }
+.dropdown-item.danger:hover { background: rgba(255,59,48,0.08); }
+
+/* Layout Principal */
+.main-wrapper { flex: 1; }
 .account-layout { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 260px 1fr; gap: 40px; align-items: start; }
 
 /* Menu Lateral */
-.sidebar { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 100px; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; border: none; background: transparent; text-align: left; font-family: inherit; }
+.sidebar { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 100px; height: calc(100vh - 140px); }
+.sidebar-nav { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; border: none; background: transparent; text-align: left; font-family: inherit; width: 100%; }
 .nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text-primary); }
 .nav-item.active { background: #e3f2fd; color: var(--accent); }
 .nav-item.highlight { background: linear-gradient(135deg, rgba(0,113,227,0.1) 0%, rgba(48,176,199,0.1) 100%); color: var(--accent); border: 1px solid rgba(0,113,227,0.2); margin-top: 16px; }
 .nav-item.highlight:hover { background: linear-gradient(135deg, rgba(0,113,227,0.15) 0%, rgba(48,176,199,0.15) 100%); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,113,227,0.1); }
 .nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.nav-item.text-danger:hover { background: rgba(255,59,48,0.08); color: var(--danger); }
 
 /* Conteúdo */
-.content-area { min-width: 0; }
+.content-area { min-width: 0; padding-bottom: 60px; }
 .tab-pane { display: none; animation: fadeIn 0.3s ease; }
 .tab-pane.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -53,10 +70,11 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); margin-bottom: 24px; }
 .card-title { margin: 0 0 16px; font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
 
-/* Perfil & Formulários */
+/* Perfil */
 .profile-overview { display: flex; align-items: center; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
 .profile-img-large { width: 88px; height: 88px; border-radius: 24px; object-fit: cover; background: #e5e5ea; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-.profile-overview-text h2 { margin: 0 0 6px; font-size: 22px; }
+.profile-overview-text h2 { margin: 0 0 4px; font-size: 22px; }
+.profile-date { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
 .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .pill.owner { background: #f4e8ff; color: #af52de; }
 .pill.full { background: #e3f2fd; color: var(--accent); }
@@ -74,6 +92,8 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 /* Modo Edição */
 .edit-mode .data-value { display: none; }
 .edit-mode .data-input { display: block; }
+.edit-mode .email-confirm-row { display: flex; }
+.email-confirm-row { display: none; }
 .edit-actions { display: none; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
 .edit-mode .edit-actions { display: flex; }
 .read-actions { display: flex; justify-content: flex-end; margin-top: 24px; }
@@ -94,35 +114,44 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .stat-box span { display: block; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
 .stat-box strong { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
 .chart-container { width: 100%; height: 280px; margin-bottom: 24px; }
-
 .history-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .history-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; }
 .history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
 .history-table tr:hover td { background: rgba(0,0,0,0.02); }
 .week-separator td { padding: 16px 12px 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); background: #fafafa; }
 
-/* Seções de Conexões/Preferências */
+/* Conexões & Sociais */
 .connection-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; transition: all 0.2s; }
 .connection-item:hover { border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
 .connection-info { display: flex; align-items: center; gap: 16px; }
 .connection-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
 .connection-icon.discord { background: #5865F2; }
+.connection-icon.microsoft { background: #00A4EF; }
+.connection-icon.google { background: #ffffff; border: 1px solid var(--border); }
+.connection-icon.apple { background: #000000; }
+.connection-icon.facebook { background: #1877F2; }
+.connection-icon.instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+.connection-icon.whatsapp { background: #25D366; }
 .connection-text h4 { margin: 0 0 4px; font-size: 15px; }
 .connection-text p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.social-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); transition: all 0.2s; background: var(--bg-color); cursor: pointer; }
+.social-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); border-color: var(--accent); background: #fff; }
+.social-card .connection-icon { margin-bottom: 12px; width: 48px; height: 48px; border-radius: 14px; font-size: 24px; }
 
-/* Controles de Toggle */
-.toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e5e5ea; transition: .3s; border-radius: 24px; }
-.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-input:checked + .slider { background-color: var(--success); }
-input:checked + .slider:before { transform: translateX(20px); }
+/* Danger Zone */
+.danger-zone { border: 1px solid rgba(255,59,48,0.3); background: rgba(255,59,48,0.03); border-radius: var(--radius-md); padding: 24px; margin-top: 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.danger-zone h4 { margin: 0 0 4px; color: var(--danger); font-size: 16px; }
+.danger-zone p { margin: 0; font-size: 13px; color: var(--text-secondary); max-width: 400px; line-height: 1.4; }
+.btn-danger { background: var(--danger); color: #fff; border: none; padding: 10px 20px; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+.btn-danger:hover { background: #d70015; }
 
-/* Empty States */
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 24px; text-align: center; }
-.empty-icon { width: 64px; height: 64px; border-radius: 50%; background: #f2f2f7; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
-.empty-state h3 { margin: 0; font-size: 18px; font-weight: 600; }
-.empty-state p { margin: 0; color: var(--text-secondary); font-size: 14px; max-width: 300px; line-height: 1.5; }
+/* Footer */
+.site-footer { padding: 32px 20px; text-align: center; border-top: 1px solid var(--border); background: var(--card-bg); margin-top: auto; }
+.site-footer p { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); }
+.site-footer .footer-links { display: flex; justify-content: center; gap: 16px; font-size: 13px; color: var(--text-secondary); }
+.site-footer .footer-links a { transition: color 0.2s; }
+.site-footer .footer-links a:hover { color: var(--text-primary); text-decoration: underline; }
 
 /* Modal Senha */
 .confirm-pw-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s; }
@@ -146,251 +175,280 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 @media (max-width: 768px) {
   .account-layout { grid-template-columns: 1fr; gap: 24px; margin-top: 24px; }
-  .sidebar { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 8px; }
-  .nav-item { white-space: nowrap; padding: 10px 14px; }
+  .sidebar { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 8px; height: auto; }
+  .sidebar-nav { flex-direction: row; }
+  .nav-item { white-space: nowrap; padding: 10px 14px; width: auto; }
   .nav-item.highlight { margin-top: 0; margin-left: auto; }
 }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand-link">
-    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
-    <div class="logo-text">Força Aliada</div>
-  </div>
-  <div class="user-menu-wrapper">
-    <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
-      <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
-      <span id="nav-name">...</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+<div class="main-wrapper">
+  <header>
+    <a href="index.html" class="brand-link">
+      <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+      <div class="logo-text">Força Aliada</div>
+    </a>
+    <div class="user-menu-wrapper">
+      <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
+        <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+        <span id="nav-name">...</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div class="user-dropdown" id="user-dropdown-menu">
+        <div class="dropdown-header">
+          <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+          <div class="dropdown-header-info">
+            <strong id="drop-name">Carregando...</strong>
+            <span id="drop-email">...</span>
+          </div>
+        </div>
+        <div class="dropdown-list">
+          <button class="dropdown-item" onclick="window.location.href='account.html'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Minha Conta
+          </button>
+          <button class="dropdown-item" id="drop-btn-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            Painel da Staff
+          </button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item danger" onclick="logout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            Sair da conta
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="user-dropdown" id="user-dropdown-menu">
-      <button class="danger" onclick="logout()">Sair da Conta</button>
-    </div>
+  </header>
+
+  <div class="account-layout">
+    <aside class="sidebar">
+      <div class="sidebar-nav">
+        <button class="nav-item active" onclick="switchTab('perfil', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Informações Pessoais
+        </button>
+        <button class="nav-item" onclick="switchTab('atividade', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          Sua Atividade
+        </button>
+        <button class="nav-item" onclick="switchTab('conexoes', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          Integrações & Ajustes
+        </button>
+        <button class="nav-item" onclick="switchTab('seguranca', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Segurança
+        </button>
+        
+        <button class="nav-item highlight" id="nav-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg>
+          Painel da Staff
+        </button>
+      </div>
+      
+      <div style="flex-grow: 1;"></div>
+      <button class="nav-item text-danger" onclick="logout()" style="margin-top: 16px;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        Sair da conta
+      </button>
+    </aside>
+
+    <main class="content-area">
+      <section id="tab-perfil" class="tab-pane active">
+        <div class="page-header">
+          <h1>Informações Pessoais</h1>
+          <p>Gerencie seus dados básicos, informações de contato e vínculo com o Minecraft.</p>
+        </div>
+
+        <div class="card" id="profile-card">
+          <div class="profile-overview">
+            <img id="main-photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img-large" alt="Foto de perfil">
+            <div class="profile-overview-text">
+              <h2 id="main-name">Carregando...</h2>
+              <span class="profile-date" id="member-since">Membro desde...</span>
+              <span id="role-pill" class="pill limited">Staff</span>
+            </div>
+          </div>
+
+          <div class="data-list">
+            <div class="data-row">
+              <span class="data-label">Usuário de Login</span>
+              <div class="data-value" id="view-username">-</div>
+              <input type="text" class="data-input" id="edit-username" placeholder="Seu nome de usuário">
+            </div>
+            <div class="data-row">
+              <span class="data-label">E-mail de Contato</span>
+              <div class="data-value" id="view-email">-</div>
+              <input type="email" class="data-input" id="edit-email" placeholder="seu@email.com" oninput="checkEmailChange()">
+            </div>
+            <div class="data-row email-confirm-row" id="email-confirm-row">
+              <span class="data-label" style="color:var(--accent);">Confirmar Novo E-mail</span>
+              <input type="email" class="data-input" id="edit-email-confirm" placeholder="Repita o novo e-mail">
+            </div>
+            <div class="data-row">
+              <span class="data-label">Conta Minecraft</span>
+              <div class="data-value" id="view-mc">-</div>
+              <input type="text" class="data-input" id="edit-mc" placeholder="Nome exato no jogo">
+            </div>
+          </div>
+
+          <div id="profile-msg" style="font-size:13px; margin-top:12px; text-align:right; min-height: 18px; font-weight:500;"></div>
+
+          <div class="read-actions">
+            <button class="btn-secondary" onclick="toggleEditMode(true)">Editar Perfil</button>
+          </div>
+          <div class="edit-actions">
+            <button class="btn-secondary" onclick="toggleEditMode(false)" style="background:transparent; border:1px solid var(--border);">Cancelar</button>
+            <button class="btn-primary" onclick="saveProfile()">Salvar Alterações</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-atividade" class="tab-pane">
+        <div class="page-header">
+          <h1>Sua Atividade</h1>
+          <p>Acompanhe seu engajamento no servidor, tempo jogado e histórico de conexões.</p>
+        </div>
+
+        <div class="stats-grid" id="my-stats">
+          <div class="stat-box"><span>Tempo Total Logado</span><strong>-</strong></div>
+          <div class="stat-box"><span>Total de Sessões</span><strong>-</strong></div>
+          <div class="stat-box"><span>Média por Sessão</span><strong>-</strong></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Tempo Jogado (Últimos 30 Dias)</div>
+          <div class="chart-container"><canvas id="myActivityChart"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Histórico de Conexões</div>
+          <div style="overflow-x:auto;">
+            <table class="history-table">
+              <thead><tr><th>Data / Entrada</th><th>Saída</th><th>Duração</th></tr></thead>
+              <tbody id="my-history-body"><tr><td colspan="3" style="text-align:center;color:var(--text-secondary);">Carregando histórico...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-conexoes" class="tab-pane">
+        <div class="page-header">
+          <h1>Integrações & Comunidade</h1>
+          <p>Vincule contas e acesse as redes sociais oficiais da Força Aliada.</p>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Acesse Nossas Redes</h3>
+          <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">Junte-se a nós para não perder as atualizações, eventos e o contato com a comunidade.</p>
+          <div class="social-grid">
+            <div class="social-card" onclick="window.open('https://discord.gg/xZmRkB7PWd', '_blank')">
+              <div class="connection-icon discord"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></div>
+              <strong style="font-size:16px;">Discord</strong>
+              <span style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Servidor Oficial</span>
+            </div>
+            <div class="social-card" onclick="window.open('https://www.instagram.com/forcaaliada', '_blank')">
+              <div class="connection-icon instagram"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></div>
+              <strong style="font-size:16px;">Instagram</strong>
+              <span style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Fotos e Eventos</span>
+            </div>
+            <div class="social-card" onclick="window.open('https://whatsapp.com/channel/0029VbC3kNoAzNc1wXb0130e', '_blank')">
+              <div class="connection-icon whatsapp"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .1 5.401.097 11.967c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.401 11.893-11.969a11.848 11.848 0 00-3.48-8.411"/></svg></div>
+              <strong style="font-size:16px;">WhatsApp</strong>
+              <span style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Canal Oficial</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Contas Vinculadas</h3>
+          <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">Em breve você poderá fazer login utilizando qualquer uma dessas plataformas.</p>
+          <div class="connection-item">
+            <div class="connection-info">
+              <div class="connection-icon google"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></div>
+              <div class="connection-text"><h4>Google</h4></div>
+            </div>
+            <button class="btn-outline" disabled style="opacity:0.5;">Em breve</button>
+          </div>
+          <div class="connection-item">
+            <div class="connection-info">
+              <div class="connection-icon microsoft"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/></svg></div>
+              <div class="connection-text"><h4>Microsoft</h4></div>
+            </div>
+            <button class="btn-outline" disabled style="opacity:0.5;">Em breve</button>
+          </div>
+          <div class="connection-item">
+            <div class="connection-info">
+              <div class="connection-icon apple"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.05 2.53.68 3.12.68.61 0 1.94-.75 3.42-.64 1.34.05 2.54.52 3.32 1.48-2.85 1.59-2.4 5.5.4 6.64-1.02 2.65-2.28 4.81-4.26 4.81zm-3.69-14.4c.59-1.22.95-2.58.74-3.88-1.12.18-2.46.8-3.14 1.63-.58.68-1.02 1.99-.81 3.25 1.25.13 2.51-.55 3.21-1z"/></svg></div>
+              <div class="connection-text"><h4>Apple</h4></div>
+            </div>
+            <button class="btn-outline" disabled style="opacity:0.5;">Em breve</button>
+          </div>
+          <div class="connection-item">
+            <div class="connection-info">
+              <div class="connection-icon facebook"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.4-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07z"/></svg></div>
+              <div class="connection-text"><h4>Facebook</h4></div>
+            </div>
+            <button class="btn-outline" disabled style="opacity:0.5;">Em breve</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-seguranca" class="tab-pane">
+        <div class="page-header">
+          <h1>Segurança</h1>
+          <p>Gerencie a proteção da sua conta e credenciais de acesso.</p>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Alterar Senha</h3>
+          <div style="display:flex; flex-direction:column; gap:16px; max-width:400px;">
+            <div class="data-row" style="padding:0; border:none;">
+              <span class="data-label">Senha Atual</span>
+              <input type="password" class="data-input" id="currentpass" placeholder="Sua senha atual" style="display:block;">
+            </div>
+            <div class="data-row" style="padding:0; border:none;">
+              <span class="data-label">Nova Senha (Mín. 8 Caracteres)</span>
+              <input type="password" class="data-input" id="newpass" placeholder="Crie uma nova senha" style="display:block;">
+            </div>
+            <div id="pw-msg" style="font-size:13px; min-height:18px; font-weight:500;"></div>
+            <button class="btn-primary" onclick="changePass()" style="width:fit-content; margin-top:8px;">Atualizar Senha</button>
+          </div>
+        </div>
+
+        <div class="danger-zone">
+          <div>
+            <h4>Excluir Conta</h4>
+            <p>Ao excluir sua conta, todos os seus dados vinculados ao site serão perdidos de forma permanente. Esta ação não pode ser desfeita.</p>
+          </div>
+          <button class="btn-danger" onclick="deleteAccount()">Excluir minha conta</button>
+        </div>
+      </section>
+    </main>
   </div>
-</header>
-
-<div class="account-layout">
-  <aside class="sidebar">
-    <button class="nav-item active" onclick="switchTab('perfil', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-      Informações Pessoais
-    </button>
-    <button class="nav-item" onclick="switchTab('atividade', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-      Sua Atividade
-    </button>
-    <button class="nav-item" onclick="switchTab('conexoes', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-      Conexões & Ajustes
-    </button>
-    <button class="nav-item" onclick="switchTab('seguranca', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-      Segurança
-    </button>
-    <button class="nav-item" onclick="switchTab('amigos', this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-      Amigos
-    </button>
-    
-    <button class="nav-item highlight" id="nav-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg>
-      Acessar Painel da Staff
-    </button>
-  </aside>
-
-  <main class="content-area">
-    
-    <section id="tab-perfil" class="tab-pane active">
-      <div class="page-header">
-        <h1>Informações Pessoais</h1>
-        <p>Gerencie seus dados básicos, informações de contato e vínculo com o Minecraft.</p>
-      </div>
-
-      <div class="card" id="profile-card">
-        <div class="profile-overview">
-          <img id="main-photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img-large" alt="Foto de perfil">
-          <div class="profile-overview-text">
-            <h2 id="main-name">Carregando...</h2>
-            <span id="role-pill" class="pill limited">Staff</span>
-          </div>
-        </div>
-
-        <div class="data-list">
-          <div class="data-row">
-            <span class="data-label">Usuário de Login</span>
-            <div class="data-value" id="view-username">-</div>
-            <input type="text" class="data-input" id="edit-username" placeholder="Seu nome de usuário">
-          </div>
-          <div class="data-row">
-            <span class="data-label">E-mail de Contato</span>
-            <div class="data-value" id="view-email">-</div>
-            <input type="email" class="data-input" id="edit-email" placeholder="seu@email.com">
-          </div>
-          <div class="data-row">
-            <span class="data-label">Conta Minecraft</span>
-            <div class="data-value" id="view-mc">-</div>
-            <input type="text" class="data-input" id="edit-mc" placeholder="Nome exato no jogo">
-          </div>
-        </div>
-
-        <div id="profile-msg" style="font-size:13px; margin-top:12px; text-align:right; min-height: 18px; font-weight:500;"></div>
-
-        <div class="read-actions">
-          <button class="btn-secondary" onclick="toggleEditMode(true)">Editar Perfil</button>
-        </div>
-        <div class="edit-actions">
-          <button class="btn-secondary" onclick="toggleEditMode(false)" style="background:transparent; border:1px solid var(--border);">Cancelar</button>
-          <button class="btn-primary" onclick="saveProfile()">Salvar Alterações</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="tab-atividade" class="tab-pane">
-      <div class="page-header">
-        <h1>Sua Atividade</h1>
-        <p>Acompanhe seu engajamento no servidor, tempo jogado e histórico de conexões.</p>
-      </div>
-
-      <div class="stats-grid" id="my-stats">
-        <div class="stat-box"><span>Tempo Total Logado</span><strong>-</strong></div>
-        <div class="stat-box"><span>Total de Sessões</span><strong>-</strong></div>
-        <div class="stat-box"><span>Média por Sessão</span><strong>-</strong></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">
-          <span>Tempo Jogado (Últimos 30 Dias)</span>
-        </div>
-        <div class="chart-container"><canvas id="myActivityChart"></canvas></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Histórico de Conexões</div>
-        <div style="overflow-x:auto;">
-          <table class="history-table">
-            <thead>
-              <tr><th>Data / Entrada</th><th>Saída</th><th>Duração</th></tr>
-            </thead>
-            <tbody id="my-history-body">
-              <tr><td colspan="3" style="text-align:center;color:var(--text-secondary);">Carregando histórico...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="tab-conexoes" class="tab-pane">
-      <div class="page-header">
-        <h1>Conexões & Preferências</h1>
-        <p>Vincule contas de outras plataformas e gerencie como nós nos comunicamos com você.</p>
-      </div>
-
-      <div class="card">
-        <h3 class="card-title">Contas Vinculadas</h3>
-        
-        <div class="connection-item">
-          <div class="connection-info">
-            <div class="connection-icon discord">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
-            </div>
-            <div class="connection-text">
-              <h4>Discord</h4>
-              <p>Integre seu perfil para ganhar cargos no servidor e acessar chats exclusivos.</p>
-            </div>
-          </div>
-          <button class="btn-outline" onclick="alert('Funcionalidade em desenvolvimento! Em breve você poderá vincular sua conta do Discord.')">Vincular Conta</button>
-        </div>
-        
-        <div class="connection-item">
-          <div class="connection-info">
-            <div class="connection-icon" style="background: #9146FF;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-            </div>
-            <div class="connection-text">
-              <h4>Twitch</h4>
-              <p>Mostre para a comunidade quando você estiver fazendo stream no servidor.</p>
-            </div>
-          </div>
-          <button class="btn-outline" onclick="alert('Integração com a Twitch estará disponível em atualizações futuras.')">Vincular Conta</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 class="card-title">Preferências</h3>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid var(--border);">
-          <div class="connection-text">
-            <h4>E-mails Importantes</h4>
-            <p>Avisos sobre segurança, redefinição de senha e confirmações de conta.</p>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" checked disabled>
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0;">
-          <div class="connection-text">
-            <h4>Novidades e Atualizações</h4>
-            <p>Receber e-mails sobre novidades do servidor, eventos e wipedays.</p>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" checked id="pref-news">
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-    <section id="tab-seguranca" class="tab-pane">
-      <div class="page-header">
-        <h1>Segurança</h1>
-        <p>Mantenha sua conta protegida atualizando sua senha regularmente.</p>
-      </div>
-
-      <div class="card">
-        <h3 class="card-title">Alterar Senha</h3>
-        <div style="display:flex; flex-direction:column; gap:16px; max-width:400px;">
-          <div class="data-row" style="padding:0; border:none;">
-            <span class="data-label">Senha Atual</span>
-            <input type="password" class="data-input" id="currentpass" placeholder="Sua senha atual" style="display:block;">
-          </div>
-          <div class="data-row" style="padding:0; border:none;">
-            <span class="data-label">Nova Senha (Mín. 8 Caracteres)</span>
-            <input type="password" class="data-input" id="newpass" placeholder="Crie uma nova senha" style="display:block;">
-          </div>
-          <div id="pw-msg" style="font-size:13px; min-height:18px; font-weight:500;"></div>
-          <button class="btn-primary" onclick="changePass()" style="width:fit-content; margin-top:8px;">Atualizar Senha</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="tab-amigos" class="tab-pane">
-      <div class="page-header">
-        <h1>Amigos</h1>
-        <p>Sua rede de contatos e conexões dentro do servidor.</p>
-      </div>
-
-      <div class="card" style="padding: 0;">
-        <div class="empty-state">
-          <div class="empty-icon">🤝</div>
-          <h3>Novidade a caminho!</h3>
-          <p>Em breve você poderá adicionar amigos, ver quem está online no momento e comparar estatísticas e horas de jogo. Fique ligado!</p>
-          <button class="btn-secondary" disabled style="margin-top: 12px; opacity: 0.5;">Aguarde as novidades</button>
-        </div>
-      </div>
-    </section>
-
-  </main>
 </div>
+
+<footer class="site-footer">
+  <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
+  <div class="footer-links">
+    <a href="#">Política de Privacidade</a>
+    <span>•</span>
+    <a href="#">Termos de Uso</a>
+    <span>•</span>
+    <a href="https://discord.gg/xZmRkB7PWd" target="_blank">Contato</a>
+  </div>
+</footer>
 
 <div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
   <div class="confirm-pw-sheet" role="dialog" aria-modal="true">
-    <div class="confirm-pw-icon">🔒</div>
+    <div class="confirm-pw-icon" id="confirm-pw-icon">🔒</div>
     <h4 id="confirm-pw-title">Confirmar identidade</h4>
-    <p id="confirm-pw-desc">Digite sua senha atual para autorizar as alterações de perfil.</p>
+    <p id="confirm-pw-desc">Digite sua senha atual para autorizar.</p>
     <div class="pw-field-wrap">
-      <input type="password" id="confirm-pw-input" placeholder="Sua senha atual" onkeydown="if(event.key==='Enter')confirmPwSubmit()">
+      <input type="password" id="confirm-pw-input" placeholder="Sua senha" onkeydown="if(event.key==='Enter')confirmPwSubmit()">
       <button class="pw-toggle-btn" type="button" onclick="toggleConfirmPwVisibility()">
         <svg id="pw-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
@@ -416,13 +474,15 @@ if (!token || !session) { window.location.replace('login.html'); }
 
 let myHistoryData = [];
 let myChartInstance = null;
+let baseEmail = session.email;
 
 (async () => {
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Sessão inválida');
     const me = await res.json();
-    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, created_at: me.created_at };
+    baseEmail = me.email;
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
     logout(); return;
@@ -432,28 +492,36 @@ let myChartInstance = null;
   fetchMyActivity();
 })();
 
-// Navegação de Abas
 function switchTab(tabId, btnElement) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  
   document.getElementById(`tab-${tabId}`).classList.add('active');
   btnElement.classList.add('active');
-  
   if(tabId !== 'perfil') toggleEditMode(false);
 }
 
-// Injeção de Dados na Tela
 function renderData() {
   const mcName = session.minecraftName || 'Steve';
   const displayMcName = session.minecraftName ? session.minecraftName : 'Não vinculada';
   const skinUrl = `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`;
   
+  // Header Dropdown
   document.getElementById('nav-name').textContent = session.username;
   document.getElementById('nav-photo').src = skinUrl;
+  document.getElementById('drop-name').textContent = session.username;
+  document.getElementById('drop-email').textContent = session.email || 'Sem e-mail';
+  document.getElementById('drop-photo').src = skinUrl;
   
+  // Profile Tab
   document.getElementById('main-name').textContent = session.username;
   document.getElementById('main-photo').src = skinUrl;
+  
+  if (session.created_at) {
+    const dataCriacao = new Date(session.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    document.getElementById('member-since').textContent = `Membro desde ${dataCriacao}`;
+  } else {
+    document.getElementById('member-since').textContent = 'Membro oficial';
+  }
   
   document.getElementById('view-username').textContent = session.username;
   document.getElementById('view-email').textContent = session.email || '-';
@@ -470,34 +538,56 @@ function renderData() {
 
   if (session.role === 'owner' || session.role === 'full') {
     document.getElementById('nav-painel').style.display = 'flex';
+    document.getElementById('drop-btn-painel').style.display = 'flex';
   }
 }
 
-// UI Toggles
-function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
-document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
+function checkEmailChange() {
+  const currentVal = document.getElementById('edit-email').value.trim();
+  const confirmRow = document.getElementById('email-confirm-row');
+  if (currentVal !== baseEmail) { confirmRow.style.display = 'flex'; } 
+  else { confirmRow.style.display = 'none'; document.getElementById('edit-email-confirm').value = ''; }
+}
 
 function toggleEditMode(isEditing) {
   const card = document.getElementById('profile-card');
   const msg = document.getElementById('profile-msg');
   msg.textContent = ''; 
-  if (isEditing) { card.classList.add('edit-mode'); } 
+  if (isEditing) { 
+    card.classList.add('edit-mode'); 
+    checkEmailChange();
+  } 
   else {
     card.classList.remove('edit-mode');
     document.getElementById('edit-username').value = session.username;
     document.getElementById('edit-email').value = session.email || '';
     document.getElementById('edit-mc').value = session.minecraftName || '';
+    document.getElementById('email-confirm-row').style.display = 'none';
+    document.getElementById('edit-email-confirm').value = '';
   }
 }
 
-// Lógica de Modal e Salvar
+// Modal Confirmação
 let _confirmPwCallback = null;
-function requirePassword(onConfirm) {
+function requirePassword(title, desc, btnLabel, isDanger, onConfirm) {
   _confirmPwCallback = onConfirm;
   const input = document.getElementById('confirm-pw-input');
   input.value = ''; input.type = 'password'; input.classList.remove('pw-error');
+  
+  document.getElementById('confirm-pw-title').textContent = title;
+  document.getElementById('confirm-pw-desc').textContent = desc;
+  
+  const submitBtn = document.getElementById('confirm-pw-submit-btn');
+  submitBtn.textContent = btnLabel;
+  submitBtn.className = isDanger ? 'confirm-pw-btn-confirm btn-danger' : 'confirm-pw-btn-confirm';
+  
+  const icon = document.getElementById('confirm-pw-icon');
+  icon.style.background = isDanger ? 'rgba(255,59,48,0.1)' : 'rgba(0,113,227,0.1)';
+  icon.style.color = isDanger ? 'var(--danger)' : 'var(--accent)';
+  icon.textContent = isDanger ? '⚠️' : '🔒';
+
   document.getElementById('confirm-pw-error').textContent = '';
-  document.getElementById('confirm-pw-submit-btn').disabled = false;
+  submitBtn.disabled = false;
   document.getElementById('pw-eye-icon').innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
   document.getElementById('confirm-pw-overlay').classList.add('active');
   setTimeout(() => input.focus(), 120);
@@ -509,45 +599,60 @@ function toggleConfirmPwVisibility() { const input = document.getElementById('co
 async function confirmPwSubmit() {
   const input = document.getElementById('confirm-pw-input'); const errEl = document.getElementById('confirm-pw-error'); const btn = document.getElementById('confirm-pw-submit-btn'); const pw = input.value;
   if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
-  btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
-  if (_confirmPwCallback) { await _confirmPwCallback(pw); }
+  btn.disabled = true; const oldText = btn.textContent; btn.textContent = 'Aguarde...'; errEl.textContent = '';
+  if (_confirmPwCallback) { await _confirmPwCallback(pw, errEl, input, btn, oldText); }
 }
 
 function saveProfile() {
   const username = document.getElementById('edit-username').value.trim();
   const email = document.getElementById('edit-email').value.trim();
+  const emailConfirm = document.getElementById('edit-email-confirm').value.trim();
   const mc = document.getElementById('edit-mc').value.trim();
   const msg = document.getElementById('profile-msg');
   
   if (!username || !email) { msg.textContent = 'Os campos Usuário e Email são obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
+  if (email !== baseEmail && email !== emailConfirm) { msg.textContent = 'Os campos de e-mail não coincidem.'; msg.style.color = 'var(--danger)'; return; }
   
-  requirePassword(async (password) => {
-    const btn = document.getElementById('confirm-pw-submit-btn');
-    const input = document.getElementById('confirm-pw-input');
-    const errEl = document.getElementById('confirm-pw-error');
-    
+  requirePassword('Confirmar alterações', 'Digite sua senha atual para autorizar as edições do seu perfil.', 'Salvar', false, async (password, errEl, input, btn, oldText) => {
     try {
-      const res = await fetch(`${API_BASE}/api/me`, { 
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-        body: JSON.stringify({ username, email, minecraftName: mc, currentPassword: password }) 
-      });
+      const res = await fetch(`${API_BASE}/api/me`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName: mc, currentPassword: password }) });
       if (!res.ok) {
          if (res.status === 401) throw new Error('Senha incorreta.');
-         throw new Error('Nome de usuário ou email já estão em uso.');
+         throw new Error('Usuário ou e-mail já em uso.');
       }
       closeConfirmPw();
-      session.username = username; session.email = email; session.minecraftName = mc;
+      session.username = username; session.email = email; session.minecraftName = mc; baseEmail = email;
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
       renderData(); toggleEditMode(false);
       msg.textContent = 'Perfil atualizado com sucesso!'; msg.style.color = 'var(--success)';
       setTimeout(() => msg.textContent = '', 4000);
-      fetchMyActivity(); // Atualiza histórico se a conta MC mudou
+      fetchMyActivity();
     } catch (e) {
       if (e.message === 'Senha incorreta.') {
         errEl.textContent = 'Senha incorreta. Tente novamente.'; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
-        btn.disabled = false; btn.textContent = 'Confirmar'; input.focus();
+        btn.disabled = false; btn.textContent = oldText; input.focus();
+      } else { closeConfirmPw(); msg.textContent = e.message; msg.style.color = 'var(--danger)'; }
+    }
+  });
+}
+
+function deleteAccount() {
+  requirePassword('Excluir Conta', 'Esta ação é irreversível. Digite sua senha para confirmar a exclusão.', 'Sim, Excluir', true, async (password, errEl, input, btn, oldText) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/me`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ password }) });
+      if (!res.ok) {
+         const data = await res.json();
+         if (res.status === 401) throw new Error('Senha incorreta.');
+         throw new Error(data.error || 'Erro ao excluir conta.');
+      }
+      logout();
+    } catch (e) {
+      if (e.message === 'Senha incorreta.') {
+        errEl.textContent = 'Senha incorreta. Tente novamente.'; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
+        btn.disabled = false; btn.textContent = oldText; input.focus();
       } else {
-        closeConfirmPw(); msg.textContent = e.message; msg.style.color = 'var(--danger)';
+        errEl.textContent = e.message;
+        btn.disabled = false; btn.textContent = oldText;
       }
     }
   });
@@ -562,16 +667,13 @@ async function changePass() {
     if (!res.ok) throw new Error('invalid');
     msg.textContent = 'Sua senha foi alterada com segurança!'; msg.style.color = 'var(--success)';
     document.getElementById('currentpass').value = ''; document.getElementById('newpass').value = '';
-  } catch (e) {
-    msg.textContent = 'Senha atual incorreta.'; msg.style.color = 'var(--danger)';
-  }
+  } catch (e) { msg.textContent = 'Senha atual incorreta.'; msg.style.color = 'var(--danger)'; }
   setTimeout(() => { msg.textContent = ''; }, 4000);
 }
 
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
 
-// ---- HISTÓRICO & ATIVIDADE (NOVO) ----
-
+// Atividade
 function formatTime(hoursFloat) {
   if (!hoursFloat || hoursFloat <= 0) return '<1m';
   const t = Math.floor(hoursFloat * 60); const d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
@@ -579,9 +681,7 @@ function formatTime(hoursFloat) {
 }
 
 async function fetchMyActivity() {
-  if (!session.minecraftName) {
-    renderMyStats([], null); return;
-  }
+  if (!session.minecraftName) { renderMyStats([], null); return; }
   try {
     const res = await fetch(`${API_BASE}/api/me/history`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (res.ok) {
@@ -600,83 +700,45 @@ function renderMyStats(history, activeSession) {
   
   const statsDiv = document.getElementById('my-stats');
   if (totalSessions === 0) {
-    statsDiv.innerHTML = `<div class="stat-box"><span>Tempo Total Logado</span><strong>0h</strong></div><div class="stat-box"><span>Total de Sessões</span><strong>0</strong></div><div class="stat-box"><span>Média por Sessão</span><strong>0h</strong></div>`;
-    return;
+    statsDiv.innerHTML = `<div class="stat-box"><span>Tempo Total Logado</span><strong>0h</strong></div><div class="stat-box"><span>Total de Sessões</span><strong>0</strong></div><div class="stat-box"><span>Média por Sessão</span><strong>0h</strong></div>`; return;
   }
-  
-  statsDiv.innerHTML = `
-    <div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div>
-    <div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div>
-    <div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalHours / totalSessions)}</strong></div>
-  `;
+  statsDiv.innerHTML = `<div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div><div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div><div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalHours / totalSessions)}</strong></div>`;
 }
 
 function renderMyChart(history, activeSession) {
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now - 30 * 86400000);
-  
-  // Agrupa horas por dia nos ultimos 30 dias
+  const now = new Date(); const thirtyDaysAgo = new Date(now - 30 * 86400000);
   const daysMap = new Map();
-  for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
-    daysMap.set(d.toDateString(), 0);
-  }
+  for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) { daysMap.set(d.toDateString(), 0); }
 
   const sessions = [...history.map(h => ({ start: new Date(h.entered_at), end: new Date(h.left_at) }))];
   if (activeSession) sessions.push({ start: new Date(activeSession), end: now });
 
   sessions.forEach(s => {
-    // simplificação para não quebrar dias no meio. (Para precisão exata usar algoritimo do admin, mas para o usuario isso basta)
     const ds = s.start.toDateString();
-    if (daysMap.has(ds)) {
-      const durationMs = s.end.getTime() - s.start.getTime();
-      daysMap.set(ds, daysMap.get(ds) + durationMs);
-    }
+    if (daysMap.has(ds)) { daysMap.set(ds, daysMap.get(ds) + (s.end.getTime() - s.start.getTime())); }
   });
 
   const labels = []; const data = [];
   daysMap.forEach((val, key) => {
-    const d = new Date(key);
-    labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
-    data.push(val / 3600000); // converte ms pra horas
+    labels.push(new Date(key).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+    data.push(val / 3600000);
   });
 
   if (myChartInstance) myChartInstance.destroy();
   const ctx = document.getElementById('myActivityChart').getContext('2d');
-  
   myChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Horas Jogadas',
-        data,
-        backgroundColor: '#0071e3',
-        borderRadius: 4
-      }]
-    },
+    type: 'bar', data: { labels, datasets: [{ label: 'Horas Jogadas', data, backgroundColor: '#0071e3', borderRadius: 4 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', bodyColor: '#86868b', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, cornerRadius: 10,
-          callbacks: { label: ctx => ` ${formatTime(ctx.raw)}` }
-        }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' } },
-        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false }, ticks: { font: { size: 11 }, color: '#86868b' } }
-      }
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', bodyColor: '#86868b', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, cornerRadius: 10, callbacks: { label: ctx => ` ${formatTime(ctx.raw)}` } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' } }, y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false }, ticks: { font: { size: 11 }, color: '#86868b' } } }
     }
   });
 }
 
 function renderMyTable(history, activeSession) {
   const tbody = document.getElementById('my-history-body');
-  if (history.length === 0 && !activeSession) {
-    tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Sua conta do Minecraft não possui histórico no servidor.</span></div></td></tr>`;
-    return;
-  }
+  if (history.length === 0 && !activeSession) { tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Sua conta não possui histórico de sessões.</span></div></td></tr>`; return; }
 
   function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(), 0, 4); return `${d.getFullYear()}-W${Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7)}`; }
   function getWeekLabel(dateStr) {
@@ -685,21 +747,17 @@ function renderMyTable(history, activeSession) {
     if (monday.toDateString() === thisWeekMonday.toDateString()) return 'Esta semana'; if (monday.toDateString() === lastWeekMonday.toDateString()) return 'Semana passada'; return `${fmt(monday)} – ${fmt(sunday)}`;
   }
 
-  let rows = '';
-  let lastWeekKey = null;
-
+  let rows = ''; let lastWeekKey = null;
   if (activeSession) {
     const liveDur = formatTime((Date.now() - new Date(activeSession).getTime()) / 3600000);
-    const ent = new Date(activeSession);
-    const eTxt = Date.now() - ent.getTime() < 60000 ? 'Agora mesmo' : ent.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const ent = new Date(activeSession); const eTxt = Date.now() - ent.getTime() < 60000 ? 'Agora mesmo' : ent.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     lastWeekKey = getWeekKey(activeSession);
     rows += `<tr class="week-separator"><td colspan="3">${getWeekLabel(activeSession)}</td></tr>`;
     rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${eTxt}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${liveDur}</strong></td></tr>`;
   }
 
   rows += history.map(h => {
-    const eAt = h.entered_at;
-    const weekKey = getWeekKey(eAt); let separator = '';
+    const eAt = h.entered_at; const weekKey = getWeekKey(eAt); let separator = '';
     if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator"><td colspan="3">${getWeekLabel(eAt)}</td></tr>`; }
     const d = new Date(eAt), l = new Date(h.left_at);
     return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></td><td>${l.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${formatTime(h.duration_hours)}</td></tr>`;
