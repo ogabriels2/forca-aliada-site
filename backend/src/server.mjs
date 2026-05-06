@@ -83,7 +83,7 @@ async function migrate() {
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
     
-    -- Atualiza a constraint antiga para aceitar o novo cargo "owner"
+    -- Atualiza as restrições para suportar o cargo owner
     ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
     ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner', 'full', 'limited'));
 
@@ -120,34 +120,37 @@ async function seedAdmin() {
   if (rows.length > 0) return;
 
   const hash = await bcrypt.hash(adminPassword, 12);
+  // O usuário de bootstrap agora é owner (Dono)
   await pool.query(
     'INSERT INTO users (username,email,minecraft_name,password_hash,role,is_verified) VALUES ($1,$2,$3,$4,$5,$6)',
     [adminUsername.toLowerCase(), adminEmail, adminUsername, hash, 'owner', true]
   );
 }
 
-// ── PROTEÇÃO COM BANCO DE DADOS (Real-Time Auth) ──
+// ── MIDDLEWARES DE AUTENTICAÇÃO E CARGOS ──
 async function auth(req, res, next) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'missing token' });
   try { 
     const decoded = jwt.verify(token, JWT_SECRET); 
-    const { rows } = await pool.query('SELECT role, is_verified, minecraft_name FROM users WHERE id = $1', [decoded.sub]);
+    const { rows } = await pool.query('SELECT role, is_verified FROM users WHERE id = $1', [decoded.sub]);
     if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
     
-    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified, minecraft_name: rows[0].minecraft_name };
+    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified };
     next(); 
   } 
   catch { res.status(401).json({ error: 'invalid token' }); }
 }
 
-function requireOwner(req, res, next) {
-  if (req.user?.role !== 'owner') return res.status(403).json({ error: 'forbidden' });
+function requireAdmin(req, res, next) {
+  // Permite Admin (full) e Dono (owner)
+  if (!['full', 'owner'].includes(req.user?.role)) return res.status(403).json({ error: 'forbidden' });
   next();
 }
 
-function requireAdmin(req, res, next) {
-  if (!['owner', 'full'].includes(req.user?.role)) return res.status(403).json({ error: 'forbidden' });
+function requireOwner(req, res, next) {
+  // Permite Apenas Dono (owner)
+  if (req.user?.role !== 'owner') return res.status(403).json({ error: 'forbidden' });
   next();
 }
 
@@ -292,10 +295,33 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role } });
 });
 
+// ── GERENCIAMENTO DA PRÓPRIA CONTA ──
 app.get('/api/me', auth, async (req, res) => {
   const { rows } = await pool.query('SELECT username,email,minecraft_name,photo_url,role,is_verified FROM users WHERE id = $1', [req.user.sub]);
   if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
   res.json(rows[0]);
+});
+
+app.put('/api/me', auth, async (req, res) => {
+  const username = sanitizeInput(req.body?.username).toLowerCase();
+  const email = sanitizeInput(req.body?.email).toLowerCase();
+  const minecraftName = sanitizeInput(req.body?.minecraftName || username);
+  const currentPassword = req.body?.currentPassword || '';
+
+  if (!validateUsername(username) || !validateEmail(email)) return res.status(400).json({ error: 'Dados inválidos' });
+
+  // Confirmação de segurança via senha
+  const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.sub]);
+  if (!rows[0] || !(await bcrypt.compare(currentPassword, rows[0].password_hash))) {
+    return res.status(401).json({ error: 'invalid current password' });
+  }
+
+  try {
+    await pool.query('UPDATE users SET username=$1, email=$2, minecraft_name=$3 WHERE id=$4', [username, email, minecraftName, req.user.sub]);
+    res.json({ ok: true });
+  } catch {
+    res.status(409).json({ error: 'username/email already exists' });
+  }
 });
 
 async function changeMyPassword(req, res) {
@@ -314,65 +340,32 @@ async function changeMyPassword(req, res) {
 app.post('/api/me/password', auth, changeMyPassword);
 app.put('/api/me/password', auth, changeMyPassword);
 
-// ── DADOS DO DASHBOARD ──
-app.get('/api/snapshots/latest', auth, async (req, res) => {
+// ── DADOS GLOBAIS DO DASHBOARD (Apenas Admin/Dono) ──
+app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);
-  const isOwner = req.user.role === 'owner';
-  
-  // Todos veem quem está online de forma bruta (apenas strings)
   const online = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-  
-  let historyQuery, historyValues;
-  if (isOwner) {
-    historyQuery = 'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1';
-    historyValues = [limit];
-  } else {
-    // Se não for Dono, só recebe os PRÓPRIOS dados de histórico e gráfico
-    const mcName = (req.user.minecraft_name || '').toLowerCase();
-    historyQuery = 'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL AND LOWER(player) = $1 ORDER BY left_at DESC LIMIT $2';
-    historyValues = [mcName, limit];
-  }
-
-  const history = await pool.query(historyQuery, historyValues);
-
-  // Filtra "activeSessions" (usado pra exibir duração online e gráficos) 
-  // para conter APENAS dados da própria pessoa caso não seja owner.
-  const activeSessions = {};
-  const mcNameLow = (req.user.minecraft_name || '').toLowerCase();
-  online.rows.forEach(r => {
-    if (isOwner || r.player.toLowerCase() === mcNameLow) {
-      activeSessions[r.player] = { name: r.player, enteredAt: r.entered_at };
-    }
-  });
-
+  const history = await pool.query('SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1', [limit]);
   res.json({
     onlinePlayers: online.rows.map((r) => r.player),
-    activeSessions,
+    activeSessions: online.rows.reduce((acc, r) => ({ ...acc, [r.player]: { name: r.player, enteredAt: r.entered_at } }), {}),
     history: history.rows.map((r) => ({ player: r.player, enteredAt: r.entered_at, leftAt: r.left_at, hoursOnline: r.duration_hours }))
   });
 });
 
-app.get('/api/player/:name/history', auth, async (req, res) => {
-  const reqName = req.params.name.toLowerCase();
-  const myName = (req.user.minecraft_name || '').toLowerCase();
-  
-  // Bloqueia se um usuário não-owner tentar ver o histórico de outra pessoa
-  if (req.user.role !== 'owner' && reqName !== myName) {
-    return res.status(403).json({ error: 'forbidden' });
-  }
-
-  const { rows } = await pool.query('SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE LOWER(player) = $1 ORDER BY entered_at DESC', [reqName]);
+app.get('/api/player/:name/history', auth, requireAdmin, async (req, res) => {
+  const { rows } = await pool.query('SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE player = $1 ORDER BY entered_at DESC', [req.params.name]);
   res.json(rows);
 });
 
-// ── ADMIN ──
+// ── ADMINISTRAÇÃO DE CONTAS DA STAFF ──
 app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
-  // requires admin (full) ou owner (dono)
+  // Admin e Dono podem LER a lista completa
   const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users ORDER BY id DESC');
   res.json(rows);
 });
 
 app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
+  // Apenas o Dono pode CRIAR novas contas da staff manualmente
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
@@ -393,6 +386,7 @@ app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
+  // Apenas o Dono pode EDITAR os dados de terceiros
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const username = sanitizeInput(req.body?.username).toLowerCase();
@@ -415,6 +409,7 @@ app.put('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id/password', auth, requireOwner, async (req, res) => {
+  // Apenas o Dono pode FORÇAR alteração de senha de terceiros
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const newPassword = req.body?.newPassword || '';
@@ -427,6 +422,7 @@ app.put('/api/admin/users/:id/password', auth, requireOwner, async (req, res) =>
 });
 
 app.delete('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
+  // Apenas o Dono pode EXCLUIR contas
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);
