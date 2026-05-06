@@ -78,10 +78,15 @@ async function migrate() {
       minecraft_name VARCHAR(255),
       photo_url VARCHAR(255) DEFAULT 'logo.JPG',
       password_hash VARCHAR(255) NOT NULL,
-      role VARCHAR(50) NOT NULL DEFAULT 'limited' CHECK (role IN ('full', 'limited')),
+      role VARCHAR(50) NOT NULL DEFAULT 'limited',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
+    
+    -- Atualiza a constraint antiga para aceitar o novo cargo "owner"
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner', 'full', 'limited'));
+
     CREATE TABLE IF NOT EXISTS player_sessions (
       id SERIAL PRIMARY KEY,
       player VARCHAR(255) NOT NULL,
@@ -117,7 +122,7 @@ async function seedAdmin() {
   const hash = await bcrypt.hash(adminPassword, 12);
   await pool.query(
     'INSERT INTO users (username,email,minecraft_name,password_hash,role,is_verified) VALUES ($1,$2,$3,$4,$5,$6)',
-    [adminUsername.toLowerCase(), adminEmail, adminUsername, hash, 'full', true]
+    [adminUsername.toLowerCase(), adminEmail, adminUsername, hash, 'owner', true]
   );
 }
 
@@ -127,19 +132,22 @@ async function auth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'missing token' });
   try { 
     const decoded = jwt.verify(token, JWT_SECRET); 
-    // Segurança Ativa: Verifica se o usuário ainda existe e pega o cargo atualizado
-    const { rows } = await pool.query('SELECT role, is_verified FROM users WHERE id = $1', [decoded.sub]);
+    const { rows } = await pool.query('SELECT role, is_verified, minecraft_name FROM users WHERE id = $1', [decoded.sub]);
     if (rows.length === 0) return res.status(401).json({ error: 'user deleted' });
     
-    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified };
+    req.user = { sub: decoded.sub, role: rows[0].role, is_verified: rows[0].is_verified, minecraft_name: rows[0].minecraft_name };
     next(); 
   } 
   catch { res.status(401).json({ error: 'invalid token' }); }
 }
 
-function requireFull(req, res, next) {
-  // Como o auth lê o BD sempre, req.user.role é sempre 100% fiel à realidade!
-  if (req.user?.role !== 'full') return res.status(403).json({ error: 'forbidden' });
+function requireOwner(req, res, next) {
+  if (req.user?.role !== 'owner') return res.status(403).json({ error: 'forbidden' });
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (!['owner', 'full'].includes(req.user?.role)) return res.status(403).json({ error: 'forbidden' });
   next();
 }
 
@@ -309,32 +317,69 @@ app.put('/api/me/password', auth, changeMyPassword);
 // ── DADOS DO DASHBOARD ──
 app.get('/api/snapshots/latest', auth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);
+  const isOwner = req.user.role === 'owner';
+  
+  // Todos veem quem está online de forma bruta (apenas strings)
   const online = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-  const history = await pool.query('SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1', [limit]);
+  
+  let historyQuery, historyValues;
+  if (isOwner) {
+    historyQuery = 'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1';
+    historyValues = [limit];
+  } else {
+    // Se não for Dono, só recebe os PRÓPRIOS dados de histórico e gráfico
+    const mcName = (req.user.minecraft_name || '').toLowerCase();
+    historyQuery = 'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL AND LOWER(player) = $1 ORDER BY left_at DESC LIMIT $2';
+    historyValues = [mcName, limit];
+  }
+
+  const history = await pool.query(historyQuery, historyValues);
+
+  // Filtra "activeSessions" (usado pra exibir duração online e gráficos) 
+  // para conter APENAS dados da própria pessoa caso não seja owner.
+  const activeSessions = {};
+  const mcNameLow = (req.user.minecraft_name || '').toLowerCase();
+  online.rows.forEach(r => {
+    if (isOwner || r.player.toLowerCase() === mcNameLow) {
+      activeSessions[r.player] = { name: r.player, enteredAt: r.entered_at };
+    }
+  });
+
   res.json({
     onlinePlayers: online.rows.map((r) => r.player),
-    activeSessions: online.rows.reduce((acc, r) => ({ ...acc, [r.player]: { name: r.player, enteredAt: r.entered_at } }), {}),
+    activeSessions,
     history: history.rows.map((r) => ({ player: r.player, enteredAt: r.entered_at, leftAt: r.left_at, hoursOnline: r.duration_hours }))
   });
 });
 
 app.get('/api/player/:name/history', auth, async (req, res) => {
-  const { rows } = await pool.query('SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE player = $1 ORDER BY entered_at DESC', [req.params.name]);
+  const reqName = req.params.name.toLowerCase();
+  const myName = (req.user.minecraft_name || '').toLowerCase();
+  
+  // Bloqueia se um usuário não-owner tentar ver o histórico de outra pessoa
+  if (req.user.role !== 'owner' && reqName !== myName) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+
+  const { rows } = await pool.query('SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE LOWER(player) = $1 ORDER BY entered_at DESC', [reqName]);
   res.json(rows);
 });
 
 // ── ADMIN ──
-app.get('/api/admin/users', auth, requireFull, async (_req, res) => {
+app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
+  // requires admin (full) ou owner (dono)
   const { rows } = await pool.query('SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users ORDER BY id DESC');
   res.json(rows);
 });
 
-app.post('/api/admin/users', auth, requireFull, async (req, res) => {
+app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
   const password = req.body?.password || '';
-  const role = req.body?.role === 'full' ? 'full' : 'limited';
+  
+  const allowedRoles = ['owner', 'full', 'limited'];
+  const role = allowedRoles.includes(req.body?.role) ? req.body.role : 'limited';
 
   if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password)) return res.status(400).json({ error: 'invalid fields' });
 
@@ -347,14 +392,16 @@ app.post('/api/admin/users', auth, requireFull, async (req, res) => {
   }
 });
 
-app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+app.put('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const username = sanitizeInput(req.body?.username).toLowerCase();
   const email = sanitizeInput(req.body?.email).toLowerCase();
   const minecraftName = sanitizeInput(req.body?.minecraftName || username);
   const photoUrl = sanitizeInput(req.body?.photoUrl || 'logo.JPG');
-  const role = req.body?.role === 'full' ? 'full' : 'limited';
+  
+  const allowedRoles = ['owner', 'full', 'limited'];
+  const role = allowedRoles.includes(req.body?.role) ? req.body.role : 'limited';
   
   if (!validateUsername(username) || !validateEmail(email)) return res.status(400).json({ error: 'invalid fields' });
 
@@ -367,7 +414,7 @@ app.put('/api/admin/users/:id', auth, requireFull, async (req, res) => {
   }
 });
 
-app.put('/api/admin/users/:id/password', auth, requireFull, async (req, res) => {
+app.put('/api/admin/users/:id/password', auth, requireOwner, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const newPassword = req.body?.newPassword || '';
@@ -379,7 +426,7 @@ app.put('/api/admin/users/:id/password', auth, requireFull, async (req, res) => 
   res.json({ ok: true });
 });
 
-app.delete('/api/admin/users/:id', auth, requireFull, async (req, res) => {
+app.delete('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
   const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [id]);
