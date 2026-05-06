@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel Staff | Força Aliada</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel da Staff | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
 :root { --bg-color: #f5f5f7; --card-bg: #ffffff; --text-primary: #1d1d1f; --text-secondary: #86868b; --accent: #0071e3; --accent-hover: #0077ed; --danger: #ff3b30; --success: #34c759; --warning: #ff9f0a; --border: rgba(0,0,0,0.08); --radius-lg: 20px; --radius-md: 12px; --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
@@ -38,7 +38,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .user-dropdown button:hover { background: rgba(0,0,0,0.05); }
 .user-dropdown .danger { color: var(--danger); }
 .user-dropdown .danger:hover { background: rgba(255,59,48,0.1); }
-.container { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+.container { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 24px; align-items: stretch; }
 .btn-primary { padding: 10px 18px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit; }
 .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
@@ -47,11 +47,8 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
 .card h3 { margin: 0; font-size: 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
-.profile-header { display: flex; align-items: center; gap: 16px; }
-.profile-img { width: 64px; height: 64px; border-radius: var(--radius-md); object-fit: cover; background: #e5e5ea; }
-.profile-info h2 { margin: 0; font-size: 18px; font-weight: 600; }
-.profile-info p { margin: 4px 0 0; font-size: 14px; color: var(--text-secondary); }
 .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.pill.owner   { background: #f4e8ff; color: #af52de; }
 .pill.full    { background: #e3f2fd; color: var(--accent); }
 .pill.limited { background: #f2f2f7; color: var(--text-secondary); }
 .pill.success { background: #e8f8f0; color: var(--success); }
@@ -177,7 +174,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 <body>
 
 <header>
-  <a href="index.html" class="brand-link">
+  <a href="account.html" class="brand-link">
     <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
     <div class="logo-text">Força Aliada</div>
   </a>
@@ -185,33 +182,6 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 </header>
 
 <div class="container">
-  <div class="card">
-    <div class="profile-header">
-      <img id="photo" src="https://minotar.net/helm/Steve/100.png" class="profile-img" alt="Foto de perfil">
-      <div class="profile-info">
-        <h2 id="name">Carregando...</h2>
-        <span id="role-pill" class="pill limited">Staff</span>
-      </div>
-    </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">
-    <div class="input-group"><label>Email de Contato</label><p style="margin:0;font-size:14px;" id="email-display">-</p></div>
-    <div class="input-group"><label>Conta Minecraft</label><p style="margin:0;font-size:14px;font-weight:600;" id="mc-display">-</p></div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">
-    <div>
-      <button class="accordion-btn" id="security-acc-btn" onclick="toggleAccordion('security-acc-btn','security-acc-body')">
-        <span style="font-size:15px;font-weight:600;">Segurança</span><i class="acc-arrow">▾</i>
-      </button>
-      <div class="accordion-body" id="security-acc-body">
-        <div class="accordion-inner">
-          <div class="input-group" style="margin-top:0;"><label>Senha Atual</label><input id="currentpass" type="password" placeholder="Sua senha atual"></div>
-          <div class="input-group"><label>Nova Senha (mín. 8 caracteres)</label><input id="newpass" type="password" placeholder="Nova senha"></div>
-          <button class="btn-primary" onclick="changePass()" style="width:100%;margin-top:4px;">Atualizar Senha</button>
-          <div id="profile-msg" style="font-size:13px;" role="alert"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="card">
     <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
     <div class="dashboard-grid">
@@ -275,7 +245,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
     </ul>
   </div>
 
-  <div class="card" id="admin-users-card" style="grid-column:1/-1;display:none;">
+  <div class="card" id="admin-users-card" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
       <h3 id="admin-card-title">Contas da Staff</h3>
       <input type="text" id="admin-search" placeholder="Buscar..." oninput="renderAdminTab()" style="width:220px;padding:8px 12px;">
@@ -317,17 +287,25 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
           <h4 style="margin:0;font-size:15px;">Dados da Conta (Painel)</h4>
           <button class="btn-text" id="btn-edit-account" onclick="setAdminEditMode(true)">Editar Cadastro</button>
         </div>
-        <div class="admin-field-group">
+        
+        <div id="admin-lock-screen" style="display:none; text-align:center; padding: 24px 0;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🔒</div>
+          <h4 style="margin:0 0 8px;">Dados Protegidos</h4>
+          <p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">Confirme sua senha para visualizar informações desta conta.</p>
+          <button class="btn-primary" onclick="unlockAdminData()" style="width:auto;">Ver Dados</button>
+        </div>
+
+        <div id="admin-data-content" class="admin-field-group">
           <div class="admin-field"><label>Usuário de Login</label><div class="view-val" id="av-username">-</div><input type="text" id="ai-username"></div>
           <div class="admin-field"><label>E-mail</label><div class="view-val" id="av-email">-</div><input type="email" id="ai-email"></div>
           <div class="admin-field"><label>Conta Minecraft</label><div class="view-val" id="av-mc">-</div><input type="text" id="ai-mc" placeholder="Opcional"></div>
-          <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Acesso Total (Admin)</option></select></div>
+          <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
         </div>
         <div class="advanced-security-section" id="advanced-security-wrapper" style="display:none;">
           <button class="accordion-btn" id="adv-sec-btn" onclick="toggleAccordion('adv-sec-btn','adv-sec-body')"><span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span><i class="acc-arrow">▾</i></button>
           <div class="accordion-body" id="adv-sec-body"><div class="accordion-inner"><div class="admin-field"><label>Nova Senha (mín. 8 caracteres)</label><input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;"></div></div></div>
         </div>
-        <div class="action-bar">
+        <div class="action-bar" id="action-bar-edit">
           <div id="admin-delete-normal"><button class="btn-text danger" style="font-size:13px;" onclick="showAdminDeleteConfirm()">Excluir conta...</button></div>
           <div id="admin-delete-confirm" style="display:none;align-items:center;gap:12px;"><span style="font-size:13px;color:var(--danger);font-weight:600;">Tem certeza?</span><button class="btn-text danger" style="font-weight:700;" onclick="executeAdminDelete()">Sim, excluir</button><button class="btn-text" onclick="hideAdminDeleteConfirm()">Cancelar</button></div>
           <div style="display:flex;gap:12px;margin-left:auto;"><button class="btn-secondary" style="padding:8px 16px;border-radius:8px;border:none;font-weight:600;font-size:13px;cursor:pointer;" onclick="setAdminEditMode(false)">Cancelar</button><button class="btn-primary" style="padding:8px 16px;border-radius:8px;" onclick="saveAdminUser()">Salvar Alterações</button></div>
@@ -345,7 +323,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
               <div class="admin-field"><label>Usuário de Login</label><input type="text" id="ci-username" placeholder="nome_de_usuario" style="display:block;"></div>
               <div class="admin-field"><label>E-mail</label><input type="email" id="ci-email" placeholder="email@exemplo.com" style="display:block;"></div>
               <div class="admin-field"><label>Conta Minecraft</label><input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="display:block;background:#f2f2f7;cursor:default;"></div>
-              <div class="admin-field"><label>Permissão</label><select id="ci-role" style="display:block;"><option value="limited">Acesso Restrito</option><option value="full">Acesso Total (Admin)</option></select></div>
+              <div class="admin-field"><label>Permissão</label><select id="ci-role" style="display:block;"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
               <div class="admin-field" style="grid-column:1/-1;"><label>Senha Inicial (mín. 8 caracteres)</label><input type="password" id="ci-password" placeholder="Senha inicial" style="display:block;"></div>
             </div>
             <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:16px;gap:12px;">
@@ -395,6 +373,8 @@ const token = localStorage.getItem(TOKEN_KEY);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
 if (!token || !session) { window.location.replace('login.html'); }
+// Bloqueia contas limitadas de ver a Dashboard e redireciona pra My Account
+if (session && session.role === 'limited') { window.location.replace('account.html'); }
 
 let globalHistData     = null;
 let globalApiData      = null;
@@ -417,6 +397,7 @@ let adminSortState = { key: 'name', asc: true };
     const me = await res.json();
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    if (session.role === 'limited') { window.location.replace('account.html'); return; }
   } catch {
     logout(); return;
   }
@@ -425,11 +406,9 @@ let adminSortState = { key: 'name', asc: true };
 })();
 
 function initDashboard() {
-  renderHeader(); renderProfile(); loadData();
-  if (session.role === 'full') {
-    document.getElementById('admin-users-card').style.display = 'block';
-    fetchAdminUsers();
-  }
+  renderHeader(); loadData();
+  document.getElementById('admin-users-card').style.display = 'block';
+  fetchAdminUsers();
   updateSortBarForTab('registered');
 
   if (liveInterval) clearInterval(liveInterval);
@@ -441,9 +420,7 @@ function initDashboard() {
       if (session.role !== me.role) {
          session.role = me.role;
          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-         renderProfile();
-         if (session.role === 'full') { document.getElementById('admin-users-card').style.display = 'block'; fetchAdminUsers(); }
-         else document.getElementById('admin-users-card').style.display = 'none';
+         if (session.role === 'limited') window.location.replace('account.html');
       }
     } catch { logout(); return; }
     applyFilters();
@@ -519,32 +496,11 @@ function getLiveDuration(enteredAtStr) { return formatTime((Date.now() - new Dat
 
 function renderHeader() {
   const skinUrl = session.minecraftName ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
-  document.getElementById('auth-header-container').innerHTML = `<div class="user-menu-wrapper"><div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)"><img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar"><span>${session.username}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div><div class="user-dropdown" id="user-dropdown-menu"><button onclick="location.href='index.html'">Acessar Site</button><button class="danger" onclick="logout()">Sair</button></div></div>`;
+  document.getElementById('auth-header-container').innerHTML = `<div class="user-menu-wrapper"><div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)"><img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar"><span>${session.username}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div><div class="user-dropdown" id="user-dropdown-menu"><button onclick="location.href='account.html'">Minha Conta</button><button class="danger" onclick="logout()">Sair</button></div></div>`;
 }
 
 function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
 document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
-
-function renderProfile() {
-  const mcName = session.minecraftName || '-'; const skinUrl = mcName !== '-' ? `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
-  document.getElementById('name').textContent = session.username; document.getElementById('email-display').textContent = session.email || '-'; document.getElementById('mc-display').textContent = mcName; document.getElementById('photo').src = skinUrl;
-  const pill = document.getElementById('role-pill'); pill.textContent = session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito'; pill.className = session.role === 'full' ? 'pill full' : 'pill limited';
-}
-
-async function changePass() {
-  const cur = document.getElementById('currentpass').value; const np = document.getElementById('newpass').value; const msg = document.getElementById('profile-msg');
-  if (!cur) { msg.textContent = 'Informe sua senha atual.'; msg.style.color = 'var(--danger)'; return; }
-  if (!np || np.length < 8) { msg.textContent = 'A nova senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
-  try {
-    const res = await fetch(`${API_BASE}/api/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ currentPassword: cur, newPassword: np }) });
-    if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'erro'); }
-    msg.textContent = 'Senha atualizada com sucesso!'; msg.style.color = 'var(--success)';
-    document.getElementById('currentpass').value = ''; document.getElementById('newpass').value = '';
-  } catch (e) {
-    msg.textContent = e.message === 'invalid current password' ? 'Senha atual incorreta.' : 'Erro ao atualizar senha.'; msg.style.color = 'var(--danger)';
-  }
-  setTimeout(() => { msg.textContent = ''; }, 4000);
-}
 
 async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
@@ -553,7 +509,7 @@ async function loadData() {
     fetch(`${API_BASE}/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
   ]);
   globalApiData = apiData; globalHistData = histData;
-  if (session.role === 'full') fetchUnregistered();
+  fetchUnregistered();
   renderDashboard(); updateActivityChart();
 }
 
@@ -741,7 +697,7 @@ function updateActivityChart() {
 
 async function openPlayerProfile(playerName, siteAccountId = null) {
   currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId; let displayMcName = playerName;
-  if (siteAccountId && session.role === 'full') { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
+  if (siteAccountId) { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
 
   document.getElementById('modal-name').textContent = displayMcName; document.getElementById('modal-img').src = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`; document.getElementById('modal-img').onerror = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
@@ -753,19 +709,49 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   const [historyData] = await Promise.all([ fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => []) ]);
   modalHistoryData = historyData; const chartBtn = document.getElementById('modal-chart-btn'); if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
 
-  if (session.role === 'full') {
-    const siteAcc = siteAccountId ? globalAdminUsers.find(u => u.id === siteAccountId) : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
-    if (siteAcc) {
-      currentEditingAdminId = siteAcc.id; document.getElementById('av-username').textContent = siteAcc.username; document.getElementById('av-email').textContent = siteAcc.email; document.getElementById('av-mc').textContent = siteAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = siteAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito';
-      document.getElementById('ai-username').value = siteAcc.username; document.getElementById('ai-email').value = siteAcc.email; document.getElementById('ai-mc').value = siteAcc.minecraft_name || ''; document.getElementById('ai-role').value = siteAcc.role; document.getElementById('ai-newpassword').value = '';
-      setAdminEditMode(false); document.getElementById('modal-site-account').style.display = 'block'; document.getElementById('modal-create-account').style.display = 'none';
+  const siteAcc = siteAccountId ? globalAdminUsers.find(u => u.id === siteAccountId) : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
+  
+  if (siteAcc) {
+    currentEditingAdminId = siteAcc.id; document.getElementById('av-username').textContent = siteAcc.username; document.getElementById('av-email').textContent = siteAcc.email; document.getElementById('av-mc').textContent = siteAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+    document.getElementById('ai-username').value = siteAcc.username; document.getElementById('ai-email').value = siteAcc.email; document.getElementById('ai-mc').value = siteAcc.minecraft_name || ''; document.getElementById('ai-role').value = siteAcc.role; document.getElementById('ai-newpassword').value = '';
+    
+    document.getElementById('modal-site-account').style.display = 'block'; document.getElementById('modal-create-account').style.display = 'none';
+
+    if (session.role === 'full') {
+      // Admin: Pode ver que existe, mas precisa desbloquear os dados, e não pode editar.
+      document.getElementById('admin-lock-screen').style.display = 'block';
+      document.getElementById('admin-data-content').style.display = 'none';
+      document.getElementById('btn-edit-account').style.display = 'none';
+      document.getElementById('action-bar-edit').style.display = 'none';
+      document.getElementById('advanced-security-wrapper').style.display = 'none';
+      setAdminEditMode(false);
     } else {
-      currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = playerName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
-      const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); body.classList.remove('open'); chevron.classList.remove('open');
-      document.getElementById('modal-create-account').style.display = 'block'; document.getElementById('modal-site-account').style.display = 'none';
+      // Owner: Tem acesso total.
+      document.getElementById('admin-lock-screen').style.display = 'none';
+      document.getElementById('admin-data-content').style.display = 'grid';
+      document.getElementById('btn-edit-account').style.display = 'block';
+      setAdminEditMode(false);
     }
+  } else {
+    currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = playerName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
+    const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); body.classList.remove('open'); chevron.classList.remove('open');
+    document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none'; 
+    document.getElementById('modal-site-account').style.display = 'none';
   }
+  
   renderModalStats(); renderModalTable();
+}
+
+function unlockAdminData() {
+  requirePassword({
+    title: 'Visualizar Dados Protegidos',
+    desc: 'Confirme sua senha para visualizar informações de contato e login desta pessoa.',
+    btnLabel: 'Desbloquear',
+    onConfirm: () => {
+      document.getElementById('admin-lock-screen').style.display = 'none';
+      document.getElementById('admin-data-content').style.display = 'grid';
+    }
+  });
 }
 
 function renderModalStats() {
@@ -834,7 +820,7 @@ async function saveAdminUser() {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
       if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) alert('Dados salvos, mas erro ao alterar senha.'); }
-      await fetchAdminUsers(); document.getElementById('av-username').textContent = body.username; document.getElementById('av-email').textContent = body.email; document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = body.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito'; setAdminEditMode(false);
+      await fetchAdminUsers(); document.getElementById('av-username').textContent = body.username; document.getElementById('av-email').textContent = body.email; document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito'); setAdminEditMode(false);
     }
   });
 }
@@ -864,7 +850,7 @@ async function submitCreateAccount() {
   if (res.ok) {
     const data = await res.json(); await fetchAdminUsers(); currentEditingAdminId = data.id;
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
-    if (newAcc) { document.getElementById('av-username').textContent = newAcc.username; document.getElementById('av-email').textContent = newAcc.email; document.getElementById('av-mc').textContent = newAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = newAcc.role === 'full' ? 'Acesso Total (Admin)' : 'Acesso Restrito'; document.getElementById('ai-username').value = newAcc.username; document.getElementById('ai-email').value = newAcc.email; document.getElementById('ai-mc').value = newAcc.minecraft_name || ''; document.getElementById('ai-role').value = newAcc.role; document.getElementById('ai-newpassword').value = ''; }
+    if (newAcc) { document.getElementById('av-username').textContent = newAcc.username; document.getElementById('av-email').textContent = newAcc.email; document.getElementById('av-mc').textContent = newAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito'); document.getElementById('ai-username').value = newAcc.username; document.getElementById('ai-email').value = newAcc.email; document.getElementById('ai-mc').value = newAcc.minecraft_name || ''; document.getElementById('ai-role').value = newAcc.role; document.getElementById('ai-newpassword').value = ''; }
     setAdminEditMode(false); document.getElementById('modal-create-account').style.display = 'none'; document.getElementById('modal-site-account').style.display = 'block';
   } else {
     const data = await res.json(); msg.textContent = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.'; msg.style.color = 'var(--danger)';
@@ -944,7 +930,11 @@ function renderRegisteredList() {
   list.innerHTML = filtered.map(u => {
     const mc = u.minecraft_name || u.username, hist = historyMap[mc.toLowerCase()], lastStr = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
     const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
-    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${u.role === 'full' ? 'full' : 'limited'}" style="margin-left:4px;font-size:10px;">${u.role}</span> ${verifiedBadge}</strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
+    
+    const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
+    const roleText = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
+
+    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${pillClass}" style="margin-left:4px;font-size:10px;">${roleText}</span> ${verifiedBadge}</strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
   }).join('');
 }
 
