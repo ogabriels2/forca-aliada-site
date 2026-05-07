@@ -866,7 +866,6 @@ const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
-const NOTES_KEY   = 'fa_player_notes';   // armazenado localmente
 
 let session = null;
 const token = localStorage.getItem(TOKEN_KEY);
@@ -894,14 +893,6 @@ let currentModalPlayerName = null;
 let adminSortState      = { key: 'name', asc: true };
 let topPlayersMode      = 'hours';
 
-// ══ Notas de jogadores (localStorage) ══
-function getPlayerNotes(playerName) {
-  try { const all = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); return all[playerName.toLowerCase()] || []; } catch { return []; }
-}
-function savePlayerNotes(playerName, notes) {
-  try { const all = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); all[playerName.toLowerCase()] = notes; localStorage.setItem(NOTES_KEY, JSON.stringify(all)); } catch {}
-}
-
 // ══ Toast ══
 function showToast(message, type = 'success', duration = 3500) {
   const container = document.getElementById('toast-container');
@@ -911,6 +902,20 @@ function showToast(message, type = 'success', duration = 3500) {
   container.appendChild(toast);
   requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add('show'); }); });
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, duration);
+}
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
+}
+function normalizeAuditLog(log) {
+  return {
+    id: log.id,
+    type: log.type || 'system',
+    actor: log.actor_name || log.actor || 'Sistema',
+    target: log.target_name || log.target || null,
+    message: log.message || '',
+    time: log.created_at || log.time || new Date().toISOString()
+  };
 }
 
 // ══ BOOTSTRAP ══
@@ -1235,25 +1240,24 @@ function renderTopPlayers(mode) {
 
 function hashStr(s) { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return h; }
 
-// ══ Logs de Auditoria (owner only) ══
+// ══ Logs de Auditoria (dados persistidos no backend) ══
 async function fetchAuditLogs() {
-  // Tenta buscar do backend; se não houver endpoint, gera logs sintéticos a partir das ações locais
   try {
-    const res = await fetch(`${API_BASE}/api/admin/audit`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (res.ok) { auditLogs = await res.json(); renderAuditLogs(); return; }
-  } catch {}
-  // Fallback: construir logs a partir de dados disponíveis
-  buildSyntheticAuditLogs();
-  renderAuditLogs();
-}
-
-function buildSyntheticAuditLogs() {
-  auditLogs = [];
-  globalAdminUsers.forEach(u => {
-    if (u.created_at) auditLogs.push({ type: 'create', actor: session.username, target: u.username, message: `Conta criada para ${u.username}`, time: new Date(u.created_at) });
-  });
-  auditLogs.push({ type: 'login', actor: session.username, target: null, message: `${session.username} fez login no painel`, time: new Date() });
-  auditLogs.sort((a, b) => new Date(b.time) - new Date(a.time));
+    const params = new URLSearchParams({ limit: '200', page: '0' });
+    if (auditFilterActive !== 'all') params.set('type', auditFilterActive);
+    const res = await fetch(`${API_BASE}/api/admin/audit?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao buscar auditoria');
+    const payload = await res.json();
+    const logs = Array.isArray(payload) ? payload : (payload.logs || []);
+    auditLogs = logs.map(normalizeAuditLog);
+    auditPage = 0;
+    renderAuditLogs();
+  } catch (err) {
+    console.error('[audit]', err);
+    auditLogs = [];
+    renderAuditLogs();
+    showToast('Não foi possível carregar os logs reais de auditoria.', 'error');
+  }
 }
 
 function filterAuditLogs(type) {
@@ -1262,7 +1266,7 @@ function filterAuditLogs(type) {
   ['all', 'create', 'update', 'delete', 'login'].forEach(t => {
     document.getElementById(`atab-${t}`)?.classList.toggle('active', t === type);
   });
-  renderAuditLogs();
+  fetchAuditLogs();
 }
 
 function loadMoreAuditLogs() { auditPage++; renderAuditLogs(true); }
@@ -1275,64 +1279,94 @@ function renderAuditLogs(append = false) {
   const moreBtn = document.getElementById('audit-load-more');
 
   if (!slice.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log encontrado</strong><span>Não há registros para este filtro.</span></div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log real encontrado</strong><span>O backend não retornou registros para este filtro.</span></div>';
     moreBtn.style.display = 'none';
     return;
   }
 
-  const typeIcon  = { create: '✅', update: '✏️', delete: '🗑️', login: '🔑', system: '⚙️' };
-  const typeLabel = { create: 'Criação', update: 'Edição', delete: 'Exclusão', login: 'Login', system: 'Sistema' };
+  const typeIcon  = { create: '✅', update: '✏️', delete: '🗑️', login: '🔑', notify: '🔔', system: '⚙️' };
+  const dotClass  = { notify: 'system' };
 
   list.innerHTML = slice.map(l => {
     const d = new Date(l.time); const timeStr = d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const typeClass = dotClass[l.type] || l.type || 'system';
     return `<div class="audit-item">
-      <div class="audit-dot ${l.type}"></div>
+      <div class="audit-dot ${escapeHTML(typeClass)}"></div>
       <div class="audit-content">
-        <strong>${typeIcon[l.type] || '•'} ${l.message || typeLabel[l.type]}</strong>
-        <span>Por: ${l.actor || 'Sistema'}${l.target ? ` · Alvo: ${l.target}` : ''}</span>
+        <strong>${typeIcon[l.type] || '•'} ${escapeHTML(l.message || 'Registro de auditoria')}</strong>
+        <span>Por: ${escapeHTML(l.actor)}${l.target ? ` · Alvo: ${escapeHTML(l.target)}` : ''}</span>
       </div>
-      <div class="audit-time">${timeStr}</div>
+      <div class="audit-time">${escapeHTML(timeStr)}</div>
     </div>`;
   }).join('');
 
   moreBtn.style.display = filtered.length > end ? 'inline-flex' : 'none';
 }
 
-// ══ Notas de jogador no modal ══
-function renderPlayerNotes(playerName) {
-  const notes = getPlayerNotes(playerName);
+// ══ Notas de jogador no modal (compartilhadas via backend) ══
+async function fetchPlayerNotes(playerName) {
+  const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(playerName)}/notes`, { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!res.ok) throw new Error('Falha ao carregar notas');
+  return res.json();
+}
+async function renderPlayerNotes(playerName) {
   const list  = document.getElementById('note-list');
   const count = document.getElementById('notes-count');
-  count.textContent = `${notes.length} nota${notes.length !== 1 ? 's' : ''}`;
-
-  if (!notes.length) { list.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:4px 0;">Nenhuma nota ainda. Seja o primeiro a adicionar.</div>'; return; }
-  list.innerHTML = notes.map((n, i) => `
-    <div class="note-item">
-      ${n.text}
-      <div class="note-meta">
-        <span>Por: ${n.author} · ${new Date(n.time).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
-        <button class="note-delete" onclick="deletePlayerNote('${playerName}', ${i})">Excluir</button>
-      </div>
-    </div>`).join('');
+  list.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:4px 0;">Carregando notas compartilhadas...</div>';
+  try {
+    const notes = await fetchPlayerNotes(playerName);
+    count.textContent = `${notes.length} nota${notes.length !== 1 ? 's' : ''}`;
+    if (!notes.length) { list.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:4px 0;">Nenhuma nota registrada no backend para este jogador.</div>'; return; }
+    list.innerHTML = notes.map(n => {
+      const canDelete = session.role === 'owner' || n.author_name === session.username;
+      const createdAt = n.created_at || n.time;
+      return `<div class="note-item">
+        ${escapeHTML(n.text)}
+        <div class="note-meta">
+          <span>Por: ${escapeHTML(n.author_name || n.author || 'Staff')} · ${escapeHTML(new Date(createdAt).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }))}</span>
+          ${canDelete ? `<button class="note-delete" onclick="deletePlayerNote('${escapeHTML(playerName)}', ${Number(n.id)})">Excluir</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('[notes]', err);
+    count.textContent = '0 notas';
+    list.innerHTML = '<div style="font-size:12px;color:var(--danger);padding:4px 0;">Não foi possível carregar as notas reais do backend.</div>';
+  }
 }
 
-function addPlayerNote() {
+async function addPlayerNote() {
   const ta = document.getElementById('note-textarea');
   const text = ta.value.trim();
-  if (!text) return;
-  const notes = getPlayerNotes(currentModalPlayerName);
-  notes.push({ text, author: session.username, time: new Date().toISOString() });
-  savePlayerNotes(currentModalPlayerName, notes);
-  ta.value = '';
-  renderPlayerNotes(currentModalPlayerName);
-  showToast('Nota adicionada com sucesso.');
+  if (!text || !currentModalPlayerName) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(currentModalPlayerName)}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) throw new Error('Falha ao salvar nota');
+    ta.value = '';
+    await renderPlayerNotes(currentModalPlayerName);
+    showToast('Nota adicionada com sucesso.');
+  } catch (err) {
+    console.error('[notes]', err);
+    showToast('Não foi possível salvar a nota no backend.', 'error');
+  }
 }
 
-function deletePlayerNote(playerName, index) {
-  const notes = getPlayerNotes(playerName);
-  notes.splice(index, 1);
-  savePlayerNotes(playerName, notes);
-  renderPlayerNotes(playerName);
+async function deletePlayerNote(playerName, noteId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(playerName)}/notes/${encodeURIComponent(noteId)}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Falha ao excluir nota');
+    await renderPlayerNotes(playerName);
+    showToast('Nota excluída.');
+  } catch (err) {
+    console.error('[notes]', err);
+    showToast('Não foi possível excluir a nota no backend.', 'error');
+  }
 }
 
 // ══ Exportação CSV ══
@@ -1693,7 +1727,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div></div>`;
   document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
 
-  // Carrega notas do jogador imediatamente (são locais)
+  // Carrega notas compartilhadas do backend imediatamente
   renderPlayerNotes(displayMcName);
 
   const [historyData] = await Promise.all([
@@ -1856,10 +1890,7 @@ async function saveAdminUser() {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { showToast('Erro ao salvar. Verifique se e-mail ou usuário já existem.', 'error'); return; }
       if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
-      if (session.role === 'owner') {
-        auditLogs.unshift({ type: 'update', actor: session.username, target: body.username, message: `Conta de ${body.username} atualizada`, time: new Date() });
-        renderAuditLogs();
-      }
+      if (session.role === 'owner') fetchAuditLogs();
       await fetchAdminUsers();
       document.getElementById('av-username').textContent = body.username;
       document.getElementById('av-email').textContent    = body.email;
@@ -1881,7 +1912,7 @@ async function executeAdminDelete() {
     onConfirm: async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
-        if (session.role === 'owner') { auditLogs.unshift({ type: 'delete', actor: session.username, target: targetName, message: `Conta de ${targetName} excluída`, time: new Date() }); renderAuditLogs(); }
+        if (session.role === 'owner') fetchAuditLogs();
         await fetchAdminUsers(); closeModal(); showToast(`Conta de ${targetName} excluída.`);
       } else { showToast('Erro ao excluir. O admin principal não pode ser removido.', 'error'); }
     }
@@ -1903,7 +1934,7 @@ async function submitCreateAccount() {
   btn.disabled = false; btn.textContent = 'Criar Cadastro';
   if (res.ok) {
     const data = await res.json();
-    if (session.role === 'owner') { auditLogs.unshift({ type: 'create', actor: session.username, target: username, message: `Nova conta criada para ${username}`, time: new Date() }); renderAuditLogs(); }
+    if (session.role === 'owner') fetchAuditLogs();
     await fetchAdminUsers();
     currentEditingAdminId = data.id;
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
@@ -1938,55 +1969,19 @@ async function fetchAdminUsers() {
 }
 
 async function fetchUnregistered() {
-  if (!globalHistData) return;
-  const registeredMcNames = new Set(globalAdminUsers.map(u => (u.minecraft_name || '').toLowerCase()).filter(Boolean));
-  const playerMap = new Map();
-  (globalHistData.history || []).forEach(h => {
-    if (!h.player) return; const k = h.player.toLowerCase(); if (registeredMcNames.has(k)) return;
-    if (!playerMap.has(k)) playerMap.set(k, { player: h.player, total_sessions: 0, total_hours: 0, last_seen: null, first_seen: null });
-    const entry = playerMap.get(k); entry.total_sessions++; entry.total_hours += (h.hoursOnline || h.duration_hours || 0);
-    const ea = h.enteredAt || h.entered_at, la = h.leftAt || h.left_at;
-    if (!entry.first_seen || (ea && ea < entry.first_seen)) entry.first_seen = ea;
-    if (!entry.last_seen  || (la && la > entry.last_seen))  entry.last_seen  = la;
-  });
-  globalUnregistered = [...playerMap.values()];
+  try {
+    const res = await fetch(`${API_BASE}/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao buscar jogadores sem cadastro');
+    globalUnregistered = await res.json();
+  } catch (err) {
+    console.error('[unregistered]', err);
+    globalUnregistered = [];
+    showToast('Não foi possível carregar jogadores sem cadastro do backend.', 'error');
+  }
   const badge = document.getElementById('unreg-count-badge');
   if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
   if (currentAdminTab === 'unregistered') renderUnregisteredList();
   renderAlerts();
-}
-
-function switchAdminTab(tab) {
-  currentAdminTab = tab;
-  document.getElementById('tab-registered').classList.toggle('active', tab === 'registered');
-  document.getElementById('tab-unregistered').classList.toggle('active', tab === 'unregistered');
-  updateSortBarForTab(tab); renderAdminTab();
-}
-
-function updateSortBarForTab(tab) {
-  const bar = document.getElementById('admin-sort-bar');
-  if (tab === 'registered') {
-    bar.innerHTML = `<span class="sort-bar-label">Filtros:</span>
-      <button class="sort-chip ${adminSortState.key==='verified'?'active':''}" onclick="setSortAdmin('verified')">Pendentes 🚨</button>
-      <span style="margin-left:8px;color:#d2d2d7">|</span>
-      <span class="sort-bar-label" style="margin-left:8px">Ordenar:</span>
-      <button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button>
-      <button class="sort-chip ${adminSortState.key==='created'?'active':''}" onclick="setSortAdmin('created')">Criação <span class="sort-arrow">${adminSortState.key==='created'?(adminSortState.asc?'↑':'↓'):''}</span></button>
-      <button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Última sessão <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
-  } else {
-    bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span>
-      <button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button>
-      <button class="sort-chip ${adminSortState.key==='sessions'?'active':''}" onclick="setSortAdmin('sessions')">Sessões <span class="sort-arrow">${adminSortState.key==='sessions'?(adminSortState.asc?'↑':'↓'):''}</span></button>
-      <button class="sort-chip ${adminSortState.key==='total_hours'?'active':''}" onclick="setSortAdmin('total_hours')">Tempo total <span class="sort-arrow">${adminSortState.key==='total_hours'?(adminSortState.asc?'↑':'↓'):''}</span></button>
-      <button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Último acesso <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
-  }
-}
-
-function setSortAdmin(key) {
-  if (adminSortState.key === key && key !== 'verified') adminSortState.asc = !adminSortState.asc;
-  else if (key === 'verified' && adminSortState.key === 'verified') adminSortState.key = 'name';
-  else { adminSortState.key = key; adminSortState.asc = true; }
-  updateSortBarForTab(currentAdminTab); renderAdminTab();
 }
 
 function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
