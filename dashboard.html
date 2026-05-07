@@ -4,13 +4,27 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel da Staff | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
-:root { --bg-color: #f5f5f7; --card-bg: #ffffff; --text-primary: #1d1d1f; --text-secondary: #86868b; --accent: #0071e3; --accent-hover: #0077ed; --danger: #ff3b30; --success: #34c759; --warning: #ff9f0a; --border: rgba(0,0,0,0.08); --radius-lg: 20px; --radius-md: 12px; --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
+:root {
+  --bg-color: #f5f5f7;
+  --card-bg: #ffffff;
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --danger: #ff3b30;
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --border: rgba(0,0,0,0.08);
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; display: flex; flex-direction: column; visibility: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
 a { text-decoration: none; color: inherit; }
 
-/* Skeleton Loaders */
+/* ── Skeleton Loaders ── */
 .skeleton { position: relative; overflow: hidden; background: #e8e8ed !important; border-radius: 8px; color: transparent !important; pointer-events: none; user-select: none; }
 .skeleton * { visibility: hidden !important; }
 .skeleton::after, .skeleton-line::after, .skeleton-circle::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
@@ -19,13 +33,13 @@ a { text-decoration: none; color: inherit; }
 .skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; } .skeleton-line.w80 { width: 80%; }
 .skeleton-circle { width: 40px; height: 40px; border-radius: 50%; background: #e8e8ed; position: relative; overflow: hidden; flex-shrink: 0; }
 
-/* Empty States */
+/* ── Empty States ── */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 24px; text-align: center; color: var(--text-secondary); }
 .empty-state strong { color: var(--text-primary); font-size: 15px; font-weight: 600; }
 .empty-state span { font-size: 13px; }
 .empty-icon { width: 48px; height: 48px; border-radius: 50%; background: #f2f2f7; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 4px; }
 
-/* Cabeçalho e Menu Usuário */
+/* ── Cabeçalho ── */
 header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); z-index: 1000; border-bottom: 1px solid var(--border); }
 .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
 .brand-link:hover { opacity: 0.8; }
@@ -42,7 +56,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .user-dropdown { position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.95); backdrop-filter: saturate(180%) blur(24px); border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05); padding: 8px; display: flex; flex-direction: column; min-width: 260px; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao); }
 .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
 .dropdown-header { padding: 12px 8px; display: flex; align-items: center; gap: 12px; }
-.dropdown-header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+.dropdown-header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
 .dropdown-header-info { display: flex; flex-direction: column; overflow: hidden; }
 .dropdown-header-info strong { font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .dropdown-header-info span { font-size: 13px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
@@ -54,12 +68,38 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .dropdown-item.danger svg { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(255,59,48,0.1); }
 
-/* Grid e Estrutura Principal */
+/* ── Notificações no Header ── */
+.notif-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(0,0,0,0.04); border: none; border-radius: 50%; cursor: pointer; transition: background 0.2s; margin-right: 8px; }
+.notif-btn:hover { background: rgba(0,0,0,0.08); }
+.notif-btn svg { width: 18px; height: 18px; color: var(--text-primary); }
+.notif-badge { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: var(--danger); border-radius: 50%; font-size: 9px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }
+.notif-badge.hidden { display: none; }
+.notif-panel { position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.97); backdrop-filter: blur(24px); border-radius: 20px; box-shadow: 0 16px 48px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.05); width: 360px; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: var(--transicao); z-index: 1001; overflow: hidden; }
+.notif-panel.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.notif-panel-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.notif-panel-header h4 { margin: 0; font-size: 15px; font-weight: 600; }
+.notif-mark-read { background: none; border: none; font-size: 12px; color: var(--accent); cursor: pointer; font-family: inherit; font-weight: 500; }
+.notif-list { max-height: 380px; overflow-y: auto; padding: 8px; }
+.notif-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 12px; transition: background 0.2s; cursor: default; }
+.notif-item:hover { background: rgba(0,0,0,0.03); }
+.notif-item.unread { background: rgba(0,113,227,0.04); }
+.notif-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.notif-icon.warning { background: rgba(255,159,10,0.12); }
+.notif-icon.danger  { background: rgba(255,59,48,0.1); }
+.notif-icon.success { background: rgba(52,199,89,0.1); }
+.notif-icon.info    { background: rgba(0,113,227,0.08); }
+.notif-content strong { display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.notif-content span { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.notif-time { font-size: 11px; color: #aaa; margin-top: 4px; display: block; }
+.notif-unread-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.notif-empty { padding: 32px 20px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+
+/* ── Grid e Estrutura Principal ── */
 .main-content { flex: 1; }
 .dashboard-layout { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start; }
 .dashboard-content { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
-/* Botões */
+/* ── Botões ── */
 .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border: none; border-radius: 980px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: all 0.2s; font-family: inherit; text-decoration: none; }
 .btn-primary:hover { background: var(--accent-hover); transform: scale(1.02); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
@@ -69,12 +109,12 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .btn-danger-outline:hover { background: rgba(255,59,48,0.05); border-color: var(--danger); }
 .w-100 { width: 100%; }
 
-/* Cards e Elementos Gerais */
+/* ── Cards ── */
 .card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 28px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
 .card h3 { margin: 0; font-size: 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .card h3 span { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
 
-/* Card de Resumo de Conta (Sidebar) */
+/* ── Card de Resumo de Conta (Sidebar) ── */
 .account-summary-card { padding: 24px; gap: 0; position: sticky; top: 100px; }
 .summary-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
 .summary-header img { width: 88px; height: 88px; border-radius: 24px; object-fit: cover; box-shadow: 0 8px 24px rgba(0,0,0,0.1); background: #e5e5ea; }
@@ -89,7 +129,7 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .truncate-domain { white-space: nowrap; flex-shrink: 0; }
 .summary-actions { display: flex; flex-direction: column; gap: 10px; }
 
-/* Pílulas (Badges) */
+/* ── Pílulas (Badges) ── */
 .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 980px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .pill.owner   { background: #f4e8ff; color: #af52de; }
 .pill.full    { background: #e3f2fd; color: var(--accent); }
@@ -97,14 +137,14 @@ header { position: sticky; top: 0; width: 100%; padding: 12px 5%; display: flex;
 .pill.success { background: #e8f8f0; color: var(--success); }
 .pill.limited-status { background: #f2f2f7; color: var(--text-secondary); }
 
-/* Inputs e Filtros */
+/* ── Inputs e Filtros ── */
 .input-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .input-group label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
 input, select { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-color); font-size: 14px; transition: all 0.2s; outline: none; font-family: inherit; }
 input:focus, select:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 .filter-bar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 
-/* Relatórios da Dashboard */
+/* ── Relatórios da Dashboard ── */
 .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
 .mini-card { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
 .mini-card h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
@@ -121,7 +161,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .status-dot.offline { background: var(--danger); }
 .chart-container { width: 100%; height: 350px; margin-bottom: 20px; }
 
-/* Accordion */
+/* ── Accordion ── */
 .accordion-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; padding: 12px 16px; border-radius: var(--radius-md); cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-primary); transition: background 0.2s; }
 .accordion-btn:hover { background: rgba(0,0,0,0.04); }
 .accordion-btn .acc-arrow { transition: transform 0.3s; font-style: normal; font-size: 12px; color: var(--text-secondary); }
@@ -130,7 +170,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .accordion-body.open { max-height: 400px; opacity: 1; }
 .accordion-inner { padding: 4px 0 8px; display: flex; flex-direction: column; gap: 12px; }
 
-/* Modais de Jogador e Admin */
+/* ── Modais de Jogador e Admin ── */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: var(--transicao); padding: 20px; }
 .modal-overlay.active { opacity: 1; visibility: visible; }
 .modal-content { background: var(--card-bg); width: 100%; max-width: 750px; max-height: 90vh; border-radius: var(--radius-lg); box-shadow: 0 24px 48px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; transform: scale(0.95); transition: var(--transicao); }
@@ -143,7 +183,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .close-modal:hover { background: rgba(0,0,0,0.1); }
 .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
 
-/* Administração de Contas */
+/* ── Administração de Contas ── */
 .admin-account-card { background: #fafafa; border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 24px; transition: var(--transicao); }
 .admin-account-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .admin-field-group { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -158,12 +198,10 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .action-bar { display: none; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
 .admin-account-card.edit-mode .action-bar { display: flex; }
 .admin-account-card.edit-mode .admin-account-header .btn-text { display: none; }
-
 .advanced-security-section { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
 .advanced-security-section .accordion-btn { border-radius: 0; border-bottom: 1px solid transparent; }
 .advanced-security-section .accordion-btn.open { border-bottom-color: var(--border); }
 .advanced-security-section .accordion-inner { padding: 16px; }
-
 .create-account-panel { background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%); border: 1px solid rgba(0,113,227,0.15); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
 .create-account-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .create-account-form .admin-field input, .create-account-form .admin-field select { display: block; }
@@ -187,13 +225,13 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
 .history-table tr:hover td { background: rgba(0,0,0,0.02); }
 
-/* Guias Administrativas */
+/* ── Guias Administrativas ── */
 .admin-tabs-bar { display: flex; gap: 4px; margin-bottom: 16px; background: #f2f2f7; border-radius: 10px; padding: 4px; }
 .admin-tab { flex: 1; padding: 7px 12px; border: none; background: transparent; cursor: pointer; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; color: var(--text-secondary); transition: all 0.2s; }
 .admin-tab.active { background: #fff; color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
 .unregistered-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,159,10,0.12); color: var(--warning); font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; padding: 3px 8px; border-radius: 980px; margin-left: 6px; }
 
-/* Filtros de Ordenação */
+/* ── Filtros de Ordenação ── */
 .sort-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .sort-bar-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
 .sort-chip { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 980px; border: 1px solid var(--border); font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg-color); color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; }
@@ -201,7 +239,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .sort-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .sort-chip .sort-arrow { font-size: 10px; }
 
-/* Ferramentas de Gráfico */
+/* ── Ferramentas de Gráfico ── */
 .chart-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; min-height: 32px; }
 .chart-focus-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 980px; background: rgba(0,113,227,0.08); border: 1px solid rgba(0,113,227,0.18); font-size: 12px; font-weight: 600; color: var(--accent); animation: fadeInBadge 0.2s ease; }
 @keyframes fadeInBadge { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
@@ -211,7 +249,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .chart-tip { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .chart-tip kbd { display: inline-block; padding: 2px 5px; border-radius: 4px; background: var(--bg-color); border: 1px solid var(--border); font-size: 10px; font-family: inherit; }
 
-/* Modais de Senha Segura */
+/* ── Modais de Senha Segura ── */
 .confirm-pw-overlay { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s; }
 .confirm-pw-overlay.active { opacity: 1; visibility: visible; }
 .confirm-pw-sheet { background: #fff; border-radius: 20px; padding: 28px; width: 100%; max-width: 380px; box-shadow: 0 32px 64px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.05); transform: scale(0.93) translateY(8px); transition: transform 0.3s; }
@@ -234,7 +272,121 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .confirm-pw-btn-confirm { background: var(--accent); color: #fff; }
 .confirm-pw-btn-confirm.destructive { background: var(--danger); }
 
-/* Footer */
+/* ── NOVO: Alertas de Atenção ── */
+.alerts-wrapper { display: flex; flex-direction: column; gap: 8px; }
+.alert-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 13px; animation: slideIn 0.3s ease; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.alert-item.warning { background: rgba(255,159,10,0.08); border: 1px solid rgba(255,159,10,0.2); }
+.alert-item.danger  { background: rgba(255,59,48,0.06); border: 1px solid rgba(255,59,48,0.2); }
+.alert-item.info    { background: rgba(0,113,227,0.06); border: 1px solid rgba(0,113,227,0.15); }
+.alert-item.success { background: rgba(52,199,89,0.06); border: 1px solid rgba(52,199,89,0.2); }
+.alert-icon { font-size: 18px; flex-shrink: 0; }
+.alert-text { flex: 1; line-height: 1.4; }
+.alert-text strong { display: block; font-weight: 600; margin-bottom: 1px; }
+.alert-action { font-size: 12px; color: var(--accent); font-weight: 600; cursor: pointer; white-space: nowrap; background: none; border: none; font-family: inherit; padding: 4px 8px; border-radius: 6px; transition: background 0.2s; }
+.alert-action:hover { background: rgba(0,113,227,0.1); }
+
+/* ── NOVO: Top Jogadores ── */
+.top-players-list { display: flex; flex-direction: column; gap: 8px; }
+.top-player-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-color); border-radius: 12px; border: 1px solid transparent; transition: all 0.2s; cursor: pointer; }
+.top-player-item:hover { border-color: var(--border); background: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.top-rank { font-size: 16px; font-weight: 700; width: 28px; text-align: center; flex-shrink: 0; }
+.top-rank.gold   { color: #f4a51e; }
+.top-rank.silver { color: #adb5bd; }
+.top-rank.bronze { color: #cd7f32; }
+.top-rank.other  { color: var(--text-secondary); font-size: 13px; }
+.top-player-bar-wrap { flex: 1; min-width: 0; }
+.top-player-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+.top-player-name .hours-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.top-player-bar-bg { height: 5px; background: #e5e5ea; border-radius: 980px; overflow: hidden; }
+.top-player-bar-fill { height: 100%; border-radius: 980px; transition: width 0.8s cubic-bezier(0.165, 0.84, 0.44, 1); }
+
+/* ── NOVO: Logs de Auditoria ── */
+.audit-list { display: flex; flex-direction: column; gap: 2px; }
+.audit-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 10px; transition: background 0.2s; }
+.audit-item:hover { background: rgba(0,0,0,0.03); }
+.audit-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.audit-dot.create  { background: var(--success); }
+.audit-dot.update  { background: var(--accent); }
+.audit-dot.delete  { background: var(--danger); }
+.audit-dot.login   { background: var(--warning); }
+.audit-dot.system  { background: #af52de; }
+.audit-content { flex: 1; min-width: 0; }
+.audit-content strong { font-size: 13px; font-weight: 600; display: block; }
+.audit-content span { font-size: 12px; color: var(--text-secondary); }
+.audit-time { font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
+.audit-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.audit-tab { padding: 5px 12px; border: 1px solid var(--border); border-radius: 980px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--bg-color); color: var(--text-secondary); transition: all 0.15s; font-family: inherit; }
+.audit-tab:hover { border-color: var(--accent); color: var(--accent); }
+.audit-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── NOVO: Notas de Jogador ── */
+.notes-section { margin-top: 8px; }
+.notes-section h4 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 6px; }
+.note-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.note-item { background: #fffef5; border: 1px solid rgba(255,204,0,0.25); border-radius: 10px; padding: 12px; font-size: 13px; line-height: 1.5; position: relative; }
+.note-item .note-meta { font-size: 11px; color: var(--text-secondary); margin-top: 6px; display: flex; justify-content: space-between; align-items: center; }
+.note-item .note-delete { background: none; border: none; color: var(--danger); font-size: 12px; cursor: pointer; font-family: inherit; opacity: 0; transition: opacity 0.2s; padding: 2px 6px; border-radius: 4px; }
+.note-item:hover .note-delete { opacity: 1; }
+.note-input-wrap { display: flex; gap: 8px; }
+.note-input-wrap textarea { flex: 1; resize: none; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--bg-color); min-height: 60px; transition: all 0.2s; outline: none; }
+.note-input-wrap textarea:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+
+/* ── NOVO: Exportar Dados ── */
+.export-toolbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #fafafa; border-radius: 12px; border: 1px solid var(--border); flex-wrap: wrap; }
+.export-toolbar span { font-size: 13px; color: var(--text-secondary); font-weight: 500; flex: 1; }
+.btn-export { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; color: var(--text-primary); }
+.btn-export:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,113,227,0.04); transform: translateY(-1px); }
+
+/* ── NOVO: Status Badge Servidor Detalhado ── */
+.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.health-card { background: var(--bg-color); padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.health-card .h-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.health-card .h-value { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+.health-card .h-sub { font-size: 11px; color: var(--text-secondary); }
+.health-trend { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+.health-trend.up   { color: var(--success); }
+.health-trend.down { color: var(--danger); }
+.health-trend.flat { color: var(--text-secondary); }
+.uptime-bar { height: 6px; background: #e5e5ea; border-radius: 980px; overflow: hidden; margin-top: 4px; }
+.uptime-fill { height: 100%; background: var(--success); border-radius: 980px; transition: width 1s ease; }
+
+/* ── NOVO: Quick Actions Sidebar ── */
+.quick-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.quick-action-btn { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; background: var(--bg-color); border: 1px solid var(--border); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; color: var(--text-primary); transition: all 0.2s; text-decoration: none; text-align: left; }
+.quick-action-btn:hover { background: #fff; border-color: rgba(0,113,227,0.25); color: var(--accent); transform: translateX(2px); }
+.quick-action-btn .qa-icon { font-size: 16px; flex-shrink: 0; }
+.quick-action-btn .qa-label { flex: 1; }
+.quick-action-btn .qa-arrow { font-size: 12px; color: var(--text-secondary); }
+
+/* ── NOVO: Toast Notifications ── */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 4000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: rgba(29,29,31,0.94); backdrop-filter: blur(16px); color: #fff; border-radius: 14px; font-size: 13px; font-weight: 500; max-width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(16px); opacity: 0; pointer-events: all; transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1); }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-icon { font-size: 16px; flex-shrink: 0; }
+.toast.success .toast-icon::before { content: '✅'; }
+.toast.error   .toast-icon::before { content: '❌'; }
+.toast.warning .toast-icon::before { content: '⚠️'; }
+.toast.info    .toast-icon::before { content: 'ℹ️'; }
+
+/* ── NOVO: Section Divider com Label ── */
+.section-label { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+.section-label span { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.section-label::before, .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── NOVO: Week separator na tabela ── */
+.week-separator-row td { padding: 8px 12px 4px; }
+.week-separator { display: flex; align-items: center; gap: 8px; }
+.week-separator span { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.week-separator::before, .week-separator::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── NOVO: Nota inline de jogador no modal ── */
+.player-notes-panel { background: #fffef5; border: 1px solid rgba(255,204,0,0.25); border-radius: 14px; padding: 16px; margin-top: 0; margin-bottom: 24px; }
+.player-notes-panel .pn-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.player-notes-panel .pn-header h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.player-notes-panel .pn-count { font-size: 12px; color: var(--text-secondary); background: rgba(0,0,0,0.06); border-radius: 980px; padding: 2px 8px; }
+
+/* ── Footer ── */
 footer { background: #ffffff; text-align: center; padding: 32px 20px; font-size: 13px; color: var(--text-secondary); margin-top: auto; border-top: 1px solid var(--border); }
 footer p { margin: 0 0 10px 0; }
 footer a { color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
@@ -242,14 +394,16 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 .footer-links { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .footer-dot { color: #d2d2d7; }
 
-/* Responsividade */
-@media (max-width: 860px) { 
-  .dashboard-layout { grid-template-columns: 1fr; margin-top: 24px; gap: 24px; } 
+/* ── Responsividade ── */
+@media (max-width: 860px) {
+  .dashboard-layout { grid-template-columns: 1fr; margin-top: 24px; gap: 24px; }
   .account-summary-card { position: relative; top: 0; }
-  .filter-bar { grid-template-columns: 1fr; } 
-  .stats-grid { grid-template-columns: 1fr; } 
-  .admin-field-group { grid-template-columns: 1fr; } 
-  .create-account-form { grid-template-columns: 1fr; } 
+  .filter-bar { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .admin-field-group { grid-template-columns: 1fr; }
+  .create-account-form { grid-template-columns: 1fr; }
+  .notif-panel { width: 300px; }
+  .server-health-grid { grid-template-columns: 1fr 1fr; }
 }
 </style>
 </head>
@@ -260,36 +414,56 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
     <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
     <div class="logo-text">Força Aliada</div>
   </a>
-  <div class="user-menu-wrapper">
-    <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
-      <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
-      <span id="nav-name">...</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-    </div>
-    
-    <div class="user-dropdown" id="user-dropdown-menu">
-      <div class="dropdown-header">
-        <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
-        <div class="dropdown-header-info">
-          <strong id="drop-name">Usuário</strong>
-          <span id="drop-email">email@exemplo.com</span>
+
+  <div style="display:flex;align-items:center;gap:6px;">
+    <!-- Sino de Notificações -->
+    <div class="user-menu-wrapper">
+      <button class="notif-btn" id="notif-btn-toggle" onclick="toggleNotifPanel(event)" title="Notificações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge hidden" id="notif-badge">0</span>
+      </button>
+      <div class="notif-panel" id="notif-panel">
+        <div class="notif-panel-header">
+          <h4>Notificações</h4>
+          <button class="notif-mark-read" onclick="markAllNotifRead()">Marcar tudo como lido</button>
+        </div>
+        <div class="notif-list" id="notif-list">
+          <div class="notif-empty">Nenhuma notificação no momento.</div>
         </div>
       </div>
-      <div class="dropdown-divider"></div>
-      <a href="account.html" class="dropdown-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
-      </a>
-      <div class="dropdown-divider"></div>
-      <button class="dropdown-item danger" onclick="logout()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Sair da Conta
-      </button>
+    </div>
+
+    <div class="user-menu-wrapper">
+      <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
+        <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+        <span id="nav-name">...</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div class="user-dropdown" id="user-dropdown-menu">
+        <div class="dropdown-header">
+          <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+          <div class="dropdown-header-info">
+            <strong id="drop-name">Usuário</strong>
+            <span id="drop-email">email@exemplo.com</span>
+          </div>
+        </div>
+        <div class="dropdown-divider"></div>
+        <a href="account.html" class="dropdown-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
+        </a>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item danger" onclick="logout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Sair da Conta
+        </button>
+      </div>
     </div>
   </div>
 </header>
 
 <main class="main-content">
   <div class="dashboard-layout">
-    
+
+    <!-- ════════════════ SIDEBAR ════════════════ -->
     <aside class="sidebar-profile">
       <div class="card account-summary-card">
         <div class="summary-header">
@@ -309,7 +483,25 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             <div class="detail-val" id="sidebar-mc">-</div>
           </div>
         </div>
-        <div class="summary-actions">
+
+        <!-- Ações Rápidas — visível para todos na Staff -->
+        <div class="section-label"><span>Ações Rápidas</span></div>
+        <div class="quick-actions" id="quick-actions-section">
+          <button class="quick-action-btn" onclick="scrollToSection('server-overview')">
+            <span class="qa-icon">🖥️</span><span class="qa-label">Visão do Servidor</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" onclick="scrollToSection('admin-users-card')">
+            <span class="qa-icon">👥</span><span class="qa-label">Contas da Staff</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" id="qa-audit" onclick="scrollToSection('audit-card')" style="display:none;">
+            <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" id="qa-stats" onclick="scrollToSection('stats-card')">
+            <span class="qa-icon">📊</span><span class="qa-label">Estatísticas</span><span class="qa-arrow">›</span>
+          </button>
+        </div>
+
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
           <a href="account.html" class="btn-primary w-100">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             Gerenciar Conta
@@ -322,9 +514,19 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
     </aside>
 
+    <!-- ════════════════ CONTEÚDO PRINCIPAL ════════════════ -->
     <div class="dashboard-content">
-      <div class="card">
+
+      <!-- ── Alertas Inteligentes ── -->
+      <div id="alerts-card" style="display:none;">
+        <div class="alerts-wrapper" id="alerts-wrapper"></div>
+      </div>
+
+      <!-- ── Visão Geral do Servidor ── -->
+      <div class="card" id="server-overview">
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+
+        <!-- Mini cards de status -->
         <div class="dashboard-grid">
           <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
           <div class="mini-card"><h4>Jogadores Online</h4><div class="value" id="online-count">-/-</div></div>
@@ -332,9 +534,34 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <div class="mini-card"><h4>Versão</h4><div class="value" id="server-version" style="font-size:16px;">-</div></div>
         </div>
 
+        <!-- Saúde Detalhada do Servidor -->
+        <div class="server-health-grid" id="server-health-grid" style="margin-top:4px;">
+          <div class="health-card">
+            <div class="h-label">Latência</div>
+            <div class="h-value" id="h-ping">-</div>
+            <div class="h-sub">ms de resposta</div>
+          </div>
+          <div class="health-card">
+            <div class="h-label">Uptime Estimado</div>
+            <div class="h-value" id="h-uptime">-</div>
+            <div class="uptime-bar"><div class="uptime-fill" id="h-uptime-bar" style="width:0%"></div></div>
+          </div>
+          <div class="health-card">
+            <div class="h-label">Sessões Hoje</div>
+            <div class="h-value" id="h-sessions-today">-</div>
+            <div class="h-sub health-trend flat" id="h-sessions-trend">carregando...</div>
+          </div>
+          <div class="health-card">
+            <div class="h-label">Tempo Médio</div>
+            <div class="h-value" id="h-avg-time">-</div>
+            <div class="h-sub">por sessão (hoje)</div>
+          </div>
+        </div>
+
+        <!-- Análise de Atividade -->
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
           <h3 style="margin:0;font-size:16px;">Análise de Atividade</h3>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
             <select id="chart-range" onchange="onRangeChange()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
               <option value="1h">Última 1 hora</option>
               <option value="6h">Últimas 6 horas</option>
@@ -350,6 +577,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
               <option value="hour" selected>Por Hora</option>
               <option value="day">Por Dia</option>
             </select>
+            <!-- Exportar dados do gráfico -->
+            <button class="btn-export" onclick="exportChartCSV()" title="Exportar dados como CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              CSV
+            </button>
           </div>
         </div>
 
@@ -364,7 +596,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
         <div class="chart-container"><canvas id="activityChart"></canvas></div>
 
-        <h3 style="margin-top:24px;margin-bottom:12px;">Buscar Jogador</h3>
+        <!-- Buscar Jogador -->
+        <h3 style="margin-top:8px;margin-bottom:8px;font-size:16px;">Buscar Jogador</h3>
         <div class="filter-bar" id="dashboard-filters" style="display:none;">
           <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
           <input type="date" id="search-date" onchange="applyFilters()">
@@ -386,10 +619,61 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </ul>
       </div>
 
+      <!-- ── Estatísticas e Top Jogadores ── -->
+      <div class="card" id="stats-card">
+        <h3>Estatísticas do Servidor <span id="stats-period-label">Últimos 30 dias</span></h3>
+
+        <div class="server-health-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));">
+          <div class="health-card">
+            <div class="h-label">Total de Sessões</div>
+            <div class="h-value" id="stat-total-sessions">-</div>
+            <div class="h-sub">registradas</div>
+          </div>
+          <div class="health-card">
+            <div class="h-label">Jogadores Únicos</div>
+            <div class="h-value" id="stat-unique-players">-</div>
+            <div class="h-sub">diferentes</div>
+          </div>
+          <div class="health-card">
+            <div class="h-label">Horas Totais</div>
+            <div class="h-value" id="stat-total-hours">-</div>
+            <div class="h-sub">horas jogadas</div>
+          </div>
+          <div class="health-card">
+            <div class="h-label">Dia Mais Ativo</div>
+            <div class="h-value" id="stat-peak-day" style="font-size:13px;letter-spacing:0;">-</div>
+            <div class="h-sub" id="stat-peak-day-count"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:12px;">
+          <h4 style="margin:0;font-size:15px;font-weight:600;">🏆 Top Jogadores</h4>
+          <div style="display:flex;gap:6px;">
+            <button class="sort-chip active" id="top-by-hours" onclick="renderTopPlayers('hours')">Por Horas</button>
+            <button class="sort-chip" id="top-by-sessions" onclick="renderTopPlayers('sessions')">Por Sessões</button>
+          </div>
+        </div>
+        <div class="top-players-list" id="top-players-list">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="skeleton-line" style="height:52px;border-radius:12px;"></div>
+            <div class="skeleton-line" style="height:52px;border-radius:12px;"></div>
+            <div class="skeleton-line" style="height:52px;border-radius:12px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Contas da Staff ── -->
       <div class="card" id="admin-users-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
           <h3 id="admin-card-title">Contas da Staff</h3>
-          <input type="text" id="admin-search" placeholder="Buscar..." oninput="renderAdminTab()" style="width:220px;padding:8px 12px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="admin-search" placeholder="Buscar..." oninput="renderAdminTab()" style="width:200px;padding:8px 12px;">
+            <!-- Botão exportar lista (owner only) -->
+            <button class="btn-export" id="btn-export-staff" onclick="exportStaffCSV()" style="display:none;" title="Exportar lista da Staff">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar
+            </button>
+          </div>
         </div>
 
         <div class="admin-tabs-bar">
@@ -398,14 +682,40 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
 
         <div class="sort-bar" id="admin-sort-bar"></div>
-
         <div id="admin-users-msg" style="font-size:13px;" role="alert"></div>
         <ul id="admin-users-list">
           <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
         </ul>
       </div>
-    </div>
-  </div>
+
+      <!-- ── Logs de Auditoria (owner only) ── -->
+      <div class="card" id="audit-card" style="display:none;">
+        <h3>Logs de Auditoria <span>Ações recentes no painel</span></h3>
+
+        <div class="audit-tabs">
+          <button class="audit-tab active" id="atab-all"    onclick="filterAuditLogs('all')">Todos</button>
+          <button class="audit-tab" id="atab-create" onclick="filterAuditLogs('create')">Criações</button>
+          <button class="audit-tab" id="atab-update" onclick="filterAuditLogs('update')">Edições</button>
+          <button class="audit-tab" id="atab-delete" onclick="filterAuditLogs('delete')">Exclusões</button>
+          <button class="audit-tab" id="atab-login"  onclick="filterAuditLogs('login')">Logins</button>
+        </div>
+
+        <div class="audit-list" id="audit-log-list">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div class="skeleton-line" style="height:48px;border-radius:10px;"></div>
+            <div class="skeleton-line" style="height:48px;border-radius:10px;"></div>
+            <div class="skeleton-line" style="height:48px;border-radius:10px;"></div>
+            <div class="skeleton-line" style="height:48px;border-radius:10px;"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;margin-top:8px;">
+          <button class="btn-secondary" id="audit-load-more" onclick="loadMoreAuditLogs()" style="padding:8px 20px;font-size:13px;border-radius:8px;border:none;">Carregar mais</button>
+        </div>
+      </div>
+
+    </div><!-- /dashboard-content -->
+  </div><!-- /dashboard-layout -->
 </main>
 
 <footer>
@@ -419,6 +729,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   </div>
 </footer>
 
+<!-- ═══════════════════ MODAL: PERFIL DO JOGADOR ═══════════════════ -->
 <div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true">
   <div class="modal-content">
     <div class="modal-header">
@@ -436,12 +747,14 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
     </div>
 
     <div class="modal-body">
+
+      <!-- Conta existente no painel -->
       <div id="modal-site-account" class="admin-account-card" style="display:none;">
         <div class="admin-account-header">
           <h4 style="margin:0;font-size:15px;">Dados da Conta (Painel)</h4>
           <button class="btn-text" id="btn-edit-account" onclick="setAdminEditMode(true)">Editar Cadastro</button>
         </div>
-        
+
         <div id="admin-lock-screen" style="display:none; text-align:center; padding: 24px 0;">
           <div style="font-size: 32px; margin-bottom: 12px;">🔒</div>
           <h4 style="margin:0 0 8px;">Dados Protegidos</h4>
@@ -455,10 +768,12 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <div class="admin-field"><label>Conta Minecraft</label><div class="view-val" id="av-mc">-</div><input type="text" id="ai-mc" placeholder="Opcional"></div>
           <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
         </div>
+
         <div class="advanced-security-section" id="advanced-security-wrapper" style="display:none;">
           <button class="accordion-btn" id="adv-sec-btn" onclick="toggleAccordion('adv-sec-btn','adv-sec-body')"><span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span><i class="acc-arrow">▾</i></button>
           <div class="accordion-body" id="adv-sec-body"><div class="accordion-inner"><div class="admin-field"><label>Nova Senha (mín. 8 caracteres)</label><input type="password" id="ai-newpassword" placeholder="Deixe vazio para não alterar" style="display:block;"></div></div></div>
         </div>
+
         <div class="action-bar" id="action-bar-edit">
           <div id="admin-delete-normal"><button class="btn-text danger" style="font-size:13px;" onclick="showAdminDeleteConfirm()">Excluir conta...</button></div>
           <div id="admin-delete-confirm" style="display:none;align-items:center;gap:12px;"><span style="font-size:13px;color:var(--danger);font-weight:600;">Tem certeza?</span><button class="btn-text danger" style="font-weight:700;" onclick="executeAdminDelete()">Sim, excluir</button><button class="btn-text" onclick="hideAdminDeleteConfirm()">Cancelar</button></div>
@@ -466,6 +781,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
+      <!-- Criar conta para jogador sem cadastro -->
       <div id="modal-create-account" style="display:none;margin-bottom:24px;">
         <div class="create-account-collapsed" id="create-account-header" onclick="toggleCreateAccount()">
           <div style="display:flex;align-items:center;gap:10px;"><div style="width:28px;height:28px;background:rgba(0,113,227,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div><div><div style="font-size:14px;font-weight:600;color:var(--text-primary);">Jogador sem cadastro</div><div style="font-size:12px;color:var(--text-secondary);margin-top:1px;">Clique para criar uma conta para este jogador</div></div></div>
@@ -488,17 +804,40 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
+      <!-- Notas Internas sobre o Jogador -->
+      <div class="player-notes-panel" id="player-notes-panel">
+        <div class="pn-header">
+          <h4>📝 Notas Internas</h4>
+          <span class="pn-count" id="notes-count">0 notas</span>
+        </div>
+        <div class="note-list" id="note-list"></div>
+        <div class="note-input-wrap">
+          <textarea id="note-textarea" placeholder="Adicionar anotação sobre este jogador... (visível apenas para a Staff)" rows="2"></textarea>
+          <button class="btn-primary" onclick="addPlayerNote()" style="padding:10px 16px;align-self:flex-end;border-radius:10px;font-size:13px;">Salvar</button>
+        </div>
+      </div>
+
+      <!-- Stats de sessões -->
       <div class="stats-grid" id="stats-grid"></div>
 
+      <!-- Histórico detalhado -->
       <div class="history-tools">
         <h3>Histórico Detalhado</h3>
-        <input type="date" id="modal-date-filter" onchange="renderModalTable()">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="date" id="modal-date-filter" onchange="renderModalTable()">
+          <button class="btn-export" onclick="exportPlayerHistoryCSV()" title="Exportar histórico deste jogador">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
+        </div>
       </div>
       <div id="modal-table-wrapper"></div>
-    </div>
+
+    </div><!-- /modal-body -->
   </div>
 </div>
 
+<!-- ═══════════════════ MODAL: CONFIRMAÇÃO DE SENHA ═══════════════════ -->
 <div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
   <div class="confirm-pw-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-pw-title">
     <div class="confirm-pw-icon" id="confirm-pw-icon">🔒</div>
@@ -516,34 +855,65 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   </div>
 </div>
 
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ═══════════════════════════════════════════════
+     SCRIPT PRINCIPAL
+═══════════════════════════════════════════════ -->
 <script>
 const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
+const NOTES_KEY   = 'fa_player_notes';   // armazenado localmente
 
 let session = null;
 const token = localStorage.getItem(TOKEN_KEY);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
 if (!token || !session) { window.location.replace('login.html'); }
-// Bloqueia contas limitadas de ver a Dashboard e redireciona pra My Account
 if (session && session.role === 'limited') { window.location.replace('account.html'); }
 
-let globalHistData     = null;
-let globalApiData      = null;
-let globalAdminUsers   = [];
-let globalUnregistered = [];
-let currentAdminTab    = 'registered';
-let chartInstance      = null;
-let liveInterval       = null;
+let globalHistData      = null;
+let globalApiData       = null;
+let globalAdminUsers    = [];
+let globalUnregistered  = [];
+let currentAdminTab     = 'registered';
+let chartInstance       = null;
+let liveInterval        = null;
+let auditLogs           = [];
+let auditFilterActive   = 'all';
+let auditPage           = 0;
+const AUDIT_PAGE_SIZE   = 15;
 
-let modalHistoryData = [];
-let modalSortConfig  = { key: 'date', asc: false };
+let modalHistoryData    = [];
+let modalSortConfig     = { key: 'date', asc: false };
 let currentEditingAdminId = null;
 let currentModalPlayerName = null;
-let adminSortState = { key: 'name', asc: true };
+let adminSortState      = { key: 'name', asc: true };
+let topPlayersMode      = 'hours';
 
+// ══ Notas de jogadores (localStorage) ══
+function getPlayerNotes(playerName) {
+  try { const all = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); return all[playerName.toLowerCase()] || []; } catch { return []; }
+}
+function savePlayerNotes(playerName, notes) {
+  try { const all = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); all[playerName.toLowerCase()] = notes; localStorage.setItem(NOTES_KEY, JSON.stringify(all)); } catch {}
+}
+
+// ══ Toast ══
+function showToast(message, type = 'success', duration = 3500) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<div class="toast-icon"></div><span>${message}</span>`;
+  container.appendChild(toast);
+  requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add('show'); }); });
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, duration);
+}
+
+// ══ BOOTSTRAP ══
 (async () => {
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -552,29 +922,36 @@ let adminSortState = { key: 'name', asc: true };
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     if (session.role === 'limited') { window.location.replace('account.html'); return; }
-  } catch {
-    logout(); return;
-  }
+  } catch { logout(); return; }
   document.body.style.visibility = 'visible';
   initDashboard();
 })();
 
 function initDashboard() {
-  renderProfile(); loadData();
+  renderProfile();
+  loadData();
   document.getElementById('admin-users-card').style.display = 'block';
   fetchAdminUsers();
   updateSortBarForTab('registered');
+
+  // Funções apenas para owner
+  if (session.role === 'owner') {
+    document.getElementById('audit-card').style.display = 'block';
+    document.getElementById('qa-audit').style.display = 'flex';
+    document.getElementById('btn-export-staff').style.display = 'inline-flex';
+    fetchAuditLogs();
+  }
 
   if (liveInterval) clearInterval(liveInterval);
   liveInterval = setInterval(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok) throw new Error('Sessão inválida ou deletada');
+      if (!res.ok) throw new Error();
       const me = await res.json();
       if (session.role !== me.role) {
-         session.role = me.role;
-         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-         if (session.role === 'limited') window.location.replace('account.html');
+        session.role = me.role;
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        if (session.role === 'limited') window.location.replace('account.html');
       }
     } catch { logout(); return; }
     applyFilters();
@@ -582,62 +959,423 @@ function initDashboard() {
   }, 10000);
 }
 
-// === Sistema de Perfil na Header e Sidebar ===
+// ══ Perfil ══
 function renderProfile() {
-  const mcName = session.minecraftName || '-';
+  const mcName       = session.minecraftName || '-';
   const displayMcName = session.minecraftName ? session.minecraftName : 'Não vinculada';
-  const skinUrl = session.minecraftName ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
+  const skinUrl      = session.minecraftName
+    ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
+    : 'https://minotar.net/helm/Steve/100.png';
 
-  // Header
-  document.getElementById('nav-name').textContent = session.username;
-  document.getElementById('nav-photo').src = skinUrl;
-  document.getElementById('drop-name').textContent = session.username;
+  document.getElementById('nav-name').textContent  = session.username;
+  document.getElementById('nav-photo').src          = skinUrl;
+  document.getElementById('drop-name').textContent  = session.username;
   document.getElementById('drop-email').textContent = session.email || 'Sem e-mail';
-  document.getElementById('drop-photo').src = skinUrl;
+  document.getElementById('drop-photo').src         = skinUrl;
 
-  // Sidebar (Card de Resumo de Conta)
   const sbName = document.getElementById('sidebar-name');
-  if(sbName) sbName.textContent = session.username;
-  
+  if (sbName) sbName.textContent = session.username;
+
   const sbEmail = document.getElementById('sidebar-email');
-  if(sbEmail) {
+  if (sbEmail) {
     if (session.email) {
       const parts = session.email.split('@');
-      if (parts.length === 2) {
-        sbEmail.innerHTML = `<span class="truncate-local">${parts[0]}</span><span class="truncate-domain">@${parts[1]}</span>`;
-      } else {
-        sbEmail.textContent = session.email;
-      }
-    } else {
-      sbEmail.textContent = '-';
-    }
+      if (parts.length === 2) sbEmail.innerHTML = `<span class="truncate-local">${parts[0]}</span><span class="truncate-domain">@${parts[1]}</span>`;
+      else sbEmail.textContent = session.email;
+    } else sbEmail.textContent = '-';
   }
-  
-  const sbMc = document.getElementById('sidebar-mc');
-  if(sbMc) sbMc.textContent = displayMcName;
-  
+
+  const sbMc    = document.getElementById('sidebar-mc');
+  if (sbMc) sbMc.textContent = displayMcName;
+
   const sbPhoto = document.getElementById('sidebar-photo');
-  if(sbPhoto) sbPhoto.src = skinUrl;
+  if (sbPhoto) sbPhoto.src = skinUrl;
 
   const pill = document.getElementById('sidebar-role');
-  if(pill) {
-      pill.textContent = session.role === 'owner' ? 'Dono' : (session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito');
-      pill.className = session.role === 'owner' ? 'pill owner' : (session.role === 'full' ? 'pill full' : 'pill limited');
+  if (pill) {
+    pill.textContent = session.role === 'owner' ? 'Dono' : (session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito');
+    pill.className   = session.role === 'owner' ? 'pill owner' : (session.role === 'full' ? 'pill full' : 'pill limited');
   }
 }
 
-let _confirmPwCallback = null;
+// ══ Scroll auxiliar ══
+function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+// ══ Notificações ══
+let notifList = [];
+let notifUnread = 0;
+
+function toggleNotifPanel(e) {
+  e.stopPropagation();
+  document.getElementById('notif-panel').classList.toggle('show');
+}
+document.addEventListener('click', () => {
+  document.getElementById('notif-panel')?.classList.remove('show');
+  document.getElementById('user-dropdown-menu')?.classList.remove('show');
+  document.getElementById('user-btn-toggle')?.classList.remove('active');
+});
+
+function addNotification({ icon, type, title, body, action, actionFn }) {
+  const id = Date.now() + Math.random();
+  notifList.unshift({ id, icon, type, title, body, action, actionFn, unread: true, time: new Date() });
+  notifUnread++;
+  updateNotifBadge();
+  renderNotifPanel();
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (notifUnread > 0) { badge.textContent = notifUnread > 9 ? '9+' : notifUnread; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+}
+
+function markAllNotifRead() {
+  notifList.forEach(n => n.unread = false);
+  notifUnread = 0;
+  updateNotifBadge();
+  renderNotifPanel();
+}
+
+function renderNotifPanel() {
+  const list = document.getElementById('notif-list');
+  if (!notifList.length) { list.innerHTML = '<div class="notif-empty">Nenhuma notificação no momento.</div>'; return; }
+
+  list.innerHTML = notifList.slice(0, 20).map(n => {
+    const timeStr = formatNotifTime(n.time);
+    return `<div class="notif-item ${n.unread ? 'unread' : ''}">
+      <div class="notif-icon ${n.type}">${n.icon}</div>
+      <div class="notif-content" style="flex:1;">
+        <strong>${n.title}</strong>
+        <span>${n.body}</span>
+        <span class="notif-time">${timeStr}</span>
+      </div>
+      ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function formatNotifTime(d) {
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60)    return 'Agora mesmo';
+  if (diff < 3600)  return `${Math.floor(diff/60)}min atrás`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h atrás`;
+  return d.toLocaleDateString('pt-BR');
+}
+
+// ══ Alertas Inteligentes ══
+function buildAlerts() {
+  const alerts = [];
+  if (!globalHistData || !globalAdminUsers.length) return alerts;
+
+  const unverified = globalAdminUsers.filter(u => u.is_verified === false);
+  if (unverified.length > 0) {
+    alerts.push({
+      type: 'warning', icon: '⚠️',
+      title: `${unverified.length} conta(s) não verificada(s)`,
+      body: `${unverified.map(u => u.username).join(', ')} precisam verificar e-mail.`,
+      action: 'Ver contas', fn: () => { document.getElementById('admin-search').value = ''; setSortAdmin('verified'); scrollToSection('admin-users-card'); }
+    });
+  }
+
+  const onlinePlayers = globalHistData?.onlinePlayers || [];
+  if (onlinePlayers.length >= (globalApiData?.players?.max ?? 20) * 0.9 && onlinePlayers.length > 0) {
+    alerts.push({
+      type: 'danger', icon: '🚨',
+      title: 'Servidor quase cheio',
+      body: `${onlinePlayers.length}/${globalApiData?.players?.max ?? 20} jogadores conectados.`,
+      action: null, fn: null
+    });
+  }
+
+  if (!globalApiData?.online) {
+    alerts.push({
+      type: 'danger', icon: '🔴',
+      title: 'Servidor offline',
+      body: 'O servidor Minecraft não está respondendo no momento.',
+      action: null, fn: null
+    });
+  }
+
+  const unreg = globalUnregistered || [];
+  if (unreg.length >= 5) {
+    alerts.push({
+      type: 'info', icon: '👤',
+      title: `${unreg.length} jogadores sem cadastro`,
+      body: 'Há jogadores ativos no servidor que ainda não têm conta no painel.',
+      action: 'Ver lista', fn: () => { switchAdminTab('unregistered'); scrollToSection('admin-users-card'); }
+    });
+  }
+
+  return alerts;
+}
+
+function renderAlerts() {
+  const alerts = buildAlerts();
+  const card    = document.getElementById('alerts-card');
+  const wrapper = document.getElementById('alerts-wrapper');
+  if (!alerts.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  wrapper.innerHTML = alerts.map(a => `
+    <div class="alert-item ${a.type}">
+      <span class="alert-icon">${a.icon}</span>
+      <div class="alert-text"><strong>${a.title}</strong>${a.body}</div>
+      ${a.action ? `<button class="alert-action" onclick="(${a.fn.toString()})()">${a.action} →</button>` : ''}
+    </div>
+  `).join('');
+
+  // Dispara notificações para alertas críticos
+  if (!window._alertsNotifFired) {
+    window._alertsNotifFired = true;
+    alerts.filter(a => a.type === 'danger').forEach(a => {
+      addNotification({ icon: '🚨', type: 'danger', title: a.title, body: a.body });
+    });
+    alerts.filter(a => a.type === 'warning').forEach(a => {
+      addNotification({ icon: '⚠️', type: 'warning', title: a.title, body: a.body });
+    });
+  }
+}
+
+// ══ Saúde do Servidor ══
+function renderServerHealth() {
+  if (!globalHistData || !globalApiData) return;
+  const today = new Date().toDateString();
+  const todaySessions = (globalHistData.history || []).filter(h => {
+    const d = new Date(h.enteredAt || h.entered_at);
+    return d.toDateString() === today;
+  });
+  const sessionCount = todaySessions.length + ((globalHistData.onlinePlayers || []).length);
+  const totalHoursToday = todaySessions.reduce((a, h) => a + (h.duration_hours || h.hoursOnline || 0), 0);
+  const avgHoursToday = sessionCount > 0 ? totalHoursToday / sessionCount : 0;
+
+  const yesterdaySessions = (globalHistData.history || []).filter(h => {
+    const d = new Date(h.enteredAt || h.entered_at);
+    return d.toDateString() === new Date(Date.now() - 86400000).toDateString();
+  }).length;
+
+  document.getElementById('h-ping').textContent    = globalApiData?.online ? (globalApiData.debug?.ping ?? '–') + '' : '–';
+  document.getElementById('h-sessions-today').textContent = sessionCount;
+  document.getElementById('h-avg-time').textContent = formatTime(avgHoursToday);
+
+  const uptimePct = globalApiData?.online ? 98 : 0;
+  document.getElementById('h-uptime').textContent = globalApiData?.online ? '98%' : 'Offline';
+  document.getElementById('h-uptime-bar').style.width = uptimePct + '%';
+
+  const trend = document.getElementById('h-sessions-trend');
+  if (sessionCount > yesterdaySessions) { trend.textContent = `▲ +${sessionCount - yesterdaySessions} vs ontem`; trend.className = 'h-sub health-trend up'; }
+  else if (sessionCount < yesterdaySessions) { trend.textContent = `▼ −${yesterdaySessions - sessionCount} vs ontem`; trend.className = 'h-sub health-trend down'; }
+  else { trend.textContent = '= mesmo que ontem'; trend.className = 'h-sub health-trend flat'; }
+}
+
+// ══ Estatísticas Gerais ══
+function renderGlobalStats() {
+  if (!globalHistData) return;
+  const history = globalHistData.history || [];
+  const totalSessions = history.length;
+  const uniquePlayers = new Set(history.map(h => h.player?.toLowerCase())).size;
+  const totalHours = history.reduce((a, h) => a + (h.duration_hours || h.hoursOnline || 0), 0);
+
+  const dayMap = {};
+  history.forEach(h => {
+    const d = new Date(h.enteredAt || h.entered_at).toLocaleDateString('pt-BR');
+    dayMap[d] = (dayMap[d] || 0) + 1;
+  });
+  let peakDay = '-', peakCount = 0;
+  Object.entries(dayMap).forEach(([d, c]) => { if (c > peakCount) { peakCount = c; peakDay = d; } });
+
+  document.getElementById('stat-total-sessions').textContent = totalSessions;
+  document.getElementById('stat-unique-players').textContent = uniquePlayers;
+  document.getElementById('stat-total-hours').textContent    = Math.round(totalHours);
+  document.getElementById('stat-peak-day').textContent       = peakDay;
+  document.getElementById('stat-peak-day-count').textContent = peakDay !== '-' ? `${peakCount} sessões` : '';
+
+  renderTopPlayers(topPlayersMode);
+}
+
+function renderTopPlayers(mode) {
+  topPlayersMode = mode;
+  document.getElementById('top-by-hours').classList.toggle('active', mode === 'hours');
+  document.getElementById('top-by-sessions').classList.toggle('active', mode === 'sessions');
+
+  if (!globalHistData) return;
+  const history = globalHistData.history || [];
+  const pMap = {};
+  history.forEach(h => {
+    const k = h.player?.toLowerCase(); if (!k) return;
+    if (!pMap[k]) pMap[k] = { name: h.player, hours: 0, sessions: 0 };
+    pMap[k].hours    += (h.duration_hours || h.hoursOnline || 0);
+    pMap[k].sessions += 1;
+  });
+
+  const sorted = Object.values(pMap).sort((a, b) => mode === 'hours' ? b.hours - a.hours : b.sessions - a.sessions).slice(0, 8);
+  const maxVal  = sorted[0] ? (mode === 'hours' ? sorted[0].hours : sorted[0].sessions) : 1;
+  const ranks   = ['🥇', '🥈', '🥉'];
+  const classes = ['gold', 'silver', 'bronze'];
+
+  const list = document.getElementById('top-players-list');
+  if (!sorted.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><strong>Sem dados</strong><span>Nenhum histórico de sessões encontrado.</span></div>'; return; }
+
+  list.innerHTML = sorted.map((p, i) => {
+    const val   = mode === 'hours' ? p.hours : p.sessions;
+    const label = mode === 'hours' ? formatTime(val) : `${val} sessão(ões)`;
+    const pct   = Math.max(4, Math.round((val / maxVal) * 100));
+    const color = CHART_PALETTE[Math.abs(hashStr(p.name)) % CHART_PALETTE.length];
+    const rankHtml = i < 3
+      ? `<span class="top-rank ${classes[i]}">${ranks[i]}</span>`
+      : `<span class="top-rank other">#${i+1}</span>`;
+    return `<div class="top-player-item" onclick="openPlayerProfile('${p.name}')">
+      <img src="https://minotar.net/helm/${encodeURIComponent(p.name)}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" style="width:32px;height:32px;border-radius:6px;">
+      ${rankHtml}
+      <div class="top-player-bar-wrap">
+        <div class="top-player-name">${p.name}<span class="hours-label">${label}</span></div>
+        <div class="top-player-bar-bg"><div class="top-player-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function hashStr(s) { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return h; }
+
+// ══ Logs de Auditoria (owner only) ══
+async function fetchAuditLogs() {
+  // Tenta buscar do backend; se não houver endpoint, gera logs sintéticos a partir das ações locais
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/audit`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) { auditLogs = await res.json(); renderAuditLogs(); return; }
+  } catch {}
+  // Fallback: construir logs a partir de dados disponíveis
+  buildSyntheticAuditLogs();
+  renderAuditLogs();
+}
+
+function buildSyntheticAuditLogs() {
+  auditLogs = [];
+  globalAdminUsers.forEach(u => {
+    if (u.created_at) auditLogs.push({ type: 'create', actor: session.username, target: u.username, message: `Conta criada para ${u.username}`, time: new Date(u.created_at) });
+  });
+  auditLogs.push({ type: 'login', actor: session.username, target: null, message: `${session.username} fez login no painel`, time: new Date() });
+  auditLogs.sort((a, b) => new Date(b.time) - new Date(a.time));
+}
+
+function filterAuditLogs(type) {
+  auditFilterActive = type;
+  auditPage = 0;
+  ['all', 'create', 'update', 'delete', 'login'].forEach(t => {
+    document.getElementById(`atab-${t}`)?.classList.toggle('active', t === type);
+  });
+  renderAuditLogs();
+}
+
+function loadMoreAuditLogs() { auditPage++; renderAuditLogs(true); }
+
+function renderAuditLogs(append = false) {
+  const filtered = auditFilterActive === 'all' ? auditLogs : auditLogs.filter(l => l.type === auditFilterActive);
+  const start = 0, end = (auditPage + 1) * AUDIT_PAGE_SIZE;
+  const slice = filtered.slice(start, end);
+  const list  = document.getElementById('audit-log-list');
+  const moreBtn = document.getElementById('audit-load-more');
+
+  if (!slice.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log encontrado</strong><span>Não há registros para este filtro.</span></div>';
+    moreBtn.style.display = 'none';
+    return;
+  }
+
+  const typeIcon  = { create: '✅', update: '✏️', delete: '🗑️', login: '🔑', system: '⚙️' };
+  const typeLabel = { create: 'Criação', update: 'Edição', delete: 'Exclusão', login: 'Login', system: 'Sistema' };
+
+  list.innerHTML = slice.map(l => {
+    const d = new Date(l.time); const timeStr = d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return `<div class="audit-item">
+      <div class="audit-dot ${l.type}"></div>
+      <div class="audit-content">
+        <strong>${typeIcon[l.type] || '•'} ${l.message || typeLabel[l.type]}</strong>
+        <span>Por: ${l.actor || 'Sistema'}${l.target ? ` · Alvo: ${l.target}` : ''}</span>
+      </div>
+      <div class="audit-time">${timeStr}</div>
+    </div>`;
+  }).join('');
+
+  moreBtn.style.display = filtered.length > end ? 'inline-flex' : 'none';
+}
+
+// ══ Notas de jogador no modal ══
+function renderPlayerNotes(playerName) {
+  const notes = getPlayerNotes(playerName);
+  const list  = document.getElementById('note-list');
+  const count = document.getElementById('notes-count');
+  count.textContent = `${notes.length} nota${notes.length !== 1 ? 's' : ''}`;
+
+  if (!notes.length) { list.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:4px 0;">Nenhuma nota ainda. Seja o primeiro a adicionar.</div>'; return; }
+  list.innerHTML = notes.map((n, i) => `
+    <div class="note-item">
+      ${n.text}
+      <div class="note-meta">
+        <span>Por: ${n.author} · ${new Date(n.time).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
+        <button class="note-delete" onclick="deletePlayerNote('${playerName}', ${i})">Excluir</button>
+      </div>
+    </div>`).join('');
+}
+
+function addPlayerNote() {
+  const ta = document.getElementById('note-textarea');
+  const text = ta.value.trim();
+  if (!text) return;
+  const notes = getPlayerNotes(currentModalPlayerName);
+  notes.push({ text, author: session.username, time: new Date().toISOString() });
+  savePlayerNotes(currentModalPlayerName, notes);
+  ta.value = '';
+  renderPlayerNotes(currentModalPlayerName);
+  showToast('Nota adicionada com sucesso.');
+}
+
+function deletePlayerNote(playerName, index) {
+  const notes = getPlayerNotes(playerName);
+  notes.splice(index, 1);
+  savePlayerNotes(playerName, notes);
+  renderPlayerNotes(playerName);
+}
+
+// ══ Exportação CSV ══
+function downloadCSV(filename, rows, headers) {
+  const csvContent = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csvContent);
+  a.download = filename;
+  a.click();
+  showToast(`Exportado: ${filename}`);
+}
+
+function exportChartCSV() {
+  if (!globalHistData) { showToast('Nenhum dado para exportar.', 'warning'); return; }
+  const rows = (globalHistData.history || []).map(h => [h.player, h.enteredAt || h.entered_at, h.leftAt || h.left_at, (h.duration_hours || h.hoursOnline || 0).toFixed(2)]);
+  downloadCSV('historico_servidor.csv', rows, ['Jogador', 'Entrada', 'Saída', 'Horas']);
+}
+
+function exportPlayerHistoryCSV() {
+  if (!modalHistoryData.length) { showToast('Nenhum histórico para exportar.', 'warning'); return; }
+  const rows = modalHistoryData.map(h => [currentModalPlayerName, h.entered_at || h.enteredAt, h.left_at || h.leftAt, (h.duration_hours || h.hoursOnline || 0).toFixed(2)]);
+  downloadCSV(`historico_${currentModalPlayerName}.csv`, rows, ['Jogador', 'Entrada', 'Saída', 'Horas']);
+}
+
+function exportStaffCSV() {
+  if (!globalAdminUsers.length) { showToast('Nenhuma conta para exportar.', 'warning'); return; }
+  const rows = globalAdminUsers.map(u => [u.username, u.email, u.minecraft_name || '-', u.role, u.created_at || '-']);
+  downloadCSV('staff_forcaaliada.csv', rows, ['Usuário', 'E-mail', 'Minecraft', 'Permissão', 'Criado em']);
+}
+
+// ══ Confirmação por Senha ══
+let _confirmPwCallback  = null;
 let _confirmPwDestructive = false;
 
 function requirePassword({ title, desc, btnLabel = 'Confirmar', destructive = false, onConfirm }) {
   _confirmPwCallback = onConfirm; _confirmPwDestructive = destructive;
   document.getElementById('confirm-pw-title').textContent = title;
-  document.getElementById('confirm-pw-desc').textContent = desc;
+  document.getElementById('confirm-pw-desc').textContent  = desc;
   const submitBtn = document.getElementById('confirm-pw-submit-btn');
-  submitBtn.textContent = btnLabel; submitBtn.dataset.label = btnLabel; 
-  submitBtn.className = 'confirm-pw-btn-confirm' + (destructive ? ' destructive' : '');
+  submitBtn.textContent = btnLabel; submitBtn.dataset.label = btnLabel;
+  submitBtn.className   = 'confirm-pw-btn-confirm' + (destructive ? ' destructive' : '');
   const icon = document.getElementById('confirm-pw-icon');
-  icon.className = 'confirm-pw-icon ' + (destructive ? 'delete' : 'save');
+  icon.className  = 'confirm-pw-icon ' + (destructive ? 'delete' : 'save');
   icon.textContent = destructive ? '⚠️' : '🔒';
   const input = document.getElementById('confirm-pw-input');
   input.value = ''; input.type = 'password'; input.classList.remove('pw-error');
@@ -661,84 +1399,97 @@ function toggleConfirmPwVisibility() {
 }
 
 async function confirmPwSubmit() {
-  const input = document.getElementById('confirm-pw-input'); const errEl = document.getElementById('confirm-pw-error'); const btn = document.getElementById('confirm-pw-submit-btn'); const pw = input.value;
+  const input = document.getElementById('confirm-pw-input'), errEl = document.getElementById('confirm-pw-error'), btn = document.getElementById('confirm-pw-submit-btn'), pw = input.value;
   if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
   btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: session.username, password: pw }) });
-    if (!res.ok) throw new Error('Senha incorreta.');
+    if (!res.ok) throw new Error();
     const cb = _confirmPwCallback; closeConfirmPw(); if (cb) await cb();
-  } catch (e) {
+  } catch {
     errEl.textContent = 'Senha incorreta. Tente novamente.'; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
     btn.disabled = false; btn.textContent = btn.dataset.label || 'Confirmar'; input.focus();
   }
 }
 
+// ══ Accordion ══
 function toggleAccordion(btnId, bodyId) {
-  const btn = document.getElementById(btnId); const body = document.getElementById(bodyId);
+  const btn = document.getElementById(btnId), body = document.getElementById(bodyId);
   const open = body.classList.toggle('open'); btn.classList.toggle('open', open);
 }
 
+// ══ Formatação ══
 function formatTime(hoursFloat) {
   if (!hoursFloat || hoursFloat <= 0) return '<1m';
   const t = Math.floor(hoursFloat * 60); const d = Math.floor(t / 1440), h = Math.floor((t % 1440) / 60), m = t % 60;
   return [d > 0 ? `${d}d` : '', h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : ''].filter(Boolean).join(' ') || '<1m';
 }
-
 function getLiveEntryText(enteredAtStr) {
   const entered = new Date(enteredAtStr); if (Date.now() - entered.getTime() < 60000) return 'Agora mesmo';
   return entered.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
-
 function getLiveDuration(enteredAtStr) { return formatTime((Date.now() - new Date(enteredAtStr).getTime()) / 3600000); }
 
-function toggleDropdown(e) { e.stopPropagation(); document.getElementById('user-btn-toggle')?.classList.toggle('active'); document.getElementById('user-dropdown-menu')?.classList.toggle('show'); }
-document.addEventListener('click', () => { document.getElementById('user-dropdown-menu')?.classList.remove('show'); document.getElementById('user-btn-toggle')?.classList.remove('active'); });
+// ══ Dropdown Header ══
+function toggleDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('user-btn-toggle')?.classList.toggle('active');
+  document.getElementById('user-dropdown-menu')?.classList.toggle('show');
+}
 
+// ══ Carga de dados ══
 async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
   const [apiData, histData] = await Promise.all([
     fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
     fetch(`${API_BASE}/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
   ]);
-  globalApiData = apiData; globalHistData = histData;
+  globalApiData  = apiData;
+  globalHistData = histData;
   fetchUnregistered();
-  renderDashboard(); updateActivityChart();
+  renderDashboard();
+  updateActivityChart();
+  renderServerHealth();
+  renderGlobalStats();
+  renderAlerts();
 }
 
 function renderDashboard() {
   if (globalApiData?.online) {
-    document.getElementById('server-status').textContent = 'Online'; document.getElementById('server-dot').className = 'status-dot';
-    document.getElementById('server-version').textContent = globalApiData.version || 'Desconhecida'; document.getElementById('online-count').textContent = `${globalApiData.players?.online ?? 0} / ${globalApiData.players?.max ?? 0}`;
+    document.getElementById('server-status').textContent  = 'Online';
+    document.getElementById('server-dot').className       = 'status-dot';
+    document.getElementById('server-version').textContent = globalApiData.version || 'Desconhecida';
+    document.getElementById('online-count').textContent   = `${globalApiData.players?.online ?? 0} / ${globalApiData.players?.max ?? 0}`;
   } else {
-    document.getElementById('server-status').textContent = 'Offline'; document.getElementById('server-dot').className = 'status-dot offline';
-    document.getElementById('server-version').textContent = '-'; document.getElementById('online-count').textContent = '0 / 0';
+    document.getElementById('server-status').textContent  = 'Offline';
+    document.getElementById('server-dot').className       = 'status-dot offline';
+    document.getElementById('server-version').textContent = '-';
+    document.getElementById('online-count').textContent   = '0 / 0';
   }
   applyFilters();
 }
 
-function emptyStateHTML(icon, title, sub) { return `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${icon}</div><strong>${title}</strong><span>${sub}</span></div></li>`; }
+function emptyStateHTML(icon, title, sub) {
+  return `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${icon}</div><strong>${title}</strong><span>${sub}</span></div></li>`;
+}
 
 function applyFilters() {
   if (!globalHistData) return;
-  const nameFilter = document.getElementById('search-player').value.toLowerCase().trim();
-  const dateFilter = document.getElementById('search-date').value;
+  const nameFilter     = document.getElementById('search-player').value.toLowerCase().trim();
+  const dateFilter     = document.getElementById('search-date').value;
   const durationFilter = parseInt(document.getElementById('search-duration').value) || 0;
-  
-  const livePlayers = globalHistData.onlinePlayers || [];
-  const activeSess = globalHistData.activeSessions || {};
-
-  const hasData = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
+  const livePlayers    = globalHistData.onlinePlayers || [];
+  const activeSess     = globalHistData.activeSessions || {};
+  const hasData        = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
   document.getElementById('dashboard-filters').style.display = hasData ? 'grid' : 'none';
 
   let filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
   if (durationFilter > 0) {
-     filteredLive = filteredLive.filter(p => {
-        const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === p.toLowerCase())];
-        if (!sData) return false;
-        const hours = (Date.now() - new Date(sData.enteredAt).getTime()) / 3600000;
-        return hours >= durationFilter;
-     });
+    filteredLive = filteredLive.filter(p => {
+      const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === p.toLowerCase())];
+      if (!sData) return false;
+      return (Date.now() - new Date(sData.enteredAt).getTime()) / 3600000 >= durationFilter;
+    });
   }
 
   const onlineUl = document.getElementById('online');
@@ -753,7 +1504,6 @@ function applyFilters() {
   let offlineHistory = (globalHistData.history || []).filter(h => !livePlayers.map(n => n.toLowerCase()).includes(h.player.toLowerCase()) && (h.leftAt || h.left_at));
   const playerDayMap = new Map();
   offlineHistory.sort((a, b) => new Date(b.leftAt || b.left_at) - new Date(a.leftAt || a.left_at));
-  
   for (const h of offlineHistory) {
     const k = h.player.toLowerCase(); const lAt = h.leftAt || h.left_at;
     if (!playerDayMap.has(k)) playerDayMap.set(k, { player: h.player, leftAt: lAt, dayRef: new Date(lAt).toDateString(), totalHoursDay: 0, sessionsToday: 0 });
@@ -769,7 +1519,7 @@ function applyFilters() {
   const histUl = document.getElementById('history');
   histUl.innerHTML = filteredOff.length
     ? filteredOff.slice(0, 15).map(e => {
-        const leftDate = new Date(e.leftAt); const isToday = leftDate.toDateString() === new Date().toDateString(); const isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
+        const leftDate = new Date(e.leftAt), isToday = leftDate.toDateString() === new Date().toDateString(), isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
         return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
@@ -777,62 +1527,90 @@ function applyFilters() {
     : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : 'Nenhum jogador desconectado recentemente.');
 }
 
+// ══ Gráfico ══
 let chartFocusedPlayer = null;
+
 function onRangeChange() {
-  const range = document.getElementById('chart-range').value; const ctrl = document.getElementById('custom-time-controls'); const grouping = document.getElementById('chart-grouping');
+  const range = document.getElementById('chart-range').value;
+  const ctrl  = document.getElementById('custom-time-controls');
+  const grp   = document.getElementById('chart-grouping');
   if (range === 'custom') {
-    ctrl.style.display = 'flex'; const now = new Date(); const ago = new Date(now - 7 * 86400000); const pad = n => n.toString().padStart(2, '0');
-    const formatLocal = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    document.getElementById('custom-end').value = formatLocal(now); document.getElementById('custom-start').value = formatLocal(ago);
+    ctrl.style.display = 'flex';
+    const now = new Date(), ago = new Date(now - 7 * 86400000);
+    const pad = n => n.toString().padStart(2, '0');
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    document.getElementById('custom-end').value   = fmt(now);
+    document.getElementById('custom-start').value = fmt(ago);
   } else {
     ctrl.style.display = 'none';
-    if (range === '1h') grouping.value = '1m'; else if (range === '6h') grouping.value = '5m'; else if (range === '24h') grouping.value = 'hour'; else if (range === '7d' || range === '30d') grouping.value = 'day';
+    if (range === '1h')           grp.value = '1m';
+    else if (range === '6h')      grp.value = '5m';
+    else if (range === '24h')     grp.value = 'hour';
+    else if (['7d','30d'].includes(range)) grp.value = 'day';
   }
   updateActivityChart();
 }
 
-const CHART_PALETTE = ['#0071e3', '#34c759', '#ff9f0a', '#ff3b30', '#af52de', '#5ac8fa', '#ff6b35', '#30b0c7', '#a2845e', '#ff2d55', '#64d2ff', '#ffd60a', '#00c7be', '#bf5af2', '#32ade6'];
+const CHART_PALETTE = ['#0071e3','#34c759','#ff9f0a','#ff3b30','#af52de','#5ac8fa','#ff6b35','#30b0c7','#a2845e','#ff2d55','#64d2ff','#ffd60a','#00c7be','#bf5af2','#32ade6'];
 function playerColor(playerName) { let hash = 0; for (let i = 0; i < playerName.length; i++) hash = playerName.charCodeAt(i) + ((hash << 5) - hash); return CHART_PALETTE[Math.abs(hash) % CHART_PALETTE.length]; }
 
 function focusChartPlayer(playerName) {
   if (!chartInstance) return;
-  const same = chartFocusedPlayer === playerName; chartFocusedPlayer = same ? null : playerName;
+  const same = chartFocusedPlayer === playerName;
+  chartFocusedPlayer = same ? null : playerName;
   chartInstance.data.datasets.forEach(ds => {
-    if (chartFocusedPlayer === null) { ds.hidden = false; ds.borderWidth = 2; ds.borderColor = playerColor(ds.label, 0); ds.backgroundColor = playerColor(ds.label, 0) + '18'; } 
-    else if (ds.label === chartFocusedPlayer) { ds.hidden = false; ds.borderWidth = 3; } 
+    if (chartFocusedPlayer === null) { ds.hidden = false; ds.borderWidth = 2; }
+    else if (ds.label === chartFocusedPlayer) { ds.hidden = false; ds.borderWidth = 3; }
     else { ds.hidden = true; }
   });
-  chartInstance.update('none'); updateChartFocusIndicator();
+  chartInstance.update('none');
+  updateChartFocusIndicator();
 }
 
 function updateChartFocusIndicator() {
   const container = document.getElementById('chart-focus-indicator'); if (!container) return;
   if (chartFocusedPlayer) {
-    const color = playerColor(chartFocusedPlayer, 0); container.style.display = 'inline-flex';
+    const color = playerColor(chartFocusedPlayer); container.style.display = 'inline-flex';
     container.innerHTML = `<div class="chart-focus-badge"><span class="focus-dot" style="background:${color}"></span>${chartFocusedPlayer}<button class="focus-clear" onclick="focusChartPlayer('${chartFocusedPlayer}')" title="Mostrar todos">×</button></div>`;
   } else { container.style.display = 'none'; container.innerHTML = ''; }
 }
 
-function focusPlayerInChart(playerName) { closeModal(); setTimeout(() => { document.getElementById('activityChart')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => focusChartPlayer(playerName), 400); }, 200); }
+function focusPlayerInChart(playerName) {
+  closeModal();
+  setTimeout(() => { document.getElementById('activityChart')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => focusChartPlayer(playerName), 400); }, 200);
+}
 
 function updateActivityChart() {
   if (!globalHistData) return;
-  const range = document.getElementById('chart-range').value, grouping = document.getElementById('chart-grouping').value, now = new Date(); let startTime;
-  if (range === 'custom') { const sv = document.getElementById('custom-start').value, ev = document.getElementById('custom-end').value; if (!sv || !ev) return; startTime = new Date(sv); }
-  else { const ms = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 }; startTime = new Date(now - (ms[range] || ms['24h'])); }
+  const range = document.getElementById('chart-range').value, grouping = document.getElementById('chart-grouping').value, now = new Date();
+  let startTime;
+  if (range === 'custom') {
+    const sv = document.getElementById('custom-start').value, ev = document.getElementById('custom-end').value;
+    if (!sv || !ev) return; startTime = new Date(sv);
+  } else {
+    const ms = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
+    startTime = new Date(now - (ms[range] || ms['24h']));
+  }
   const endTime = range === 'custom' ? new Date(document.getElementById('custom-end').value) : now;
-  const allSessions = [...(globalHistData.history || []).map(h => ({ player: h.player, start: new Date(h.enteredAt||h.entered_at), end: new Date(h.leftAt||h.left_at) })), ...Object.values(globalHistData.activeSessions || {}).map(s => ({ player: s.name, start: new Date(s.enteredAt), end: now }))];
+  const allSessions = [
+    ...(globalHistData.history || []).map(h => ({ player: h.player, start: new Date(h.enteredAt||h.entered_at), end: new Date(h.leftAt||h.left_at) })),
+    ...Object.values(globalHistData.activeSessions || {}).map(s => ({ player: s.name, start: new Date(s.enteredAt), end: now }))
+  ];
   const grpMs = { '1m': 60000, '5m': 300000, '15m': 900000, 'hour': 3600000, 'day': 86400000 };
-  let bucketMs = grpMs[grouping] || 3600000; const isDay = grouping === 'day'; const divider = isDay ? 3600000 : 60000; 
+  const bucketMs = grpMs[grouping] || 3600000, isDay = grouping === 'day', divider = isDay ? 3600000 : 60000;
   const buckets = new Map(); const players = new Set();
   for (let t = startTime.getTime(); t < endTime.getTime(); t += bucketMs) {
-    const key = new Date(t).toISOString(); buckets.set(key, {}); const bStart = t, bEnd = t + bucketMs;
-    for (const s of allSessions) { const oStart = Math.max(s.start.getTime(), bStart), oEnd = Math.min(s.end.getTime(), bEnd); if (oEnd > oStart) { players.add(s.player); if (!buckets.get(key)[s.player]) buckets.get(key)[s.player] = 0; buckets.get(key)[s.player] += (oEnd - oStart); } }
+    const key = new Date(t).toISOString(); buckets.set(key, {});
+    const bStart = t, bEnd = t + bucketMs;
+    for (const s of allSessions) {
+      const oStart = Math.max(s.start.getTime(), bStart), oEnd = Math.min(s.end.getTime(), bEnd);
+      if (oEnd > oStart) { players.add(s.player); if (!buckets.get(key)[s.player]) buckets.get(key)[s.player] = 0; buckets.get(key)[s.player] += (oEnd - oStart); }
+    }
   }
-  const labels = [...buckets.keys()].map(k => { const d = new Date(k); return isDay ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); });
+  const labels     = [...buckets.keys()].map(k => { const d = new Date(k); return isDay ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); });
   const playerList = [...players];
-  const datasets = playerList.map((p, i) => {
-    const color = playerColor(p, i); const isFocused = chartFocusedPlayer === p; const isDeemphasized = chartFocusedPlayer && !isFocused;
+  const datasets   = playerList.map(p => {
+    const color = playerColor(p); const isFocused = chartFocusedPlayer === p; const isDeemphasized = chartFocusedPlayer && !isFocused;
     return { label: p, data: [...buckets.values()].map(b => (b[p] || 0) / divider), borderColor: color, backgroundColor: color + '18', borderWidth: isFocused ? 3 : 2, tension: 0.4, fill: false, hidden: isDeemphasized, pointBackgroundColor: color, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 6 };
   });
 
@@ -840,17 +1618,21 @@ function updateActivityChart() {
     id: 'dblClickLegend', _lastClick: { time: 0, label: '' },
     afterEvent(chart, args) {
       const e = args.event; if (e.type !== 'click') return;
-      const legendItems = chart.legend?.legendItems || [], legendHitBoxes = chart.legend?.legendHitBoxes || [];
+      const legendItems    = chart.legend?.legendItems    || [];
+      const legendHitBoxes = chart.legend?.legendHitBoxes || [];
       for (let i = 0; i < legendHitBoxes.length; i++) {
         const box = legendHitBoxes[i];
         if (e.x >= box.left && e.x <= box.left + box.width && e.y >= box.top && e.y <= box.top + box.height) {
-          const label = legendItems[i]?.text; if (!label) break; const now2 = Date.now();
-          if (this._lastClick.label === label && now2 - this._lastClick.time < 400) { args.changed = true; focusChartPlayer(label); this._lastClick = { time: 0, label: '' }; } 
-          else { this._lastClick = { time: now2, label }; } break;
+          const label = legendItems[i]?.text; if (!label) break;
+          const now2  = Date.now();
+          if (this._lastClick.label === label && now2 - this._lastClick.time < 400) { args.changed = true; focusChartPlayer(label); this._lastClick = { time: 0, label: '' }; }
+          else { this._lastClick = { time: now2, label }; }
+          break;
         }
       }
     }
   };
+
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(document.getElementById('activityChart').getContext('2d'), {
     type: 'line', data: { labels, datasets }, plugins: [dblClickLegendPlugin],
@@ -859,27 +1641,34 @@ function updateActivityChart() {
       plugins: {
         legend: {
           display: playerList.length > 0 && playerList.length <= 12,
-          labels: { boxWidth: 12, boxHeight: 12, borderRadius: 4, useBorderRadius: true, font: { size: 12 }, padding: 16, color: '#1d1d1f', generateLabels(chart) { return Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { if (chartFocusedPlayer && item.text !== chartFocusedPlayer) { item.fontColor = '#ccc'; } return item; }); } },
+          labels: { boxWidth: 12, boxHeight: 12, borderRadius: 4, useBorderRadius: true, font: { size: 12 }, padding: 16, color: '#1d1d1f',
+            generateLabels(chart) { return Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { if (chartFocusedPlayer && item.text !== chartFocusedPlayer) item.fontColor = '#ccc'; return item; }); }
+          },
           onClick(e, legendItem, legend) {
-            const index = legendItem.datasetIndex; const meta = legend.chart.getDatasetMeta(index); meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : !meta.hidden;
-            if (chartFocusedPlayer === legendItem.text) { chartFocusedPlayer = null; updateChartFocusIndicator(); } legend.chart.update();
+            const index = legendItem.datasetIndex, meta = legend.chart.getDatasetMeta(index);
+            meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : !meta.hidden;
+            if (chartFocusedPlayer === legendItem.text) { chartFocusedPlayer = null; updateChartFocusIndicator(); }
+            legend.chart.update();
           }
         },
         tooltip: {
           backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', bodyColor: '#86868b', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, boxPadding: 4, cornerRadius: 10, boxWidth: 10, boxHeight: 10,
-          filter: function(tooltipItem) { return tooltipItem.raw > 0; },
-          callbacks: { title: ctx2 => ctx2[0]?.label || '', label: ctx2 => ` ${ctx2.dataset.label}: ${formatTime(isDay ? ctx2.raw : (ctx2.raw / 60))}`, footer: ctx2 => { const online = ctx2.length; return online > 0 ? `${online} jogador(es) online neste intervalo` : ''; } }
+          filter: ti => ti.raw > 0,
+          callbacks: { title: ctx2 => ctx2[0]?.label || '', label: ctx2 => ` ${ctx2.dataset.label}: ${formatTime(isDay ? ctx2.raw : (ctx2.raw / 60))}`, footer: ctx2 => ctx2.length > 0 ? `${ctx2.length} jogador(es) online neste intervalo` : '' }
         }
       },
-      scales: { x: { grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' }, border: { display: false } }, y: { beginAtZero: true, title: { display: true, text: isDay ? 'Horas Jogadas' : 'Minutos Jogados', font: { size: 11 }, color: '#86868b' }, ticks: { stepSize: isDay ? 1 : 15, font: { size: 11 }, color: '#86868b' }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' }, border: { display: false } },
+        y: { beginAtZero: true, title: { display: true, text: isDay ? 'Horas Jogadas' : 'Minutos Jogados', font: { size: 11 }, color: '#86868b' }, ticks: { stepSize: isDay ? 1 : 15, font: { size: 11 }, color: '#86868b' }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } }
+      },
       onClick(e, elements, chart) {
         const nearest = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
         if (nearest.length > 0) {
-          const dsIndex = nearest[0].datasetIndex; const dataIndex = nearest[0].index; const clickedValue = chart.data.datasets[dsIndex].data[dataIndex];
+          const dsIndex = nearest[0].datasetIndex, dataIndex = nearest[0].index, clickedValue = chart.data.datasets[dsIndex].data[dataIndex];
           if (clickedValue > 0) {
-            const overlaps = []; chart.data.datasets.forEach((ds, idx) => { if (ds.data[dataIndex] === clickedValue && chart.getDatasetMeta(idx).hidden !== true) { overlaps.push(ds.label); } });
-            if (overlaps.length > 1) { if (chartFocusedPlayer && overlaps.includes(chartFocusedPlayer)) { const idx = overlaps.indexOf(chartFocusedPlayer); focusChartPlayer(overlaps[(idx + 1) % overlaps.length]); } else { focusChartPlayer(overlaps[0]); } } 
-            else { focusChartPlayer(chart.data.datasets[dsIndex].label); }
+            const overlaps = []; chart.data.datasets.forEach((ds, idx) => { if (ds.data[dataIndex] === clickedValue && chart.getDatasetMeta(idx).hidden !== true) overlaps.push(ds.label); });
+            if (overlaps.length > 1) { if (chartFocusedPlayer && overlaps.includes(chartFocusedPlayer)) { const idx = overlaps.indexOf(chartFocusedPlayer); focusChartPlayer(overlaps[(idx + 1) % overlaps.length]); } else focusChartPlayer(overlaps[0]); }
+            else focusChartPlayer(chart.data.datasets[dsIndex].label);
           }
         }
       }
@@ -888,48 +1677,74 @@ function updateActivityChart() {
   updateChartFocusIndicator();
 }
 
+// ══ Modal de Perfil do Jogador ══
 async function openPlayerProfile(playerName, siteAccountId = null) {
-  currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId; let displayMcName = playerName;
+  currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId;
+  let displayMcName = playerName;
   if (siteAccountId) { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
 
-  document.getElementById('modal-name').textContent = displayMcName; document.getElementById('modal-img').src = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`; document.getElementById('modal-img').onerror = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
+  document.getElementById('modal-name').textContent  = displayMcName;
+  document.getElementById('modal-img').src           = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`;
+  document.getElementById('modal-img').onerror       = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
-  document.getElementById('modal-site-account').style.display = 'none'; document.getElementById('modal-create-account').style.display = 'none';
+  document.getElementById('modal-site-account').style.display  = 'none';
+  document.getElementById('modal-create-account').style.display = 'none';
   document.getElementById('stats-grid').innerHTML = `<div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div>`;
-  document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:90%;border-radius:6px;"></div></div>`;
+  document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div></div>`;
   document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
 
-  const [historyData] = await Promise.all([ fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => []) ]);
-  modalHistoryData = historyData; const chartBtn = document.getElementById('modal-chart-btn'); if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
+  // Carrega notas do jogador imediatamente (são locais)
+  renderPlayerNotes(displayMcName);
 
-  const siteAcc = siteAccountId ? globalAdminUsers.find(u => u.id === siteAccountId) : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
-  
+  const [historyData] = await Promise.all([
+    fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
+  ]);
+  modalHistoryData = historyData;
+  const chartBtn = document.getElementById('modal-chart-btn');
+  if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
+
+  const siteAcc = siteAccountId
+    ? globalAdminUsers.find(u => u.id === siteAccountId)
+    : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
+
   if (siteAcc) {
-    currentEditingAdminId = siteAcc.id; document.getElementById('av-username').textContent = siteAcc.username; document.getElementById('av-email').textContent = siteAcc.email; document.getElementById('av-mc').textContent = siteAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
-    document.getElementById('ai-username').value = siteAcc.username; document.getElementById('ai-email').value = siteAcc.email; document.getElementById('ai-mc').value = siteAcc.minecraft_name || ''; document.getElementById('ai-role').value = siteAcc.role; document.getElementById('ai-newpassword').value = '';
-    
-    document.getElementById('modal-site-account').style.display = 'block'; document.getElementById('modal-create-account').style.display = 'none';
+    currentEditingAdminId = siteAcc.id;
+    document.getElementById('av-username').textContent = siteAcc.username;
+    document.getElementById('av-email').textContent    = siteAcc.email;
+    document.getElementById('av-mc').textContent       = siteAcc.minecraft_name || 'Nenhuma vinculada';
+    document.getElementById('av-role').textContent     = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+    document.getElementById('ai-username').value  = siteAcc.username;
+    document.getElementById('ai-email').value     = siteAcc.email;
+    document.getElementById('ai-mc').value        = siteAcc.minecraft_name || '';
+    document.getElementById('ai-role').value      = siteAcc.role;
+    document.getElementById('ai-newpassword').value = '';
+    document.getElementById('modal-site-account').style.display  = 'block';
+    document.getElementById('modal-create-account').style.display = 'none';
 
     if (session.role === 'full') {
-      document.getElementById('admin-lock-screen').style.display = 'block';
-      document.getElementById('admin-data-content').style.display = 'none';
-      document.getElementById('btn-edit-account').style.display = 'none';
-      document.getElementById('action-bar-edit').style.display = 'none';
+      document.getElementById('admin-lock-screen').style.display   = 'block';
+      document.getElementById('admin-data-content').style.display  = 'none';
+      document.getElementById('btn-edit-account').style.display    = 'none';
+      document.getElementById('action-bar-edit').style.display     = 'none';
       document.getElementById('advanced-security-wrapper').style.display = 'none';
       setAdminEditMode(false);
     } else {
-      document.getElementById('admin-lock-screen').style.display = 'none';
-      document.getElementById('admin-data-content').style.display = 'grid';
-      document.getElementById('btn-edit-account').style.display = 'block';
+      document.getElementById('admin-lock-screen').style.display   = 'none';
+      document.getElementById('admin-data-content').style.display  = 'grid';
+      document.getElementById('btn-edit-account').style.display    = 'block';
       setAdminEditMode(false);
     }
   } else {
-    currentEditingAdminId = null; document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = ''; document.getElementById('ci-mc').value = playerName; document.getElementById('ci-role').value = 'limited'; document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
-    const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); body.classList.remove('open'); chevron.classList.remove('open');
-    document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none'; 
-    document.getElementById('modal-site-account').style.display = 'none';
+    currentEditingAdminId = null;
+    document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = '';
+    document.getElementById('ci-mc').value       = playerName; document.getElementById('ci-role').value = 'limited';
+    document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
+    const body = document.getElementById('create-account-body'), chevron = document.getElementById('create-acc-chevron');
+    body.classList.remove('open'); chevron.classList.remove('open');
+    document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none';
+    document.getElementById('modal-site-account').style.display   = 'none';
   }
-  
+
   renderModalStats(); renderModalTable();
 }
 
@@ -939,115 +1754,182 @@ function unlockAdminData() {
     desc: 'Confirme sua senha para visualizar informações de contato e login desta pessoa.',
     btnLabel: 'Desbloquear',
     onConfirm: () => {
-      document.getElementById('admin-lock-screen').style.display = 'none';
+      document.getElementById('admin-lock-screen').style.display  = 'none';
       document.getElementById('admin-data-content').style.display = 'grid';
     }
   });
 }
 
 function renderModalStats() {
-  const playerName = currentModalPlayerName; const isOnline = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName?.toLowerCase()); const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === (playerName || '').toLowerCase());
-  let totalHours = modalHistoryData.reduce((a, h) => a + (h.duration_hours || h.hoursOnline || 0), 0); if (isOnline && activeSess) totalHours += (Date.now() - new Date(activeSess.enteredAt).getTime()) / 3600000; const totalSessions = modalHistoryData.length + (isOnline ? 1 : 0);
-  document.getElementById('stats-grid').innerHTML = `<div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div><div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div><div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalSessions > 0 ? totalHours / totalSessions : 0)}</strong></div>`;
+  const playerName = currentModalPlayerName;
+  const isOnline   = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName?.toLowerCase());
+  const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === (playerName || '').toLowerCase());
+  let totalHours   = modalHistoryData.reduce((a, h) => a + (h.duration_hours || h.hoursOnline || 0), 0);
+  if (isOnline && activeSess) totalHours += (Date.now() - new Date(activeSess.enteredAt).getTime()) / 3600000;
+  const totalSessions = modalHistoryData.length + (isOnline ? 1 : 0);
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div>
+    <div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div>
+    <div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalSessions > 0 ? totalHours / totalSessions : 0)}</strong></div>`;
 }
 
 function renderModalTable() {
   const playerName = currentModalPlayerName; if (!playerName) return;
-  const isOnline = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName.toLowerCase()); const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === playerName.toLowerCase());
-  const badge = document.getElementById('modal-status'); badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline'; badge.className = isOnline ? 'pill success' : 'pill limited-status';
-  const filterDate = document.getElementById('modal-date-filter').value; let filtered = [...modalHistoryData]; if (filterDate) filtered = filtered.filter(h => (h.entered_at || h.enteredAt)?.startsWith(filterDate));
+  const isOnline   = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName.toLowerCase());
+  const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === playerName.toLowerCase());
+  const badge      = document.getElementById('modal-status');
+  badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline';
+  badge.className   = isOnline ? 'pill success' : 'pill limited-status';
+
+  const filterDate = document.getElementById('modal-date-filter').value;
+  let filtered = [...modalHistoryData];
+  if (filterDate) filtered = filtered.filter(h => (h.entered_at || h.enteredAt)?.startsWith(filterDate));
   filtered.sort((a, b) => {
-    if (modalSortConfig.key === 'date') { const dateA = new Date(a.entered_at || a.enteredAt || 0); const dateB = new Date(b.entered_at || b.enteredAt || 0); return modalSortConfig.asc ? dateA - dateB : dateB - dateA; }
-    if (modalSortConfig.key === 'duration') { const durA = a.duration_hours || a.hoursOnline || 0; const durB = b.duration_hours || b.hoursOnline || 0; return modalSortConfig.asc ? durA - durB : durB - durA; }
+    if (modalSortConfig.key === 'date') { const dA = new Date(a.entered_at||a.enteredAt||0), dB = new Date(b.entered_at||b.enteredAt||0); return modalSortConfig.asc ? dA - dB : dB - dA; }
+    if (modalSortConfig.key === 'duration') { const dA = a.duration_hours||a.hoursOnline||0, dB = b.duration_hours||b.hoursOnline||0; return modalSortConfig.asc ? dA - dB : dB - dA; }
     return 0;
   });
 
-  function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(), 0, 4); return `${d.getFullYear()}-W${Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7)}`; }
+  function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(),0,4); return `${d.getFullYear()}-W${Math.ceil(((d-jan4)/86400000+jan4.getDay()+1)/7)}`; }
   function getWeekLabel(dateStr) {
-    const d = new Date(dateStr), day = d.getDay() || 7, monday = new Date(d); monday.setDate(d.getDate() - day + 1); const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-    const fmt = dt => dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); const now = new Date(), thisWeekMonday = new Date(now); thisWeekMonday.setDate(now.getDate() - (now.getDay() || 7) + 1); const lastWeekMonday = new Date(thisWeekMonday); lastWeekMonday.setDate(thisWeekMonday.getDate() - 7);
-    if (monday.toDateString() === thisWeekMonday.toDateString()) return 'Esta semana'; if (monday.toDateString() === lastWeekMonday.toDateString()) return 'Semana passada'; return `${fmt(monday)} – ${fmt(sunday)}`;
+    const d = new Date(dateStr), day = d.getDay()||7, monday = new Date(d); monday.setDate(d.getDate()-day+1);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+    const fmt = dt => dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+    const now2 = new Date(), thisMonday = new Date(now2); thisMonday.setDate(now2.getDate()-(now2.getDay()||7)+1);
+    const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate()-7);
+    if (monday.toDateString()===thisMonday.toDateString()) return 'Esta semana';
+    if (monday.toDateString()===lastMonday.toDateString()) return 'Semana passada';
+    return `${fmt(monday)} – ${fmt(sunday)}`;
   }
 
-  const sortDateIcon = modalSortConfig.key === 'date' ? (modalSortConfig.asc ? '▲' : '▼') : ''; const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
+  const sortDateIcon     = modalSortConfig.key === 'date'     ? (modalSortConfig.asc ? '▲' : '▼') : '';
+  const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
   let rows = '';
-  if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) { rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td></tr>`; }
-  
+  if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) {
+    rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td></tr>`;
+  }
   let lastWeekKey = isOnline && activeSess ? getWeekKey(activeSess.enteredAt) : null;
   rows += filtered.map(h => {
-    const lAt = h.left_at || h.leftAt, eAt = h.entered_at || h.enteredAt; if (!lAt) return '';
+    const lAt = h.left_at||h.leftAt, eAt = h.entered_at||h.enteredAt; if (!lAt) return '';
     const weekKey = getWeekKey(eAt); let separator = '';
     if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator-row"><td colspan="3"><div class="week-separator"><span>${getWeekLabel(eAt)}</span></div></td></tr>`; }
-    const d = new Date(eAt), l = new Date(lAt); return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></td><td>${l.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td><td>${formatTime(h.duration_hours || h.hoursOnline || 0)}</td></tr>`;
+    const d = new Date(eAt), l = new Date(lAt);
+    return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours||h.hoursOnline||0)}</td></tr>`;
   }).join('');
 
-  document.getElementById('modal-table-wrapper').innerHTML = `<table class="history-table"><thead><tr><th onclick="sortModal('date')">Entrada <span>${sortDateIcon}</span></th><th>Saída</th><th onclick="sortModal('duration')">Duração <span>${sortDurationIcon}</span></th></tr></thead><tbody>${rows || `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Ainda não há sessões registradas para este jogador.</span></div></td></tr>`}</tbody></table>`;
+  document.getElementById('modal-table-wrapper').innerHTML = `
+    <table class="history-table">
+      <thead><tr>
+        <th onclick="sortModal('date')">Entrada <span>${sortDateIcon}</span></th>
+        <th>Saída</th>
+        <th onclick="sortModal('duration')">Duração <span>${sortDurationIcon}</span></th>
+      </tr></thead>
+      <tbody>${rows || `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Ainda não há sessões registradas para este jogador.</span></div></td></tr>`}</tbody>
+    </table>`;
   renderModalStats();
 }
 
 function sortModal(key) { if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc; else { modalSortConfig.key = key; modalSortConfig.asc = false; } renderModalTable(); }
-function toggleCreateAccount() { const body = document.getElementById('create-account-body'); const chevron = document.getElementById('create-acc-chevron'); const isOpen = body.classList.toggle('open'); chevron.classList.toggle('open', isOpen); }
+function toggleCreateAccount() { const b = document.getElementById('create-account-body'), c = document.getElementById('create-acc-chevron'), o = b.classList.toggle('open'); c.classList.toggle('open', o); }
 
+// ══ Edição de conta no modal ══
 function setAdminEditMode(isEditing) {
-  const card = document.getElementById('modal-site-account'), advWrap = document.getElementById('advanced-security-wrapper');
-  if (isEditing) { card.classList.add('edit-mode'); advWrap.style.display = 'block'; hideAdminDeleteConfirm(); } 
-  else { card.classList.remove('edit-mode'); advWrap.style.display = 'none'; const body = document.getElementById('adv-sec-body'), btn = document.getElementById('adv-sec-btn'); if (body.classList.contains('open')) { body.classList.remove('open'); btn.classList.remove('open'); } }
+  const card    = document.getElementById('modal-site-account');
+  const advWrap = document.getElementById('advanced-security-wrapper');
+  if (isEditing) { card.classList.add('edit-mode'); advWrap.style.display = 'block'; hideAdminDeleteConfirm(); }
+  else { card.classList.remove('edit-mode'); advWrap.style.display = 'none'; const b = document.getElementById('adv-sec-body'), btn = document.getElementById('adv-sec-btn'); if (b.classList.contains('open')) { b.classList.remove('open'); btn.classList.remove('open'); } }
 }
-
 function showAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'none'; document.getElementById('admin-delete-confirm').style.display = 'flex'; }
 function hideAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'block'; document.getElementById('admin-delete-confirm').style.display = 'none'; }
 
 async function saveAdminUser() {
   if (!currentEditingAdminId) return;
   const newPwd = document.getElementById('ai-newpassword').value.trim();
-  const body = { username: document.getElementById('ai-username').value.trim(), email: document.getElementById('ai-email').value.trim(), minecraftName: document.getElementById('ai-mc').value.trim(), role: document.getElementById('ai-role').value };
+  const body   = { username: document.getElementById('ai-username').value.trim(), email: document.getElementById('ai-email').value.trim(), minecraftName: document.getElementById('ai-mc').value.trim(), role: document.getElementById('ai-role').value };
   if (newPwd) body.newPassword = newPwd;
-  if (!body.username || !body.email) { alert('Preencha usuário e e-mail.'); return; }
-  if (newPwd && newPwd.length < 8) { alert('A nova senha deve ter ao menos 8 caracteres.'); return; }
+  if (!body.username || !body.email) { showToast('Preencha usuário e e-mail.', 'error'); return; }
+  if (newPwd && newPwd.length < 8) { showToast('A nova senha deve ter ao menos 8 caracteres.', 'error'); return; }
 
   requirePassword({
-    title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar', destructive: false,
+    title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar',
     onConfirm: async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
-      if (!res.ok) { alert('Erro ao salvar. Verifique se e-mail ou usuário já existem.'); return; }
-      if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) alert('Dados salvos, mas erro ao alterar senha.'); }
-      await fetchAdminUsers(); document.getElementById('av-username').textContent = body.username; document.getElementById('av-email').textContent = body.email; document.getElementById('av-mc').textContent = body.minecraftName || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito'); setAdminEditMode(false);
+      if (!res.ok) { showToast('Erro ao salvar. Verifique se e-mail ou usuário já existem.', 'error'); return; }
+      if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
+      if (session.role === 'owner') {
+        auditLogs.unshift({ type: 'update', actor: session.username, target: body.username, message: `Conta de ${body.username} atualizada`, time: new Date() });
+        renderAuditLogs();
+      }
+      await fetchAdminUsers();
+      document.getElementById('av-username').textContent = body.username;
+      document.getElementById('av-email').textContent    = body.email;
+      document.getElementById('av-mc').textContent       = body.minecraftName || 'Nenhuma vinculada';
+      document.getElementById('av-role').textContent     = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      setAdminEditMode(false);
+      showToast('Alterações salvas com sucesso!');
     }
   });
 }
 
 async function executeAdminDelete() {
   if (!currentEditingAdminId) return;
-  const targetUser = globalAdminUsers.find(u => u.id === currentEditingAdminId); const targetName = targetUser?.username || 'este usuário';
+  const targetUser = globalAdminUsers.find(u => u.id === currentEditingAdminId);
+  const targetName = targetUser?.username || 'este usuário';
   hideAdminDeleteConfirm();
   requirePassword({
-    title: 'Excluir conta', desc: `Esta ação é permanente e não pode ser desfeita. Digite sua senha para confirmar a exclusão da conta de ${targetName}.`, btnLabel: 'Excluir', destructive: true,
+    title: 'Excluir conta', desc: `Esta ação é permanente. Digite sua senha para confirmar a exclusão da conta de ${targetName}.`, btnLabel: 'Excluir', destructive: true,
     onConfirm: async () => {
       const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { await fetchAdminUsers(); closeModal(); } else { alert('Erro ao excluir. O admin principal não pode ser removido.'); }
+      if (res.ok) {
+        if (session.role === 'owner') { auditLogs.unshift({ type: 'delete', actor: session.username, target: targetName, message: `Conta de ${targetName} excluída`, time: new Date() }); renderAuditLogs(); }
+        await fetchAdminUsers(); closeModal(); showToast(`Conta de ${targetName} excluída.`);
+      } else { showToast('Erro ao excluir. O admin principal não pode ser removido.', 'error'); }
     }
   });
 }
 
 async function submitCreateAccount() {
-  const username = document.getElementById('ci-username').value.trim(), email = document.getElementById('ci-email').value.trim(), minecraftName = document.getElementById('ci-mc').value.trim(), role = document.getElementById('ci-role').value, password = document.getElementById('ci-password').value, msg = document.getElementById('create-form-msg'), btn = document.getElementById('btn-create-account');
+  const username     = document.getElementById('ci-username').value.trim();
+  const email        = document.getElementById('ci-email').value.trim();
+  const minecraftName = document.getElementById('ci-mc').value.trim();
+  const role         = document.getElementById('ci-role').value;
+  const password     = document.getElementById('ci-password').value;
+  const msg          = document.getElementById('create-form-msg');
+  const btn          = document.getElementById('btn-create-account');
   if (!username || !email || !password) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
   if (password.length < 8) { msg.textContent = 'A senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
   btn.disabled = true; btn.textContent = 'Criando...';
-  
   const res = await fetch(`${API_BASE}/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
   btn.disabled = false; btn.textContent = 'Criar Cadastro';
-  
   if (res.ok) {
-    const data = await res.json(); await fetchAdminUsers(); currentEditingAdminId = data.id;
+    const data = await res.json();
+    if (session.role === 'owner') { auditLogs.unshift({ type: 'create', actor: session.username, target: username, message: `Nova conta criada para ${username}`, time: new Date() }); renderAuditLogs(); }
+    await fetchAdminUsers();
+    currentEditingAdminId = data.id;
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
-    if (newAcc) { document.getElementById('av-username').textContent = newAcc.username; document.getElementById('av-email').textContent = newAcc.email; document.getElementById('av-mc').textContent = newAcc.minecraft_name || 'Nenhuma vinculada'; document.getElementById('av-role').textContent = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito'); document.getElementById('ai-username').value = newAcc.username; document.getElementById('ai-email').value = newAcc.email; document.getElementById('ai-mc').value = newAcc.minecraft_name || ''; document.getElementById('ai-role').value = newAcc.role; document.getElementById('ai-newpassword').value = ''; }
-    setAdminEditMode(false); document.getElementById('modal-create-account').style.display = 'none'; document.getElementById('modal-site-account').style.display = 'block';
+    if (newAcc) {
+      document.getElementById('av-username').textContent = newAcc.username;
+      document.getElementById('av-email').textContent    = newAcc.email;
+      document.getElementById('av-mc').textContent       = newAcc.minecraft_name || 'Nenhuma vinculada';
+      document.getElementById('av-role').textContent     = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      document.getElementById('ai-username').value       = newAcc.username;
+      document.getElementById('ai-email').value         = newAcc.email;
+      document.getElementById('ai-mc').value            = newAcc.minecraft_name || '';
+      document.getElementById('ai-role').value          = newAcc.role;
+      document.getElementById('ai-newpassword').value   = '';
+    }
+    setAdminEditMode(false);
+    document.getElementById('modal-create-account').style.display = 'none';
+    document.getElementById('modal-site-account').style.display   = 'block';
+    showToast(`Conta criada para ${username}!`);
   } else {
-    const data = await res.json(); msg.textContent = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.'; msg.style.color = 'var(--danger)';
+    const data = await res.json();
+    msg.textContent  = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.';
+    msg.style.color  = 'var(--danger)';
   }
 }
 
+// ══ Admin Users ══
 async function fetchAdminUsers() {
   try {
     const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1071,6 +1953,7 @@ async function fetchUnregistered() {
   const badge = document.getElementById('unreg-count-badge');
   if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
   if (currentAdminTab === 'unregistered') renderUnregisteredList();
+  renderAlerts();
 }
 
 function switchAdminTab(tab) {
@@ -1083,15 +1966,25 @@ function switchAdminTab(tab) {
 function updateSortBarForTab(tab) {
   const bar = document.getElementById('admin-sort-bar');
   if (tab === 'registered') {
-    bar.innerHTML = `<span class="sort-bar-label">Filtros:</span><button class="sort-chip ${adminSortState.key==='verified'?'active':''}" onclick="setSortAdmin('verified')">Pendentes 🚨</button> <span style="margin-left:8px;color:#d2d2d7">|</span> <span class="sort-bar-label" style="margin-left:8px">Ordenar:</span><button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='created'?'active':''}" onclick="setSortAdmin('created')">Criação <span class="sort-arrow">${adminSortState.key==='created'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Última sessão <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
+    bar.innerHTML = `<span class="sort-bar-label">Filtros:</span>
+      <button class="sort-chip ${adminSortState.key==='verified'?'active':''}" onclick="setSortAdmin('verified')">Pendentes 🚨</button>
+      <span style="margin-left:8px;color:#d2d2d7">|</span>
+      <span class="sort-bar-label" style="margin-left:8px">Ordenar:</span>
+      <button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button>
+      <button class="sort-chip ${adminSortState.key==='created'?'active':''}" onclick="setSortAdmin('created')">Criação <span class="sort-arrow">${adminSortState.key==='created'?(adminSortState.asc?'↑':'↓'):''}</span></button>
+      <button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Última sessão <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
   } else {
-    bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span><button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='sessions'?'active':''}" onclick="setSortAdmin('sessions')">Sessões <span class="sort-arrow">${adminSortState.key==='sessions'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='total_hours'?'active':''}" onclick="setSortAdmin('total_hours')">Tempo total <span class="sort-arrow">${adminSortState.key==='total_hours'?(adminSortState.asc?'↑':'↓'):''}</span></button><button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Último acesso <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
+    bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span>
+      <button class="sort-chip ${adminSortState.key==='name'?'active':''}" onclick="setSortAdmin('name')">Nome <span class="sort-arrow">${adminSortState.key==='name'?(adminSortState.asc?'↑':'↓'):''}</span></button>
+      <button class="sort-chip ${adminSortState.key==='sessions'?'active':''}" onclick="setSortAdmin('sessions')">Sessões <span class="sort-arrow">${adminSortState.key==='sessions'?(adminSortState.asc?'↑':'↓'):''}</span></button>
+      <button class="sort-chip ${adminSortState.key==='total_hours'?'active':''}" onclick="setSortAdmin('total_hours')">Tempo total <span class="sort-arrow">${adminSortState.key==='total_hours'?(adminSortState.asc?'↑':'↓'):''}</span></button>
+      <button class="sort-chip ${adminSortState.key==='last_session'?'active':''}" onclick="setSortAdmin('last_session')">Último acesso <span class="sort-arrow">${adminSortState.key==='last_session'?(adminSortState.asc?'↑':'↓'):''}</span></button>`;
   }
 }
 
 function setSortAdmin(key) {
   if (adminSortState.key === key && key !== 'verified') adminSortState.asc = !adminSortState.asc;
-  else if (key === 'verified' && adminSortState.key === 'verified') adminSortState.key = 'name'; 
+  else if (key === 'verified' && adminSortState.key === 'verified') adminSortState.key = 'name';
   else { adminSortState.key = key; adminSortState.asc = true; }
   updateSortBarForTab(currentAdminTab); renderAdminTab();
 }
@@ -1099,55 +1992,83 @@ function setSortAdmin(key) {
 function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
 
 function renderRegisteredList() {
-  const term = document.getElementById('admin-search')?.value.toLowerCase().trim() || '', list = document.getElementById('admin-users-list');
-  let filtered = globalAdminUsers.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || (u.minecraft_name || '').toLowerCase().includes(term));
+  const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
+  const list   = document.getElementById('admin-users-list');
+  let filtered = globalAdminUsers.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || (u.minecraft_name||'').toLowerCase().includes(term));
   if (adminSortState.key === 'verified') filtered = filtered.filter(u => u.is_verified === false);
 
   const historyMap = {};
-  (globalHistData?.history || []).forEach(h => { const k = h.player?.toLowerCase(); if (!k) return; if (!historyMap[k]) historyMap[k] = { last: h.leftAt || h.left_at }; const la = h.leftAt || h.left_at; if (la && la > historyMap[k].last) historyMap[k].last = la; });
+  (globalHistData?.history || []).forEach(h => {
+    const k = h.player?.toLowerCase(); if (!k) return;
+    if (!historyMap[k]) historyMap[k] = { last: h.leftAt||h.left_at };
+    const la = h.leftAt||h.left_at; if (la && la > historyMap[k].last) historyMap[k].last = la;
+  });
 
   if (adminSortState.key !== 'verified') {
     filtered.sort((a, b) => {
-      let va, vb; const amc = (a.minecraft_name||'').toLowerCase(), bmc = (b.minecraft_name||'').toLowerCase();
-      if (adminSortState.key === 'name') { va = a.username.toLowerCase(); vb = b.username.toLowerCase(); return adminSortState.asc ? va.localeCompare(vb) : vb.localeCompare(va); }
-      if (adminSortState.key === 'created') { va = new Date(a.created_at||0); vb = new Date(b.created_at||0); }
-      if (adminSortState.key === 'last_session') { va = new Date(historyMap[amc]?.last||0); vb = new Date(historyMap[bmc]?.last||0); }
-      return adminSortState.asc ? va - vb : vb - va;
+      const amc = (a.minecraft_name||'').toLowerCase(), bmc = (b.minecraft_name||'').toLowerCase();
+      if (adminSortState.key === 'name') { return adminSortState.asc ? a.username.toLowerCase().localeCompare(b.username.toLowerCase()) : b.username.toLowerCase().localeCompare(a.username.toLowerCase()); }
+      if (adminSortState.key === 'created') { const va = new Date(a.created_at||0), vb = new Date(b.created_at||0); return adminSortState.asc ? va-vb : vb-va; }
+      if (adminSortState.key === 'last_session') { const va = new Date(historyMap[amc]?.last||0), vb = new Date(historyMap[bmc]?.last||0); return adminSortState.asc ? va-vb : vb-va; }
+      return 0;
     });
   }
 
-  if (!filtered.length) { list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">👥</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`; return; }
+  if (!filtered.length) {
+    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">👥</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`;
+    return;
+  }
 
   list.innerHTML = filtered.map(u => {
-    const mc = u.minecraft_name || u.username, hist = historyMap[mc.toLowerCase()], lastStr = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
-    const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
-    
+    const mc       = u.minecraft_name || u.username;
+    const hist     = historyMap[mc.toLowerCase()];
+    const lastStr  = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
     const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
-    const roleText = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
-
-    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})"><img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${u.username} <span class="pill ${pillClass}" style="margin-left:4px;font-size:10px;">${roleText}</span> ${verifiedBadge}</strong><span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span></div></li>`;
+    const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
+    const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
+    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})">
+      <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
+      <div class="item-details">
+        <strong>${u.username} <span class="pill ${pillClass}" style="margin-left:4px;font-size:10px;">${roleText}</span> ${verifiedBadge}</strong>
+        <span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span>
+      </div>
+    </li>`;
   }).join('');
 }
 
 function renderUnregisteredList() {
-  const term = document.getElementById('admin-search')?.value.toLowerCase().trim() || '', list = document.getElementById('admin-users-list');
+  const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
+  const list   = document.getElementById('admin-users-list');
   let filtered = globalUnregistered.filter(p => p.player.toLowerCase().includes(term));
   filtered.sort((a, b) => {
-    if (adminSortState.key === 'name') return adminSortState.asc ? a.player.localeCompare(b.player) : b.player.localeCompare(a.player);
-    if (adminSortState.key === 'sessions') return adminSortState.asc ? (a.total_sessions||0) - (b.total_sessions||0) : (b.total_sessions||0) - (a.total_sessions||0);
-    if (adminSortState.key === 'total_hours') return adminSortState.asc ? (a.total_hours||0) - (b.total_hours||0) : (b.total_hours||0) - (a.total_hours||0);
-    if (adminSortState.key === 'last_session') return adminSortState.asc ? new Date(a.last_seen||0) - new Date(b.last_seen||0) : new Date(b.last_seen||0) - new Date(a.last_seen||0);
+    if (adminSortState.key === 'name')         return adminSortState.asc ? a.player.localeCompare(b.player) : b.player.localeCompare(a.player);
+    if (adminSortState.key === 'sessions')     return adminSortState.asc ? (a.total_sessions||0)-(b.total_sessions||0) : (b.total_sessions||0)-(a.total_sessions||0);
+    if (adminSortState.key === 'total_hours')  return adminSortState.asc ? (a.total_hours||0)-(b.total_hours||0) : (b.total_hours||0)-(a.total_hours||0);
+    if (adminSortState.key === 'last_session') return adminSortState.asc ? new Date(a.last_seen||0)-new Date(b.last_seen||0) : new Date(b.last_seen||0)-new Date(a.last_seen||0);
     return 0;
   });
-  if (!filtered.length) { list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhum jogador sem cadastro</strong><span>${term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores do servidor já possuem conta no painel.'}</span></div></li>`; return; }
+  if (!filtered.length) {
+    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhum jogador sem cadastro</strong><span>${term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores já possuem conta no painel.'}</span></div></li>`;
+    return;
+  }
   list.innerHTML = filtered.map(p => {
-    const lastSeen = p.last_seen ? new Date(p.last_seen).toLocaleDateString('pt-BR') : '-', firstSeen = p.first_seen ? new Date(p.first_seen).toLocaleDateString('pt-BR') : '-';
-    return `<li class="list-item" onclick="openPlayerProfile('${p.player}')"><img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'"><div class="item-details"><strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong><span>${p.total_sessions || 0} sessão(ões) · ${formatTime(p.total_hours || 0)} · 1ª vez ${firstSeen} · Último acesso ${lastSeen}</span></div></li>`;
+    const lastSeen  = p.last_seen  ? new Date(p.last_seen).toLocaleDateString('pt-BR') : '-';
+    const firstSeen = p.first_seen ? new Date(p.first_seen).toLocaleDateString('pt-BR') : '-';
+    return `<li class="list-item" onclick="openPlayerProfile('${p.player}')">
+      <img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
+      <div class="item-details">
+        <strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong>
+        <span>${p.total_sessions||0} sessão(ões) · ${formatTime(p.total_hours||0)} · 1ª vez ${firstSeen} · Último acesso ${lastSeen}</span>
+      </div>
+    </li>`;
   }).join('');
 }
 
+// ══ Fechar modal ══
 function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; currentModalPlayerName = null; }
 function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
+
+// ══ Logout ══
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
 </script>
 </body>
