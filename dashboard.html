@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel da Staff | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<script>
+(function(){
+  const key='fa_theme';
+  const token=localStorage.getItem('fa_token');
+  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
+  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  apply();
+  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+})();
+</script>
 <style>
 :root {
   --bg-color: #f5f5f7;
@@ -394,6 +406,23 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 .footer-links { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .footer-dot { color: #d2d2d7; }
 
+
+.admin-notification-form { display: grid; gap: 12px; }
+.admin-notification-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px; }
+.admin-notification-form textarea { min-height: 110px; resize: vertical; }
+.admin-notification-form input, .admin-notification-form select, .admin-notification-form textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font: inherit; background: var(--card-bg); color: var(--text-primary); }
+.admin-notification-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.admin-notification-hint { font-size:12px; color:var(--text-secondary); }
+.admin-notification-list { display:grid; gap:8px; margin-top:16px; }
+.admin-notification-item { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--border); border-radius:12px; background:rgba(0,0,0,0.025); }
+.admin-notification-item .meta { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+[data-theme="dark"] .admin-notification-item { background:rgba(255,255,255,0.04); }
+[data-theme="dark"] .modal-header, [data-theme="dark"] .admin-account-card, [data-theme="dark"] .create-account-collapsed { background:#161b22; }
+[data-theme="dark"] .advanced-security-section, [data-theme="dark"] .player-notes-panel { background:rgba(255,255,255,0.04); }
+[data-theme="dark"] .empty-icon, [data-theme="dark"] .stat-box, [data-theme="dark"] .health-card { background:rgba(255,255,255,0.06); }
+[data-theme="dark"] .user-dropdown, [data-theme="dark"] .notif-panel { background:rgba(28,28,30,0.96); border:1px solid var(--border); }
+[data-theme="dark"] .list-item:hover, [data-theme="dark"] .dropdown-item:hover, [data-theme="dark"] .sort-chip:hover { background:rgba(255,255,255,0.06); }
+
 /* ── Responsividade ── */
 @media (max-width: 860px) {
   .dashboard-layout { grid-template-columns: 1fr; margin-top: 24px; gap: 24px; }
@@ -405,6 +434,25 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   .notif-panel { width: 300px; }
   .server-health-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* Preferência de tema sincronizada com a conta */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-color: #0b0f17;
+  --card-bg: rgba(28,28,30,0.88);
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --border: rgba(255,255,255,0.12);
+  --shadow-soft: 0 10px 40px rgba(0,0,0,0.28);
+  --shadow-float: 0 20px 50px rgba(0,0,0,0.38);
+}
+[data-theme="dark"] body { background: var(--bg-color); color: var(--text-primary); }
+[data-theme="dark"] header, [data-theme="dark"] footer { background: rgba(17,24,39,0.78); border-color: var(--border); }
+[data-theme="dark"] .card, [data-theme="dark"] .login-card, [data-theme="dark"] .signup-card { background: var(--card-bg); border-color: var(--border); box-shadow: var(--shadow-float); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
+[data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
+
 </style>
 </head>
 <body>
@@ -688,6 +736,42 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </ul>
       </div>
 
+
+
+      <!-- ── Publicações e Notificações (admin/owner) ── -->
+      <div class="card" id="admin-notifications-card" style="display:none;">
+        <h3>Publicações e Notificações <span>Envie avisos sincronizados para usuários logados</span></h3>
+        <form class="admin-notification-form" onsubmit="submitAdminNotification(event)">
+          <div class="admin-notification-grid">
+            <input type="text" id="notif-title-input" maxlength="120" placeholder="Título da notificação" required>
+            <select id="notif-type-input">
+              <option value="info">Informativa</option>
+              <option value="event">Evento</option>
+              <option value="system">Sistema</option>
+              <option value="social">Social</option>
+              <option value="warning">Alerta</option>
+            </select>
+            <input type="text" id="notif-icon-input" maxlength="10" placeholder="Emoji" value="🔔">
+          </div>
+          <textarea id="notif-body-input" maxlength="1200" placeholder="Mensagem que aparecerá na aba Notificações da conta e no sino do painel" required></textarea>
+          <div class="admin-notification-grid">
+            <select id="notif-audience-input" onchange="updateNotificationAudienceHint()">
+              <option value="all">Todos os usuários</option>
+              <option value="role">Por permissão</option>
+              <option value="user">Usuário por ID</option>
+              <option value="minecraft">Jogador Minecraft</option>
+            </select>
+            <input type="text" id="notif-audience-value-input" placeholder="Valor do público (opcional para todos)" disabled>
+          </div>
+          <div class="admin-notification-actions">
+            <span class="admin-notification-hint" id="notif-audience-hint">Envio para todos os usuários cadastrados.</span>
+            <button class="btn-primary" id="notif-submit-btn" type="submit" style="border:none;">Publicar notificação</button>
+          </div>
+          <div id="notif-admin-msg" class="admin-notification-hint" role="alert"></div>
+        </form>
+        <div class="admin-notification-list" id="admin-notifications-list"></div>
+      </div>
+
       <!-- ── Logs de Auditoria (owner only) ── -->
       <div class="card" id="audit-card" style="display:none;">
         <h3>Logs de Auditoria <span>Ações recentes no painel</span></h3>
@@ -918,6 +1002,20 @@ function normalizeAuditLog(log) {
   };
 }
 
+
+async function syncThemePreference() {
+  try {
+    const res = await fetch(`${API_BASE}/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) return;
+    const prefs = await res.json();
+    if (prefs.theme) {
+      localStorage.setItem('fa_theme', prefs.theme);
+      const dark = prefs.theme === 'dark' || (prefs.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    }
+  } catch (err) { console.error('[theme preferences]', err); }
+}
+
 // ══ BOOTSTRAP ══
 (async () => {
   try {
@@ -926,6 +1024,7 @@ function normalizeAuditLog(log) {
     const me = await res.json();
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    await syncThemePreference();
     if (session.role === 'limited') { window.location.replace('account.html'); return; }
   } catch { logout(); return; }
   document.body.style.visibility = 'visible';
@@ -936,6 +1035,10 @@ function initDashboard() {
   renderProfile();
   loadData();
   document.getElementById('admin-users-card').style.display = 'block';
+  document.getElementById('admin-notifications-card').style.display = 'block';
+  updateNotificationAudienceHint();
+  loadNotifications();
+  loadAdminNotifications();
   fetchAdminUsers();
   updateSortBarForTab('registered');
 
@@ -1009,6 +1112,7 @@ function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ beh
 // ══ Notificações ══
 let notifList = [];
 let notifUnread = 0;
+let adminNotificationsCache = [];
 
 function toggleNotifPanel(e) {
   e.stopPropagation();
@@ -1020,8 +1124,37 @@ document.addEventListener('click', () => {
   document.getElementById('user-btn-toggle')?.classList.remove('active');
 });
 
+function normalizeNotification(n) {
+  return {
+    id: n.id,
+    icon: n.icon || '🔔',
+    type: n.type || 'info',
+    title: n.title || 'Notificação',
+    body: n.body || '',
+    unread: !(n.is_read || n.read),
+    time: new Date(n.created_at || n.time || Date.now()),
+    audience: n.audience || 'all',
+    audienceVal: n.audience_val || ''
+  };
+}
+
+async function loadNotifications() {
+  try {
+    const res = await fetch(`${API_BASE}/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao buscar notificações');
+    notifList = (await res.json()).map(normalizeNotification);
+    notifUnread = notifList.filter(n => n.unread).length;
+  } catch (err) {
+    console.error('[notifications]', err);
+    notifList = [];
+    notifUnread = 0;
+  }
+  updateNotifBadge();
+  renderNotifPanel();
+}
+
 function addNotification({ icon, type, title, body, action, actionFn }) {
-  const id = Date.now() + Math.random();
+  const id = `local-${Date.now()}-${Math.random()}`;
   notifList.unshift({ id, icon, type, title, body, action, actionFn, unread: true, time: new Date() });
   notifUnread++;
   updateNotifBadge();
@@ -1030,28 +1163,46 @@ function addNotification({ icon, type, title, body, action, actionFn }) {
 
 function updateNotifBadge() {
   const badge = document.getElementById('notif-badge');
+  if (!badge) return;
   if (notifUnread > 0) { badge.textContent = notifUnread > 9 ? '9+' : notifUnread; badge.classList.remove('hidden'); }
   else badge.classList.add('hidden');
 }
 
-function markAllNotifRead() {
+async function markAllNotifRead() {
+  try {
+    await fetch(`${API_BASE}/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+  } catch (err) { console.error('[notifications]', err); }
   notifList.forEach(n => n.unread = false);
   notifUnread = 0;
   updateNotifBadge();
   renderNotifPanel();
 }
 
+async function markNotifRead(id) {
+  const notif = notifList.find(n => String(n.id) === String(id));
+  if (!notif || !notif.unread) return;
+  if (!String(id).startsWith('local-')) {
+    try { await fetch(`${API_BASE}/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }
+    catch (err) { console.error('[notifications]', err); }
+  }
+  notif.unread = false;
+  notifUnread = notifList.filter(n => n.unread).length;
+  updateNotifBadge();
+  renderNotifPanel();
+}
+
 function renderNotifPanel() {
   const list = document.getElementById('notif-list');
+  if (!list) return;
   if (!notifList.length) { list.innerHTML = '<div class="notif-empty">Nenhuma notificação no momento.</div>'; return; }
 
   list.innerHTML = notifList.slice(0, 20).map(n => {
     const timeStr = formatNotifTime(n.time);
-    return `<div class="notif-item ${n.unread ? 'unread' : ''}">
-      <div class="notif-icon ${n.type}">${n.icon}</div>
+    return `<div class="notif-item ${n.unread ? 'unread' : ''}" onclick="markNotifRead('${String(n.id).replace(/'/g, '&#39;')}')">
+      <div class="notif-icon ${n.type}">${escapeHTML(n.icon)}</div>
       <div class="notif-content" style="flex:1;">
-        <strong>${n.title}</strong>
-        <span>${n.body}</span>
+        <strong>${escapeHTML(n.title)}</strong>
+        <span>${escapeHTML(n.body)}</span>
         <span class="notif-time">${timeStr}</span>
       </div>
       ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
@@ -1065,6 +1216,79 @@ function formatNotifTime(d) {
   if (diff < 3600)  return `${Math.floor(diff/60)}min atrás`;
   if (diff < 86400) return `${Math.floor(diff/3600)}h atrás`;
   return d.toLocaleDateString('pt-BR');
+}
+
+function updateNotificationAudienceHint() {
+  const aud = document.getElementById('notif-audience-input')?.value || 'all';
+  const valueInput = document.getElementById('notif-audience-value-input');
+  const hint = document.getElementById('notif-audience-hint');
+  const data = {
+    all: ['Envio para todos os usuários cadastrados.', '', true],
+    role: ['Use owner, full ou limited para segmentar por permissão.', 'owner, full ou limited', false],
+    user: ['Informe o ID numérico do usuário cadastrado.', 'ID do usuário', false],
+    minecraft: ['Informe exatamente o nick Minecraft vinculado à conta.', 'Nick Minecraft', false],
+  }[aud];
+  if (valueInput) { valueInput.disabled = data[2]; valueInput.placeholder = data[1]; if (data[2]) valueInput.value = ''; }
+  if (hint) hint.textContent = data[0];
+}
+
+async function submitAdminNotification(event) {
+  event.preventDefault();
+  const btn = document.getElementById('notif-submit-btn');
+  const msg = document.getElementById('notif-admin-msg');
+  const payload = {
+    title: document.getElementById('notif-title-input').value.trim(),
+    body: document.getElementById('notif-body-input').value.trim(),
+    type: document.getElementById('notif-type-input').value,
+    icon: document.getElementById('notif-icon-input').value.trim() || '🔔',
+    audience: document.getElementById('notif-audience-input').value,
+    audience_val: document.getElementById('notif-audience-value-input').value.trim(),
+  };
+  btn.disabled = true; btn.textContent = 'Publicando...'; msg.textContent = '';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Falha ao publicar');
+    msg.textContent = 'Notificação publicada e sincronizada com o backend.';
+    event.target.reset();
+    document.getElementById('notif-icon-input').value = '🔔';
+    updateNotificationAudienceHint();
+    showToast('Notificação publicada.', 'success');
+    await Promise.all([loadAdminNotifications(), loadNotifications()]);
+  } catch (err) {
+    console.error('[admin notifications]', err);
+    msg.textContent = err.message || 'Não foi possível publicar.';
+    showToast('Não foi possível publicar a notificação.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Publicar notificação';
+  }
+}
+
+async function loadAdminNotifications() {
+  const list = document.getElementById('admin-notifications-list');
+  if (!list) return;
+  list.innerHTML = '<div class="admin-notification-hint">Carregando publicações...</div>';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao buscar publicações');
+    adminNotificationsCache = await res.json();
+    list.innerHTML = adminNotificationsCache.slice(0, 10).map(n => `
+      <div class="admin-notification-item">
+        <div class="notif-icon ${escapeHTML(n.type || 'info')}">${escapeHTML(n.icon || '🔔')}</div>
+        <div style="flex:1;">
+          <strong>${escapeHTML(n.title)}</strong>
+          <div>${escapeHTML(n.body)}</div>
+          <div class="meta">${escapeHTML(n.audience || 'all')}${n.audience_val ? ' → '+escapeHTML(n.audience_val) : ''} • ${formatNotifTime(new Date(n.created_at || Date.now()))}</div>
+        </div>
+      </div>`).join('') || '<div class="admin-notification-hint">Nenhuma publicação criada ainda.</div>';
+  } catch (err) {
+    console.error('[admin notifications]', err);
+    list.innerHTML = '<div class="admin-notification-hint">Não foi possível carregar publicações.</div>';
+  }
 }
 
 // ══ Alertas Inteligentes ══
@@ -1480,7 +1704,6 @@ async function loadData() {
   ]);
   globalApiData  = apiData;
   globalHistData = histData;
-  fetchUnregistered();
   renderDashboard();
   updateActivityChart();
   renderServerHealth();
@@ -1964,11 +2187,14 @@ async function submitCreateAccount() {
 async function fetchAdminUsers() {
   try {
     const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); fetchUnregistered(); }
+    if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); await fetchUnregistered(); }
   } catch {}
 }
 
+let unregisteredRequest = null;
 async function fetchUnregistered() {
+  if (unregisteredRequest) return unregisteredRequest;
+  unregisteredRequest = (async () => {
   try {
     const res = await fetch(`${API_BASE}/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao buscar jogadores sem cadastro');
@@ -1982,6 +2208,8 @@ async function fetchUnregistered() {
   if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
   if (currentAdminTab === 'unregistered') renderUnregisteredList();
   renderAlerts();
+  })().finally(() => { unregisteredRequest = null; });
+  return unregisteredRequest;
 }
 
 function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
