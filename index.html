@@ -23,7 +23,7 @@
   --accent-hover: #0077ed;
   --danger: #ff3b30;
   --success: #34c759;
-  --card-bg: rgba(255, 255, 255, 0.8);
+  --border: rgba(0,0,0,0.08);
   --shadow-soft: 0 10px 40px rgba(0,0,0,0.04);
   --shadow-float: 0 20px 50px rgba(0,0,0,0.08);
   --radius-lg: 24px;
@@ -66,18 +66,15 @@ header {
   display: flex; justify-content: space-between; align-items: center;
   background: rgba(255,255,255,0.72);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05); transition: var(--transicao);
+  z-index: 1000; border-bottom: 1px solid var(--border); transition: var(--transicao);
 }
 .brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; z-index: 1002; position: relative; }
 .logo-img { height: 36px; width: 36px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); object-fit: cover; }
 .logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
 
-/* Navegação perfeitamente centralizada */
+/* Navegação Perfeitamente Centralizada */
 .desktop-nav {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
+  position: absolute; left: 50%; transform: translateX(-50%); display: flex;
 }
 .desktop-nav ul { display: flex; gap: 28px; align-items: center; margin: 0; padding: 0; }
 .desktop-nav a { font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: color 0.2s; }
@@ -94,61 +91,58 @@ header {
 .status-pill:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .dot { width: 8px; height: 8px; background: #999; border-radius: 50%; }
 
-/* --- DROPDOWN USUÁRIO (Padrão Account) --- */
+/* --- MENU DROPDOWN DA CONTA (Padrão Premium) --- */
 .user-menu-wrapper { position: relative; display: inline-block; }
 .user-btn {
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  background: rgba(0,0,0,0.04); padding: 4px 12px 4px 4px; border-radius: 980px;
-  transition: var(--transicao-rapida); border: 1px solid transparent; user-select: none;
-  color: var(--text-primary); font-weight: 600; font-size: 14px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(0,0,0,0.04);
+  padding: 4px 12px 4px 4px; border-radius: 980px; transition: var(--transicao-rapida); border: 1px solid transparent; user-select: none;
 }
 .user-btn:hover { background: rgba(0,0,0,0.08); }
 .user-btn.active { background: #fff; border-color: #d2d2d7; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .user-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.user-btn span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .user-btn svg { width: 14px; height: 14px; color: var(--text-secondary); transition: transform 0.3s ease; }
 .user-btn.active svg { transform: rotate(180deg); }
 
-/* Botão de Login Explicito (Deslogado) */
 .btn-login {
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  background: var(--accent); color: #fff; padding: 8px 18px; border-radius: 980px;
-  font-size: 14px; font-weight: 600; text-decoration: none; transition: var(--transicao-rapida);
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  background: var(--accent); color: #fff; padding: 8px 20px; border-radius: 980px;
+  font-size: 14px; font-weight: 600; text-decoration: none; transition: var(--transicao-rapida); border: none;
 }
 .btn-login:hover { background: var(--accent-hover); transform: scale(1.02); }
-.btn-login svg { width: 16px; height: 16px; }
+.btn-login svg { width: 16px; height: 16px; flex-shrink: 0; }
 
-/* Menu Suspenso */
 .user-dropdown {
-  position: absolute; right: 0; top: calc(100% + 12px);
-  background: rgba(255,255,255,0.95); backdrop-filter: saturate(180%) blur(24px);
-  border-radius: 16px; box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05);
-  padding: 8px; display: flex; flex-direction: column; min-width: 260px; max-width: 90vw;
-  opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transicao-rapida);
+  position: absolute; right: 0; top: calc(100% + 12px); background: rgba(255,255,255,0.95);
+  backdrop-filter: saturate(180%) blur(24px); border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05); padding: 8px;
+  display: flex; flex-direction: column; min-width: 260px; opacity: 0; visibility: hidden;
+  transform: translateY(-10px); transition: var(--transicao-rapida);
 }
 .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
 
 .dropdown-header { padding: 12px 8px; display: flex; align-items: center; gap: 12px; }
 .dropdown-header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
 .dropdown-header-info { display: flex; flex-direction: column; overflow: hidden; }
-.dropdown-header-info strong { font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.dropdown-header-info strong { font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; color: var(--text-primary); }
 .dropdown-header-info span { font-size: 13px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .dropdown-divider { height: 1px; background: var(--border); margin: 8px 0; }
 .dropdown-item {
   text-align: left; padding: 10px 12px; border-radius: 8px; border: none; background: transparent;
   font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-primary); transition: background 0.2s;
-  display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: inherit;
+  display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: inherit; width: 100%; box-sizing: border-box;
 }
-.dropdown-item svg { width: 16px; height: 16px; color: var(--text-secondary); }
+.dropdown-item svg { width: 16px; height: 16px; color: var(--text-secondary); flex-shrink: 0; }
 .dropdown-item:hover { background: rgba(0,0,0,0.05); }
 .dropdown-item.danger { color: var(--danger); }
 .dropdown-item.danger svg { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(255,59,48,0.1); }
 
-/* --- MENU MOBILE SANDUÍCHE --- */
+/* --- MENU MOBILE SANDUÍCHE (Apenas Navegação) --- */
 .mobile-menu-btn { display: none; font-size: 24px; cursor: pointer; z-index: 1002; background: none; border: none; }
 .mobile-nav-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
-  background: rgba(245,245,247,0.85); backdrop-filter: blur(30px);
+  background: rgba(245,245,247,0.92); backdrop-filter: blur(30px);
   z-index: 1001; display: flex; flex-direction: column; justify-content: center; align-items: center;
   opacity: 0; pointer-events: none; transition: opacity 0.4s;
 }
@@ -156,7 +150,7 @@ header {
 .mobile-nav-overlay ul { display: flex; flex-direction: column; gap: 24px; text-align: center; margin-bottom: 40px; }
 .mobile-nav-overlay a { font-size: 28px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; }
 .mobile-status-card {
-  background: #fff; padding: 20px 32px; border-radius: 20px;
+  background: #fff; padding: 20px 32px; border-radius: 20px; border: 1px solid var(--border);
   box-shadow: 0 12px 30px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 16px; cursor: pointer;
 }
 .mobile-status-info { text-align: left; }
@@ -286,13 +280,16 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   /* Ajustes do Header Mobile */
   .desktop-nav { display: none; }
   .status-pill { display: none !important; }
+  .logo-text { display: none; } /* Libera espaço */
   
-  .user-btn { padding: 6px; }
-  .user-btn span { display: none; }
-  .user-btn svg { display: none; }
-  .user-dropdown { width: 260px; right: -40px; } /* Ajuste fino para mobile */
-  
+  .header-actions { gap: 12px; }
   .mobile-menu-btn { display: block; margin-left: 8px; }
+  
+  /* Dropdown User Profile Ajustes no Mobile */
+  .user-btn .desktop-only-text, .user-btn .dropdown-arrow { display: none; }
+  .user-btn { padding: 4px; border-radius: 50%; }
+  .btn-login { padding: 8px 16px; }
+  .user-dropdown { right: -10px; min-width: 240px; }
   
   .stats-strip { flex-direction: column; gap: 30px; }
   .connection-info { grid-template-columns: 1fr; }
@@ -329,7 +326,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 <header>
   <a href="#inicio" class="brand-link" aria-label="Início - Força Aliada">
     <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
-    <div class="logo-text">Força Aliada</div>
+    <span class="logo-text">Força Aliada</span>
   </a>
   
   <nav aria-label="Navegação principal" class="desktop-nav">
@@ -348,10 +345,9 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <span id="header-players">Verificando...</span>
     </div>
     
-    <div id="auth-header-container">
-      </div>
+    <div id="auth-container"></div>
     
-    <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Abrir menu">&#9776;</button>
+    <button class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Abrir menu da página">&#9776;</button>
   </div>
 </header>
 
@@ -569,30 +565,30 @@ async function getSession() {
 }
 
 function renderAuthMenu(session) {
-  const container = document.getElementById('auth-header-container');
+  const container = document.getElementById('auth-container');
   if (!container) return;
 
   if (session) {
     const skinUrl = session.minecraftName
       ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
-      : 'https://minotar.net/helm/Steve/100.png';
+      : 'assets/images/logo.JPG';
 
     let adminLink = '';
     if (session.role === 'full' || session.role === 'owner') {
       adminLink = `
+        <div class="dropdown-divider"></div>
         <a href="dashboard.html" class="dropdown-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="21"></line></svg> Painel da Staff
         </a>
-        <div class="dropdown-divider"></div>
       `;
     }
 
     container.innerHTML = `
       <div class="user-menu-wrapper">
         <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
-          <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar de ${session.username}">
-          <span>${session.username}</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+          <span class="desktop-only-text">${session.username}</span>
+          <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="user-dropdown" id="user-dropdown-menu">
           <div class="dropdown-header">
@@ -606,20 +602,22 @@ function renderAuthMenu(session) {
           <a href="account.html" class="dropdown-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
           </a>
-          <div class="dropdown-divider"></div>
           ${adminLink}
+          <div class="dropdown-divider"></div>
           <button class="dropdown-item danger" onclick="doLogout()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Sair da Conta
           </button>
         </div>
       </div>`;
   } else {
-    // Botão explícito de Entrar (Pill Design - Sempre legível)
+    // Botão de login padronizado (sempre legível)
     container.innerHTML = `
-      <a href="login.html" class="btn-login">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-        <span>Entrar</span>
-      </a>`;
+      <div class="user-menu-wrapper">
+        <a href="login.html" class="btn-login">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+          <span>Entrar</span>
+        </a>
+      </div>`;
   }
 }
 
