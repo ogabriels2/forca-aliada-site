@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minha Conta | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<script>
+(function(){
+  const key='fa_theme';
+  const token=localStorage.getItem('fa_token');
+  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
+  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  apply();
+  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+})();
+</script>
 <style>
 :root {
   --bg-color: #f5f5f7;
@@ -529,6 +541,25 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 /* Tag novo */
 .new-tag { background: var(--accent); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* Preferência de tema sincronizada com a conta */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-color: #0b0f17;
+  --card-bg: rgba(28,28,30,0.88);
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --border: rgba(255,255,255,0.12);
+  --shadow-soft: 0 10px 40px rgba(0,0,0,0.28);
+  --shadow-float: 0 20px 50px rgba(0,0,0,0.38);
+}
+[data-theme="dark"] body { background: var(--bg-color); color: var(--text-primary); }
+[data-theme="dark"] header, [data-theme="dark"] footer { background: rgba(17,24,39,0.78); border-color: var(--border); }
+[data-theme="dark"] .card, [data-theme="dark"] .login-card, [data-theme="dark"] .signup-card { background: var(--card-bg); border-color: var(--border); box-shadow: var(--shadow-float); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
+[data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
+
 </style>
 </head>
 <body>
@@ -1231,7 +1262,7 @@ function prefsFromUI() {
     public_profile: document.getElementById('pref-public-profile')?.checked ?? true,
     show_online: document.getElementById('pref-show-online')?.checked ?? true,
     public_history: document.getElementById('pref-public-history')?.checked ?? false,
-    theme: localStorage.getItem(THEME_KEY) || 'light'
+    theme: localStorage.getItem(THEME_KEY) || 'auto'
   };
 }
 function applyPrefsToUI(p = {}) {

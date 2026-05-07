@@ -13,6 +13,18 @@
 <meta property="og:description" content="Um mundo survival sem reset, sem pay-to-win e sem pressa. Ativo desde 2021.">
 <meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
 <meta name="theme-color" content="#0071e3">
+
+<script>
+(function(){
+  const key='fa_theme';
+  const token=localStorage.getItem('fa_token');
+  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
+  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  apply();
+  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+})();
+</script>
 <style>
 /* --- DESIGN SYSTEM --- */
 :root {
@@ -298,6 +310,25 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   .switch-console { width: 70%; margin: 0; order: unset; }
   .phone { width: 50%; margin: 0; order: unset; }
 }
+
+/* Preferência de tema sincronizada com a conta */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-color: #0b0f17;
+  --card-bg: rgba(28,28,30,0.88);
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --border: rgba(255,255,255,0.12);
+  --shadow-soft: 0 10px 40px rgba(0,0,0,0.28);
+  --shadow-float: 0 20px 50px rgba(0,0,0,0.38);
+}
+[data-theme="dark"] body { background: var(--bg-color); color: var(--text-primary); }
+[data-theme="dark"] header, [data-theme="dark"] footer { background: rgba(17,24,39,0.78); border-color: var(--border); }
+[data-theme="dark"] .card, [data-theme="dark"] .login-card, [data-theme="dark"] .signup-card { background: var(--card-bg); border-color: var(--border); box-shadow: var(--shadow-float); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
+[data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
+
 </style>
 </head>
 <body>
