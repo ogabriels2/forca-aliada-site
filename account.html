@@ -1573,7 +1573,10 @@ let session = null;
 const token = localStorage.getItem(TOKEN_KEY);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
-if (!token || !session) { window.location.replace('login.html'); }
+// A página de conta deve depender apenas do token neste ponto.
+// A sessão em cache pode não existir ou estar desatualizada; o bootstrap abaixo
+// valida /api/me e recria a sessão sem mandar admins de volta ao dashboard.
+if (!token) { window.location.replace('login.html'); }
 
 let myHistoryData = { history: [], activeSession: null };
 let myChartInstance = null;
