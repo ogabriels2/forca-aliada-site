@@ -140,7 +140,7 @@ body: JSON.stringify({ from, to: email, subject, html }),
 // Migrations
 // ─────────────────────────────────────────────
 async function migrate() {
-await pool.query(`
+const baseSchemaSql = String.raw`
 -- Usuários
 CREATE TABLE IF NOT EXISTS users (
 id            SERIAL PRIMARY KEY,
@@ -318,7 +318,8 @@ CREATE TABLE IF NOT EXISTS server_status_checks (
 );
 CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
 
-`);
+`;
+await pool.query(featureSchemaSql);
 }
 
 // ─────────────────────────────────────────────
