@@ -1738,15 +1738,26 @@ function initDashboard() {
   if (liveInterval) clearInterval(liveInterval);
   liveInterval = setInterval(async () => {
     try {
-      const res = await apiFetch(`/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok) throw new Error();
+      const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+
+      // SÓ desloga se o token for explicitamente rejeitado pelo servidor (401 ou 403)
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        return;
+      }
+
+      // Se for qualquer outro erro (ex: 500 ou rede fora), NÃO fazemos logout
+      if (!res.ok) return;
+
       const me = await res.json();
       if (session.role !== me.role) {
         session.role = me.role;
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
         if (session.role === 'limited') window.location.replace('account.html');
       }
-    } catch { logout(); return; }
+    } catch (err) {
+      // Erro de rede: não faz nada, mantém o utilizador na página
+    }
     applyFilters();
     if (document.getElementById('player-modal').classList.contains('active')) renderModalTable();
   }, 10000);
