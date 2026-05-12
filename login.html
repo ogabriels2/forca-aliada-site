@@ -136,6 +136,189 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 [data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
 [data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
 
+
+
+/* ───────────────────────────────────────────────
+   DARK MODE 2.0 — accessible semantic palette
+   Deep navy surfaces, soft glass elevation and explicit text contrast.
+   ─────────────────────────────────────────────── */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-color: #080d14;
+  --card-bg: rgba(17, 24, 39, 0.88);
+  --surface-1: #0f172a;
+  --surface-2: #111c2e;
+  --surface-3: #1b2a41;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-light: rgba(96, 165, 250, 0.18);
+  --danger: #fb7185;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --purple: #c084fc;
+  --border: rgba(148, 163, 184, 0.22);
+  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.42);
+  --shadow-float: 0 28px 80px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.52);
+}
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 34rem),
+    radial-gradient(circle at top right, rgba(192, 132, 252, 0.12), transparent 30rem),
+    var(--bg-color) !important;
+  color: var(--text-primary);
+}
+[data-theme="dark"] header,
+[data-theme="dark"] footer {
+  background: rgba(8, 13, 20, 0.82) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .login-card,
+[data-theme="dark"] .signup-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .info-box,
+[data-theme="dark"] .bento-item,
+[data-theme="dark"] .user-dropdown,
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .confirm-pw-modal,
+[data-theme="dark"] .dashboard-card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .table-wrapper,
+[data-theme="dark"] .community-card,
+[data-theme="dark"] .connection-card,
+[data-theme="dark"] .achievement-badge,
+[data-theme="dark"] .rank-roadmap-item,
+[data-theme="dark"] .capital-card-small,
+[data-theme="dark"] .merit-rank-card {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 42, 0.90)) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-md);
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .data-input,
+[data-theme="dark"] .search-input {
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+  caret-color: var(--accent);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--text-muted) !important; }
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] .data-input:focus {
+  background: rgba(17, 24, 39, 0.98) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18) !important;
+}
+[data-theme="dark"] p,
+[data-theme="dark"] .subtitle,
+[data-theme="dark"] .section-header p,
+[data-theme="dark"] .page-header p,
+[data-theme="dark"] .data-label,
+[data-theme="dark"] .data-hint,
+[data-theme="dark"] .dropdown-email,
+[data-theme="dark"] .sub-info,
+[data-theme="dark"] .pref-info p,
+[data-theme="dark"] .notif-meta,
+[data-theme="dark"] .merit-timeline-meta,
+[data-theme="dark"] .rank-roadmap-info p,
+[data-theme="dark"] .footer-text,
+[data-theme="dark"] .footer-links a,
+[data-theme="dark"] .muted { color: var(--text-secondary) !important; }
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] strong,
+[data-theme="dark"] .logo-text,
+[data-theme="dark"] .data-value,
+[data-theme="dark"] .dropdown-name,
+[data-theme="dark"] .card-title,
+[data-theme="dark"] .nav-item,
+[data-theme="dark"] .dropdown-item,
+[data-theme="dark"] .table-title { color: var(--text-primary) !important; }
+[data-theme="dark"] a:hover,
+[data-theme="dark"] .desktop-nav a:hover,
+[data-theme="dark"] .footer-text a:hover { color: var(--accent-hover) !important; }
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-login,
+[data-theme="dark"] button.main-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
+}
+[data-theme="dark"] .btn-primary:hover,
+[data-theme="dark"] .btn-login:hover,
+[data-theme="dark"] button.main-btn:hover { background: linear-gradient(135deg, #60a5fa, #3b82f6) !important; }
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .btn-outline,
+[data-theme="dark"] .nav-cta,
+[data-theme="dark"] .status-pill,
+[data-theme="dark"] .theme-option,
+[data-theme="dark"] .filter-pill,
+[data-theme="dark"] .sort-chip,
+[data-theme="dark"] .merit-filter-pill,
+[data-theme="dark"] .user-btn {
+  background: rgba(30, 41, 59, 0.78) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .btn-secondary:hover,
+[data-theme="dark"] .btn-outline:hover,
+[data-theme="dark"] .nav-cta:hover,
+[data-theme="dark"] .theme-option:hover,
+[data-theme="dark"] .filter-pill:hover,
+[data-theme="dark"] .sort-chip:hover,
+[data-theme="dark"] .merit-filter-pill:hover,
+[data-theme="dark"] .user-btn:hover { background: rgba(51, 65, 85, 0.86) !important; }
+[data-theme="dark"] .nav-item.active,
+[data-theme="dark"] .theme-option.active,
+[data-theme="dark"] .filter-pill.active,
+[data-theme="dark"] .sort-chip.active,
+[data-theme="dark"] .admin-tab.active,
+[data-theme="dark"] .audit-tab.active,
+[data-theme="dark"] .merit-tab.active,
+[data-theme="dark"] .rank-chip.active,
+[data-theme="dark"] .notif-filter-btn.active,
+[data-theme="dark"] .merit-filter-pill.active {
+  background: rgba(96, 165, 250, 0.20) !important;
+  color: #dbeafe !important;
+  border-color: rgba(147, 197, 253, 0.42) !important;
+}
+[data-theme="dark"] table,
+[data-theme="dark"] th,
+[data-theme="dark"] td { color: var(--text-primary); border-color: var(--border) !important; }
+[data-theme="dark"] th { background: rgba(15, 23, 42, 0.96) !important; color: var(--text-secondary) !important; }
+[data-theme="dark"] tr:hover,
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .nav-item:hover,
+[data-theme="dark"] .audit-item:hover,
+[data-theme="dark"] .notif-item:hover { background: rgba(30, 41, 59, 0.72) !important; }
+[data-theme="dark"] .pill.owner { background: rgba(192, 132, 252, 0.18) !important; color: #e9d5ff !important; }
+[data-theme="dark"] .pill.full { background: rgba(96, 165, 250, 0.18) !important; color: #bfdbfe !important; }
+[data-theme="dark"] .pill.limited { background: rgba(148, 163, 184, 0.16) !important; color: #e2e8f0 !important; }
+[data-theme="dark"] .pill.success,
+[data-theme="dark"] .pill.verified { background: rgba(74, 222, 128, 0.15) !important; color: #bbf7d0 !important; }
+[data-theme="dark"] .achievement-badge.gold { background: linear-gradient(135deg, rgba(251,191,36,0.20), rgba(120,83,20,0.28)) !important; color: #fde68a !important; }
+[data-theme="dark"] .achievement-badge.blue { background: linear-gradient(135deg, rgba(96,165,250,0.20), rgba(30,58,138,0.28)) !important; color: #bfdbfe !important; }
+[data-theme="dark"] .achievement-badge.green { background: linear-gradient(135deg, rgba(74,222,128,0.18), rgba(20,83,45,0.28)) !important; color: #bbf7d0 !important; }
+[data-theme="dark"] .achievement-badge.purple { background: linear-gradient(135deg, rgba(192,132,252,0.20), rgba(88,28,135,0.28)) !important; color: #e9d5ff !important; }
+[data-theme="dark"] .achievement-badge.orange { background: linear-gradient(135deg, rgba(251,146,60,0.20), rgba(124,45,18,0.28)) !important; color: #fed7aa !important; }
+[data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
+
 </style>
 </head>
 <body>
