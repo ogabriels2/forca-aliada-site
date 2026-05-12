@@ -6,13 +6,30 @@
 
 <script>
 (function(){
-  const key='fa_theme';
-  const token=localStorage.getItem('fa_token');
-  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
-  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  const key = 'fa_theme';
+  const token = localStorage.getItem('fa_token');
+  // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                   ? 'http://localhost:3000' 
+                   : 'https://forca-aliada-site.onrender.com';
+
+  function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+  function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'auto')); }
+  
   apply();
-  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+  
+  if (token) {
+    fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.ok ? r.json() : null)
+      .then(p => {
+        if (p && p.theme) {
+          localStorage.setItem(key, p.theme);
+          apply(p.theme);
+        }
+      }).catch(console.error);
+  }
+  
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'auto'));
 })();
 </script>
 <style>
@@ -1370,7 +1387,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 <script>
 const SERVER_IP   = 'fa.ogabriels.com';
-const API_BASE    = 'https://forca-aliada-site.onrender.com';
+const API_BASE    = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
@@ -1586,7 +1605,11 @@ async function loadNotifications() {
     const res = await fetch(`${API_BASE}/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao buscar notificações');
     notifList = (await res.json()).map(normalizeNotification);
-    notifUnread = notifList.filter(n => n.unread).length;
+
+    const countRes = await fetch(`${API_BASE}/api/notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!countRes.ok) throw new Error('Falha ao buscar contagem de notificações');
+    const countData = await countRes.json();
+    notifUnread = countData.count;
   } catch (err) {
     console.error('[notifications]', err);
     notifList = [];
@@ -1615,10 +1638,7 @@ async function markAllNotifRead() {
   try {
     await fetch(`${API_BASE}/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
   } catch (err) { console.error('[notifications]', err); }
-  notifList.forEach(n => n.unread = false);
-  notifUnread = 0;
-  updateNotifBadge();
-  renderNotifPanel();
+  loadNotifications();
 }
 
 async function markNotifRead(id) {
@@ -1628,10 +1648,7 @@ async function markNotifRead(id) {
     try { await fetch(`${API_BASE}/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }
     catch (err) { console.error('[notifications]', err); }
   }
-  notif.unread = false;
-  notifUnread = notifList.filter(n => n.unread).length;
-  updateNotifBadge();
-  renderNotifPanel();
+  loadNotifications();
 }
 
 function renderNotifPanel() {
@@ -1972,7 +1989,7 @@ function renderAuditLogs(append = false) {
 
 // ══ Notas de jogador no modal (compartilhadas via backend) ══
 async function fetchPlayerNotes(playerName) {
-  const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(playerName)}/notes`, { headers: { 'Authorization': `Bearer ${token}` } });
+  const res = await fetch(`${API_BASE}/api/admin/notes/${encodeURIComponent(playerName)}`, { headers: { 'Authorization': `Bearer ${token}` } });
   if (!res.ok) throw new Error('Falha ao carregar notas');
   return res.json();
 }
@@ -2007,10 +2024,10 @@ async function addPlayerNote() {
   const text = ta.value.trim();
   if (!text || !currentModalPlayerName) return;
   try {
-    const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(currentModalPlayerName)}/notes`, {
+    const res = await fetch(`${API_BASE}/api/admin/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ minecraft_name: currentModalPlayerName, text })
     });
     if (!res.ok) throw new Error('Falha ao salvar nota');
     ta.value = '';
@@ -2024,7 +2041,7 @@ async function addPlayerNote() {
 
 async function deletePlayerNote(playerName, noteId) {
   try {
-    const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(playerName)}/notes/${encodeURIComponent(noteId)}`, {
+    const res = await fetch(`${API_BASE}/api/admin/notes/${encodeURIComponent(noteId)}`, {
       method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Falha ao excluir nota');
