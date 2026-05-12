@@ -236,6 +236,14 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'inf
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience VARCHAR(20) DEFAULT 'all';
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience_val TEXT;
 
+-- Exclusões individuais de notificações (a notificação global continua auditável)
+CREATE TABLE IF NOT EXISTS notification_deletes (
+  notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id         INTEGER REFERENCES users(id)         ON DELETE CASCADE,
+  deleted_at      TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (notification_id, user_id)
+);
+
 -- Leituras de notificações
 CREATE TABLE IF NOT EXISTS notification_reads (
   notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
@@ -384,6 +392,17 @@ await pool.query(
 message || null, metadata ? JSON.stringify(metadata) : null],
 );
 } catch (e) { console.error('[audit]', e); }
+}
+
+async function createMinecraftNotification({ minecraftName, title, body, type = 'info', icon = '🔔', createdBy = null }) {
+  const mc = sanitize(minecraftName).toLowerCase();
+  if (!mc || !title || !body) return null;
+  const { rows } = await pool.query(
+    `INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by)
+     VALUES($1,$2,$3,$4,'minecraft',$5,$6) RETURNING id`,
+    [title, body, type, icon, mc, createdBy]
+  );
+  return rows[0];
 }
 
 // ─────────────────────────────────────────────
@@ -948,7 +967,7 @@ app.put('/api/me/preferences', auth, async (req, res) => {
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
-const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 WHERE n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
+const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
 
 res.json(rows);
 });
@@ -963,7 +982,7 @@ res.json(rows);
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
-const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 WHERE nr.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
+const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
 
 res.json({ count: rows[0].count });
 });
@@ -991,6 +1010,51 @@ res.json({ count: rows[0].count });
   if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
 
   await pool.query(`INSERT INTO notification_reads(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
+  await audit({
+    actorId: req.user.sub,
+    actorName: req.user.username,
+    type: 'notification_read',
+    targetId: id,
+    targetName: `notification:${id}`,
+    message: `${req.user.username} marcou a notificação #${id} como vista`,
+    metadata: { notificationId: id },
+  });
+
+  res.json({ ok: true });
+});
+
+/**
+
+- DELETE /api/notifications/:id
+- Oculta uma notificação para o usuário autenticado.
+  */
+app.delete('/api/notifications/:id', auth, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+  const role = req.user.role;
+  const mc = (req.user.minecraft_name || '').toLowerCase();
+  const visible = await pool.query(
+    `SELECT id FROM notifications
+     WHERE id=$1 AND (
+       audience='all'
+       OR (audience='role' AND audience_val=$2)
+       OR (audience='user' AND audience_val=$3::text)
+       OR (audience='minecraft' AND LOWER(audience_val)=$4)
+     )`,
+    [id, role, String(req.user.sub), mc],
+  );
+  if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
+
+  await pool.query(`INSERT INTO notification_deletes(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
+  await audit({
+    actorId: req.user.sub,
+    actorName: req.user.username,
+    type: 'notification_delete',
+    targetId: id,
+    targetName: `notification:${id}`,
+    message: `${req.user.username} excluiu a notificação #${id} da própria central`,
+    metadata: { notificationId: id },
+  });
 
   res.json({ ok: true });
 });
@@ -1005,7 +1069,16 @@ res.json({ count: rows[0].count });
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
-await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 WHERE nr.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
+await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
+await audit({
+  actorId: req.user.sub,
+  actorName: req.user.username,
+  type: 'notification_read_all',
+  targetId: req.user.sub,
+  targetName: req.user.username,
+  message: `${req.user.username} marcou todas as notificações visíveis como vistas`,
+  metadata: { userId },
+});
 
 res.json({ ok: true });
 });
@@ -1517,24 +1590,35 @@ app.get('/api/me/capital', auth, async (req, res) => {
 app.get('/api/me/rank-info', auth, async (req, res) => {
   const mc = req.user.minecraft_name?.toLowerCase();
   let merit = 0;
-  let rankId = 'ferro';
-  
-  // Se for staff, usa o rank administrativo
-  if (['owner', 'full'].includes(req.user.role)) {
-    return res.json({
-      merit: null,
-      rank: { ...ADM_RANK, benefits: RANK_BENEFITS.adm },
-      nextRank: null,
-      progress: 100,
-      isAdm: true,
-      allRanks: [...RANKS, ADM_RANK],
-    });
-  }
+  let capital = 0;
+  let records = [];
+  let capitalRecords = [];
 
   if (mc) {
     const balance = await ensureBalance(mc);
     merit = balance.merit_total;
-    rankId = balance.rank;
+    capital = balance.capital_balance;
+    const [meritRows, capitalRows] = await Promise.all([
+      pool.query('SELECT id, amount, reason, category, awarded_by_name, created_at FROM merit_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 100', [mc]),
+      pool.query('SELECT id, amount, type, description, created_by_name, created_at FROM capital_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 100', [mc]),
+    ]);
+    records = meritRows.rows;
+    capitalRecords = capitalRows.rows;
+  }
+
+  // Se for staff, mostra cargo administrativo sem esconder capital/histórico pessoal.
+  if (['owner', 'full'].includes(req.user.role)) {
+    return res.json({
+      merit,
+      capital,
+      rank: { ...ADM_RANK, benefits: RANK_BENEFITS.adm },
+      nextRank: null,
+      progress: 100,
+      isAdm: true,
+      records,
+      capitalRecords,
+      allRanks: [...RANKS, ADM_RANK],
+    });
   }
 
   const rank = getRankByMerit(merit);
@@ -1546,10 +1630,13 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
 
   res.json({
     merit,
+    capital,
     rank: { ...rank, benefits: RANK_BENEFITS[rank.id] || [] },
     nextRank: nextRank ? { ...nextRank, benefits: RANK_BENEFITS[nextRank.id] || [] } : null,
     progress,
     isAdm: false,
+    records,
+    capitalRecords,
     allRanks: RANKS,
   });
 });
@@ -1604,12 +1691,16 @@ app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
 // Concede ou remove Mérito de um jogador
 app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   const mc       = sanitize(req.body?.minecraft_name).toLowerCase();
-  const amount   = parseInt(req.body?.amount);
+  const rawAmount = parseInt(req.body?.amount);
+  const op       = ['credit', 'credito', 'add', 'conceder'].includes(req.body?.type) ? 'credit'
+    : ['debit', 'debito', 'remove', 'penalidade'].includes(req.body?.type) ? 'debit'
+    : null;
+  const amount   = op === 'debit' || (!op && rawAmount < 0) ? -Math.abs(rawAmount) : Math.abs(rawAmount);
   const reason   = sanitize(req.body?.reason);
-  const category = ['doacao', 'servico', 'evento', 'construcao', 'habito', 'penalidade', 'outros'].includes(req.body?.category)
-    ? req.body.category : 'outros';
+  const category = ['doacao', 'servico', 'evento', 'construcao', 'habito', 'acordo', 'penalidade', 'outro', 'outros'].includes(req.body?.category)
+    ? (req.body.category === 'outro' ? 'outros' : req.body.category) : 'outros';
 
-  if (!mc || isNaN(amount) || amount === 0 || !reason)
+  if (!mc || isNaN(rawAmount) || rawAmount === 0 || !reason)
     return res.status(400).json({ error: 'Dados inválidos: minecraft_name, amount (≠0) e reason são obrigatórios.' });
 
   if (Math.abs(amount) > 500)
@@ -1637,19 +1728,41 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
     metadata: { mc, amount, reason, category, newMerit, newRank: newRank.id },
   });
 
-  res.json({ ok: true, newMerit, rank: { ...newRank, benefits: RANK_BENEFITS[newRank.id] || [] }, prevMerit: currentMerit });
+  const actionText = amount > 0 ? 'ganhou' : 'perdeu';
+  const notif = await createMinecraftNotification({
+    minecraftName: mc,
+    title: amount > 0 ? 'Você ganhou Mérito!' : 'Seu Mérito foi debitado',
+    body: `${mc}, você ${actionText} ${Math.abs(amount)} ⭐ de Mérito. Motivo: ${reason}. Total atual: ${newMerit} ⭐. Cargo: ${newRank.label}.`,
+    type: amount > 0 ? 'social' : 'warning',
+    icon: amount > 0 ? '⭐' : '⚠️',
+    createdBy: req.user.sub,
+  });
+  if (notif) {
+    await audit({
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'notification_create', targetId: notif.id, targetName: mc,
+      message: `Notificação automática de Mérito enviada para ${mc}`,
+      metadata: { notificationId: notif.id, mc, amount, reason, newMerit },
+    });
+  }
+
+  res.json({ ok: true, newMerit, new_total: newMerit, newRank: newRank.id, new_rank: newRank.label, rank: { ...newRank, benefits: RANK_BENEFITS[newRank.id] || [] }, prevMerit: currentMerit });
 });
 
 // ── POST /api/admin/capital ───────────────────────────────
 // Ajusta Capital de um jogador
 app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   const mc          = sanitize(req.body?.minecraft_name).toLowerCase();
-  const amount      = parseFloat(req.body?.amount);
-  const type        = ['credito', 'debito', 'rendimento', 'emprestimo', 'penalidade', 'ajuste'].includes(req.body?.type)
-    ? req.body.type : 'ajuste';
+  const rawAmount   = parseFloat(req.body?.amount);
+  const rawType     = req.body?.type;
+  const type        = ['credit', 'credito'].includes(rawType) ? 'credito'
+    : ['debit', 'debito'].includes(rawType) ? 'debito'
+    : ['rendimento', 'emprestimo', 'penalidade', 'ajuste'].includes(rawType) ? rawType
+    : 'ajuste';
+  const amount      = ['debito', 'penalidade'].includes(type) || (rawType === undefined && rawAmount < 0) ? -Math.abs(rawAmount) : Math.abs(rawAmount);
   const description = sanitize(req.body?.description);
 
-  if (!mc || isNaN(amount) || amount === 0 || !description)
+  if (!mc || isNaN(rawAmount) || rawAmount === 0 || !description)
     return res.status(400).json({ error: 'Dados inválidos.' });
 
   await ensureBalance(mc);
@@ -1676,7 +1789,25 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
     metadata: { mc, amount, type, description, newCapital },
   });
 
-  res.json({ ok: true, newCapital, prevCapital: currentCapital });
+  const actionText = amount > 0 ? 'ganhou' : 'perdeu';
+  const notif = await createMinecraftNotification({
+    minecraftName: mc,
+    title: amount > 0 ? 'Você ganhou Capital!' : 'Seu Capital foi debitado',
+    body: `${mc}, você ${actionText} ${Math.abs(amount).toLocaleString('pt-BR')} 💰 de Capital. Motivo: ${description}. Saldo atual: ${newCapital.toLocaleString('pt-BR')} 💰.`,
+    type: amount > 0 ? 'social' : 'warning',
+    icon: amount > 0 ? '💰' : '⚠️',
+    createdBy: req.user.sub,
+  });
+  if (notif) {
+    await audit({
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'notification_create', targetId: notif.id, targetName: mc,
+      message: `Notificação automática de Capital enviada para ${mc}`,
+      metadata: { notificationId: notif.id, mc, amount, type, description, newCapital },
+    });
+  }
+
+  res.json({ ok: true, newCapital, new_balance: newCapital, prevCapital: currentCapital });
 });
 
 // ── GET /api/admin/merit-records ──────────────────────────

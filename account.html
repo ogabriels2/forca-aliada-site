@@ -449,6 +449,10 @@ header {
 .notif-content h4 { margin: 0 0 3px; font-size: 14px; font-weight: 700; }
 .notif-content p { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
 .notif-time { font-size: 11px; color: var(--text-secondary); white-space: nowrap; padding-top: 2px; }
+.notif-actions { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+.notif-action-btn { border:1px solid var(--border); background:var(--bg-card); color:var(--text-secondary); border-radius:980px; padding:5px 9px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:var(--transicao); }
+.notif-action-btn:hover { color:var(--accent); border-color:rgba(0,113,227,.35); background:rgba(0,113,227,.08); }
+.notif-action-btn.danger:hover { color:var(--danger); border-color:rgba(255,59,48,.35); background:rgba(255,59,48,.08); }
 .notif-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 48px 24px; text-align: center; }
 .notif-empty .icon { font-size: 40px; }
 .notif-empty p { margin: 0; font-size: 14px; color: var(--text-secondary); }
@@ -1924,7 +1928,8 @@ async function loadNotifications() {
     updateNotifBadges(0);
   }
 }
-async function markNotifRead(id) {
+async function markNotifRead(id, event = null) {
+  if (event) event.stopPropagation();
   const notif = notifCache.find(n => String(n.id) === String(id));
   if (notif?.is_read) return;
   try {
@@ -1938,6 +1943,23 @@ async function markNotifRead(id) {
     showToast('error', 'Erro', 'Não foi possível marcar a notificação como lida.');
   }
 }
+async function deleteNotif(id, event = null) {
+  if (event) event.stopPropagation();
+  try {
+    const res = await fetch(`${API_BASE}/api/notifications/${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Falha ao excluir notificação');
+    notifCache = notifCache.filter(n => String(n.id) !== String(id));
+    renderNotifs(currentNotifFilter);
+    updateNotifBadges();
+    showToast('success', 'Notificação excluída', 'Ela foi removida da sua central.');
+  } catch (err) {
+    console.error('[notifications]', err);
+    showToast('error', 'Erro', 'Não foi possível excluir a notificação.');
+  }
+}
+
 async function markAllNotifRead() {
   try {
     const res = await fetch(`${API_BASE}/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
@@ -1966,7 +1988,11 @@ function renderNotifs(filter = 'all') {
         <h4>${escapeHTML(n.title)}</h4>
         <p>${escapeHTML(n.body)}</p>
       </div>
-      <div class="notif-time">${escapeHTML(formatRelativeTime(n.created_at))}</div>
+      <div class="notif-actions">
+        <div class="notif-time">${escapeHTML(formatRelativeTime(n.created_at))}</div>
+        ${n.is_read ? '' : `<button class="notif-action-btn" onclick="markNotifRead('${escapeHTML(n.id)}', event)">Marcar vista</button>`}
+        <button class="notif-action-btn danger" onclick="deleteNotif('${escapeHTML(n.id)}', event)">Excluir</button>
+      </div>
     </div>
   `).join('');
 }
@@ -2620,6 +2646,7 @@ const RANKS_CONFIG = [
   { id: 'ouro',      icon: '🟡', label: 'Ouro',      minMerit: 150,  color: '#FF9F0A', saqueLimit: 128, bgFrom: 'rgba(255,159,10,0.06)',   bgTo: 'transparent', border: 'rgba(255,159,10,0.2)',   glow: 'rgba(255,159,10,0.2)',   benefits: ['Direito a voto em decisões públicas','Saque bancário: 128 💰 (2 packs)','Menor taxa de juros em empréstimos','Acesso à playlist musical do servidor'] },
   { id: 'diamante',  icon: '🟢', label: 'Diamante',  minMerit: 500,  color: '#30D158', saqueLimit: 192, bgFrom: 'rgba(48,209,88,0.06)',    bgTo: 'transparent', border: 'rgba(48,209,88,0.2)',    glow: 'rgba(48,209,88,0.2)',    benefits: ['Saque bancário: 192 💰 (3 packs)','Taxa de juros ainda menor','Direito de publicar na wiki','Direito a voto em decisões públicas'] },
   { id: 'netherite', icon: '⚫', label: 'Netherite', minMerit: 1000, color: '#AF52DE', saqueLimit: 320, bgFrom: 'rgba(175,82,222,0.06)',   bgTo: 'transparent', border: 'rgba(175,82,222,0.2)',   glow: 'rgba(175,82,222,0.2)',   benefits: ['Saque bancário: 320 💰 (5 packs)','Taxa de juros mínima','Publicação na wiki','Votações públicas'] },
+  { id: 'adm',       icon: '👑', label: 'Administrador', minMerit: 0, color: '#0071E3', saqueLimit: 640, bgFrom: 'rgba(0,113,227,0.08)', bgTo: 'transparent', border: 'rgba(0,113,227,0.25)', glow: 'rgba(0,113,227,0.22)', benefits: ['Cargo administrativo','Acesso ao painel','Limite administrativo: 640 💰'] },
 ];
 
 let meritRecordsCache = [];
@@ -2627,7 +2654,7 @@ let meritDataLoaded = false;
 
 function getRankConfig(merit) {
   let r = RANKS_CONFIG[0];
-  for (const rank of RANKS_CONFIG) { if (merit >= rank.minMerit) r = rank; }
+  for (const rank of RANKS_CONFIG.filter(rank => rank.id !== 'adm')) { if (merit >= rank.minMerit) r = rank; }
   return r;
 }
 
@@ -2789,7 +2816,7 @@ function renderRanksRoadmap(currentMerit) {
   const container = document.getElementById('ranks-roadmap');
   if (!container) return;
   const currentCfg = getRankConfig(currentMerit);
-  container.innerHTML = RANKS_CONFIG.map(rank => {
+  container.innerHTML = RANKS_CONFIG.filter(rank => rank.id !== 'adm').map(rank => {
     const isCurrent = rank.id === currentCfg.id;
     const isAchieved = currentMerit >= rank.minMerit && !isCurrent;
     const isLocked = currentMerit < rank.minMerit;
