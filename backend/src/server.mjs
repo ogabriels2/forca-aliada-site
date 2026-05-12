@@ -213,23 +213,35 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   PRIMARY KEY (notification_id, user_id)
 );
 
--- ── NOVO: Logs de auditoria ───────────────────────────────
+`);
+
+// -- ── NOVO: Logs de auditoria ───────────────────────────────
+await pool.query(`
 CREATE TABLE IF NOT EXISTS audit_logs (
   id         SERIAL PRIMARY KEY,
-  actor_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  actor_id   INTEGER,
   actor_name VARCHAR(255),
-  type       VARCHAR(50) NOT NULL DEFAULT 'system',   -- create | update | delete | login | system | notify
+  type       VARCHAR(50) DEFAULT 'system',
   target_id  INTEGER,
   target_name VARCHAR(255),
   message    TEXT,
   metadata   JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
--- Garante a coluna usada pelo índice em bancos antigos
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
-CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
 
+-- ISTO É O QUE CORRIGE O CRASH: Adiciona as colunas se elas não existirem na tabela antiga
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
+`);
+
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);`);
+
+await pool.query(`
 -- ── NOVO: Notas de jogadores ──────────────────────────────
 CREATE TABLE IF NOT EXISTS player_notes (
   id           SERIAL PRIMARY KEY,
@@ -1060,26 +1072,31 @@ res.json({ ok: true });
 - Parâmetros: ?type=all|create|update|delete|login|notify&page=0&limit=50
   */
   app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
-  const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
-  const page  = Math.max(0, parseInt(req.query.page  || 0));
-  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
+    try {
+      const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
+      const page  = Math.max(0, parseInt(req.query.page  || 0));
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
 
-const where  = type ? 'WHERE type=$1' : '';
-const params = type ? [type, limit, page * limit] : [limit, page * limit];
-const offset = type ? 3 : 2;
+      const where  = type ? 'WHERE type=$1' : '';
+      const params = type ? [type, limit, page * limit] : [limit, page * limit];
+      const offset = type ? 3 : 2;
 
-const { rows } = await pool.query(
-`SELECT id, actor_id, actor_name, type, target_id, target_name, message, metadata, created_at FROM audit_logs ${where} ORDER BY created_at DESC LIMIT $${offset - 1} OFFSET $${offset}`,
-params,
-);
+      const { rows } = await pool.query(
+        `SELECT id, actor_id, actor_name, type, target_id, target_name, message, metadata, created_at FROM audit_logs ${where} ORDER BY created_at DESC LIMIT $${offset - 1} OFFSET $${offset}`,
+        params,
+      );
 
-const { rows: total } = await pool.query(
-`SELECT COUNT(*)::int AS count FROM audit_logs ${where}`,
-type ? [type] : [],
-);
+      const { rows: total } = await pool.query(
+        `SELECT COUNT(*)::int AS count FROM audit_logs ${where}`,
+        type ? [type] : [],
+      );
 
-res.json({ logs: rows, total: total[0].count });
-});
+      res.json({ logs: rows, total: total[0].count });
+    } catch (error) {
+      console.error('[GET /api/admin/audit error]', error);
+      res.status(500).json({ error: 'Erro interno ao carregar logs' });
+    }
+  });
 
 // ─────────────────────────────────────────────
 // NOTAS DE JOGADORES
