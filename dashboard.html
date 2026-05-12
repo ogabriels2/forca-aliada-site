@@ -453,6 +453,131 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
 [data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
 
+/* ══ Merit & Capital System ══ */
+:root {
+  --rank-ferro:     #8e8e93;
+  --rank-ouro:      #ff9f0a;
+  --rank-diamante:  #30d158;
+  --rank-netherite: #af52de;
+  --rank-adm:       #0071e3;
+}
+.merit-tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
+.merit-tab  { padding:7px 16px; border:1px solid var(--border); border-radius:980px;
+              font-size:13px; font-weight:500; cursor:pointer; background:var(--bg-color);
+              color:var(--text-secondary); transition:all .15s; font-family:inherit; }
+.merit-tab:hover  { border-color:var(--accent); color:var(--accent); }
+.merit-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+.merit-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+@media(max-width:600px){ .merit-form-grid { grid-template-columns:1fr; } }
+
+.merit-input-group { display:flex; flex-direction:column; gap:6px; }
+.merit-input-group label { font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.6px; }
+.merit-input-group input,
+.merit-input-group select,
+.merit-input-group textarea {
+  padding:10px 14px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-color); color:var(--text-primary);
+  font-size:14px; font-family:inherit; transition:all .2s; outline:none;
+}
+.merit-input-group input:focus,
+.merit-input-group select:focus,
+.merit-input-group textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,113,227,.12); background:#fff; }
+[data-theme="dark"] .merit-input-group input:focus,
+[data-theme="dark"] .merit-input-group select:focus,
+[data-theme="dark"] .merit-input-group textarea:focus { background:rgba(255,255,255,.06); }
+.merit-input-group textarea { resize:vertical; min-height:72px; }
+.merit-input-group .autocomplete-wrapper { position:relative; }
+.merit-autocomplete { position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:200;
+  background:var(--card-bg); border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12); overflow:hidden; display:none; }
+.merit-autocomplete.open { display:block; }
+.merit-ac-item { padding:10px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:background .12s; }
+.merit-ac-item:hover { background:rgba(0,113,227,.07); }
+.merit-ac-item img { width:28px; height:28px; border-radius:6px; }
+.merit-ac-item .ac-name { font-weight:600; }
+.merit-ac-item .ac-rank { font-size:11px; color:var(--text-secondary); }
+
+.merit-preview { border-radius:12px; padding:14px 16px; margin-bottom:16px;
+  background:rgba(0,113,227,.06); border:1px solid rgba(0,113,227,.18);
+  display:none; }
+.merit-preview.visible { display:block; }
+.merit-preview-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.merit-preview-player { display:flex; align-items:center; gap:10px; }
+.merit-preview-player img { width:36px; height:36px; border-radius:8px; }
+.merit-preview-player .mpname { font-weight:600; font-size:14px; }
+.merit-preview-player .mprank { font-size:12px; color:var(--text-secondary); }
+.merit-preview-change { display:flex; align-items:center; gap:8px; }
+.merit-preview-change .from-val { font-size:13px; color:var(--text-secondary); }
+.merit-preview-change .arrow { font-size:16px; color:var(--text-secondary); }
+.merit-preview-change .to-val { font-size:15px; font-weight:700; }
+.merit-preview-change .promo-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:980px; }
+.promo-badge.up   { background:rgba(48,209,88,.15); color:#30d158; }
+.promo-badge.down { background:rgba(255,59,48,.12); color:#ff3b30; }
+.promo-badge.same { background:rgba(142,142,147,.12); color:#8e8e93; }
+
+.merit-submit-btn {
+  padding:11px 28px; border:none; border-radius:980px; font-size:14px; font-weight:600;
+  cursor:pointer; transition:all .2s; font-family:inherit; background:var(--accent); color:#fff;
+}
+.merit-submit-btn:hover { background:var(--accent-hover); transform:scale(1.02); }
+.merit-submit-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+.merit-submit-btn.danger { background:var(--danger); }
+
+.leaderboard-table { width:100%; border-collapse:collapse; }
+.leaderboard-table th {
+  text-align:left; font-size:11px; font-weight:700; color:var(--text-secondary);
+  text-transform:uppercase; letter-spacing:.7px; padding:8px 12px;
+  border-bottom:2px solid var(--border);
+}
+.leaderboard-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13px; }
+.leaderboard-table tr:last-child td { border-bottom:none; }
+.leaderboard-table tr:hover td { background:rgba(0,0,0,.025); }
+[data-theme="dark"] .leaderboard-table tr:hover td { background:rgba(255,255,255,.04); }
+.lb-pos { font-weight:700; width:36px; text-align:center; }
+.lb-player { display:flex; align-items:center; gap:10px; }
+.lb-player img { width:32px; height:32px; border-radius:7px; }
+.lb-player .lbname { font-weight:600; }
+.lb-rank-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
+  border-radius:980px; font-size:12px; font-weight:600; white-space:nowrap; }
+.lb-rank-badge.ferro     { background:rgba(142,142,147,.13); color:var(--rank-ferro); }
+.lb-rank-badge.ouro      { background:rgba(255,159,10,.13);  color:var(--rank-ouro); }
+.lb-rank-badge.diamante  { background:rgba(48,209,88,.12);   color:var(--rank-diamante); }
+.lb-rank-badge.netherite { background:rgba(175,82,222,.13);  color:var(--rank-netherite); }
+.lb-rank-badge.adm       { background:rgba(0,113,227,.13);   color:var(--rank-adm); }
+.lb-merit { font-weight:700; font-size:14px; }
+.lb-capital { color:var(--text-secondary); font-size:12px; }
+.lb-podium { font-size:18px; }
+.lb-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.lb-search { padding:8px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg-color); color:var(--text-primary); font-size:13px; outline:none; font-family:inherit; min-width:180px; }
+.lb-search:focus { border-color:var(--accent); }
+
+.merit-tx-list { display:flex; flex-direction:column; gap:2px; }
+.merit-tx-item { display:flex; align-items:flex-start; gap:12px; padding:11px 12px; border-radius:10px; transition:background .15s; }
+.merit-tx-item:hover { background:rgba(0,0,0,.03); }
+[data-theme="dark"] .merit-tx-item:hover { background:rgba(255,255,255,.04); }
+.merit-tx-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+.merit-tx-dot.credit { background:var(--success); }
+.merit-tx-dot.debit  { background:var(--danger); }
+.merit-tx-dot.capital { background:var(--rank-ouro); }
+.merit-tx-body { flex:1; min-width:0; }
+.merit-tx-title { font-size:13px; font-weight:600; }
+.merit-tx-sub   { font-size:12px; color:var(--text-secondary); margin-top:1px; }
+.merit-tx-time  { font-size:11px; color:var(--text-secondary); white-space:nowrap; flex-shrink:0; }
+.merit-tx-amount { font-size:13px; font-weight:700; flex-shrink:0; }
+.merit-tx-amount.pos { color:var(--success); }
+.merit-tx-amount.neg { color:var(--danger); }
+.merit-tx-amount.capital-amt { color:var(--rank-ouro); }
+
+.merit-stat-mini { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+.msm-card { flex:1; min-width:120px; background:var(--bg-color); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.msm-card .msm-val { font-size:22px; font-weight:700; margin-bottom:2px; }
+.msm-card .msm-lbl { font-size:12px; color:var(--text-secondary); }
+
+[data-theme="dark"] .merit-preview  { background:rgba(0,113,227,.1); border-color:rgba(0,113,227,.25); }
+[data-theme="dark"] .msm-card       { background:rgba(255,255,255,.05); }
+[data-theme="dark"] .lb-search      { background:rgba(255,255,255,.06); }
+[data-theme="dark"] .merit-autocomplete { background:rgba(28,28,30,.98); }
 </style>
 </head>
 <body>
@@ -543,6 +668,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </button>
           <button class="quick-action-btn" id="qa-audit" onclick="scrollToSection('audit-card')" style="display:none;">
             <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" id="qa-merit" onclick="scrollToSection('merit-card')" style="display:none;">
+            <span class="qa-icon">⭐</span><span class="qa-label">Mérito & Capital</span><span class="qa-arrow">›</span>
           </button>
           <button class="quick-action-btn" id="qa-stats" onclick="scrollToSection('stats-card')">
             <span class="qa-icon">📊</span><span class="qa-label">Estatísticas</span><span class="qa-arrow">›</span>
@@ -799,6 +927,170 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
 
     </div><!-- /dashboard-content -->
+
+      <!-- ══ MÉRITO & CAPITAL ══ -->
+      <div class="card" id="merit-card" style="display:none; margin-top:24px;">
+        <h3>⭐ Mérito &amp; Capital <span id="merit-card-sub">Gerencie reputação e economia</span></h3>
+
+        <!-- Mini-estatísticas -->
+        <div class="merit-stat-mini" id="merit-stats-mini">
+          <div class="msm-card"><div class="msm-val" id="mstat-total-merit">—</div><div class="msm-lbl">Mérito distribuído</div></div>
+          <div class="msm-card"><div class="msm-val" id="mstat-players">—</div><div class="msm-lbl">Jogadores com mérito</div></div>
+          <div class="msm-card"><div class="msm-val" id="mstat-today">—</div><div class="msm-lbl">Transações hoje</div></div>
+          <div class="msm-card"><div class="msm-val" id="mstat-top-rank">—</div><div class="msm-lbl">Cargo mais alto</div></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="merit-tabs">
+          <button class="merit-tab active" id="mtab-grant"       onclick="switchMeritTab('grant')">🌟 Conceder Mérito</button>
+          <button class="merit-tab"        id="mtab-capital"     onclick="switchMeritTab('capital')">💰 Ajustar Capital</button>
+          <button class="merit-tab"        id="mtab-leaderboard" onclick="switchMeritTab('leaderboard')">🏆 Leaderboard</button>
+          <button class="merit-tab"        id="mtab-history"     onclick="switchMeritTab('history')">📜 Histórico</button>
+        </div>
+
+        <!-- ── Tab: Conceder Mérito ── -->
+        <div id="mpanel-grant">
+          <div class="merit-form-grid">
+            <div class="merit-input-group" style="grid-column:1/-1;">
+              <label>Jogador (Nick Minecraft)</label>
+              <div class="autocomplete-wrapper">
+                <input id="mg-player" type="text" placeholder="Ex: Agiota834" autocomplete="off"
+                       oninput="meritPlayerSearch(this,'mg')">
+                <div class="merit-autocomplete" id="mg-ac"></div>
+              </div>
+            </div>
+            <div class="merit-input-group">
+              <label>Quantidade de Mérito</label>
+              <input id="mg-amount" type="number" min="1" max="500" placeholder="Ex: 50"
+                     oninput="updateMeritPreview('mg')">
+            </div>
+            <div class="merit-input-group">
+              <label>Tipo de Operação</label>
+              <select id="mg-op" onchange="updateMeritPreview('mg')">
+                <option value="credit">➕ Concessão</option>
+                <option value="debit">➖ Penalidade</option>
+              </select>
+            </div>
+            <div class="merit-input-group">
+              <label>Categoria</label>
+              <select id="mg-category">
+                <option value="doacao">🤝 Doação ao servidor</option>
+                <option value="servico">🔧 Serviço prestado</option>
+                <option value="evento">🎉 Participação em evento</option>
+                <option value="construcao">🏗️ Grande construção</option>
+                <option value="habito">✅ Bons hábitos</option>
+                <option value="acordo">🤝 Cumprimento de acordo</option>
+                <option value="penalidade">⚠️ Penalidade</option>
+                <option value="outro">📝 Outro</option>
+              </select>
+            </div>
+            <div class="merit-input-group">
+              <label>Motivo (obrigatório)</label>
+              <input id="mg-reason" type="text" placeholder="Descreva brevemente o motivo">
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="merit-preview" id="mg-preview">
+            <div class="merit-preview-row">
+              <div class="merit-preview-player">
+                <img id="mg-preview-skin" src="https://minotar.net/helm/Steve/40.png" alt="">
+                <div>
+                  <div class="mpname" id="mg-preview-name">—</div>
+                  <div class="mprank" id="mg-preview-rank">—</div>
+                </div>
+              </div>
+              <div class="merit-preview-change">
+                <span class="from-val" id="mg-from">— ⭐</span>
+                <span class="arrow">→</span>
+                <span class="to-val" id="mg-to">— ⭐</span>
+                <span class="promo-badge same" id="mg-badge">Sem mudança</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <button class="merit-submit-btn" id="mg-btn" onclick="submitGrantMerit()">Registrar Mérito</button>
+            <div id="mg-msg" style="font-size:13px;font-weight:500;"></div>
+          </div>
+        </div>
+
+        <!-- ── Tab: Ajustar Capital ── -->
+        <div id="mpanel-capital" style="display:none;">
+          <div class="merit-form-grid">
+            <div class="merit-input-group" style="grid-column:1/-1;">
+              <label>Jogador (Nick Minecraft)</label>
+              <div class="autocomplete-wrapper">
+                <input id="cap-player" type="text" placeholder="Ex: Agiota834" autocomplete="off"
+                       oninput="meritPlayerSearch(this,'cap')">
+                <div class="merit-autocomplete" id="cap-ac"></div>
+              </div>
+            </div>
+            <div class="merit-input-group">
+              <label>Tipo de Operação</label>
+              <select id="cap-op">
+                <option value="credit">➕ Crédito (depositar)</option>
+                <option value="debit">➖ Débito (remover)</option>
+              </select>
+            </div>
+            <div class="merit-input-group">
+              <label>Valor (💰 esmeraldas)</label>
+              <input id="cap-amount" type="number" min="1" placeholder="Ex: 100">
+            </div>
+            <div class="merit-input-group" style="grid-column:1/-1;">
+              <label>Descrição</label>
+              <textarea id="cap-desc" placeholder="Ex: Rendimento mensal do banco — Diamante. Ou: Penalidade por empréstimo não pago."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <button class="merit-submit-btn" id="cap-btn" onclick="submitAdjustCapital()">Ajustar Capital</button>
+            <div id="cap-msg" style="font-size:13px;font-weight:500;"></div>
+          </div>
+        </div>
+
+        <!-- ── Tab: Leaderboard ── -->
+        <div id="mpanel-leaderboard" style="display:none;">
+          <div class="lb-toolbar">
+            <input class="lb-search" id="lb-search" type="text" placeholder="🔍 Buscar jogador…" oninput="filterLeaderboard()">
+            <button class="btn-secondary" style="font-size:13px;padding:7px 16px;border-radius:8px;border:none;" onclick="exportLeaderboardCSV()">⬇ Exportar CSV</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th class="lb-pos">#</th>
+                  <th>Jogador</th>
+                  <th>Cargo</th>
+                  <th>⭐ Mérito</th>
+                  <th>💰 Capital</th>
+                </tr>
+              </thead>
+              <tbody id="lb-tbody">
+                <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-secondary);">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Tab: Histórico ── -->
+        <div id="mpanel-history" style="display:none;">
+          <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+            <input class="lb-search" id="history-search" type="text" placeholder="🔍 Filtrar por jogador ou motivo…" oninput="filterMeritHistory()" style="flex:1;min-width:180px;">
+            <select id="history-type-filter" onchange="filterMeritHistory()" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-color);color:var(--text-primary);font-size:13px;font-family:inherit;outline:none;">
+              <option value="all">Todos os tipos</option>
+              <option value="merit">Apenas Mérito</option>
+              <option value="capital">Apenas Capital</option>
+            </select>
+          </div>
+          <div class="merit-tx-list" id="merit-history-list">
+            <div style="text-align:center;padding:32px;color:var(--text-secondary);">Carregando…</div>
+          </div>
+          <div style="display:flex;justify-content:center;margin-top:12px;">
+            <button class="btn-secondary" id="merit-history-more" onclick="loadMoreMeritHistory()" style="padding:8px 20px;font-size:13px;border-radius:8px;border:none;display:none;">Carregar mais</button>
+          </div>
+        </div>
+
+      </div><!-- /merit-card -->
   </div><!-- /dashboard-layout -->
 </main>
 
@@ -1048,6 +1340,24 @@ function initDashboard() {
     document.getElementById('qa-audit').style.display = 'flex';
     document.getElementById('btn-export-staff').style.display = 'inline-flex';
     fetchAuditLogs();
+  }
+
+  // Merit & Capital — visível para full e owner
+  if (session.role === 'full' || session.role === 'owner') {
+    document.getElementById('merit-card').style.display = 'block';
+    document.getElementById('qa-merit').style.display = 'flex';
+    // Cache admin users for autocomplete once they're loaded
+    setTimeout(()=>{
+      if(window.allUsers) meritPlayerCache = window.allUsers
+        .filter(u=>u.minecraft_name)
+        .map(u=>({
+          minecraft_name:u.minecraft_name,
+          display:`${u.minecraft_name} (${u.username})`,
+          merit_total:u.merit_total||0,
+          capital_balance:u.capital_balance||0,
+        }));
+      initMeritSystem();
+    }, 800);
   }
 
   if (liveInterval) clearInterval(liveInterval);
@@ -2293,6 +2603,390 @@ function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal()
 
 // ══ Logout ══
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+
+/* ══════════════════════════════════════════
+   MÉRITO & CAPITAL — SISTEMA COMPLETO
+══════════════════════════════════════════ */
+const RANKS = [
+  { key:'ferro',     label:'🪨 Ferro',     min:0,    max:149,  color:'#8e8e93' },
+  { key:'ouro',      label:'🟡 Ouro',      min:150,  max:499,  color:'#ff9f0a' },
+  { key:'diamante',  label:'🟢 Diamante',  min:500,  max:999,  color:'#30d158' },
+  { key:'netherite', label:'⚫ Netherite', min:1000, max:Infinity, color:'#af52de' },
+];
+function getRank(merit){ return RANKS.find(r=>merit>=r.min&&merit<=r.max)||RANKS[0]; }
+
+/* ── player cache from admin users list ── */
+let meritPlayerCache   = [];   // [{minecraft_name, merit_total, capital_balance}]
+let leaderboardData    = [];
+let meritHistoryData   = [];
+let meritHistoryPage   = 0;
+const HISTORY_PAGE_SIZE = 20;
+let meritSelectedPlayers = { mg: null, cap: null };
+
+/* ── Init ── */
+function initMeritSystem() {
+  loadMeritStats();
+  loadLeaderboard();
+  loadMeritHistory();
+  // Populate player cache from already-fetched admin users
+  if (window.allUsers && window.allUsers.length) {
+    meritPlayerCache = window.allUsers.map(u=>({
+      minecraft_name: u.minecraft_name||u.username,
+      display: u.minecraft_name ? `${u.minecraft_name} (${u.username})` : u.username,
+      merit_total: u.merit_total||0,
+      capital_balance: u.capital_balance||0,
+    })).filter(u=>u.minecraft_name);
+  }
+}
+
+/* ── Tab switching ── */
+function switchMeritTab(tab) {
+  ['grant','capital','leaderboard','history'].forEach(t=>{
+    document.getElementById(`mpanel-${t}`).style.display = t===tab?'block':'none';
+    document.getElementById(`mtab-${t}`).classList.toggle('active', t===tab);
+  });
+  if(tab==='leaderboard') renderLeaderboard();
+  if(tab==='history')     renderMeritHistory();
+}
+
+/* ── Stats mini-cards ── */
+async function loadMeritStats() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!res.ok) return;
+    const data = await res.json();
+    leaderboardData = data.leaderboard || data || [];
+
+    const totalMerit   = leaderboardData.reduce((s,p)=>s+((p.merit_total??p.merit)??0), 0);
+    const topPlayer    = leaderboardData[0];
+    const topRank      = topPlayer ? getRank((topPlayer.merit_total??topPlayer.merit)??0) : null;
+
+    document.getElementById('mstat-total-merit').textContent = totalMerit.toLocaleString('pt-BR') + ' ⭐';
+    document.getElementById('mstat-players').textContent     = leaderboardData.length;
+    document.getElementById('mstat-top-rank').textContent    = topRank ? topRank.label : '—';
+  } catch(e) { console.warn('Merit stats error', e); }
+}
+
+async function loadMeritStatsToday() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!res.ok) return;
+    const data = await res.json();
+    const records = data.records || data || [];
+    const today = new Date().toISOString().slice(0,10);
+    const todayCount = records.filter(r=>r.created_at&&r.created_at.slice(0,10)===today).length;
+    document.getElementById('mstat-today').textContent = todayCount;
+  } catch(e) { document.getElementById('mstat-today').textContent = '—'; }
+}
+
+/* ── Leaderboard ── */
+async function loadLeaderboard() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    leaderboardData = data.leaderboard || data || [];
+    renderLeaderboard();
+  } catch(e) { document.getElementById('lb-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">Não foi possível carregar.</td></tr>`; }
+}
+
+function renderLeaderboard(filter='') {
+  const tbody = document.getElementById('lb-tbody');
+  const fl = filter.toLowerCase();
+  const rows = leaderboardData.filter(p=> !fl || (p.minecraft_name||'').toLowerCase().includes(fl));
+
+  if(!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">${filter?'Nenhum resultado para "'+filter+'"':'Nenhum jogador cadastrado ainda.'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((p,i)=>{
+    const merit   = p.merit_total ?? p.merit ?? 0;
+    const capital = p.capital_balance ?? p.capital ?? null;
+    const rank    = getRank(merit);
+    const podium  = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/60.png` : `https://minotar.net/helm/Steve/60.png`;
+    const capStr  = capital !== null ? `💰 ${Number(capital).toLocaleString('pt-BR')}` : '—';
+    return `<tr>
+      <td class="lb-pos">${podium||'<span style="color:var(--text-secondary)">'+(i+1)+'</span>'}</td>
+      <td><div class="lb-player">
+        <img src="${skin}" onerror="this.src='https://minotar.net/helm/Steve/60.png'" alt="">
+        <span class="lbname">${p.minecraft_name||'—'}</span>
+      </div></td>
+      <td><span class="lb-rank-badge ${rank.key}">${rank.label}</span></td>
+      <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐</td>
+      <td class="lb-capital">${capStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLeaderboard() {
+  renderLeaderboard(document.getElementById('lb-search').value);
+}
+
+function exportLeaderboardCSV() {
+  const rows = [['#','Nick','Cargo','Merit','Capital']];
+  leaderboardData.forEach((p,i)=>{
+    const rank = getRank(p.merit_total||0);
+    rows.push([i+1, p.minecraft_name||'', rank.label, p.merit_total||0, p.capital_balance||0]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `fa_leaderboard_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+/* ── History ── */
+async function loadMeritHistory() {
+  try {
+    const [meritRes, capRes] = await Promise.all([
+      fetch(`${API_BASE}/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
+      fetch(`${API_BASE}/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
+    ]);
+    const meritData = meritRes.ok ? await meritRes.json() : { records:[] };
+    const meritRecords = (meritData.records||meritData||[]).map(r=>({...r,_type:'merit'}));
+
+    let capRecords = [];
+    if(capRes && capRes.ok) {
+      const capData = await capRes.json();
+      capRecords = (capData.records||capData||[]).map(r=>({...r,_type:'capital'}));
+    }
+
+    meritHistoryData = [...meritRecords, ...capRecords]
+      .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+
+    document.getElementById('mstat-today').textContent =
+      meritHistoryData.filter(r=>r.created_at&&r.created_at.slice(0,10)===new Date().toISOString().slice(0,10)).length;
+
+    renderMeritHistory();
+  } catch(e) { console.warn('History error',e); }
+}
+
+function renderMeritHistory(filter='', typeFilter='all') {
+  const list   = document.getElementById('merit-history-list');
+  const fl     = filter.toLowerCase();
+  const tf     = typeFilter;
+  const filtered = meritHistoryData.filter(r=>{
+    if(tf==='merit'   && r._type!=='merit')   return false;
+    if(tf==='capital' && r._type!=='capital') return false;
+    if(fl && !(
+      (r.player_minecraft_name||'').toLowerCase().includes(fl) ||
+      (r.reason||r.description||'').toLowerCase().includes(fl)
+    )) return false;
+    return true;
+  });
+
+  const page = meritHistoryPage;
+  const shown = filtered.slice(0, (page+1)*HISTORY_PAGE_SIZE);
+  const hasMore = shown.length < filtered.length;
+
+  if(!shown.length) {
+    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary);">Nenhuma transação encontrada.</div>`;
+    document.getElementById('merit-history-more').style.display = 'none';
+    return;
+  }
+
+  list.innerHTML = shown.map(r=>{
+    const isMerit   = r._type==='merit';
+    const isCredit  = r.type==='credit'||(r.amount>0 && !r.type);
+    const dotClass  = isMerit ? (isCredit?'credit':'debit') : 'capital';
+    const amtClass  = isMerit ? (isCredit?'pos':'neg') : 'capital-amt';
+    const amtSign   = isMerit ? (isCredit?'+':'-') : (r.type==='credit'?'+':'-');
+    const amtLabel  = isMerit ? `${amtSign}${Math.abs(r.amount)} ⭐` : `${amtSign}💰 ${Math.abs(r.amount).toLocaleString('pt-BR')}`;
+    const reason    = r.reason||r.description||'Sem descrição';
+    const awardedBy = r.awarded_by_username||r.created_by_username||'Sistema';
+    const timeStr   = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div class="merit-tx-item">
+      <div class="merit-tx-dot ${dotClass}"></div>
+      <div class="merit-tx-body">
+        <div class="merit-tx-title">${r.player_minecraft_name||'—'} ${isMerit?'— Mérito':'— Capital'}</div>
+        <div class="merit-tx-sub">${reason} · por ${awardedBy}</div>
+      </div>
+      <div class="merit-tx-amount ${amtClass}">${amtLabel}</div>
+      <div class="merit-tx-time">${timeStr}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('merit-history-more').style.display = hasMore ? 'block' : 'none';
+}
+
+function filterMeritHistory() {
+  meritHistoryPage = 0;
+  renderMeritHistory(
+    document.getElementById('history-search').value,
+    document.getElementById('history-type-filter').value
+  );
+}
+
+function loadMoreMeritHistory() {
+  meritHistoryPage++;
+  renderMeritHistory(
+    document.getElementById('history-search').value,
+    document.getElementById('history-type-filter').value
+  );
+}
+
+/* ── Player Autocomplete ── */
+function meritPlayerSearch(input, prefix) {
+  const q   = input.value.trim().toLowerCase();
+  const ac  = document.getElementById(`${prefix}-ac`);
+  meritSelectedPlayers[prefix] = null;
+  if(prefix==='mg') updateMeritPreview('mg');
+
+  if(!q || q.length < 1) { ac.classList.remove('open'); return; }
+
+  // Try from cache first
+  const results = meritPlayerCache.filter(p=>
+    (p.minecraft_name||'').toLowerCase().includes(q) ||
+    (p.display||'').toLowerCase().includes(q)
+  ).slice(0,6);
+
+  if(!results.length) {
+    // Fallback: try from leaderboard
+    const lb = leaderboardData.filter(p=>(p.minecraft_name||'').toLowerCase().includes(q)).slice(0,6);
+    if(lb.length) {
+      renderAC(ac, lb.map(p=>({
+        minecraft_name:p.minecraft_name,
+        display:p.minecraft_name,
+        merit_total:p.merit_total||0,
+        capital_balance:p.capital_balance||0,
+      })), prefix, input);
+    } else {
+      ac.innerHTML = `<div class="merit-ac-item" style="color:var(--text-secondary);">Nenhum jogador encontrado</div>`;
+      ac.classList.add('open');
+    }
+    return;
+  }
+  renderAC(ac, results, prefix, input);
+}
+
+function renderAC(ac, results, prefix, input) {
+  const rank_fn = p => getRank(p.merit_total||0);
+  ac.innerHTML = results.map((p,i)=>`
+    <div class="merit-ac-item" onclick="selectMeritPlayer('${prefix}','${p.minecraft_name}',${p.merit_total||0},${p.capital_balance||0})">
+      <img src="https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/56.png" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
+      <div>
+        <div class="ac-name">${p.minecraft_name}</div>
+        <div class="ac-rank">${rank_fn(p).label} · ${(p.merit_total||0)} ⭐</div>
+      </div>
+    </div>`).join('');
+  ac.classList.add('open');
+  // Close on outside click
+  setTimeout(()=>{ document.addEventListener('click', ()=>ac.classList.remove('open'), {once:true}); }, 0);
+}
+
+function selectMeritPlayer(prefix, name, merit, capital) {
+  document.getElementById(`${prefix}-player`).value = name;
+  document.getElementById(`${prefix}-ac`).classList.remove('open');
+  meritSelectedPlayers[prefix] = { minecraft_name:name, merit_total:merit, capital_balance:capital };
+  if(prefix==='mg') updateMeritPreview('mg');
+}
+
+/* ── Merit Preview ── */
+function updateMeritPreview(prefix) {
+  const preview = document.getElementById('mg-preview');
+  const player  = meritSelectedPlayers.mg;
+  const amount  = parseInt(document.getElementById('mg-amount').value)||0;
+  const op      = document.getElementById('mg-op').value;
+
+  if(!player || !amount) { preview.classList.remove('visible'); return; }
+
+  const currentMerit = player.merit_total||0;
+  const newMerit     = Math.max(0, op==='credit' ? currentMerit+amount : currentMerit-amount);
+  const rankBefore   = getRank(currentMerit);
+  const rankAfter    = getRank(newMerit);
+  const promoted     = rankAfter.min > rankBefore.min;
+  const demoted      = rankAfter.min < rankBefore.min;
+
+  document.getElementById('mg-preview-skin').src = `https://minotar.net/helm/${encodeURIComponent(player.minecraft_name)}/80.png`;
+  document.getElementById('mg-preview-name').textContent = player.minecraft_name;
+  document.getElementById('mg-preview-rank').textContent = `${rankBefore.label} · ${currentMerit} ⭐`;
+  document.getElementById('mg-from').textContent = `${currentMerit} ⭐`;
+  document.getElementById('mg-to').textContent   = `${newMerit} ⭐`;
+
+  const badge = document.getElementById('mg-badge');
+  if(promoted)      { badge.textContent='↑ Promoção!'; badge.className='promo-badge up'; }
+  else if(demoted)  { badge.textContent='↓ Rebaixamento'; badge.className='promo-badge down'; }
+  else              { badge.textContent='Sem mudança de cargo'; badge.className='promo-badge same'; }
+
+  preview.classList.add('visible');
+}
+
+/* ── Submit Grant Merit ── */
+async function submitGrantMerit() {
+  const player   = document.getElementById('mg-player').value.trim();
+  const amount   = parseInt(document.getElementById('mg-amount').value)||0;
+  const op       = document.getElementById('mg-op').value;
+  const category = document.getElementById('mg-category').value;
+  const reason   = document.getElementById('mg-reason').value.trim();
+  const btn      = document.getElementById('mg-btn');
+  const msg      = document.getElementById('mg-msg');
+
+  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
+  if(!amount||amount<1) { msg.textContent='Informe uma quantidade válida.'; msg.style.color='var(--danger)'; return; }
+  if(!reason) { msg.textContent='O motivo é obrigatório.'; msg.style.color='var(--danger)'; return; }
+
+  btn.disabled=true; btn.textContent='Registrando…';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/merit`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ player_minecraft_name:player, amount, type:op, category, reason })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Erro ao registrar mérito.');
+
+    msg.textContent = `✅ Mérito registrado! ${player} agora tem ${data.new_total} ⭐ (${data.new_rank})`;
+    msg.style.color = 'var(--success)';
+    // Reset
+    document.getElementById('mg-amount').value = '';
+    document.getElementById('mg-reason').value = '';
+    document.getElementById('mg-preview').classList.remove('visible');
+    meritSelectedPlayers.mg = null;
+    // Refresh data
+    loadMeritStats(); loadLeaderboard(); loadMeritHistory();
+  } catch(e) {
+    msg.textContent = e.message; msg.style.color='var(--danger)';
+  } finally {
+    btn.disabled=false; btn.textContent='Registrar Mérito';
+  }
+}
+
+/* ── Submit Adjust Capital ── */
+async function submitAdjustCapital() {
+  const player = document.getElementById('cap-player').value.trim();
+  const op     = document.getElementById('cap-op').value;
+  const amount = parseInt(document.getElementById('cap-amount').value)||0;
+  const desc   = document.getElementById('cap-desc').value.trim();
+  const btn    = document.getElementById('cap-btn');
+  const msg    = document.getElementById('cap-msg');
+
+  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
+  if(!amount||amount<1) { msg.textContent='Informe um valor válido.'; msg.style.color='var(--danger)'; return; }
+
+  btn.disabled=true; btn.textContent='Ajustando…';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/capital`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ player_minecraft_name:player, amount, type:op, description:desc||'Ajuste de capital' })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Erro ao ajustar capital.');
+
+    const sign = op==='credit'?'+':'-';
+    msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${data.new_balance}`;
+    msg.style.color = 'var(--success)';
+    document.getElementById('cap-amount').value = '';
+    document.getElementById('cap-desc').value = '';
+    meritSelectedPlayers.cap = null;
+    loadMeritStats(); loadMeritHistory();
+  } catch(e) {
+    msg.textContent = e.message; msg.style.color='var(--danger)';
+  } finally {
+    btn.disabled=false; btn.textContent='Ajustar Capital';
+  }
+}
 </script>
 </body>
 </html>

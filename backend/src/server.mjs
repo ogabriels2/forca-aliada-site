@@ -1463,6 +1463,23 @@ app.get('/api/admin/merit-records', auth, requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
+// ── GET /api/admin/capital-records ────────────────────────
+// Histórico completo de Capital (admin)
+app.get('/api/admin/capital-records', auth, requireAdmin, async (req, res) => {
+  const page  = Math.max(0, parseInt(req.query.page || 0));
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
+  const mc    = req.query.mc ? sanitize(req.query.mc).toLowerCase() : null;
+
+  const where  = mc ? 'WHERE LOWER(minecraft_name)=$1' : '';
+  const params = mc ? [mc, limit, page * limit] : [limit, page * limit];
+
+  const { rows } = await pool.query(
+    `SELECT * FROM capital_records ${where} ORDER BY created_at DESC LIMIT $${mc ? 2 : 1} OFFSET $${mc ? 3 : 2}`,
+    params
+  );
+  res.json({ records: rows });
+});
+
 // ── GET /api/admin/leaderboard ────────────────────────────
 app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`
