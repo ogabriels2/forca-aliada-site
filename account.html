@@ -1960,8 +1960,10 @@ function initAccount() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     await syncThemePreference();
 
-    // Admins e owners também devem poder acessar a página da conta
-    // para alterar senha, tema e preferências pessoais.
+    if (session.role === 'full' || session.role === 'owner') {
+      window.location.replace('dashboard.html');
+      return;
+    }
   } catch (err) {
     console.error('Erro crítico no Bootstrap:', err);
     document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar a conta. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
