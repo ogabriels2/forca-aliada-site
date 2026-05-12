@@ -86,6 +86,37 @@ connectionString: process.env.DATABASE_URL,
 ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
+
+const DEPLOY_SCHEMA_VERSION = 'audit-schema-v3-statement-array';
+const AUDIT_SCHEMA_STATEMENTS = [
+  "CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, actor_id INTEGER, actor_name VARCHAR(255), type VARCHAR(50) DEFAULT 'system', target_id INTEGER, target_name VARCHAR(255), message TEXT, metadata JSONB, created_at TIMESTAMPTZ DEFAULT NOW())",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255)",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system'",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255)",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS message TEXT",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
+  "CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_logs(type)",
+];
+let auditSchemaReady = null;
+
+async function ensureAuditSchema() {
+  if (!auditSchemaReady) {
+    auditSchemaReady = (async () => {
+      for (const statement of AUDIT_SCHEMA_STATEMENTS) {
+        await pool.query(statement);
+      }
+    })().catch((error) => {
+      auditSchemaReady = null;
+      throw error;
+    });
+  }
+  return auditSchemaReady;
+}
+
 // ─────────────────────────────────────────────
 // Env guards
 // ─────────────────────────────────────────────
@@ -140,174 +171,71 @@ body: JSON.stringify({ from, to: email, subject, html }),
 // Migrations
 // ─────────────────────────────────────────────
 async function migrate() {
-await pool.query(`
--- Usuários
-CREATE TABLE IF NOT EXISTS users (
-id            SERIAL PRIMARY KEY,
-username      VARCHAR(255) UNIQUE NOT NULL,
-email         VARCHAR(255) UNIQUE NOT NULL,
-minecraft_name VARCHAR(255),
-photo_url     VARCHAR(255) DEFAULT 'logo.JPG',
-password_hash VARCHAR(255) NOT NULL,
-role          VARCHAR(50)  NOT NULL DEFAULT 'limited',
-is_verified   BOOLEAN      DEFAULT TRUE,
-created_at    TIMESTAMPTZ  DEFAULT NOW()
-);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check
-CHECK (role IN ('owner','full','limited'));
+const migrationStatements = [
+  "CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, email VARCHAR(255) UNIQUE NOT NULL, minecraft_name VARCHAR(255), photo_url VARCHAR(255) DEFAULT 'logo.JPG', password_hash VARCHAR(255) NOT NULL, role VARCHAR(50) NOT NULL DEFAULT 'limited', is_verified BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW())",
+  "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE",
+  "ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check",
+  "ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'))",
 
--- Sessões Minecraft
-CREATE TABLE IF NOT EXISTS player_sessions (
-  id            SERIAL PRIMARY KEY,
-  player        VARCHAR(255) NOT NULL,
-  entered_at    TIMESTAMPTZ  NOT NULL,
-  left_at       TIMESTAMPTZ,
-  duration_hours FLOAT
-);
-ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT;
-CREATE INDEX IF NOT EXISTS idx_player_name      ON player_sessions(player);
-CREATE INDEX IF NOT EXISTS idx_player_left_at   ON player_sessions(left_at DESC);
+  "CREATE TABLE IF NOT EXISTS player_sessions (id SERIAL PRIMARY KEY, player VARCHAR(255) NOT NULL, entered_at TIMESTAMPTZ NOT NULL, left_at TIMESTAMPTZ, duration_hours FLOAT)",
+  "ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT",
+  "CREATE INDEX IF NOT EXISTS idx_player_name ON player_sessions(player)",
+  "CREATE INDEX IF NOT EXISTS idx_player_left_at ON player_sessions(left_at DESC)",
 
--- Password resets
-CREATE TABLE IF NOT EXISTS password_resets (
-  id         SERIAL PRIMARY KEY,
-  email      VARCHAR(255) NOT NULL,
-  code       VARCHAR(6)   NOT NULL,
-  expires_at TIMESTAMPTZ  NOT NULL
-);
+  "CREATE TABLE IF NOT EXISTS password_resets (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL, code VARCHAR(6) NOT NULL, expires_at TIMESTAMPTZ NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS email_verifications (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL, code VARCHAR(6) NOT NULL, expires_at TIMESTAMPTZ NOT NULL)",
 
--- Email verifications
-CREATE TABLE IF NOT EXISTS email_verifications (
-  id         SERIAL PRIMARY KEY,
-  email      VARCHAR(255) NOT NULL,
-  code       VARCHAR(6)   NOT NULL,
-  expires_at TIMESTAMPTZ  NOT NULL
-);
+  "CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, type VARCHAR(50) NOT NULL DEFAULT 'info', icon VARCHAR(20) DEFAULT '🔔', audience VARCHAR(20) NOT NULL DEFAULT 'all', audience_val TEXT, created_by INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(255)",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS body TEXT",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'info'",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS icon VARCHAR(20) DEFAULT '🔔'",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience VARCHAR(20) DEFAULT 'all'",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience_val TEXT",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL",
+  "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
 
--- ── NOVO: Notificações ─────────────────────────────────────
-CREATE TABLE IF NOT EXISTS notifications (
-  id          SERIAL PRIMARY KEY,
-  title       VARCHAR(255) NOT NULL,
-  body        TEXT         NOT NULL,
-  type        VARCHAR(50)  NOT NULL DEFAULT 'info',
-  icon        VARCHAR(20)  DEFAULT '🔔',
-  -- audience type: 'all' | 'role' | 'user' | 'minecraft'
-  audience    VARCHAR(20)  NOT NULL DEFAULT 'all',
-  -- audience value: role name, user id (text), or minecraft_name
-  audience_val TEXT,
-  created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  created_at  TIMESTAMPTZ  DEFAULT NOW()
-);
--- Garante as colunas novas nas notificações
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'info';
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience VARCHAR(20) DEFAULT 'all';
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience_val TEXT;
+  "CREATE TABLE IF NOT EXISTS notification_reads (notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, read_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (notification_id, user_id))",
 
--- Leituras de notificações
-CREATE TABLE IF NOT EXISTS notification_reads (
-  notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
-  user_id         INTEGER REFERENCES users(id)         ON DELETE CASCADE,
-  read_at         TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (notification_id, user_id)
-);
+  ...AUDIT_SCHEMA_STATEMENTS,
 
--- ── NOVO: Logs de auditoria ───────────────────────────────
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id         SERIAL PRIMARY KEY,
-  actor_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  actor_name VARCHAR(255),
-  type       VARCHAR(50) NOT NULL DEFAULT 'system',   -- create | update | delete | login | system | notify
-  target_id  INTEGER,
-  target_name VARCHAR(255),
-  message    TEXT,
-  metadata   JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
--- Garante a coluna usada pelo índice em bancos antigos
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
-CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
+  "CREATE TABLE IF NOT EXISTS player_notes (id SERIAL PRIMARY KEY, minecraft_name VARCHAR(255) NOT NULL, author_id INTEGER REFERENCES users(id) ON DELETE SET NULL, author_name VARCHAR(255), text TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())",
+  "CREATE INDEX IF NOT EXISTS idx_notes_mc ON player_notes(LOWER(minecraft_name))",
 
--- ── NOVO: Notas de jogadores ──────────────────────────────
-CREATE TABLE IF NOT EXISTS player_notes (
-  id           SERIAL PRIMARY KEY,
-  minecraft_name VARCHAR(255) NOT NULL,
-  author_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  author_name  VARCHAR(255),
-  text         TEXT NOT NULL,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_notes_mc ON player_notes(LOWER(minecraft_name));
+  "CREATE TABLE IF NOT EXISTS user_preferences (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, email_server BOOLEAN DEFAULT TRUE, email_events BOOLEAN DEFAULT TRUE, email_community BOOLEAN DEFAULT TRUE, public_profile BOOLEAN DEFAULT TRUE, show_online BOOLEAN DEFAULT TRUE, public_history BOOLEAN DEFAULT FALSE, theme VARCHAR(20) DEFAULT 'auto', updated_at TIMESTAMPTZ DEFAULT NOW())",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS email_server BOOLEAN DEFAULT TRUE",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS email_events BOOLEAN DEFAULT TRUE",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS email_community BOOLEAN DEFAULT TRUE",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS public_profile BOOLEAN DEFAULT TRUE",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS show_online BOOLEAN DEFAULT TRUE",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS public_history BOOLEAN DEFAULT FALSE",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS theme VARCHAR(20) DEFAULT 'auto'",
+  "ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+  "ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'auto'",
 
--- ── NOVO: Preferências do usuário ─────────────────────────
-CREATE TABLE IF NOT EXISTS user_preferences (
-  user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  email_server     BOOLEAN DEFAULT TRUE,
-  email_events     BOOLEAN DEFAULT TRUE,
-  email_community  BOOLEAN DEFAULT TRUE,
-  public_profile   BOOLEAN DEFAULT TRUE,
-  show_online      BOOLEAN DEFAULT TRUE,
-  public_history   BOOLEAN DEFAULT FALSE,
-  theme            VARCHAR(20) DEFAULT 'auto',
-  updated_at       TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'auto';
+  "CREATE TABLE IF NOT EXISTS player_balances (minecraft_name VARCHAR(255) PRIMARY KEY, merit_total INTEGER NOT NULL DEFAULT 0, capital_balance FLOAT NOT NULL DEFAULT 0, rank VARCHAR(50) NOT NULL DEFAULT 'ferro', updated_at TIMESTAMPTZ DEFAULT NOW())",
+  "CREATE INDEX IF NOT EXISTS idx_balances_merit ON player_balances(merit_total DESC)",
 
--- ── Capital e Mérito: saldos por jogador ─────────────────
-CREATE TABLE IF NOT EXISTS player_balances (
-  minecraft_name  VARCHAR(255) PRIMARY KEY,
-  merit_total     INTEGER      NOT NULL DEFAULT 0,
-  capital_balance FLOAT        NOT NULL DEFAULT 0,
-  rank            VARCHAR(50)  NOT NULL DEFAULT 'ferro',
-  updated_at      TIMESTAMPTZ  DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_balances_merit ON player_balances(merit_total DESC);
+  "CREATE TABLE IF NOT EXISTS merit_records (id SERIAL PRIMARY KEY, minecraft_name VARCHAR(255) NOT NULL, amount INTEGER NOT NULL, reason TEXT NOT NULL, category VARCHAR(50) NOT NULL DEFAULT 'outros', awarded_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL, awarded_by_name VARCHAR(255), created_at TIMESTAMPTZ DEFAULT NOW())",
+  "CREATE INDEX IF NOT EXISTS idx_merit_mc ON merit_records(LOWER(minecraft_name))",
+  "CREATE INDEX IF NOT EXISTS idx_merit_created ON merit_records(created_at DESC)",
 
--- ── Registros de Mérito (log imutável) ────────────────────
-CREATE TABLE IF NOT EXISTS merit_records (
-  id              SERIAL PRIMARY KEY,
-  minecraft_name  VARCHAR(255) NOT NULL,
-  amount          INTEGER      NOT NULL,
-  reason          TEXT         NOT NULL,
-  category        VARCHAR(50)  NOT NULL DEFAULT 'outros',
-  awarded_by_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  awarded_by_name VARCHAR(255),
-  created_at      TIMESTAMPTZ  DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_merit_mc      ON merit_records(LOWER(minecraft_name));
-CREATE INDEX IF NOT EXISTS idx_merit_created ON merit_records(created_at DESC);
+  "CREATE TABLE IF NOT EXISTS capital_records (id SERIAL PRIMARY KEY, minecraft_name VARCHAR(255) NOT NULL, amount FLOAT NOT NULL, type VARCHAR(50) NOT NULL DEFAULT 'ajuste', description TEXT NOT NULL, created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL, created_by_name VARCHAR(255), created_at TIMESTAMPTZ DEFAULT NOW())",
+  "ALTER TABLE capital_records ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'ajuste'",
+  "CREATE INDEX IF NOT EXISTS idx_capital_mc ON capital_records(LOWER(minecraft_name))",
 
--- ── Registros de Capital (log imutável) ───────────────────
-CREATE TABLE IF NOT EXISTS capital_records (
-  id              SERIAL PRIMARY KEY,
-  minecraft_name  VARCHAR(255) NOT NULL,
-  amount          FLOAT        NOT NULL,
-  type            VARCHAR(50)  NOT NULL DEFAULT 'ajuste',
-  description     TEXT         NOT NULL,
-  created_by_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  created_by_name VARCHAR(255),
-  created_at      TIMESTAMPTZ  DEFAULT NOW()
-);
--- Garante que a coluna type exista no Capital também
-ALTER TABLE capital_records ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'ajuste';
-CREATE INDEX IF NOT EXISTS idx_capital_mc ON capital_records(LOWER(minecraft_name));
+  "CREATE TABLE IF NOT EXISTS server_status_checks (id SERIAL PRIMARY KEY, checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), host VARCHAR(255) NOT NULL, online BOOLEAN NOT NULL, players_online INTEGER DEFAULT 0, players_max INTEGER DEFAULT 0, latency_ms INTEGER, version VARCHAR(255))",
+  "CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC)",
+];
 
--- Histórico real de disponibilidade do servidor Minecraft
-CREATE TABLE IF NOT EXISTS server_status_checks (
-  id             SERIAL PRIMARY KEY,
-  checked_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  host           VARCHAR(255) NOT NULL,
-  online         BOOLEAN NOT NULL,
-  players_online INTEGER DEFAULT 0,
-  players_max    INTEGER DEFAULT 0,
-  latency_ms     INTEGER,
-  version        VARCHAR(255)
-);
-CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
-
-`);
+for (const statement of migrationStatements) {
+  try {
+    await pool.query(statement);
+  } catch (error) {
+    console.error('[migrate statement failed]', statement);
+    throw error;
+  }
+}
 }
 
 // ─────────────────────────────────────────────
@@ -333,8 +261,9 @@ console.log('[seed] admin created:', u.toLowerCase());
 // ─────────────────────────────────────────────
 async function audit({ actorId, actorName, type, targetId, targetName, message, metadata }) {
 try {
+await ensureAuditSchema();
 await pool.query(
-`INSERT INTO audit_logs(actor_id,actor_name,type,target_id,target_name,message,metadata) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+'INSERT INTO audit_logs(actor_id,actor_name,type,target_id,target_name,message,metadata) VALUES($1,$2,$3,$4,$5,$6,$7)',
 [actorId || null, actorName || null, type, targetId || null, targetName || null,
 message || null, metadata ? JSON.stringify(metadata) : null],
 );
@@ -1060,26 +989,34 @@ res.json({ ok: true });
 - Parâmetros: ?type=all|create|update|delete|login|notify&page=0&limit=50
   */
   app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
-  const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
-  const page  = Math.max(0, parseInt(req.query.page  || 0));
-  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
+    try {
+      const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
+      const page  = Math.max(0, parseInt(req.query.page  || 0));
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
 
-const where  = type ? 'WHERE type=$1' : '';
-const params = type ? [type, limit, page * limit] : [limit, page * limit];
-const offset = type ? 3 : 2;
+      await ensureAuditSchema();
 
-const { rows } = await pool.query(
-`SELECT id, actor_id, actor_name, type, target_id, target_name, message, metadata, created_at FROM audit_logs ${where} ORDER BY created_at DESC LIMIT $${offset - 1} OFFSET $${offset}`,
-params,
-);
+      const where  = type ? 'WHERE type=$1' : '';
+      const params = type ? [type, limit, page * limit] : [limit, page * limit];
+      const offset = type ? 3 : 2;
 
-const { rows: total } = await pool.query(
-`SELECT COUNT(*)::int AS count FROM audit_logs ${where}`,
-type ? [type] : [],
-);
+      const listSql = 'SELECT id, actor_id, actor_name, type, target_id, target_name, message, metadata, created_at FROM audit_logs '
+        + where
+        + ' ORDER BY created_at DESC LIMIT $'
+        + (offset - 1)
+        + ' OFFSET $'
+        + offset;
+      const countSql = 'SELECT COUNT(*)::int AS count FROM audit_logs ' + where;
 
-res.json({ logs: rows, total: total[0].count });
-});
+      const { rows } = await pool.query(listSql, params);
+      const { rows: total } = await pool.query(countSql, type ? [type] : []);
+
+      res.json({ logs: rows, total: total[0].count });
+    } catch (error) {
+      console.error('[GET /api/admin/audit error]', error);
+      res.status(500).json({ error: 'Erro interno ao carregar logs' });
+    }
+  });
 
 // ─────────────────────────────────────────────
 // NOTAS DE JOGADORES
@@ -1717,6 +1654,6 @@ const PORT = process.env.PORT || 8787;
 migrate()
 .then(seedAdmin)
 .then(() => {
-  app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`✅  API ${DEPLOY_SCHEMA_VERSION} rodando na porta ${PORT}`));
 })
 .catch(e => { console.error('[migrate]', e); process.exit(1); });
