@@ -1065,9 +1065,15 @@ res.json(rows);
 // ADMIN – Gerenciamento de usuários
 // ─────────────────────────────────────────────
 app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
-const { rows } = await pool.query(
-'SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users ORDER BY id DESC',
-);
+const { rows } = await pool.query(`
+  SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.created_at,
+    COALESCE(pb.merit_total, 0)     AS merit_total,
+    COALESCE(pb.capital_balance, 0) AS capital_balance,
+    COALESCE(pb.rank, 'ferro')      AS rank
+  FROM users u
+  LEFT JOIN player_balances pb ON pb.minecraft_name = LOWER(u.minecraft_name)
+  ORDER BY u.id DESC
+`);
 res.json(rows);
 });
 

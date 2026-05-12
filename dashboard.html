@@ -453,7 +453,104 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
 [data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
 
-/* ══ Merit & Capital System ══ */
+/* ── Merit inline in player list ── */
+.li-merit-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 980px;
+  font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+}
+.li-merit-badge.ferro     { background: rgba(142,142,147,.13); color: #8e8e93; }
+.li-merit-badge.ouro      { background: rgba(255,159,10,.14);  color: #cc7a00; }
+.li-merit-badge.diamante  { background: rgba(48,209,88,.13);   color: #218c3d; }
+.li-merit-badge.netherite { background: rgba(175,82,222,.14);  color: #8b2fc9; }
+[data-theme="dark"] .li-merit-badge.ouro      { color: #ff9f0a; }
+[data-theme="dark"] .li-merit-badge.diamante  { color: #30d158; }
+[data-theme="dark"] .li-merit-badge.netherite { color: #af52de; }
+
+.li-merit-bar { height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; margin-top: 4px; width: 100%; max-width: 120px; }
+.li-merit-bar-fill { height: 100%; border-radius: 2px; transition: width .6s ease; }
+
+/* rank filter chips */
+.rank-filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.rank-chip { padding: 4px 12px; border-radius: 980px; border: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bg-color);
+  color: var(--text-secondary); transition: all .15s; font-family: inherit; }
+.rank-chip:hover { border-color: var(--accent); color: var(--accent); }
+.rank-chip.active { color: #fff; border-color: transparent; }
+.rank-chip.all.active    { background: var(--accent); }
+.rank-chip.ferro.active  { background: #8e8e93; }
+.rank-chip.ouro.active   { background: #ff9f0a; }
+.rank-chip.diamante.active { background: #30d158; }
+.rank-chip.netherite.active { background: #af52de; }
+
+/* Modal merit section */
+.modal-merit-section {
+  background: var(--bg-color); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; margin-bottom: 16px;
+}
+.modal-merit-section h4 { margin: 0 0 14px; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; }
+
+.modal-rank-hero {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+}
+.modal-rank-icon {
+  width: 56px; height: 56px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; position: relative;
+}
+.modal-rank-icon::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 16px;
+  border: 2px solid var(--modal-rank-color, #8e8e93);
+  box-shadow: 0 0 10px var(--modal-rank-color, #8e8e93);
+}
+.modal-rank-details { flex: 1; min-width: 0; }
+.modal-rank-name { font-size: 17px; font-weight: 700; color: var(--modal-rank-color, #8e8e93); margin-bottom: 2px; }
+.modal-rank-merit { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.modal-rank-bar-track { width: 100%; height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.modal-rank-bar-fill { height: 100%; border-radius: 4px; background: var(--modal-rank-color, #8e8e93); transition: width 0.9s cubic-bezier(0.165,0.84,0.44,1); }
+.modal-rank-bar-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+.modal-capital-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(255,159,10,.06); border: 1px solid rgba(255,159,10,.2);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.modal-capital-val { font-size: 22px; font-weight: 800; }
+.modal-capital-lbl { font-size: 12px; color: var(--text-secondary); }
+.modal-capital-saque { font-size: 12px; color: var(--text-secondary); text-align: right; }
+.modal-capital-saque strong { color: var(--text-primary); font-size: 13px; }
+
+/* Inline admin controls inside modal */
+.modal-merit-controls {
+  border-top: 1px solid var(--border); padding-top: 14px; margin-top: 2px;
+}
+.modal-merit-controls h5 { margin: 0 0 10px; font-size: 12px; font-weight: 700;
+  color: var(--text-secondary); text-transform: uppercase; letter-spacing: .6px; }
+.modal-ctrl-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+.modal-ctrl-row input, .modal-ctrl-row select {
+  padding: 8px 12px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--card-bg); color: var(--text-primary); font-size: 13px;
+  font-family: inherit; outline: none; transition: border .2s;
+}
+.modal-ctrl-row input:focus, .modal-ctrl-row select:focus { border-color: var(--accent); }
+.modal-ctrl-row input[type=number] { width: 90px; }
+.modal-ctrl-row input[type=text]   { flex: 1; min-width: 120px; }
+.modal-ctrl-btn {
+  padding: 8px 16px; border: none; border-radius: 9px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .2s; white-space: nowrap;
+}
+.modal-ctrl-btn.merit  { background: rgba(48,209,88,.12); color: #218c3d; }
+.modal-ctrl-btn.debit  { background: rgba(255,59,48,.1);  color: var(--danger); }
+.modal-ctrl-btn.capital { background: rgba(255,159,10,.12); color: #b56b00; }
+[data-theme="dark"] .modal-ctrl-btn.merit   { color: #30d158; }
+[data-theme="dark"] .modal-ctrl-btn.capital { color: #ff9f0a; }
+.modal-ctrl-btn:hover { filter: brightness(1.07); transform: scale(1.02); }
+.modal-ctrl-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.modal-ctrl-msg { font-size: 12px; font-weight: 600; padding: 6px 0; min-height: 20px; }
+[data-theme="dark"] .modal-merit-section { background: rgba(255,255,255,.04); }
+[data-theme="dark"] .modal-capital-row   { background: rgba(255,159,10,.08); border-color: rgba(255,159,10,.2); }
+
 :root {
   --rank-ferro:     #8e8e93;
   --rank-ouro:      #ff9f0a;
@@ -857,6 +954,15 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <button class="admin-tab" id="tab-unregistered" onclick="switchAdminTab('unregistered')">Sem Cadastro <span class="unregistered-badge" id="unreg-count-badge" style="display:none;">0</span></button>
         </div>
 
+        <!-- Rank filter chips (only in registered tab) -->
+        <div class="rank-filter-bar" id="rank-filter-bar">
+          <button class="rank-chip all active" onclick="setRankFilter('all')">Todos</button>
+          <button class="rank-chip ferro"      onclick="setRankFilter('ferro')">🪨 Ferro</button>
+          <button class="rank-chip ouro"       onclick="setRankFilter('ouro')">🟡 Ouro</button>
+          <button class="rank-chip diamante"   onclick="setRankFilter('diamante')">🟢 Diamante</button>
+          <button class="rank-chip netherite"  onclick="setRankFilter('netherite')">⚫ Netherite</button>
+        </div>
+
         <div class="sort-bar" id="admin-sort-bar"></div>
         <div id="admin-users-msg" style="font-size:13px;" role="alert"></div>
         <ul id="admin-users-list">
@@ -1177,6 +1283,76 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
               <button class="btn-primary" onclick="submitCreateAccount()" id="btn-create-account">Criar Cadastro</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ⭐ Mérito & Capital do Jogador -->
+      <div class="modal-merit-section" id="modal-merit-section" style="display:none;">
+        <h4>⭐ Mérito &amp; Capital</h4>
+
+        <!-- Rank hero -->
+        <div class="modal-rank-hero">
+          <div class="modal-rank-icon" id="modal-rank-icon">🪨</div>
+          <div class="modal-rank-details">
+            <div class="modal-rank-name" id="modal-rank-name">Ferro</div>
+            <div class="modal-rank-merit" id="modal-rank-merit">0 ⭐ de Mérito acumulado</div>
+            <div class="modal-rank-bar-track">
+              <div class="modal-rank-bar-fill" id="modal-rank-bar" style="width:0%"></div>
+            </div>
+            <div class="modal-rank-bar-labels">
+              <span id="modal-rank-cur-label">0 ⭐</span>
+              <span id="modal-rank-next-label">Próximo: Ouro (150 ⭐)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Capital -->
+        <div class="modal-capital-row">
+          <div>
+            <div class="modal-capital-val" id="modal-capital-val">0 💰</div>
+            <div class="modal-capital-lbl">Capital Disponível (esmeraldas)</div>
+          </div>
+          <div class="modal-capital-saque">
+            <div>Limite de saque atual</div>
+            <strong id="modal-saque-limit">64 💰</strong>
+          </div>
+        </div>
+
+        <!-- Admin controls -->
+        <div class="modal-merit-controls" id="modal-merit-controls">
+          <h5>Ajuste Rápido de Mérito</h5>
+          <div class="modal-ctrl-row">
+            <select id="modal-merit-op">
+              <option value="credit">➕ Conceder</option>
+              <option value="debit">➖ Penalidade</option>
+            </select>
+            <input type="number" id="modal-merit-amount" min="1" max="500" placeholder="Qtd.">
+            <input type="text"   id="modal-merit-reason" placeholder="Motivo (obrigatório)">
+            <select id="modal-merit-cat">
+              <option value="doacao">🤝 Doação</option>
+              <option value="servico">🔧 Serviço</option>
+              <option value="evento">🎉 Evento</option>
+              <option value="construcao">🏗️ Construção</option>
+              <option value="habito">✅ Bom hábito</option>
+              <option value="acordo">🤝 Acordo cumprido</option>
+              <option value="penalidade">⚠️ Penalidade</option>
+              <option value="outro">📝 Outro</option>
+            </select>
+            <button class="modal-ctrl-btn merit" id="modal-merit-btn" onclick="submitModalMerit()">Registrar</button>
+          </div>
+
+          <h5>Ajuste de Capital</h5>
+          <div class="modal-ctrl-row">
+            <select id="modal-capital-op">
+              <option value="credit">➕ Depositar</option>
+              <option value="debit">➖ Remover</option>
+            </select>
+            <input type="number" id="modal-capital-amount" min="1" placeholder="Valor 💰">
+            <input type="text"   id="modal-capital-desc" placeholder="Descrição">
+            <button class="modal-ctrl-btn capital" id="modal-capital-btn" onclick="submitModalCapital()">Ajustar</button>
+          </div>
+
+          <div class="modal-ctrl-msg" id="modal-merit-msg"></div>
         </div>
       </div>
 
@@ -2522,13 +2698,82 @@ async function fetchUnregistered() {
   return unregisteredRequest;
 }
 
+let activeRankFilter = 'all';
+
+function setRankFilter(rank) {
+  activeRankFilter = rank;
+  document.querySelectorAll('.rank-chip').forEach(c => {
+    c.classList.toggle('active', c.classList.contains(rank));
+  });
+  renderAdminTab();
+}
+
+function switchAdminTab(tab) {
+  currentAdminTab = tab;
+  document.getElementById('tab-registered').classList.toggle('active', tab === 'registered');
+  document.getElementById('tab-unregistered').classList.toggle('active', tab === 'unregistered');
+  const rfb = document.getElementById('rank-filter-bar');
+  if (rfb) rfb.style.display = tab === 'registered' ? 'flex' : 'none';
+  updateSortBarForTab(tab);
+  renderAdminTab();
+}
+
+function setSortAdmin(key) {
+  if (adminSortState.key === key) { adminSortState.asc = !adminSortState.asc; }
+  else { adminSortState.key = key; adminSortState.asc = key !== 'merit_total' && key !== 'capital_balance'; }
+  updateSortBarForTab(currentAdminTab);
+  renderAdminTab();
+}
+
+function updateSortBarForTab(tab) {
+  const bar = document.getElementById('admin-sort-bar');
+  if (!bar) return;
+  const chips = tab === 'registered'
+    ? [
+        { key:'name',          label:'Nome' },
+        { key:'created',       label:'Cadastro' },
+        { key:'last_session',  label:'Último Acesso' },
+        { key:'merit_total',   label:'⭐ Mérito' },
+        { key:'capital_balance', label:'💰 Capital' },
+        { key:'verified',      label:'Não Verificados' },
+      ]
+    : [
+        { key:'name',         label:'Nome' },
+        { key:'sessions',     label:'Sessões' },
+        { key:'total_hours',  label:'Tempo' },
+        { key:'last_session', label:'Último Acesso' },
+      ];
+  bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span>` +
+    chips.map(c => `<button class="sort-chip ${adminSortState.key===c.key?'active':''}" onclick="setSortAdmin('${c.key}')">${c.label}${adminSortState.key===c.key ? (adminSortState.asc?' ↑':' ↓') : ''}</button>`).join('');
+}
+
 function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
 
 function renderRegisteredList() {
+  const RANK_DEFS = [
+    { key:'ferro',     min:0,    max:149,  next:150,  icon:'🪨', label:'Ferro',     color:'#8e8e93' },
+    { key:'ouro',      min:150,  max:499,  next:500,  icon:'🟡', label:'Ouro',      color:'#ff9f0a' },
+    { key:'diamante',  min:500,  max:999,  next:1000, icon:'🟢', label:'Diamante',  color:'#30d158' },
+    { key:'netherite', min:1000, max:Infinity, next:Infinity, icon:'⚫', label:'Netherite', color:'#af52de' },
+  ];
+  const getRankDef = m => RANK_DEFS.find(r=>m>=r.min&&m<=r.max)||RANK_DEFS[0];
+
   const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
-  const list   = document.getElementById('admin-users-list');
-  let filtered = globalAdminUsers.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term) || (u.minecraft_name||'').toLowerCase().includes(term));
+  const list   = document.getElementById('admin-users-list');\
+  let filtered = globalAdminUsers.filter(u =>
+    u.username.toLowerCase().includes(term) ||
+    u.email.toLowerCase().includes(term) ||
+    (u.minecraft_name||'').toLowerCase().includes(term)
+  );
   if (adminSortState.key === 'verified') filtered = filtered.filter(u => u.is_verified === false);
+
+  // Rank filter
+  if (activeRankFilter !== 'all') {
+    filtered = filtered.filter(u => {
+      const rd = getRankDef(u.merit_total||0);
+      return rd.key === activeRankFilter;
+    });
+  }
 
   const historyMap = {};
   (globalHistData?.history || []).forEach(h => {
@@ -2543,31 +2788,43 @@ function renderRegisteredList() {
       if (adminSortState.key === 'name') { return adminSortState.asc ? a.username.toLowerCase().localeCompare(b.username.toLowerCase()) : b.username.toLowerCase().localeCompare(a.username.toLowerCase()); }
       if (adminSortState.key === 'created') { const va = new Date(a.created_at||0), vb = new Date(b.created_at||0); return adminSortState.asc ? va-vb : vb-va; }
       if (adminSortState.key === 'last_session') { const va = new Date(historyMap[amc]?.last||0), vb = new Date(historyMap[bmc]?.last||0); return adminSortState.asc ? va-vb : vb-va; }
+      if (adminSortState.key === 'merit_total') { return adminSortState.asc ? (a.merit_total||0)-(b.merit_total||0) : (b.merit_total||0)-(a.merit_total||0); }
+      if (adminSortState.key === 'capital_balance') { return adminSortState.asc ? (a.capital_balance||0)-(b.capital_balance||0) : (b.capital_balance||0)-(a.capital_balance||0); }
       return 0;
     });
   }
 
   if (!filtered.length) {
-    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">👥</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`;
+    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${activeRankFilter!=='all'?'🔍':'👥'}</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : activeRankFilter!=='all' ? `Nenhum jogador com cargo ${activeRankFilter}.` : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`;
     return;
   }
 
   list.innerHTML = filtered.map(u => {
-    const mc       = u.minecraft_name || u.username;
-    const hist     = historyMap[mc.toLowerCase()];
-    const lastStr  = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
+    const mc        = u.minecraft_name || u.username;
+    const hist      = historyMap[mc.toLowerCase()];
+    const lastStr   = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
     const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
     const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
     const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
+    const merit     = u.merit_total || 0;
+    const capital   = u.capital_balance || 0;
+    const rd        = getRankDef(merit);
+    const pct       = rd.next === Infinity ? 100 : Math.round(((merit - rd.min) / (rd.next - rd.min)) * 100);
+    const meritBadge = `<span class="li-merit-badge ${rd.key}">${rd.icon} ${rd.label}</span>`;
+    const capitalStr = capital > 0 ? `<span style="font-size:11px;color:var(--text-secondary);margin-left:4px;">💰 ${capital.toLocaleString('pt-BR')}</span>` : '';
     return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})">
       <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
-      <div class="item-details">
-        <strong>${u.username} <span class="pill ${pillClass}" style="margin-left:4px;font-size:10px;">${roleText}</span> ${verifiedBadge}</strong>
-        <span>${u.email}${hist?.last ? ` · Último acesso ${lastStr}` : ''}</span>
+      <div class="item-details" style="flex:1;min-width:0;">
+        <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${meritBadge} ${capitalStr}</strong>
+        <span>${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
+        <div class="li-merit-bar" title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
+          <div class="li-merit-bar-fill" style="width:${pct}%;background:${rd.color};"></div>
+        </div>
       </div>
     </li>`;
   }).join('');
 }
+
 
 function renderUnregisteredList() {
   const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
@@ -2603,6 +2860,141 @@ function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal()
 
 // ══ Logout ══
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+
+/* ══════════════════════════════════════════
+   MODAL MÉRITO & CAPITAL — funções inline
+══════════════════════════════════════════ */
+const SAQUE_LIMITS = { ferro:64, ouro:128, diamante:192, netherite:320, adm:640 };
+const RANK_DEFS_MODAL = [
+  { key:'ferro',     min:0,    next:150,  icon:'🪨', label:'Ferro',     color:'#8e8e93' },
+  { key:'ouro',      min:150,  next:500,  icon:'🟡', label:'Ouro',      color:'#ff9f0a' },
+  { key:'diamante',  min:500,  next:1000, icon:'🟢', label:'Diamante',  color:'#30d158' },
+  { key:'netherite', min:1000, next:null, icon:'⚫', label:'Netherite', color:'#af52de' },
+];
+function getRankModal(m) { return RANK_DEFS_MODAL.find(r=>m>=r.min&&(r.next===null||m<r.next))||RANK_DEFS_MODAL[0]; }
+
+async function loadModalMeritData(mcName) {
+  const section = document.getElementById('modal-merit-section');
+  if (!section) return;
+
+  // Try cached admin user data first (instant render)
+  const cached = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mcName.toLowerCase());
+  if (cached && (cached.merit_total !== undefined)) {
+    renderModalMerit(cached.merit_total||0, cached.capital_balance||0);
+  }
+
+  // Then fetch fresh data from API
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/players-with-balances?q=${encodeURIComponent(mcName)}`, {
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const player = (data.players||data||[]).find(p=>p.minecraft_name?.toLowerCase()===mcName.toLowerCase());
+      if (player) renderModalMerit(player.merit_total||0, player.capital_balance||0);
+    }
+  } catch(e) { /* keep cached */ }
+
+  section.style.display = 'block';
+}
+
+function renderModalMerit(merit, capital) {
+  const rd     = getRankModal(merit);
+  const pct    = rd.next ? Math.min(100, Math.round(((merit-rd.min)/(rd.next-rd.min))*100)) : 100;
+  const nextLabel = rd.next ? `Próximo: ${RANK_DEFS_MODAL.find(r=>r.min===rd.next)?.label||'—'} (${rd.next} ⭐)` : '🏆 Cargo máximo';
+  const saque  = SAQUE_LIMITS[rd.key] || 64;
+
+  const icon   = document.getElementById('modal-rank-icon');
+  const bar    = document.getElementById('modal-rank-bar');
+  if (!icon) return;
+
+  icon.textContent = rd.icon;
+  icon.style.setProperty('--modal-rank-color', rd.color);
+  icon.parentElement.style.setProperty('--modal-rank-color', rd.color);
+  document.getElementById('modal-rank-name').textContent = rd.label;
+  document.getElementById('modal-rank-name').style.color = rd.color;
+  document.getElementById('modal-rank-merit').textContent = `${merit.toLocaleString('pt-BR')} ⭐ de Mérito acumulado`;
+  document.getElementById('modal-rank-cur-label').textContent = `${merit} ⭐`;
+  document.getElementById('modal-rank-next-label').textContent = nextLabel;
+  bar.style.background = rd.color;
+  bar.style.width = '0%';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.width = pct+'%'; }));
+  document.getElementById('modal-capital-val').textContent = `${capital.toLocaleString('pt-BR')} 💰`;
+  document.getElementById('modal-saque-limit').textContent = `${saque} 💰`;
+
+  // Store for submit functions
+  document.getElementById('modal-merit-section').dataset.mcName = currentModalPlayerName;
+}
+
+async function submitModalMerit() {
+  const mc     = document.getElementById('modal-merit-section').dataset.mcName;
+  const op     = document.getElementById('modal-merit-op').value;
+  const amount = parseInt(document.getElementById('modal-merit-amount').value)||0;
+  const reason = document.getElementById('modal-merit-reason').value.trim();
+  const cat    = document.getElementById('modal-merit-cat').value;
+  const btn    = document.getElementById('modal-merit-btn');
+  const msg    = document.getElementById('modal-merit-msg');
+
+  if (!mc)     { msg.textContent='Jogador não identificado.'; msg.style.color='var(--danger)'; return; }
+  if (!amount) { msg.textContent='Informe a quantidade.';     msg.style.color='var(--danger)'; return; }
+  if (!reason) { msg.textContent='Motivo é obrigatório.';     msg.style.color='var(--danger)'; return; }
+
+  btn.disabled = true; btn.textContent='…';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/merit`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ player_minecraft_name:mc, amount, type:op, category:cat, reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error||'Erro');
+    msg.style.color = 'var(--success)';
+    msg.textContent = `✅ ${op==='credit'?'+':`-`}${amount} ⭐ → total: ${data.new_total} ⭐ (${data.new_rank})`;
+    document.getElementById('modal-merit-amount').value = '';
+    document.getElementById('modal-merit-reason').value = '';
+    renderModalMerit(data.new_total, parseFloat(document.getElementById('modal-capital-val').textContent)||0);
+    // Update cache
+    const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
+    if (cu) cu.merit_total = data.new_total;
+    renderAdminTab();
+    loadMeritStats(); loadLeaderboard();
+  } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
+  finally { btn.disabled=false; btn.textContent='Registrar'; }
+}
+
+async function submitModalCapital() {
+  const mc     = document.getElementById('modal-merit-section').dataset.mcName;
+  const op     = document.getElementById('modal-capital-op').value;
+  const amount = parseInt(document.getElementById('modal-capital-amount').value)||0;
+  const desc   = document.getElementById('modal-capital-desc').value.trim();
+  const btn    = document.getElementById('modal-capital-btn');
+  const msg    = document.getElementById('modal-merit-msg');
+
+  if (!mc)     { msg.textContent='Jogador não identificado.'; msg.style.color='var(--danger)'; return; }
+  if (!amount) { msg.textContent='Informe o valor.';          msg.style.color='var(--danger)'; return; }
+
+  btn.disabled = true; btn.textContent='…';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/capital`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ player_minecraft_name:mc, amount, type:op, description:desc||'Ajuste de capital' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error||'Erro');
+    msg.style.color = 'var(--success)';
+    const sign = op==='credit'?'+':'-';
+    msg.textContent = `✅ Capital: ${sign}💰${amount} → saldo: 💰${data.new_balance}`;
+    document.getElementById('modal-capital-amount').value = '';
+    document.getElementById('modal-capital-desc').value   = '';
+    const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
+    const curMerit = cu ? (cu.merit_total||0) : 0;
+    if (cu) cu.capital_balance = data.new_balance;
+    renderModalMerit(curMerit, data.new_balance);
+    renderAdminTab();
+  } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
+  finally { btn.disabled=false; btn.textContent='Ajustar'; }
+}
 
 /* ══════════════════════════════════════════
    MÉRITO & CAPITAL — SISTEMA COMPLETO
