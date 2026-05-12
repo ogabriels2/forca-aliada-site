@@ -57,19 +57,21 @@ const defaultCorsOrigins = [
   'http://localhost:5500',
   'http://127.0.0.1:5500',
 ];
+
 const corsOrigins = Array.from(new Set([
   ...defaultCorsOrigins,
   ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
 ]));
 
 app.use(cors({
-origin(origin, cb) {
-if (!origin) return cb(null, true);
-if (corsOrigins.includes(origin)) return cb(null, true);
-return cb(new Error('CORS blocked'));
-},
-methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret'],
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+    // Libera se estiver na lista explícita ou se for um domínio github.io
+    if (corsOrigins.includes(origin) || origin.endsWith('.github.io')) return cb(null, true);
+    return cb(new Error('CORS blocked'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret'],
 }));
 
 app.use(express.json({ limit: '2mb' }));
@@ -1082,17 +1084,12 @@ res.json({ logs: rows, total: total[0].count });
  * GET /api/admin/notes/:minecraft_name
  */
 app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res) => {
-  try {
-    const mc = sanitize(req.params.minecraft_name).toLowerCase();
-    const { rows } = await pool.query(
-      'SELECT * FROM player_notes WHERE LOWER(minecraft_name) = $1 ORDER BY created_at DESC',
-      [mc],
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error('[notes get error]', err);
-    res.status(500).json({ error: 'Erro ao buscar notas' });
-  }
+  const mc = sanitize(req.params.minecraft_name).toLowerCase();
+  const { rows } = await pool.query(
+    'SELECT * FROM player_notes WHERE LOWER(minecraft_name) = $1 ORDER BY created_at DESC',
+    [mc],
+  );
+  res.json(rows);
 });
 
 /**
@@ -1711,10 +1708,13 @@ res.status(500).json({ error: 'internal error' });
 // ─────────────────────────────────────────────
 // Boot
 // ─────────────────────────────────────────────
+const PORT = process.env.PORT || 8787;
 migrate()
 .then(seedAdmin)
+.then(() => {
+  app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
+})
 .catch(e => { console.error('[migrate]', e); process.exit(1); });
 
-app.listen(process.env.PORT || 8787, function () {
-  console.log(`✅  API rodando na porta ${this.address()?.port || process.env.PORT || 8787}`);
-});
+const PORT = process.env.PORT || 8787;
+app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
