@@ -686,7 +686,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   </a>
 
   <div style="display:flex;align-items:center;gap:6px;">
-    <!-- Sino de Notificações -->
     <div class="user-menu-wrapper">
       <button class="notif-btn" id="notif-btn-toggle" onclick="toggleNotifPanel(event)" title="Notificações">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -733,7 +732,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 <main class="main-content">
   <div class="dashboard-layout">
 
-    <!-- ════════════════ SIDEBAR ════════════════ -->
     <aside class="sidebar-profile">
       <div class="card account-summary-card">
         <div class="summary-header">
@@ -754,7 +752,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- Ações Rápidas — visível para todos na Staff -->
         <div class="section-label"><span>Ações Rápidas</span></div>
         <div class="quick-actions" id="quick-actions-section">
           <button class="quick-action-btn" onclick="scrollToSection('server-overview')">
@@ -787,19 +784,15 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
     </aside>
 
-    <!-- ════════════════ CONTEÚDO PRINCIPAL ════════════════ -->
     <div class="dashboard-content">
 
-      <!-- ── Alertas Inteligentes ── -->
       <div id="alerts-card" style="display:none;">
         <div class="alerts-wrapper" id="alerts-wrapper"></div>
       </div>
 
-      <!-- ── Visão Geral do Servidor ── -->
       <div class="card" id="server-overview">
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
 
-        <!-- Mini cards de status -->
         <div class="dashboard-grid">
           <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
           <div class="mini-card"><h4>Jogadores Online</h4><div class="value" id="online-count">-/-</div></div>
@@ -807,7 +800,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <div class="mini-card"><h4>Versão</h4><div class="value" id="server-version" style="font-size:16px;">-</div></div>
         </div>
 
-        <!-- Saúde Detalhada do Servidor -->
         <div class="server-health-grid" id="server-health-grid" style="margin-top:4px;">
           <div class="health-card">
             <div class="h-label">Latência</div>
@@ -831,7 +823,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- Análise de Atividade -->
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
           <h3 style="margin:0;font-size:16px;">Análise de Atividade</h3>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
@@ -850,7 +841,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
               <option value="hour" selected>Por Hora</option>
               <option value="day">Por Dia</option>
             </select>
-            <!-- Exportar dados do gráfico -->
             <button class="btn-export" onclick="exportChartCSV()" title="Exportar dados como CSV">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               CSV
@@ -869,7 +859,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
         <div class="chart-container"><canvas id="activityChart"></canvas></div>
 
-        <!-- Buscar Jogador -->
         <h3 style="margin-top:8px;margin-bottom:8px;font-size:16px;">Buscar Jogador</h3>
         <div class="filter-bar" id="dashboard-filters" style="display:none;">
           <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
@@ -892,7 +881,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </ul>
       </div>
 
-      <!-- ── Estatísticas e Top Jogadores ── -->
       <div class="card" id="stats-card">
         <h3>Estatísticas do Servidor <span id="stats-period-label">Últimos 30 dias</span></h3>
 
@@ -935,13 +923,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-      <!-- ── Contas da Staff ── -->
       <div class="card" id="admin-users-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
           <h3 id="admin-card-title">Contas da Staff</h3>
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="text" id="admin-search" placeholder="Buscar..." oninput="renderAdminTab()" style="width:200px;padding:8px 12px;">
-            <!-- Botão exportar lista (owner only) -->
             <button class="btn-export" id="btn-export-staff" onclick="exportStaffCSV()" style="display:none;" title="Exportar lista da Staff">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar
@@ -954,7 +940,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <button class="admin-tab" id="tab-unregistered" onclick="switchAdminTab('unregistered')">Sem Cadastro <span class="unregistered-badge" id="unreg-count-badge" style="display:none;">0</span></button>
         </div>
 
-        <!-- Rank filter chips (only in registered tab) -->
         <div class="rank-filter-bar" id="rank-filter-bar">
           <button class="rank-chip all active" onclick="setRankFilter('all')">Todos</button>
           <button class="rank-chip ferro"      onclick="setRankFilter('ferro')">🪨 Ferro</button>
@@ -972,7 +957,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 
 
-      <!-- ── Publicações e Notificações (admin/owner) ── -->
       <div class="card" id="admin-notifications-card" style="display:none;">
         <h3>Publicações e Notificações <span>Envie avisos sincronizados para usuários logados</span></h3>
         <form class="admin-notification-form" onsubmit="submitAdminNotification(event)">
@@ -1006,7 +990,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         <div class="admin-notification-list" id="admin-notifications-list"></div>
       </div>
 
-      <!-- ── Logs de Auditoria (owner only) ── -->
       <div class="card" id="audit-card" style="display:none;">
         <h3>Logs de Auditoria <span>Ações recentes no painel</span></h3>
 
@@ -1032,13 +1015,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-    </div><!-- /dashboard-content -->
-
-      <!-- ══ MÉRITO & CAPITAL ══ -->
-      <div class="card" id="merit-card" style="display:none; margin-top:24px;">
+    </div><div class="card" id="merit-card" style="display:none; margin-top:24px;">
         <h3>⭐ Mérito &amp; Capital <span id="merit-card-sub">Gerencie reputação e economia</span></h3>
 
-        <!-- Mini-estatísticas -->
         <div class="merit-stat-mini" id="merit-stats-mini">
           <div class="msm-card"><div class="msm-val" id="mstat-total-merit">—</div><div class="msm-lbl">Mérito distribuído</div></div>
           <div class="msm-card"><div class="msm-val" id="mstat-players">—</div><div class="msm-lbl">Jogadores com mérito</div></div>
@@ -1046,7 +1025,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <div class="msm-card"><div class="msm-val" id="mstat-top-rank">—</div><div class="msm-lbl">Cargo mais alto</div></div>
         </div>
 
-        <!-- Tabs -->
         <div class="merit-tabs">
           <button class="merit-tab active" id="mtab-grant"       onclick="switchMeritTab('grant')">🌟 Conceder Mérito</button>
           <button class="merit-tab"        id="mtab-capital"     onclick="switchMeritTab('capital')">💰 Ajustar Capital</button>
@@ -1054,7 +1032,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <button class="merit-tab"        id="mtab-history"     onclick="switchMeritTab('history')">📜 Histórico</button>
         </div>
 
-        <!-- ── Tab: Conceder Mérito ── -->
         <div id="mpanel-grant">
           <div class="merit-form-grid">
             <div class="merit-input-group" style="grid-column:1/-1;">
@@ -1096,7 +1073,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             </div>
           </div>
 
-          <!-- Preview -->
           <div class="merit-preview" id="mg-preview">
             <div class="merit-preview-row">
               <div class="merit-preview-player">
@@ -1121,7 +1097,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- ── Tab: Ajustar Capital ── -->
         <div id="mpanel-capital" style="display:none;">
           <div class="merit-form-grid">
             <div class="merit-input-group" style="grid-column:1/-1;">
@@ -1154,7 +1129,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- ── Tab: Leaderboard ── -->
         <div id="mpanel-leaderboard" style="display:none;">
           <div class="lb-toolbar">
             <input class="lb-search" id="lb-search" type="text" placeholder="🔍 Buscar jogador…" oninput="filterLeaderboard()">
@@ -1178,7 +1152,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- ── Tab: Histórico ── -->
         <div id="mpanel-history" style="display:none;">
           <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
             <input class="lb-search" id="history-search" type="text" placeholder="🔍 Filtrar por jogador ou motivo…" oninput="filterMeritHistory()" style="flex:1;min-width:180px;">
@@ -1196,9 +1169,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-      </div><!-- /merit-card -->
-  </div><!-- /dashboard-layout -->
-</main>
+      </div></div></main>
 
 <footer>
   <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
@@ -1211,7 +1182,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   </div>
 </footer>
 
-<!-- ═══════════════════ MODAL: PERFIL DO JOGADOR ═══════════════════ -->
 <div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true">
   <div class="modal-content">
     <div class="modal-header">
@@ -1230,7 +1200,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
     <div class="modal-body">
 
-      <!-- Conta existente no painel -->
       <div id="modal-site-account" class="admin-account-card" style="display:none;">
         <div class="admin-account-header">
           <h4 style="margin:0;font-size:15px;">Dados da Conta (Painel)</h4>
@@ -1263,7 +1232,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-      <!-- Criar conta para jogador sem cadastro -->
       <div id="modal-create-account" style="display:none;margin-bottom:24px;">
         <div class="create-account-collapsed" id="create-account-header" onclick="toggleCreateAccount()">
           <div style="display:flex;align-items:center;gap:10px;"><div style="width:28px;height:28px;background:rgba(0,113,227,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div><div><div style="font-size:14px;font-weight:600;color:var(--text-primary);">Jogador sem cadastro</div><div style="font-size:12px;color:var(--text-secondary);margin-top:1px;">Clique para criar uma conta para este jogador</div></div></div>
@@ -1286,11 +1254,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-      <!-- ⭐ Mérito & Capital do Jogador -->
       <div class="modal-merit-section" id="modal-merit-section" style="display:none;">
         <h4>⭐ Mérito &amp; Capital</h4>
 
-        <!-- Rank hero -->
         <div class="modal-rank-hero">
           <div class="modal-rank-icon" id="modal-rank-icon">🪨</div>
           <div class="modal-rank-details">
@@ -1306,7 +1272,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- Capital -->
         <div class="modal-capital-row">
           <div>
             <div class="modal-capital-val" id="modal-capital-val">0 💰</div>
@@ -1318,7 +1283,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <!-- Admin controls -->
         <div class="modal-merit-controls" id="modal-merit-controls">
           <h5>Ajuste Rápido de Mérito</h5>
           <div class="modal-ctrl-row">
@@ -1356,7 +1320,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-      <!-- Notas Internas sobre o Jogador -->
       <div class="player-notes-panel" id="player-notes-panel">
         <div class="pn-header">
           <h4>📝 Notas Internas</h4>
@@ -1369,10 +1332,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-      <!-- Stats de sessões -->
       <div class="stats-grid" id="stats-grid"></div>
 
-      <!-- Histórico detalhado -->
       <div class="history-tools">
         <h3>Histórico Detalhado</h3>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -1385,11 +1346,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
       <div id="modal-table-wrapper"></div>
 
-    </div><!-- /modal-body -->
-  </div>
+    </div></div>
 </div>
 
-<!-- ═══════════════════ MODAL: CONFIRMAÇÃO DE SENHA ═══════════════════ -->
 <div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
   <div class="confirm-pw-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-pw-title">
     <div class="confirm-pw-icon" id="confirm-pw-icon">🔒</div>
@@ -1407,12 +1366,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   </div>
 </div>
 
-<!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
-<!-- ═══════════════════════════════════════════════
-     SCRIPT PRINCIPAL
-═══════════════════════════════════════════════ -->
 <script>
 const SERVER_IP   = 'fa.ogabriels.com';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
@@ -1524,7 +1479,7 @@ function initDashboard() {
     document.getElementById('qa-merit').style.display = 'flex';
     // Cache admin users for autocomplete once they're loaded
     setTimeout(()=>{
-      if(window.allUsers) meritPlayerCache = window.allUsers
+      if(globalAdminUsers.length) meritPlayerCache = globalAdminUsers
         .filter(u=>u.minecraft_name)
         .map(u=>({
           minecraft_name:u.minecraft_name,
@@ -2654,7 +2609,7 @@ async function submitCreateAccount() {
       document.getElementById('av-role').textContent     = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
       document.getElementById('ai-username').value       = newAcc.username;
       document.getElementById('ai-email').value         = newAcc.email;
-      document.getElementById('ai-mc').value            = newAcc.minecraft_name || '';
+      document.getElementById('ai-mc').value             = newAcc.minecraft_name || '';
       document.getElementById('ai-role').value          = newAcc.role;
       document.getElementById('ai-newpassword').value   = '';
     }
@@ -2759,7 +2714,7 @@ function renderRegisteredList() {
   const getRankDef = m => RANK_DEFS.find(r=>m>=r.min&&m<=r.max)||RANK_DEFS[0];
 
   const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
-  const list   = document.getElementById('admin-users-list');\
+  const list   = document.getElementById('admin-users-list');
   let filtered = globalAdminUsers.filter(u =>
     u.username.toLowerCase().includes(term) ||
     u.email.toLowerCase().includes(term) ||
@@ -2944,7 +2899,7 @@ async function submitModalMerit() {
     const res = await fetch(`${API_BASE}/api/admin/merit`, {
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-      body: JSON.stringify({ player_minecraft_name:mc, amount, type:op, category:cat, reason })
+      body: JSON.stringify({ minecraft_name:mc, amount, type:op, category:cat, reason })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error||'Erro');
@@ -2978,7 +2933,7 @@ async function submitModalCapital() {
     const res = await fetch(`${API_BASE}/api/admin/capital`, {
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-      body: JSON.stringify({ player_minecraft_name:mc, amount, type:op, description:desc||'Ajuste de capital' })
+      body: JSON.stringify({ minecraft_name:mc, amount, type:op, description:desc||'Ajuste de capital' })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error||'Erro');
@@ -3021,8 +2976,8 @@ function initMeritSystem() {
   loadLeaderboard();
   loadMeritHistory();
   // Populate player cache from already-fetched admin users
-  if (window.allUsers && window.allUsers.length) {
-    meritPlayerCache = window.allUsers.map(u=>({
+  if (globalAdminUsers && globalAdminUsers.length) {
+    meritPlayerCache = globalAdminUsers.map(u=>({
       minecraft_name: u.minecraft_name||u.username,
       display: u.minecraft_name ? `${u.minecraft_name} (${u.username})` : u.username,
       merit_total: u.merit_total||0,
@@ -3097,288 +3052,4 @@ function renderLeaderboard(filter='') {
     const capital = p.capital_balance ?? p.capital ?? null;
     const rank    = getRank(merit);
     const podium  = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/60.png` : `https://minotar.net/helm/Steve/60.png`;
-    const capStr  = capital !== null ? `💰 ${Number(capital).toLocaleString('pt-BR')}` : '—';
-    return `<tr>
-      <td class="lb-pos">${podium||'<span style="color:var(--text-secondary)">'+(i+1)+'</span>'}</td>
-      <td><div class="lb-player">
-        <img src="${skin}" onerror="this.src='https://minotar.net/helm/Steve/60.png'" alt="">
-        <span class="lbname">${p.minecraft_name||'—'}</span>
-      </div></td>
-      <td><span class="lb-rank-badge ${rank.key}">${rank.label}</span></td>
-      <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐</td>
-      <td class="lb-capital">${capStr}</td>
-    </tr>`;
-  }).join('');
-}
-
-function filterLeaderboard() {
-  renderLeaderboard(document.getElementById('lb-search').value);
-}
-
-function exportLeaderboardCSV() {
-  const rows = [['#','Nick','Cargo','Merit','Capital']];
-  leaderboardData.forEach((p,i)=>{
-    const rank = getRank(p.merit_total||0);
-    rows.push([i+1, p.minecraft_name||'', rank.label, p.merit_total||0, p.capital_balance||0]);
-  });
-  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `fa_leaderboard_${new Date().toISOString().slice(0,10)}.csv`; a.click();
-}
-
-/* ── History ── */
-async function loadMeritHistory() {
-  try {
-    const [meritRes, capRes] = await Promise.all([
-      fetch(`${API_BASE}/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
-      fetch(`${API_BASE}/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
-    ]);
-    const meritData = meritRes.ok ? await meritRes.json() : { records:[] };
-    const meritRecords = (meritData.records||meritData||[]).map(r=>({...r,_type:'merit'}));
-
-    let capRecords = [];
-    if(capRes && capRes.ok) {
-      const capData = await capRes.json();
-      capRecords = (capData.records||capData||[]).map(r=>({...r,_type:'capital'}));
-    }
-
-    meritHistoryData = [...meritRecords, ...capRecords]
-      .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-
-    document.getElementById('mstat-today').textContent =
-      meritHistoryData.filter(r=>r.created_at&&r.created_at.slice(0,10)===new Date().toISOString().slice(0,10)).length;
-
-    renderMeritHistory();
-  } catch(e) { console.warn('History error',e); }
-}
-
-function renderMeritHistory(filter='', typeFilter='all') {
-  const list   = document.getElementById('merit-history-list');
-  const fl     = filter.toLowerCase();
-  const tf     = typeFilter;
-  const filtered = meritHistoryData.filter(r=>{
-    if(tf==='merit'   && r._type!=='merit')   return false;
-    if(tf==='capital' && r._type!=='capital') return false;
-    if(fl && !(
-      (r.player_minecraft_name||'').toLowerCase().includes(fl) ||
-      (r.reason||r.description||'').toLowerCase().includes(fl)
-    )) return false;
-    return true;
-  });
-
-  const page = meritHistoryPage;
-  const shown = filtered.slice(0, (page+1)*HISTORY_PAGE_SIZE);
-  const hasMore = shown.length < filtered.length;
-
-  if(!shown.length) {
-    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary);">Nenhuma transação encontrada.</div>`;
-    document.getElementById('merit-history-more').style.display = 'none';
-    return;
-  }
-
-  list.innerHTML = shown.map(r=>{
-    const isMerit   = r._type==='merit';
-    const isCredit  = r.type==='credit'||(r.amount>0 && !r.type);
-    const dotClass  = isMerit ? (isCredit?'credit':'debit') : 'capital';
-    const amtClass  = isMerit ? (isCredit?'pos':'neg') : 'capital-amt';
-    const amtSign   = isMerit ? (isCredit?'+':'-') : (r.type==='credit'?'+':'-');
-    const amtLabel  = isMerit ? `${amtSign}${Math.abs(r.amount)} ⭐` : `${amtSign}💰 ${Math.abs(r.amount).toLocaleString('pt-BR')}`;
-    const reason    = r.reason||r.description||'Sem descrição';
-    const awardedBy = r.awarded_by_username||r.created_by_username||'Sistema';
-    const timeStr   = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
-    return `<div class="merit-tx-item">
-      <div class="merit-tx-dot ${dotClass}"></div>
-      <div class="merit-tx-body">
-        <div class="merit-tx-title">${r.player_minecraft_name||'—'} ${isMerit?'— Mérito':'— Capital'}</div>
-        <div class="merit-tx-sub">${reason} · por ${awardedBy}</div>
-      </div>
-      <div class="merit-tx-amount ${amtClass}">${amtLabel}</div>
-      <div class="merit-tx-time">${timeStr}</div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('merit-history-more').style.display = hasMore ? 'block' : 'none';
-}
-
-function filterMeritHistory() {
-  meritHistoryPage = 0;
-  renderMeritHistory(
-    document.getElementById('history-search').value,
-    document.getElementById('history-type-filter').value
-  );
-}
-
-function loadMoreMeritHistory() {
-  meritHistoryPage++;
-  renderMeritHistory(
-    document.getElementById('history-search').value,
-    document.getElementById('history-type-filter').value
-  );
-}
-
-/* ── Player Autocomplete ── */
-function meritPlayerSearch(input, prefix) {
-  const q   = input.value.trim().toLowerCase();
-  const ac  = document.getElementById(`${prefix}-ac`);
-  meritSelectedPlayers[prefix] = null;
-  if(prefix==='mg') updateMeritPreview('mg');
-
-  if(!q || q.length < 1) { ac.classList.remove('open'); return; }
-
-  // Try from cache first
-  const results = meritPlayerCache.filter(p=>
-    (p.minecraft_name||'').toLowerCase().includes(q) ||
-    (p.display||'').toLowerCase().includes(q)
-  ).slice(0,6);
-
-  if(!results.length) {
-    // Fallback: try from leaderboard
-    const lb = leaderboardData.filter(p=>(p.minecraft_name||'').toLowerCase().includes(q)).slice(0,6);
-    if(lb.length) {
-      renderAC(ac, lb.map(p=>({
-        minecraft_name:p.minecraft_name,
-        display:p.minecraft_name,
-        merit_total:p.merit_total||0,
-        capital_balance:p.capital_balance||0,
-      })), prefix, input);
-    } else {
-      ac.innerHTML = `<div class="merit-ac-item" style="color:var(--text-secondary);">Nenhum jogador encontrado</div>`;
-      ac.classList.add('open');
-    }
-    return;
-  }
-  renderAC(ac, results, prefix, input);
-}
-
-function renderAC(ac, results, prefix, input) {
-  const rank_fn = p => getRank(p.merit_total||0);
-  ac.innerHTML = results.map((p,i)=>`
-    <div class="merit-ac-item" onclick="selectMeritPlayer('${prefix}','${p.minecraft_name}',${p.merit_total||0},${p.capital_balance||0})">
-      <img src="https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/56.png" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
-      <div>
-        <div class="ac-name">${p.minecraft_name}</div>
-        <div class="ac-rank">${rank_fn(p).label} · ${(p.merit_total||0)} ⭐</div>
-      </div>
-    </div>`).join('');
-  ac.classList.add('open');
-  // Close on outside click
-  setTimeout(()=>{ document.addEventListener('click', ()=>ac.classList.remove('open'), {once:true}); }, 0);
-}
-
-function selectMeritPlayer(prefix, name, merit, capital) {
-  document.getElementById(`${prefix}-player`).value = name;
-  document.getElementById(`${prefix}-ac`).classList.remove('open');
-  meritSelectedPlayers[prefix] = { minecraft_name:name, merit_total:merit, capital_balance:capital };
-  if(prefix==='mg') updateMeritPreview('mg');
-}
-
-/* ── Merit Preview ── */
-function updateMeritPreview(prefix) {
-  const preview = document.getElementById('mg-preview');
-  const player  = meritSelectedPlayers.mg;
-  const amount  = parseInt(document.getElementById('mg-amount').value)||0;
-  const op      = document.getElementById('mg-op').value;
-
-  if(!player || !amount) { preview.classList.remove('visible'); return; }
-
-  const currentMerit = player.merit_total||0;
-  const newMerit     = Math.max(0, op==='credit' ? currentMerit+amount : currentMerit-amount);
-  const rankBefore   = getRank(currentMerit);
-  const rankAfter    = getRank(newMerit);
-  const promoted     = rankAfter.min > rankBefore.min;
-  const demoted      = rankAfter.min < rankBefore.min;
-
-  document.getElementById('mg-preview-skin').src = `https://minotar.net/helm/${encodeURIComponent(player.minecraft_name)}/80.png`;
-  document.getElementById('mg-preview-name').textContent = player.minecraft_name;
-  document.getElementById('mg-preview-rank').textContent = `${rankBefore.label} · ${currentMerit} ⭐`;
-  document.getElementById('mg-from').textContent = `${currentMerit} ⭐`;
-  document.getElementById('mg-to').textContent   = `${newMerit} ⭐`;
-
-  const badge = document.getElementById('mg-badge');
-  if(promoted)      { badge.textContent='↑ Promoção!'; badge.className='promo-badge up'; }
-  else if(demoted)  { badge.textContent='↓ Rebaixamento'; badge.className='promo-badge down'; }
-  else              { badge.textContent='Sem mudança de cargo'; badge.className='promo-badge same'; }
-
-  preview.classList.add('visible');
-}
-
-/* ── Submit Grant Merit ── */
-async function submitGrantMerit() {
-  const player   = document.getElementById('mg-player').value.trim();
-  const amount   = parseInt(document.getElementById('mg-amount').value)||0;
-  const op       = document.getElementById('mg-op').value;
-  const category = document.getElementById('mg-category').value;
-  const reason   = document.getElementById('mg-reason').value.trim();
-  const btn      = document.getElementById('mg-btn');
-  const msg      = document.getElementById('mg-msg');
-
-  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
-  if(!amount||amount<1) { msg.textContent='Informe uma quantidade válida.'; msg.style.color='var(--danger)'; return; }
-  if(!reason) { msg.textContent='O motivo é obrigatório.'; msg.style.color='var(--danger)'; return; }
-
-  btn.disabled=true; btn.textContent='Registrando…';
-  try {
-    const res = await fetch(`${API_BASE}/api/admin/merit`, {
-      method:'POST',
-      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-      body: JSON.stringify({ player_minecraft_name:player, amount, type:op, category, reason })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error||'Erro ao registrar mérito.');
-
-    msg.textContent = `✅ Mérito registrado! ${player} agora tem ${data.new_total} ⭐ (${data.new_rank})`;
-    msg.style.color = 'var(--success)';
-    // Reset
-    document.getElementById('mg-amount').value = '';
-    document.getElementById('mg-reason').value = '';
-    document.getElementById('mg-preview').classList.remove('visible');
-    meritSelectedPlayers.mg = null;
-    // Refresh data
-    loadMeritStats(); loadLeaderboard(); loadMeritHistory();
-  } catch(e) {
-    msg.textContent = e.message; msg.style.color='var(--danger)';
-  } finally {
-    btn.disabled=false; btn.textContent='Registrar Mérito';
-  }
-}
-
-/* ── Submit Adjust Capital ── */
-async function submitAdjustCapital() {
-  const player = document.getElementById('cap-player').value.trim();
-  const op     = document.getElementById('cap-op').value;
-  const amount = parseInt(document.getElementById('cap-amount').value)||0;
-  const desc   = document.getElementById('cap-desc').value.trim();
-  const btn    = document.getElementById('cap-btn');
-  const msg    = document.getElementById('cap-msg');
-
-  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
-  if(!amount||amount<1) { msg.textContent='Informe um valor válido.'; msg.style.color='var(--danger)'; return; }
-
-  btn.disabled=true; btn.textContent='Ajustando…';
-  try {
-    const res = await fetch(`${API_BASE}/api/admin/capital`, {
-      method:'POST',
-      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-      body: JSON.stringify({ player_minecraft_name:player, amount, type:op, description:desc||'Ajuste de capital' })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error||'Erro ao ajustar capital.');
-
-    const sign = op==='credit'?'+':'-';
-    msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${data.new_balance}`;
-    msg.style.color = 'var(--success)';
-    document.getElementById('cap-amount').value = '';
-    document.getElementById('cap-desc').value = '';
-    meritSelectedPlayers.cap = null;
-    loadMeritStats(); loadMeritHistory();
-  } catch(e) {
-    msg.textContent = e.message; msg.style.color='var(--danger)';
-  } finally {
-    btn.disabled=false; btn.textContent='Ajustar Capital';
-  }
-}
-</script>
-</body>
-</html>
+    const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_
