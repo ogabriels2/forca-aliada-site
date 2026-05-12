@@ -10,7 +10,7 @@
   const token = localStorage.getItem('fa_token');
   // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                   ? 'http://localhost:8787' 
+                   ? 'http://localhost:3000' 
                    : 'https://forca-aliada-site.onrender.com';
 
   function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
@@ -1388,16 +1388,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 <script>
 const SERVER_IP   = 'fa.ogabriels.com';
-const PROD_API_BASE = 'https://forca-aliada-site.onrender.com';
-let API_BASE = localStorage.getItem('fa_api_base') || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:8787'
-  : PROD_API_BASE);
-const API_FALLBACKS = Array.from(new Set([
-  API_BASE,
-  window.location.origin && window.location.origin !== 'null' ? window.location.origin : null,
-  'http://localhost:8787',
-  PROD_API_BASE,
-].filter(Boolean).map(base => base.replace(/\/$/, ''))));
+const API_BASE    = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
@@ -1637,7 +1630,7 @@ async function loadNotifications() {
     if (!res.ok) throw new Error('Falha ao buscar notificações');
     notifList = (await res.json()).map(normalizeNotification);
 
-    const countRes = await apiFetch(`/api/notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const countRes = await fetch(`${API_BASE}/api/notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!countRes.ok) throw new Error('Falha ao buscar contagem de notificações');
     const countData = await countRes.json();
     notifUnread = countData.count;
@@ -2032,7 +2025,7 @@ function renderAuditLogs(append = false) {
 
 // ══ Notas de jogador no modal (compartilhadas via backend) ══
 async function fetchPlayerNotes(playerName) {
-  const res = await apiFetch(`/api/admin/notes/${encodeURIComponent(playerName)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+  const res = await fetch(`${API_BASE}/api/admin/notes/${encodeURIComponent(playerName)}`, { headers: { 'Authorization': `Bearer ${token}` } });
   if (!res.ok) throw new Error('Falha ao carregar notas');
   return res.json();
 }
@@ -2067,7 +2060,7 @@ async function addPlayerNote() {
   const text = ta.value.trim();
   if (!text || !currentModalPlayerName) return;
   try {
-    const res = await apiFetch(`/api/admin/notes`, {
+    const res = await fetch(`${API_BASE}/api/admin/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ minecraft_name: currentModalPlayerName, text })
@@ -2084,7 +2077,7 @@ async function addPlayerNote() {
 
 async function deletePlayerNote(playerName, noteId) {
   try {
-    const res = await apiFetch(`/api/admin/notes/${encodeURIComponent(noteId)}`, {
+    const res = await fetch(`${API_BASE}/api/admin/notes/${encodeURIComponent(noteId)}`, {
       method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Falha ao excluir nota');
