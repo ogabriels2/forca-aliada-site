@@ -239,6 +239,43 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'auto';
 
+-- ── Capital e Mérito: saldos por jogador ─────────────────
+CREATE TABLE IF NOT EXISTS player_balances (
+  minecraft_name  VARCHAR(255) PRIMARY KEY,
+  merit_total     INTEGER      NOT NULL DEFAULT 0,
+  capital_balance FLOAT        NOT NULL DEFAULT 0,
+  rank            VARCHAR(50)  NOT NULL DEFAULT 'ferro',
+  updated_at      TIMESTAMPTZ  DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_balances_merit ON player_balances(merit_total DESC);
+
+-- ── Registros de Mérito (log imutável) ────────────────────
+CREATE TABLE IF NOT EXISTS merit_records (
+  id              SERIAL PRIMARY KEY,
+  minecraft_name  VARCHAR(255) NOT NULL,
+  amount          INTEGER      NOT NULL,
+  reason          TEXT         NOT NULL,
+  category        VARCHAR(50)  NOT NULL DEFAULT 'outros',
+  awarded_by_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  awarded_by_name VARCHAR(255),
+  created_at      TIMESTAMPTZ  DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_merit_mc      ON merit_records(LOWER(minecraft_name));
+CREATE INDEX IF NOT EXISTS idx_merit_created ON merit_records(created_at DESC);
+
+-- ── Registros de Capital (log imutável) ───────────────────
+CREATE TABLE IF NOT EXISTS capital_records (
+  id              SERIAL PRIMARY KEY,
+  minecraft_name  VARCHAR(255) NOT NULL,
+  amount          FLOAT        NOT NULL,
+  type            VARCHAR(50)  NOT NULL DEFAULT 'ajuste',
+  description     TEXT         NOT NULL,
+  created_by_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_by_name VARCHAR(255),
+  created_at      TIMESTAMPTZ  DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_capital_mc ON capital_records(LOWER(minecraft_name));
+
 `);
 }
 
@@ -1136,6 +1173,333 @@ message: `Conta deletada por admin: ${rows[0].username}`,
 
 await pool.query('DELETE FROM users WHERE id=$1', [id]);
 res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────
+// SISTEMA DE CAPITAL E MÉRITO
+// ─────────────────────────────────────────────
+
+// Mapeamento de cargos por Mérito
+const RANKS = [
+  { id: 'ferro',     label: 'Ferro',     icon: '🪨', minMerit: 0,    maxMerit: 149,  color: '#8E8E93' },
+  { id: 'ouro',      label: 'Ouro',      icon: '🟡', minMerit: 150,  maxMerit: 499,  color: '#FF9F0A' },
+  { id: 'diamante',  label: 'Diamante',  icon: '🟢', minMerit: 500,  maxMerit: 999,  color: '#30D158' },
+  { id: 'netherite', label: 'Netherite', icon: '⚫', minMerit: 1000, maxMerit: null, color: '#AF52DE' },
+];
+const ADM_RANK = { id: 'adm', label: 'Administrador', icon: '👑', minMerit: null, maxMerit: null, color: '#0071E3' };
+
+function getRankByMerit(merit) {
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (merit >= RANKS[i].minMerit) return RANKS[i];
+  }
+  return RANKS[0];
+}
+
+function getRankById(id) {
+  if (id === 'adm') return ADM_RANK;
+  return RANKS.find(r => r.id === id) || RANKS[0];
+}
+
+const RANK_BENEFITS = {
+  ferro:     ['Cargo inicial', 'Limite de saque: 64 💰 (1 pack)', 'Acesso padrão ao servidor'],
+  ouro:      ['Participação em votações', 'Limite de saque: 128 💰 (2 packs)', 'Menor taxa de juros em empréstimos', 'Acesso à playlist musical no Discord'],
+  diamante:  ['Participação em votações', 'Limite de saque: 192 💰 (3 packs)', 'Taxa de juros reduzida', 'Publicação na wiki do servidor'],
+  netherite: ['Participação em votações', 'Limite de saque: 320 💰 (5 packs)', 'Taxa de juros mínima', 'Publicação na wiki do servidor', 'Cartão Netherite no Banco'],
+  adm:       ['Cargo administrativo', 'Independente do sistema de Mérito', 'Acesso total ao painel'],
+};
+
+// Recalcula e persiste o rank de um jogador dado o total de mérito
+async function recalcRank(mcName, meritTotal) {
+  const rank = getRankByMerit(meritTotal);
+  await pool.query(`
+    INSERT INTO player_balances(minecraft_name, merit_total, rank, updated_at)
+    VALUES($1, $2, $3, NOW())
+    ON CONFLICT(minecraft_name) DO UPDATE SET
+      merit_total = $2, rank = $3, updated_at = NOW()
+  `, [mcName.toLowerCase(), meritTotal, rank.id]);
+  return rank;
+}
+
+// Garante que um jogador tem registro em player_balances
+async function ensureBalance(mcName) {
+  const mc = mcName.toLowerCase();
+  await pool.query(`
+    INSERT INTO player_balances(minecraft_name, merit_total, capital_balance, rank)
+    VALUES($1, 0, 0, 'ferro')
+    ON CONFLICT(minecraft_name) DO NOTHING
+  `, [mc]);
+  const { rows } = await pool.query('SELECT * FROM player_balances WHERE minecraft_name=$1', [mc]);
+  return rows[0];
+}
+
+// ── GET /api/me/merit ─────────────────────────────────────
+// Retorna saldo de Mérito, cargo e histórico do jogador logado
+app.get('/api/me/merit', auth, async (req, res) => {
+  if (!req.user.minecraft_name)
+    return res.json({ merit: 0, rank: RANKS[0], nextRank: RANKS[1], progress: 0, records: [] });
+
+  const mc = req.user.minecraft_name.toLowerCase();
+  const balance = await ensureBalance(mc);
+
+  const { rows: records } = await pool.query(
+    'SELECT id, amount, reason, category, awarded_by_name, created_at FROM merit_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 100',
+    [mc]
+  );
+
+  const merit = balance.merit_total;
+  const rank = getRankByMerit(merit);
+  const nextRankIdx = RANKS.findIndex(r => r.id === rank.id) + 1;
+  const nextRank = nextRankIdx < RANKS.length ? RANKS[nextRankIdx] : null;
+  const progress = nextRank
+    ? Math.round(((merit - rank.minMerit) / (nextRank.minMerit - rank.minMerit)) * 100)
+    : 100;
+
+  res.json({
+    merit,
+    rank: { ...rank, benefits: RANK_BENEFITS[rank.id] || [] },
+    nextRank: nextRank ? { ...nextRank, benefits: RANK_BENEFITS[nextRank.id] || [] } : null,
+    progress,
+    records,
+  });
+});
+
+// ── GET /api/me/capital ───────────────────────────────────
+app.get('/api/me/capital', auth, async (req, res) => {
+  if (!req.user.minecraft_name)
+    return res.json({ capital: 0, records: [] });
+
+  const mc = req.user.minecraft_name.toLowerCase();
+  const balance = await ensureBalance(mc);
+
+  const { rows: records } = await pool.query(
+    'SELECT id, amount, type, description, created_by_name, created_at FROM capital_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 100',
+    [mc]
+  );
+
+  res.json({ capital: balance.capital_balance, records });
+});
+
+// ── GET /api/me/rank-info ─────────────────────────────────
+// Retorna cargo atual, progresso e todos os ranks (para UI)
+app.get('/api/me/rank-info', auth, async (req, res) => {
+  const mc = req.user.minecraft_name?.toLowerCase();
+  let merit = 0;
+  let rankId = 'ferro';
+  
+  // Se for staff, usa o rank administrativo
+  if (['owner', 'full'].includes(req.user.role)) {
+    return res.json({
+      merit: null,
+      rank: { ...ADM_RANK, benefits: RANK_BENEFITS.adm },
+      nextRank: null,
+      progress: 100,
+      isAdm: true,
+      allRanks: [...RANKS, ADM_RANK],
+    });
+  }
+
+  if (mc) {
+    const balance = await ensureBalance(mc);
+    merit = balance.merit_total;
+    rankId = balance.rank;
+  }
+
+  const rank = getRankByMerit(merit);
+  const nextRankIdx = RANKS.findIndex(r => r.id === rank.id) + 1;
+  const nextRank = nextRankIdx < RANKS.length ? RANKS[nextRankIdx] : null;
+  const progress = nextRank
+    ? Math.round(((merit - rank.minMerit) / (nextRank.minMerit - rank.minMerit)) * 100)
+    : 100;
+
+  res.json({
+    merit,
+    rank: { ...rank, benefits: RANK_BENEFITS[rank.id] || [] },
+    nextRank: nextRank ? { ...nextRank, benefits: RANK_BENEFITS[nextRank.id] || [] } : null,
+    progress,
+    isAdm: false,
+    allRanks: RANKS,
+  });
+});
+
+// ── GET /api/leaderboard ──────────────────────────────────
+// Ranking público por Mérito
+app.get('/api/leaderboard', async (req, res) => {
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || 20)));
+  const { rows } = await pool.query(`
+    SELECT pb.minecraft_name, pb.merit_total, pb.rank, pb.capital_balance
+    FROM player_balances pb
+    WHERE pb.merit_total > 0
+    ORDER BY pb.merit_total DESC
+    LIMIT $1
+  `, [limit]);
+
+  res.json(rows.map((r, i) => ({
+    position: i + 1,
+    minecraft_name: r.minecraft_name,
+    merit: r.merit_total,
+    rank: getRankById(r.rank),
+    capital: r.capital_balance,
+  })));
+});
+
+// ── GET /api/player/:name/merit ───────────────────────────
+app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
+  const mc = req.params.name.toLowerCase();
+  const balance = await ensureBalance(mc);
+
+  const { rows: records } = await pool.query(
+    'SELECT id, amount, reason, category, awarded_by_name, created_at FROM merit_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 200',
+    [mc]
+  );
+
+  const merit = balance.merit_total;
+  const rank = getRankByMerit(merit);
+  const nextRankIdx = RANKS.findIndex(r => r.id === rank.id) + 1;
+  const nextRank = nextRankIdx < RANKS.length ? RANKS[nextRankIdx] : null;
+  const progress = nextRank
+    ? Math.round(((merit - rank.minMerit) / (nextRank.minMerit - rank.minMerit)) * 100)
+    : 100;
+
+  res.json({
+    merit, rank, nextRank, progress,
+    capital: balance.capital_balance,
+    records,
+  });
+});
+
+// ── POST /api/admin/merit ─────────────────────────────────
+// Concede ou remove Mérito de um jogador
+app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
+  const mc       = sanitize(req.body?.minecraft_name).toLowerCase();
+  const amount   = parseInt(req.body?.amount);
+  const reason   = sanitize(req.body?.reason);
+  const category = ['doacao', 'servico', 'evento', 'construcao', 'habito', 'penalidade', 'outros'].includes(req.body?.category)
+    ? req.body.category : 'outros';
+
+  if (!mc || isNaN(amount) || amount === 0 || !reason)
+    return res.status(400).json({ error: 'Dados inválidos: minecraft_name, amount (≠0) e reason são obrigatórios.' });
+
+  if (Math.abs(amount) > 500)
+    return res.status(400).json({ error: 'Limite de ±500 Mérito por transação.' });
+
+  // Garante registro e busca saldo atual
+  await ensureBalance(mc);
+  const { rows: cur } = await pool.query('SELECT merit_total FROM player_balances WHERE minecraft_name=$1', [mc]);
+  const currentMerit = cur[0]?.merit_total || 0;
+  const newMerit = Math.max(0, currentMerit + amount);
+
+  // Registra a transação
+  await pool.query(
+    'INSERT INTO merit_records(minecraft_name, amount, reason, category, awarded_by_id, awarded_by_name) VALUES($1,$2,$3,$4,$5,$6)',
+    [mc, amount, reason, category, req.user.sub, req.user.username]
+  );
+
+  // Atualiza saldo e recalcula rank
+  const newRank = await recalcRank(mc, newMerit);
+
+  await audit({
+    actorId: req.user.sub, actorName: req.user.username,
+    type: 'update', targetName: mc,
+    message: `Mérito ${amount > 0 ? '+' : ''}${amount} para ${mc}: "${reason}" (cat: ${category}). Total: ${newMerit}. Cargo: ${newRank.label}`,
+    metadata: { mc, amount, reason, category, newMerit, newRank: newRank.id },
+  });
+
+  res.json({ ok: true, newMerit, rank: { ...newRank, benefits: RANK_BENEFITS[newRank.id] || [] }, prevMerit: currentMerit });
+});
+
+// ── POST /api/admin/capital ───────────────────────────────
+// Ajusta Capital de um jogador
+app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
+  const mc          = sanitize(req.body?.minecraft_name).toLowerCase();
+  const amount      = parseFloat(req.body?.amount);
+  const type        = ['credito', 'debito', 'rendimento', 'emprestimo', 'penalidade', 'ajuste'].includes(req.body?.type)
+    ? req.body.type : 'ajuste';
+  const description = sanitize(req.body?.description);
+
+  if (!mc || isNaN(amount) || amount === 0 || !description)
+    return res.status(400).json({ error: 'Dados inválidos.' });
+
+  await ensureBalance(mc);
+  const { rows: cur } = await pool.query('SELECT capital_balance FROM player_balances WHERE minecraft_name=$1', [mc]);
+  const currentCapital = cur[0]?.capital_balance || 0;
+  const newCapital = Math.max(0, currentCapital + amount);
+
+  // Registra transação
+  await pool.query(
+    'INSERT INTO capital_records(minecraft_name, amount, type, description, created_by_id, created_by_name) VALUES($1,$2,$3,$4,$5,$6)',
+    [mc, amount, type, description, req.user.sub, req.user.username]
+  );
+
+  // Atualiza saldo
+  await pool.query(
+    'UPDATE player_balances SET capital_balance=$1, updated_at=NOW() WHERE minecraft_name=$2',
+    [newCapital, mc]
+  );
+
+  await audit({
+    actorId: req.user.sub, actorName: req.user.username,
+    type: 'update', targetName: mc,
+    message: `Capital ${amount > 0 ? '+' : ''}${amount} para ${mc}: "${description}" (tipo: ${type}). Saldo: ${newCapital}`,
+    metadata: { mc, amount, type, description, newCapital },
+  });
+
+  res.json({ ok: true, newCapital, prevCapital: currentCapital });
+});
+
+// ── GET /api/admin/merit-records ──────────────────────────
+// Histórico completo de Mérito (admin)
+app.get('/api/admin/merit-records', auth, requireAdmin, async (req, res) => {
+  const page  = Math.max(0, parseInt(req.query.page || 0));
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || 50)));
+  const mc    = req.query.mc ? sanitize(req.query.mc).toLowerCase() : null;
+
+  const where  = mc ? 'WHERE LOWER(minecraft_name)=$1' : '';
+  const params = mc ? [mc, limit, page * limit] : [limit, page * limit];
+
+  const { rows } = await pool.query(
+    `SELECT * FROM merit_records ${where} ORDER BY created_at DESC LIMIT $${mc ? 2 : 1} OFFSET $${mc ? 3 : 2}`,
+    params
+  );
+  res.json(rows);
+});
+
+// ── GET /api/admin/leaderboard ────────────────────────────
+app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT pb.*, 
+      (SELECT COUNT(*) FROM merit_records mr WHERE LOWER(mr.minecraft_name) = pb.minecraft_name) AS total_transactions
+    FROM player_balances pb
+    ORDER BY pb.merit_total DESC
+    LIMIT 100
+  `);
+
+  res.json(rows.map((r, i) => ({
+    position: i + 1,
+    minecraft_name: r.minecraft_name,
+    merit: r.merit_total,
+    capital: r.capital_balance,
+    rank: getRankById(r.rank),
+    total_transactions: r.total_transactions,
+    updated_at: r.updated_at,
+  })));
+});
+
+// ── GET /api/admin/players-with-balances ─────────────────
+// Lista jogadores com saldo (para autocomplete no admin)
+app.get('/api/admin/players-with-balances', auth, requireAdmin, async (req, res) => {
+  const q = req.query.q ? `%${sanitize(req.query.q).toLowerCase()}%` : '%';
+  const { rows } = await pool.query(`
+    SELECT ps.player AS minecraft_name,
+      COALESCE(pb.merit_total, 0)     AS merit_total,
+      COALESCE(pb.capital_balance, 0) AS capital_balance,
+      COALESCE(pb.rank, 'ferro')      AS rank
+    FROM (SELECT DISTINCT player FROM player_sessions) ps
+    LEFT JOIN player_balances pb ON pb.minecraft_name = LOWER(ps.player)
+    WHERE LOWER(ps.player) LIKE $1
+    ORDER BY COALESCE(pb.merit_total, 0) DESC
+    LIMIT 30
+  `, [q]);
+  res.json(rows);
 });
 
 // ─────────────────────────────────────────────

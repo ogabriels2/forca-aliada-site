@@ -560,6 +560,251 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
 [data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
 
+/* ── RANK RING no avatar ──────────────────────────────── */
+.rank-ring-avatar {
+  position: relative;
+  display: inline-block;
+}
+.rank-ring-avatar img {
+  display: block;
+  width: 80px; height: 80px;
+  border-radius: 20px;
+  object-fit: cover;
+  border: 3px solid var(--rank-ring-color, #8E8E93);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 0 16px var(--rank-ring-color, #8E8E93), 0 4px 16px rgba(0,0,0,0.15);
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+.rank-ring-badge {
+  position: absolute;
+  bottom: -8px; right: -8px;
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  color: var(--rank-ring-color, #8E8E93);
+}
+
+/* Nav ring nos header avatars */
+#nav-photo, #drop-photo {
+  border: 2px solid var(--rank-ring-color, transparent);
+  box-shadow: 0 0 8px var(--rank-ring-color, transparent);
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+
+/* ── ABA MÉRITO & CAPITAL ─────────────────────────────── */
+.merit-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (max-width: 680px) { .merit-hero { grid-template-columns: 1fr; } }
+
+.merit-rank-card {
+  background: linear-gradient(135deg, var(--rank-bg-from, rgba(0,113,227,0.06)), var(--rank-bg-to, transparent));
+  border: 1.5px solid var(--rank-border-color, rgba(0,113,227,0.2));
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.merit-rank-card::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  background: var(--rank-glow-color, rgba(0,113,227,0.08));
+  border-radius: 50%;
+  filter: blur(30px);
+  pointer-events: none;
+}
+.merit-rank-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.merit-rank-icon-big {
+  font-size: 48px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 12px var(--rank-glow-color, rgba(0,113,227,0.3)));
+}
+.merit-rank-info h3 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  margin: 0 0 4px;
+  color: var(--rank-ring-color, var(--accent));
+}
+.merit-rank-info .merit-total {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.merit-rank-info .merit-total strong {
+  color: var(--text-primary);
+}
+.merit-progress-wrap { width: 100%; }
+.merit-progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.merit-progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--rank-ring-color, var(--accent));
+  transition: width 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  width: 0%;
+}
+.merit-progress-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+}
+
+.capital-card-small {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--card-bg);
+}
+.capital-amount {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.capital-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* Timeline de Mérito */
+.merit-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.merit-timeline-item {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.merit-timeline-item:last-child { border-bottom: none; }
+.merit-timeline-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.merit-timeline-icon.positive { background: rgba(52,193,89,0.12); }
+.merit-timeline-icon.negative { background: rgba(255,59,48,0.1); }
+.merit-timeline-body { min-width: 0; }
+.merit-timeline-reason { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.merit-timeline-meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 8px; flex-wrap: wrap; }
+.merit-timeline-cat { background: var(--bg-color); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+.merit-timeline-amount {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.merit-timeline-amount.positive { color: var(--success); }
+.merit-timeline-amount.negative { color: var(--danger); }
+
+/* Roadmap de cargos */
+.ranks-roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rank-roadmap-item {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--card-bg);
+  transition: all 0.2s;
+}
+.rank-roadmap-item.current {
+  border-color: var(--rank-ring-color, var(--accent));
+  background: linear-gradient(135deg, var(--rank-bg-from, rgba(0,113,227,0.04)), transparent);
+}
+.rank-roadmap-item.achieved { opacity: 0.6; }
+.rank-roadmap-item.locked { opacity: 0.45; }
+.rank-roadmap-icon-wrap {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  background: var(--bg-color);
+}
+.rank-roadmap-info h4 { font-size: 15px; font-weight: 700; margin: 0 0 3px; }
+.rank-roadmap-info p { font-size: 12px; color: var(--text-secondary); margin: 0; }
+.rank-roadmap-status { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.rank-roadmap-item.current .rank-roadmap-status { color: var(--rank-ring-color, var(--accent)); }
+.rank-roadmap-item.achieved .rank-roadmap-status { color: var(--success); }
+.rank-roadmap-item.locked .rank-roadmap-status { color: var(--text-secondary); }
+
+/* Cat filter pills */
+.merit-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.merit-filter-pill {
+  padding: 5px 14px;
+  border-radius: 980px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.merit-filter-pill:hover { background: var(--bg-color); color: var(--text-primary); }
+.merit-filter-pill.active { background: var(--text-primary); color: var(--bg-color); border-color: var(--text-primary); }
+[data-theme="dark"] .merit-filter-pill.active { background: var(--text-primary); color: #0d0d0f; }
+
+/* Empty state for merit */
+.merit-empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+.merit-empty .merit-empty-icon { font-size: 40px; margin-bottom: 12px; }
+.merit-empty p { font-size: 14px; }
+
 </style>
 </head>
 <body>
@@ -631,6 +876,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         <button class="nav-item" onclick="switchTab('atividade', this)">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
           Sua Atividade
+        </button>
+        <button class="nav-item" id="nav-btn-merito" onclick="switchTab('merito', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          Mérito &amp; Capital
+          <span class="new-tag" id="merit-rank-badge-nav" style="display:none;margin-left:auto;"></span>
         </button>
 
         <div class="nav-divider"></div>
@@ -1142,6 +1392,99 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </section>
 
+
+      <!-- ══════════════════════════════════════════
+           ABA: MÉRITO & CAPITAL
+      ══════════════════════════════════════════ -->
+      <section id="tab-merito" class="tab-pane">
+        <div class="page-header">
+          <h1>Mérito &amp; Capital</h1>
+          <p>Seu cargo, reputação e saldo econômico dentro da Força Aliada.</p>
+        </div>
+
+        <!-- Hero: Cargo + Capital -->
+        <div class="merit-hero">
+          <!-- Card de Cargo -->
+          <div class="merit-rank-card" id="merit-rank-card">
+            <div class="merit-rank-top">
+              <div class="merit-rank-icon-big" id="merit-icon">🪨</div>
+              <div class="merit-rank-info">
+                <h3 id="merit-rank-name">Ferro</h3>
+                <div class="merit-total">
+                  <strong id="merit-total-val">0</strong> ⭐ de Mérito acumulado
+                </div>
+              </div>
+            </div>
+            <div class="merit-progress-wrap">
+              <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;" id="merit-progress-text">
+                Próximo cargo: Ouro (150 ⭐)
+              </div>
+              <div class="merit-progress-track">
+                <div class="merit-progress-bar" id="merit-progress-bar"></div>
+              </div>
+              <div class="merit-progress-label">
+                <span id="merit-progress-from">0 ⭐</span>
+                <span id="merit-progress-pct">0%</span>
+                <span id="merit-progress-to">150 ⭐</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card de Capital -->
+          <div class="capital-card-small card" style="padding:28px;">
+            <div class="capital-label">💰 Capital Disponível</div>
+            <div class="capital-amount">
+              <span id="capital-amount-val">0</span>
+              <span style="font-size:18px;font-weight:500;color:var(--text-secondary);">esmeraldas</span>
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">Capital acumulado no Banco. Saque conforme o limite do seu cargo.</div>
+            <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--border);font-size:13px;">
+              <span style="font-weight:600;color:var(--text-secondary);">Limite de saque atual: </span>
+              <span id="capital-saque-limit" style="font-weight:700;color:var(--text-primary);">64 💰</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Histórico de Mérito -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              Histórico de Mérito
+            </div>
+          </div>
+          <div class="merit-filter-bar" id="merit-filter-bar">
+            <button class="merit-filter-pill active" data-cat="todos" onclick="filterMeritTimeline('todos', this)">Todos</button>
+            <button class="merit-filter-pill" data-cat="doacao" onclick="filterMeritTimeline('doacao', this)">Doações</button>
+            <button class="merit-filter-pill" data-cat="servico" onclick="filterMeritTimeline('servico', this)">Serviços</button>
+            <button class="merit-filter-pill" data-cat="evento" onclick="filterMeritTimeline('evento', this)">Eventos</button>
+            <button class="merit-filter-pill" data-cat="construcao" onclick="filterMeritTimeline('construcao', this)">Construções</button>
+            <button class="merit-filter-pill" data-cat="habito" onclick="filterMeritTimeline('habito', this)">Bons Hábitos</button>
+            <button class="merit-filter-pill" data-cat="penalidade" onclick="filterMeritTimeline('penalidade', this)">Penalidades</button>
+          </div>
+          <div class="merit-timeline" id="merit-timeline">
+            <div class="merit-empty">
+              <div class="merit-empty-icon">⭐</div>
+              <p>Carregando histórico de Mérito...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Roadmap de Cargos -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              Progressão de Cargos
+            </div>
+          </div>
+          <div class="ranks-roadmap" id="ranks-roadmap">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+
+      </section>
+
       <!-- ══════════════════════════════════════════
            ABA: AMIGOS
       ══════════════════════════════════════════ -->
@@ -1568,6 +1911,8 @@ function togglePwField(id, btn) {
   loadNotifications();
   loadPrefs();
   renderSessionInfo();
+  // Render rank roadmap with 0 merit while real data loads
+  renderRanksRoadmap(0);
 })();
 
 function renderData() {
@@ -1622,6 +1967,23 @@ function renderData() {
   if (!session.minecraftName) {
     showToast('warning', 'Minecraft não vinculado', 'Edite seu perfil para vincular sua conta Minecraft e desbloquear estatísticas.');
   }
+
+  // Apply rank ring from cached rank data (if API provides it later, will update)
+  // Fetch rank info in background to apply ring color immediately
+  if (session.minecraftName && token) {
+    fetch(`${API_BASE}/api/me/rank-info`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.rank) {
+          const cfg = RANKS_CONFIG.find(r => r.id === data.rank.id);
+          if (cfg) applyRankRing(cfg);
+          if (!meritDataLoaded && data) {
+            meritRecordsCache = data.records || [];
+          }
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 // ── NAVEGAÇÃO ──────────────────────────────────────────────────
@@ -1637,6 +1999,8 @@ function switchTab(tabId, btnElement) {
   if (mobileSidebar) mobileSidebar.classList.remove('show');
   if (mobileBtn) mobileBtn.classList.remove('active');
   if (tabId !== 'perfil') toggleEditMode(false);
+  // Lazy-load merit data when tab is first opened
+  if (tabId === 'merito') loadMeritData();
 }
 
 function toggleMobileSidebar(e) {
@@ -2007,6 +2371,207 @@ function renderMyTable(history, activeSession) {
 
   tbody.innerHTML = rows;
 }
+
+// ── MÉRITO & CAPITAL ───────────────────────────────────────────
+
+const RANKS_CONFIG = [
+  { id: 'ferro',     icon: '🪨', label: 'Ferro',     minMerit: 0,    color: '#8E8E93', saqueLimit: 64,  bgFrom: 'rgba(142,142,147,0.06)', bgTo: 'transparent', border: 'rgba(142,142,147,0.2)', glow: 'rgba(142,142,147,0.15)', benefits: ['Cargo inicial de todos os membros','Saque bancário: 64 💰 (1 pack)','Acesso padrão ao servidor'] },
+  { id: 'ouro',      icon: '🟡', label: 'Ouro',      minMerit: 150,  color: '#FF9F0A', saqueLimit: 128, bgFrom: 'rgba(255,159,10,0.06)',   bgTo: 'transparent', border: 'rgba(255,159,10,0.2)',   glow: 'rgba(255,159,10,0.2)',   benefits: ['Direito a voto em decisões públicas','Saque bancário: 128 💰 (2 packs)','Menor taxa de juros em empréstimos','Acesso à playlist musical do servidor'] },
+  { id: 'diamante',  icon: '🟢', label: 'Diamante',  minMerit: 500,  color: '#30D158', saqueLimit: 192, bgFrom: 'rgba(48,209,88,0.06)',    bgTo: 'transparent', border: 'rgba(48,209,88,0.2)',    glow: 'rgba(48,209,88,0.2)',    benefits: ['Saque bancário: 192 💰 (3 packs)','Taxa de juros ainda menor','Direito de publicar na wiki','Direito a voto em decisões públicas'] },
+  { id: 'netherite', icon: '⚫', label: 'Netherite', minMerit: 1000, color: '#AF52DE', saqueLimit: 320, bgFrom: 'rgba(175,82,222,0.06)',   bgTo: 'transparent', border: 'rgba(175,82,222,0.2)',   glow: 'rgba(175,82,222,0.2)',   benefits: ['Saque bancário: 320 💰 (5 packs)','Taxa de juros mínima','Publicação na wiki','Votações públicas'] },
+];
+
+let meritRecordsCache = [];
+let meritDataLoaded = false;
+
+function getRankConfig(merit) {
+  let r = RANKS_CONFIG[0];
+  for (const rank of RANKS_CONFIG) { if (merit >= rank.minMerit) r = rank; }
+  return r;
+}
+
+function applyRankRing(rank) {
+  if (!rank) return;
+  const color = rank.color;
+  // Apply to nav/drop avatars
+  document.querySelectorAll('#nav-photo, #drop-photo').forEach(img => {
+    img.style.setProperty('--rank-ring-color', color);
+  });
+  // Apply to main profile avatar wrap
+  const mainPhoto = document.getElementById('main-photo');
+  if (mainPhoto) {
+    mainPhoto.style.borderRadius = '20px';
+    mainPhoto.style.border = `3px solid ${color}`;
+    mainPhoto.style.boxShadow = `0 0 0 1px rgba(0,0,0,0.08), 0 0 16px ${color}66, 0 4px 16px rgba(0,0,0,0.15)`;
+    mainPhoto.style.transition = 'border-color 0.4s, box-shadow 0.4s';
+  }
+  // Profile pills - add rank badge
+  const pills = document.getElementById('profile-pills') || document.querySelector('.profile-pills');
+  if (pills && !document.getElementById('rank-merit-pill')) {
+    const rankPill = document.createElement('span');
+    rankPill.id = 'rank-merit-pill';
+    rankPill.className = 'pill';
+    rankPill.style.cssText = `background:${color}18;color:${color};border:1px solid ${color}44;font-weight:700;`;
+    rankPill.textContent = rank.icon + ' ' + rank.label;
+    pills.appendChild(rankPill);
+  }
+  // Sidebar rank badge
+  const navBadge = document.getElementById('merit-rank-badge-nav');
+  if (navBadge) {
+    navBadge.style.display = 'inline-block';
+    navBadge.style.background = color;
+    navBadge.textContent = rank.icon;
+  }
+}
+
+async function loadMeritData() {
+  if (meritDataLoaded) return;
+  if (!session.minecraftName) {
+    renderMeritEmpty('Você ainda não tem um nome Minecraft vinculado. Edite seu perfil para desbloquear o sistema de Mérito & Capital.');
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/me/rank-info`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao carregar dados de Mérito');
+    const data = await res.json();
+    meritDataLoaded = true;
+    meritRecordsCache = data.records || [];
+    renderMeritUI(data);
+  } catch (err) {
+    console.error('[merit]', err);
+    renderMeritEmpty('Não foi possível carregar seus dados de Mérito. Tente novamente mais tarde.');
+  }
+}
+
+function renderMeritUI(data) {
+  const rank = data.rank;
+  const merit = data.merit || 0;
+  const capital = data.capital || 0;
+  const nextRank = data.nextRank;
+  const progress = data.progress || 0;
+  const cfg = RANKS_CONFIG.find(r => r.id === rank?.id) || RANKS_CONFIG[0];
+  const nextCfg = nextRank ? RANKS_CONFIG.find(r => r.id === nextRank.id) : null;
+
+  // Apply rank ring to avatars
+  applyRankRing(cfg);
+
+  // Set CSS vars on rank card
+  const card = document.getElementById('merit-rank-card');
+  if (card) {
+    card.style.setProperty('--rank-ring-color', cfg.color);
+    card.style.setProperty('--rank-bg-from', cfg.bgFrom);
+    card.style.setProperty('--rank-bg-to', cfg.bgTo);
+    card.style.setProperty('--rank-border-color', cfg.border);
+    card.style.setProperty('--rank-glow-color', cfg.glow);
+    card.style.borderColor = cfg.border;
+  }
+
+  document.getElementById('merit-icon').textContent = cfg.icon;
+  document.getElementById('merit-rank-name').textContent = cfg.label;
+  document.getElementById('merit-rank-name').style.color = cfg.color;
+  document.getElementById('merit-total-val').textContent = merit.toLocaleString('pt-BR');
+  document.getElementById('capital-amount-val').textContent = capital.toLocaleString('pt-BR');
+  document.getElementById('capital-saque-limit').textContent = cfg.saqueLimit + ' 💰';
+
+  // Progress bar
+  const bar = document.getElementById('merit-progress-bar');
+  if (bar) {
+    bar.style.background = cfg.color;
+    setTimeout(() => { bar.style.width = Math.min(100, progress) + '%'; }, 100);
+  }
+  if (nextCfg) {
+    document.getElementById('merit-progress-text').textContent = `Próximo cargo: ${nextCfg.label} (${nextCfg.minMerit.toLocaleString('pt-BR')} ⭐)`;
+    document.getElementById('merit-progress-from').textContent = cfg.minMerit.toLocaleString('pt-BR') + ' ⭐';
+    document.getElementById('merit-progress-pct').textContent = Math.round(progress) + '%';
+    document.getElementById('merit-progress-to').textContent = nextCfg.minMerit.toLocaleString('pt-BR') + ' ⭐';
+  } else {
+    document.getElementById('merit-progress-text').textContent = '🏆 Cargo máximo atingido!';
+    document.getElementById('merit-progress-pct').textContent = '100%';
+    document.getElementById('merit-progress-from').textContent = '';
+    document.getElementById('merit-progress-to').textContent = '';
+    if (bar) bar.style.width = '100%';
+  }
+
+  // Render timeline
+  renderMeritTimeline(meritRecordsCache, 'todos');
+
+  // Render roadmap
+  renderRanksRoadmap(merit);
+}
+
+function renderMeritEmpty(msg) {
+  const tl = document.getElementById('merit-timeline');
+  if (tl) tl.innerHTML = `<div class="merit-empty"><div class="merit-empty-icon">🪨</div><p>${msg}</p></div>`;
+  renderRanksRoadmap(0);
+}
+
+const CAT_ICONS = { doacao: '🎁', servico: '🔧', evento: '🎉', construcao: '🏗️', habito: '✅', penalidade: '⚠️', outros: '📋' };
+const CAT_LABELS = { doacao: 'Doação', servico: 'Serviço', evento: 'Evento', construcao: 'Construção', habito: 'Bom Hábito', penalidade: 'Penalidade', outros: 'Outros' };
+
+function renderMeritTimeline(records, cat) {
+  const tl = document.getElementById('merit-timeline');
+  if (!tl) return;
+  const filtered = cat === 'todos' ? records : records.filter(r => r.category === cat);
+  if (!filtered.length) {
+    tl.innerHTML = `<div class="merit-empty"><div class="merit-empty-icon">${cat === 'todos' ? '⭐' : (CAT_ICONS[cat] || '📋')}</div><p>Nenhuma transação de Mérito encontrada${cat !== 'todos' ? ' nesta categoria' : ''}.</p></div>`;
+    return;
+  }
+  tl.innerHTML = filtered.map(r => {
+    const isPos = r.amount > 0;
+    const icon = CAT_ICONS[r.category] || '📋';
+    const catLabel = CAT_LABELS[r.category] || r.category;
+    const date = new Date(r.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+    return `
+      <div class="merit-timeline-item">
+        <div class="merit-timeline-icon ${isPos ? 'positive' : 'negative'}">${icon}</div>
+        <div class="merit-timeline-body">
+          <div class="merit-timeline-reason">${r.reason || 'Sem descrição'}</div>
+          <div class="merit-timeline-meta">
+            <span>${date}</span>
+            <span class="merit-timeline-cat">${catLabel}</span>
+            ${r.awarded_by_name ? `<span>por ${r.awarded_by_name}</span>` : ''}
+          </div>
+        </div>
+        <div class="merit-timeline-amount ${isPos ? 'positive' : 'negative'}">${isPos ? '+' : ''}${r.amount} ⭐</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterMeritTimeline(cat, btn) {
+  document.querySelectorAll('.merit-filter-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  renderMeritTimeline(meritRecordsCache, cat);
+}
+
+function renderRanksRoadmap(currentMerit) {
+  const container = document.getElementById('ranks-roadmap');
+  if (!container) return;
+  const currentCfg = getRankConfig(currentMerit);
+  container.innerHTML = RANKS_CONFIG.map(rank => {
+    const isCurrent = rank.id === currentCfg.id;
+    const isAchieved = currentMerit >= rank.minMerit && !isCurrent;
+    const isLocked = currentMerit < rank.minMerit;
+    const stateClass = isCurrent ? 'current' : isAchieved ? 'achieved' : 'locked';
+    const statusText = isCurrent ? '● Seu Cargo Atual' : isAchieved ? '✓ Conquistado' : `${rank.minMerit.toLocaleString('pt-BR')} ⭐ necessários`;
+    const rankStyle = isCurrent ? `style="--rank-ring-color:${rank.color};--rank-bg-from:${rank.bgFrom};border-color:${rank.border};"` : '';
+    const benefitsList = rank.benefits.map(b => `<div style="font-size:11px;color:var(--text-secondary);margin-top:3px;">• ${b}</div>`).join('');
+    return `
+      <div class="rank-roadmap-item ${stateClass}" ${rankStyle}>
+        <div class="rank-roadmap-icon-wrap">${rank.icon}</div>
+        <div class="rank-roadmap-info">
+          <h4>${rank.label}</h4>
+          ${benefitsList}
+        </div>
+        <div class="rank-roadmap-status">${statusText}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Hook into tab switch to lazy-load merit data
+const _originalSwitchTab = switchTab;
+// Override switchTab to trigger merit loading
 </script>
 </body>
 </html>

@@ -311,6 +311,169 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   .phone { width: 50%; margin: 0; order: unset; }
 }
 
+/* --- RANK AVATAR RING --- */
+.rank-ring { box-shadow: 0 0 0 2.5px var(--rank-color, #8E8E93), 0 0 0 4px rgba(0,0,0,0.04) !important; border-radius: 50% !important; }
+.rank-ring-sq { box-shadow: 0 0 0 2.5px var(--rank-color, #8E8E93), 0 0 0 4px rgba(0,0,0,0.04) !important; }
+
+/* Rank badge pill */
+.rank-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  padding: 3px 9px; border-radius: 980px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.rank-badge-ferro     { background: rgba(142,142,147,0.12); color: #636366; }
+.rank-badge-ouro      { background: rgba(255,159,10,0.12);  color: #b45309; }
+.rank-badge-diamante  { background: rgba(48,209,88,0.12);   color: #166534; }
+.rank-badge-netherite { background: rgba(175,82,222,0.12);  color: #7e22ce; }
+.rank-badge-adm       { background: rgba(0,113,227,0.12);   color: #0071e3; }
+[data-theme="dark"] .rank-badge-ouro      { color: #fbbf24; }
+[data-theme="dark"] .rank-badge-diamante  { color: #34d399; }
+[data-theme="dark"] .rank-badge-netherite { color: #c084fc; }
+[data-theme="dark"] .rank-badge-adm       { color: #60a5fa; }
+
+/* --- /RANK AVATAR RING --- */
+
+/* --- CAPITAL & MÉRITO --- */
+.sistema-section {
+  background: #fff;
+  padding: 120px 5%;
+  overflow: hidden;
+}
+.sistema-intro {
+  text-align: center;
+  max-width: 780px;
+  margin: 0 auto 80px;
+}
+.sistema-intro h2 { font-size: 2.8rem; letter-spacing: -0.03em; margin-bottom: 16px; font-weight: 700; }
+.sistema-intro p { color: var(--text-secondary); font-size: 1.15rem; line-height: 1.6; }
+
+.sistema-pillars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto 80px;
+}
+.pillar-card {
+  border-radius: 28px;
+  padding: 44px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.165,0.84,0.44,1);
+}
+.pillar-card:hover { transform: translateY(-6px); }
+.pillar-card.capital-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid rgba(14,165,233,0.15);
+}
+.pillar-card.merit-card {
+  background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+  border: 1px solid rgba(168,85,247,0.15);
+}
+.pillar-icon {
+  font-size: 52px;
+  display: block;
+  margin-bottom: 20px;
+  line-height: 1;
+}
+.pillar-card h3 {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+.pillar-card .pillar-tagline {
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pillar-card p {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #444;
+  margin-bottom: 24px;
+}
+.pillar-features { display: flex; flex-direction: column; gap: 10px; }
+.pillar-feature {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 500; color: #555;
+}
+.pillar-feature::before { content: '✓'; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.capital-card .pillar-feature::before { color: #0ea5e9; }
+.merit-card .pillar-feature::before { color: #a855f7; }
+
+/* Ranks strip */
+.ranks-strip {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+.ranks-strip h3 {
+  font-size: 1.2rem; font-weight: 600; color: var(--text-secondary);
+  letter-spacing: 0.02em; text-transform: uppercase; margin-bottom: 32px;
+}
+.ranks-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.rank-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 28px;
+  border-radius: 20px;
+  transition: all 0.25s;
+  cursor: default;
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+  max-width: 200px;
+}
+.rank-step:hover { transform: translateY(-4px); }
+.rank-step-icon { font-size: 36px; line-height: 1; }
+.rank-step-name { font-size: 15px; font-weight: 700; }
+.rank-step-merit { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.rank-step-benefits {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-top: 4px;
+}
+.rank-step-benefit { font-size: 11px; color: var(--text-secondary); text-align: center; line-height: 1.3; }
+.rank-arrow {
+  font-size: 20px; color: #d2d2d7; flex-shrink: 0;
+  align-self: flex-start; margin-top: 34px;
+}
+.rank-ferro     { background: rgba(142,142,147,0.08); }
+.rank-ouro      { background: rgba(255,159,10,0.08); }
+.rank-diamante  { background: rgba(48,209,88,0.08); }
+.rank-netherite { background: rgba(175,82,222,0.08); }
+.rank-ferro .rank-step-name     { color: #636366; }
+.rank-ouro .rank-step-name      { color: #d97706; }
+.rank-diamante .rank-step-name  { color: #16a34a; }
+.rank-netherite .rank-step-name { color: #9333ea; }
+
+.sistema-quote {
+  margin: 64px auto 0;
+  max-width: 700px;
+  text-align: center;
+}
+.sistema-quote blockquote {
+  font-size: 1.35rem; font-weight: 600; line-height: 1.5;
+  letter-spacing: -0.01em; color: var(--text-primary);
+  border-left: none; padding: 0; margin: 0;
+  quotes: none;
+}
+.sistema-quote blockquote span { color: var(--text-secondary); }
+
+/* --- /CAPITAL & MÉRITO --- */
+
 /* Preferência de tema sincronizada com a conta */
 [data-theme="dark"] {
   color-scheme: dark;
@@ -328,6 +491,26 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border); }
 [data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
 [data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
+[data-theme="dark"] .sistema-section { background: var(--bg-color); }
+[data-theme="dark"] .pillar-card.capital-card { background: rgba(14,165,233,0.06); border-color: rgba(14,165,233,0.2); }
+[data-theme="dark"] .pillar-card.merit-card { background: rgba(168,85,247,0.06); border-color: rgba(168,85,247,0.2); }
+[data-theme="dark"] .pillar-card p { color: var(--text-secondary); }
+[data-theme="dark"] .pillar-feature { color: var(--text-secondary); }
+[data-theme="dark"] .rank-ferro, [data-theme="dark"] .rank-ouro, [data-theme="dark"] .rank-diamante, [data-theme="dark"] .rank-netherite { background: rgba(255,255,255,0.04); }
+[data-theme="dark"] .sistema-quote blockquote { color: var(--text-primary); }
+[data-theme="dark"] section { background: var(--bg-color); }
+[data-theme="dark"] .features, [data-theme="dark"] .gallery, [data-theme="dark"] .faq-section { background: rgba(255,255,255,0.02); }
+[data-theme="dark"] .stats-strip, [data-theme="dark"] .cross-platform { background: var(--card-bg); border-color: var(--border); }
+[data-theme="dark"] .feature-card { background: var(--card-bg); border-color: var(--border); }
+[data-theme="dark"] .faq-section details { border-color: var(--border); }
+
+@media (max-width: 860px) {
+  .sistema-pillars { grid-template-columns: 1fr; }
+  .ranks-row { gap: 8px; }
+  .rank-step { min-width: 100px; padding: 16px; }
+  .rank-arrow { display: none; }
+}
+
 
 </style>
 </head>
@@ -337,6 +520,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   <ul>
     <li><a href="#sobre" onclick="toggleMenu()">Legado</a></li>
     <li><a href="#cidades" onclick="toggleMenu()">Tríade</a></li>
+    <li><a href="#sistema" onclick="toggleMenu()">Sistema</a></li>
     <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
@@ -364,6 +548,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <ul>
       <li><a href="#sobre">Legado</a></li>
       <li><a href="#cidades">Tríade</a></li>
+      <li><a href="#sistema">Sistema</a></li>
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
@@ -443,8 +628,92 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   </div>
 </section>
 
+<section class="sistema-section reveal" id="sistema">
+  <div class="sistema-intro">
+    <h2>Dois Pilares.<br>Uma Civilização.</h2>
+    <p>A Força Aliada é governada por um sistema único que separa riqueza de reputação — tornando o servidor justo, profundo e genuinamente meritocrático.</p>
+  </div>
+
+  <div class="sistema-pillars">
+    <div class="pillar-card capital-card">
+      <span class="pillar-icon">💰</span>
+      <div class="pillar-tagline">Economia</div>
+      <h3>Capital</h3>
+      <p>O recurso econômico do servidor, representado por esmeraldas. Circula livremente entre jogadores, é acumulável, investível e transferível. Mede o seu sucesso individual.</p>
+      <div class="pillar-features">
+        <div class="pillar-feature">Comércio livre entre jogadores</div>
+        <div class="pillar-feature">Armazenamento com rendimento no Banco</div>
+        <div class="pillar-feature">Empréstimos com taxa por cargo</div>
+        <div class="pillar-feature">Shopping Central e farms públicas</div>
+      </div>
+    </div>
+    <div class="pillar-card merit-card">
+      <span class="pillar-icon">⭐</span>
+      <div class="pillar-tagline">Reputação</div>
+      <h3>Mérito</h3>
+      <p>A medida da sua contribuição à comunidade. Permanente, não-transferível e impossível de comprar. Desbloqueia cargos, benefícios e influência real dentro da civilização.</p>
+      <div class="pillar-features">
+        <div class="pillar-feature">Conquistado por doações, serviços e construções</div>
+        <div class="pillar-feature">Desbloqueia cargos progressivos (Ferro → Netherite)</div>
+        <div class="pillar-feature">Amplia o limite de saque no Banco</div>
+        <div class="pillar-feature">Garante direito a voto em decisões públicas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ranks-strip">
+    <h3>Progressão de Cargos por Mérito</h3>
+    <div class="ranks-row">
+      <div class="rank-step rank-ferro">
+        <span class="rank-step-icon">🪨</span>
+        <span class="rank-step-name">Ferro</span>
+        <span class="rank-step-merit">0 ⭐</span>
+        <div class="rank-step-benefits">
+          <span class="rank-step-benefit">Saque: 64 💰</span>
+          <span class="rank-step-benefit">Acesso padrão</span>
+        </div>
+      </div>
+      <div class="rank-arrow">→</div>
+      <div class="rank-step rank-ouro">
+        <span class="rank-step-icon">🟡</span>
+        <span class="rank-step-name">Ouro</span>
+        <span class="rank-step-merit">150 ⭐</span>
+        <div class="rank-step-benefits">
+          <span class="rank-step-benefit">Saque: 128 💰</span>
+          <span class="rank-step-benefit">Direito a voto</span>
+        </div>
+      </div>
+      <div class="rank-arrow">→</div>
+      <div class="rank-step rank-diamante">
+        <span class="rank-step-icon">🟢</span>
+        <span class="rank-step-name">Diamante</span>
+        <span class="rank-step-merit">500 ⭐</span>
+        <div class="rank-step-benefits">
+          <span class="rank-step-benefit">Saque: 192 💰</span>
+          <span class="rank-step-benefit">Publica na wiki</span>
+        </div>
+      </div>
+      <div class="rank-arrow">→</div>
+      <div class="rank-step rank-netherite">
+        <span class="rank-step-icon">⚫</span>
+        <span class="rank-step-name">Netherite</span>
+        <span class="rank-step-merit">1.000 ⭐</span>
+        <div class="rank-step-benefits">
+          <span class="rank-step-benefit">Saque: 320 💰</span>
+          <span class="rank-step-benefit">Juros mínimos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sistema-quote">
+    <blockquote>
+      "Capital mede sucesso individual. Mérito mede contribuição coletiva."
+    </blockquote>
+  </div>
+</section>
+
 <section class="cross-platform reveal" id="plataformas">
-  <div class="section-header" style="margin-top: 100px;">
     <h2>Jogue Onde Quiser</h2>
     <p>Compatibilidade total. Seu progresso sincronizado em qualquer tela.</p>
   </div>
@@ -532,7 +801,10 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <summary>Preciso de Whitelist?</summary>
     <div class="faq-content">Atualmente operamos com um sistema aberto, mas monitorado. Entre no nosso Discord para garantir seu lugar na comunidade.</div>
   </details>
-</section>
+  <details>
+    <summary>O que é o sistema de Mérito e Capital?</summary>
+    <div class="faq-content">São os dois pilares do servidor. <strong>Capital</strong> (💰 esmeraldas) é a moeda circulante — você ganha por comércio, serviços e rendimento no Banco. <strong>Mérito</strong> (⭐) é sua reputação comunitária — permanente, intransferível e não comprável. Mérito desbloqueia cargos (Ferro → Ouro → Diamante → Netherite) que ampliam seus benefícios: limite de saque, taxa de juros, direito a voto e publicação na wiki. Você pode ser rico sem ser influente, e vice-versa.</div>
+  </details>
 
 <footer>
   <h2 style="font-size: 28px; margin-bottom: 16px; font-weight: 600;">Faça parte da história</h2>
@@ -586,6 +858,21 @@ async function getSession() {
       minecraftName: me.minecraft_name,
       role:          me.role,
     };
+
+    // Busca rank em paralelo (não bloqueia se falhar)
+    try {
+      const rankRes = await fetch(`${API_BASE}/api/me/rank-info`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (rankRes.ok) {
+        const rankData = await rankRes.json();
+        session.rank = rankData.rank;
+        session.merit = rankData.merit;
+        session.rankProgress = rankData.progress;
+        session.nextRank = rankData.nextRank;
+      }
+    } catch { /* rank opcional */ }
+
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
   } catch {
@@ -593,6 +880,19 @@ async function getSession() {
     localStorage.removeItem(SESSION_KEY);
     return null;
   }
+}
+
+// Helpers de rank para UI
+function getRankColor(rankId) {
+  const colors = { ferro:'#8E8E93', ouro:'#FF9F0A', diamante:'#30D158', netherite:'#AF52DE', adm:'#0071E3' };
+  return colors[rankId] || '#8E8E93';
+}
+function getRankBadgeClass(rankId) {
+  return `rank-badge rank-badge-${rankId || 'ferro'}`;
+}
+function getRankDisplay(rank) {
+  if (!rank) return '';
+  return `<span class="${getRankBadgeClass(rank.id)}">${rank.icon} ${rank.label}</span>`;
 }
 
 function renderAuthMenu(session) {
@@ -603,6 +903,9 @@ function renderAuthMenu(session) {
     const skinUrl = session.minecraftName
       ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
       : 'assets/images/logo.JPG';
+
+    const rankColor = session.rank ? getRankColor(session.rank.id) : '#8E8E93';
+    const rankBadgeHtml = session.rank ? getRankDisplay(session.rank) : '';
 
     let adminLink = '';
     if (session.role === 'full' || session.role === 'owner') {
@@ -617,16 +920,16 @@ function renderAuthMenu(session) {
     container.innerHTML = `
       <div class="user-menu-wrapper">
         <div class="user-btn" id="user-btn-toggle" onclick="toggleUserDropdown(event)">
-          <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+          <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar" class="rank-ring" style="--rank-color:${rankColor}">
           <span class="desktop-only-text">${session.username}</span>
           <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="user-dropdown" id="user-dropdown-menu">
           <div class="dropdown-header">
-            <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+            <img src="${skinUrl}" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar" class="rank-ring" style="--rank-color:${rankColor}">
             <div class="dropdown-header-info">
               <strong>${session.username}</strong>
-              <span>${session.email || 'Sem e-mail'}</span>
+              <span style="display:flex;align-items:center;gap:6px;">${rankBadgeHtml || (session.email || 'Sem e-mail')}</span>
             </div>
           </div>
           <div class="dropdown-divider"></div>
