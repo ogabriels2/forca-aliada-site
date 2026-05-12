@@ -9,15 +9,15 @@
   const key = 'fa_theme';
   const token = localStorage.getItem('fa_token');
   // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
-  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                   ? 'http://localhost:3000' 
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                   ? 'http://localhost:3000'
                    : 'https://forca-aliada-site.onrender.com';
 
   function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
   function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'auto')); }
-  
+
   apply();
-  
+
   if (token) {
     fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.ok ? r.json() : null)
@@ -28,7 +28,7 @@
         }
       }).catch(console.error);
   }
-  
+
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'auto'));
 })();
 </script>
@@ -1676,6 +1676,15 @@ function setTheme(t) {
     });
 }
 
+async function syncThemePreference() {
+  try {
+    const res = await fetch(`${API_BASE}/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) return;
+    const prefs = await res.json();
+    if (prefs.theme) applyTheme(prefs.theme);
+  } catch (err) { console.error('[theme preferences]', err); }
+}
+
 // ── PREFS ──────────────────────────────────────────────────────
 async function loadPrefs() {
   try {
@@ -1830,7 +1839,7 @@ function computeAchievements(session, historyData) {
     const text = b.textContent.trim().split('\n').pop().trim();
     // Match by text content
     const isUnlocked = [...unlocked].some(u => b.textContent.includes(u));
-    if (isUnlocked) { b.classList.remove('locked'); unlockedCount++; } 
+    if (isUnlocked) { b.classList.remove('locked'); unlockedCount++; }
     else { b.classList.add('locked'); }
   });
   const counter = document.getElementById('achievements-counter');
@@ -1922,22 +1931,7 @@ function togglePwField(id, btn) {
     : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
 }
 
-// ── DADOS & RENDER ─────────────────────────────────────────────
-(async () => {
-  // Aplicar tema salvo
-  const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
-  applyTheme(savedTheme);
-
-  try {
-    const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Sessão inválida');
-    const me = await res.json();
-    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, createdAt: me.created_at, isVerified: me.is_verified !== false };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } catch {
-    logout(); return;
-  }
-  document.body.style.visibility = 'visible';
+function initAccount() {
   renderData();
   fetchMyActivity();
   loadNotifications();
@@ -1945,6 +1939,35 @@ function togglePwField(id, btn) {
   renderSessionInfo();
   // Render rank roadmap with 0 merit while real data loads
   renderRanksRoadmap(0);
+}
+
+// BOOTSTRAP
+(async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+
+    if (res.status === 401 || res.status === 403) {
+      logout();
+      return;
+    }
+    if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
+
+    const me = await res.json();
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, createdAt: me.created_at, isVerified: me.is_verified !== false };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    await syncThemePreference();
+
+    // Admins e owners também devem poder acessar a página da conta
+    // para alterar senha, tema e preferências pessoais.
+  } catch (err) {
+    console.error('Erro crítico no Bootstrap:', err);
+    document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar a conta. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
+    document.body.style.visibility = 'visible';
+    return;
+  }
+
+  document.body.style.visibility = 'visible';
+  initAccount();
 })();
 
 function renderData() {
