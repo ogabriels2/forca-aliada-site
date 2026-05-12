@@ -1738,15 +1738,25 @@ function initDashboard() {
   if (liveInterval) clearInterval(liveInterval);
   liveInterval = setInterval(async () => {
     try {
-      const res = await apiFetch(`/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok) throw new Error();
+      const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+
+      // SÓ desloga se o token for explicitamente rejeitado
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        return;
+      }
+
+      if (!res.ok) return; // Servidor em baixo ou erro 500? Ignora e não expulsa o utilizador.
+
       const me = await res.json();
       if (session.role !== me.role) {
         session.role = me.role;
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
         if (session.role === 'limited') window.location.replace('account.html');
       }
-    } catch { logout(); return; }
+    } catch (err) {
+      // Falha de rede: Mantém o utilizador na página.
+    }
     applyFilters();
     if (document.getElementById('player-modal').classList.contains('active')) renderModalTable();
   }, 10000);
