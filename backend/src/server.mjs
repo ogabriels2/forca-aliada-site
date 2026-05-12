@@ -86,6 +86,37 @@ connectionString: process.env.DATABASE_URL,
 ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
+
+const DEPLOY_SCHEMA_VERSION = 'audit-schema-v3-statement-array';
+const AUDIT_SCHEMA_STATEMENTS = [
+  "CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, actor_id INTEGER, actor_name VARCHAR(255), type VARCHAR(50) DEFAULT 'system', target_id INTEGER, target_name VARCHAR(255), message TEXT, metadata JSONB, created_at TIMESTAMPTZ DEFAULT NOW())",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255)",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system'",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255)",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS message TEXT",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
+  "CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_logs(type)",
+];
+let auditSchemaReady = null;
+
+async function ensureAuditSchema() {
+  if (!auditSchemaReady) {
+    auditSchemaReady = (async () => {
+      for (const statement of AUDIT_SCHEMA_STATEMENTS) {
+        await pool.query(statement);
+      }
+    })().catch((error) => {
+      auditSchemaReady = null;
+      throw error;
+    });
+  }
+  return auditSchemaReady;
+}
+
 // ─────────────────────────────────────────────
 // Env guards
 // ─────────────────────────────────────────────
@@ -345,8 +376,9 @@ console.log('[seed] admin created:', u.toLowerCase());
 // ─────────────────────────────────────────────
 async function audit({ actorId, actorName, type, targetId, targetName, message, metadata }) {
 try {
+await ensureAuditSchema();
 await pool.query(
-`INSERT INTO audit_logs(actor_id,actor_name,type,target_id,target_name,message,metadata) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+'INSERT INTO audit_logs(actor_id,actor_name,type,target_id,target_name,message,metadata) VALUES($1,$2,$3,$4,$5,$6,$7)',
 [actorId || null, actorName || null, type, targetId || null, targetName || null,
 message || null, metadata ? JSON.stringify(metadata) : null],
 );
@@ -1734,6 +1766,6 @@ const PORT = process.env.PORT || 8787;
 migrate()
 .then(seedAdmin)
 .then(() => {
-  app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`✅  API ${DEPLOY_SCHEMA_VERSION} rodando na porta ${PORT}`));
 })
 .catch(e => { console.error('[migrate]', e); process.exit(1); });
