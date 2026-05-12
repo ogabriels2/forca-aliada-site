@@ -237,6 +237,10 @@ ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
 
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);`);
+
+await pool.query(`
 -- ── NOVO: Notas de jogadores ──────────────────────────────
 CREATE TABLE IF NOT EXISTS player_notes (
   id           SERIAL PRIMARY KEY,
