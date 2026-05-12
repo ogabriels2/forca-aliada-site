@@ -744,7 +744,11 @@ app.get('/api/me/preferences', auth, async (req, res) => {
 });
 
 app.put('/api/me/preferences', auth, async (req, res) => {
-  const prefs = await ensureUserPreferences(req.user.sub, req.body || {});
+  const { rows } = await pool.query(
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme FROM user_preferences WHERE user_id=$1',
+    [req.user.sub],
+  );
+  const prefs = await ensureUserPreferences(req.user.sub, { ...(rows[0] || {}), ...(req.body || {}) });
   await audit({
     actorId: req.user.sub,
     actorName: req.user.username,
@@ -957,14 +961,51 @@ res.json({ logs: rows, total: total[0].count });
 // ─────────────────────────────────────────────
 
 /**
+ * GET /api/admin/notes/:minecraft_name
+ */
+app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res) => {
+  const mc = sanitize(req.params.minecraft_name).toLowerCase();
+  const { rows } = await pool.query(
+    'SELECT * FROM player_notes WHERE LOWER(minecraft_name) = $1 ORDER BY created_at DESC',
+    [mc],
+  );
+  res.json(rows);
+});
+
+/**
+ * POST /api/admin/notes
+ * Body: { minecraft_name: string, text: string }
+ */
+app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
+  const { minecraft_name, text } = req.body || {};
+  if (!minecraft_name || !text) return res.status(400).json({ error: 'Campos ausentes' });
+
+  const { rows } = await pool.query(
+    'INSERT INTO player_notes(minecraft_name, author_id, author_name, text) VALUES($1, $2, $3, $4) RETURNING *',
+    [sanitize(minecraft_name), req.user.sub, req.user.username, sanitize(text)],
+  );
+  res.json(rows[0]);
+});
+
+/**
+ * DELETE /api/admin/notes/:id
+ */
+app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
+  const noteId = parseInt(req.params.id);
+  if (!noteId) return res.status(400).json({ error: 'invalid id' });
+  await pool.query('DELETE FROM player_notes WHERE id = $1', [noteId]);
+  res.json({ ok: true });
+});
+
+/**
 
 - GET /api/player/:name/notes
   */
   app.get('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
-  const mc = req.params.name;
+  const mc = sanitize(req.params.name).toLowerCase();
   const { rows } = await pool.query(
   'SELECT id, author_name, text, created_at FROM player_notes WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC',
-  [mc.toLowerCase()],
+  [mc],
   );
   res.json(rows);
   });
@@ -993,14 +1034,14 @@ res.status(201).json(rows[0]);
   */
   app.delete('/api/player/:name/notes/:noteId', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.noteId);
-  const mc     = req.params.name;
+  const mc     = sanitize(req.params.name).toLowerCase();
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
 
 // Owner pode deletar qualquer nota; admin só as suas
 const ownClause = req.user.role === 'owner' ? '' : 'AND author_id=$3';
 const params    = req.user.role === 'owner'
-? [noteId, mc.toLowerCase()]
-: [noteId, mc.toLowerCase(), req.user.sub];
+? [noteId, mc]
+: [noteId, mc, req.user.sub];
 
 const { rowCount } = await pool.query(
 `DELETE FROM player_notes WHERE id=$1 AND LOWER(minecraft_name)=$2 ${ownClause}`,
