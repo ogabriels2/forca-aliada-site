@@ -258,20 +258,21 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ISTO É O QUE CORRIGE O ERRO DO RENDER: Adiciona as colunas se elas não existirem
+-- Adiciona as colunas se elas não existirem (compatibilidade com bancos antigos)
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS message TEXT;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
+`;
 
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);`);
+await pool.query(baseSchemaSql);
 
-await pool.query(`
+const featureSchemaSql = `
 -- ── NOVO: Notas de jogadores ──────────────────────────────
 CREATE TABLE IF NOT EXISTS player_notes (
   id           SERIAL PRIMARY KEY,
