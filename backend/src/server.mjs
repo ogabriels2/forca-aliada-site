@@ -213,10 +213,8 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   PRIMARY KEY (notification_id, user_id)
 );
 
-`);
-
-// -- ── NOVO: Logs de auditoria ───────────────────────────────
-await pool.query(`
+-- ── NOVO: Logs de auditoria ───────────────────────────────
+-- Isto garante que a tabela existe
 CREATE TABLE IF NOT EXISTS audit_logs (
   id         SERIAL PRIMARY KEY,
   actor_id   INTEGER,
@@ -229,16 +227,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ISTO É O QUE CORRIGE O CRASH: Adiciona as colunas se elas não existirem na tabela antiga
+-- ISTO É O QUE CORRIGE O ERRO DO RENDER: Adiciona as colunas se elas não existirem
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255);
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS message TEXT;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
-`);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
 
 await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);`);
 await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);`);
@@ -1096,7 +1093,7 @@ res.json({ ok: true });
       res.json({ logs: rows, total: total[0].count });
     } catch (error) {
       console.error('[GET /api/admin/audit error]', error);
-      res.status(500).json({ error: 'Erro interno ao carregar logs' });
+      res.status(500).json({ error: 'Erro interno ao procurar logs.' });
     }
   });
 

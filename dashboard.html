@@ -1740,14 +1740,13 @@ function initDashboard() {
     try {
       const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
 
-      // SÓ desloga se o token for explicitamente rejeitado pelo servidor (401 ou 403)
+      // SÓ desloga se o token for explicitamente rejeitado
       if (res.status === 401 || res.status === 403) {
         logout();
         return;
       }
 
-      // Se for qualquer outro erro (ex: 500 ou rede fora), NÃO fazemos logout
-      if (!res.ok) return;
+      if (!res.ok) return; // Servidor em baixo ou erro 500? Ignora e não expulsa o utilizador.
 
       const me = await res.json();
       if (session.role !== me.role) {
@@ -1756,7 +1755,7 @@ function initDashboard() {
         if (session.role === 'limited') window.location.replace('account.html');
       }
     } catch (err) {
-      // Erro de rede: não faz nada, mantém o utilizador na página
+      // Falha de rede: Mantém o utilizador na página.
     }
     applyFilters();
     if (document.getElementById('player-modal').classList.contains('active')) renderModalTable();
