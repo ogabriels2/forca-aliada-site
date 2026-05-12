@@ -1479,14 +1479,16 @@ function initDashboard() {
     document.getElementById('qa-merit').style.display = 'flex';
     // Cache admin users for autocomplete once they're loaded
     setTimeout(()=>{
-      if(globalAdminUsers.length) meritPlayerCache = globalAdminUsers
-        .filter(u=>u.minecraft_name)
-        .map(u=>({
-          minecraft_name:u.minecraft_name,
-          display:`${u.minecraft_name} (${u.username})`,
-          merit_total:u.merit_total||0,
-          capital_balance:u.capital_balance||0,
-        }));
+      if(globalAdminUsers && globalAdminUsers.length > 0) {
+          meritPlayerCache = globalAdminUsers
+          .filter(u=>u.minecraft_name)
+          .map(u=>({
+            minecraft_name:u.minecraft_name,
+            display:`${u.minecraft_name} (${u.username})`,
+            merit_total:u.merit_total||0,
+            capital_balance:u.capital_balance||0,
+          }));
+      }
       initMeritSystem();
     }, 800);
   }
@@ -2976,7 +2978,7 @@ function initMeritSystem() {
   loadLeaderboard();
   loadMeritHistory();
   // Populate player cache from already-fetched admin users
-  if (globalAdminUsers && globalAdminUsers.length) {
+  if (globalAdminUsers && globalAdminUsers.length > 0) {
     meritPlayerCache = globalAdminUsers.map(u=>({
       minecraft_name: u.minecraft_name||u.username,
       display: u.minecraft_name ? `${u.minecraft_name} (${u.username})` : u.username,
@@ -3052,4 +3054,288 @@ function renderLeaderboard(filter='') {
     const capital = p.capital_balance ?? p.capital ?? null;
     const rank    = getRank(merit);
     const podium  = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_
+    const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/60.png` : `https://minotar.net/helm/Steve/60.png`;
+    const capStr  = capital !== null ? `💰 ${Number(capital).toLocaleString('pt-BR')}` : '—';
+    return `<tr>
+      <td class="lb-pos">${podium||'<span style="color:var(--text-secondary)">'+(i+1)+'</span>'}</td>
+      <td><div class="lb-player">
+        <img src="${skin}" onerror="this.src='https://minotar.net/helm/Steve/60.png'" alt="">
+        <span class="lbname">${p.minecraft_name||'—'}</span>
+      </div></td>
+      <td><span class="lb-rank-badge ${rank.key}">${rank.label}</span></td>
+      <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐</td>
+      <td class="lb-capital">${capStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLeaderboard() {
+  renderLeaderboard(document.getElementById('lb-search').value);
+}
+
+function exportLeaderboardCSV() {
+  const rows = [['#','Nick','Cargo','Merit','Capital']];
+  leaderboardData.forEach((p,i)=>{
+    const rank = getRank(p.merit_total||0);
+    rows.push([i+1, p.minecraft_name||'', rank.label, p.merit_total||0, p.capital_balance||0]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `fa_leaderboard_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+/* ── History ── */
+async function loadMeritHistory() {
+  try {
+    const [meritRes, capRes] = await Promise.all([
+      fetch(`${API_BASE}/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
+      fetch(`${API_BASE}/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
+    ]);
+    const meritData = meritRes.ok ? await meritRes.json() : { records:[] };
+    const meritRecords = (meritData.records||meritData||[]).map(r=>({...r,_type:'merit'}));
+
+    let capRecords = [];
+    if(capRes && capRes.ok) {
+      const capData = await capRes.json();
+      capRecords = (capData.records||capData||[]).map(r=>({...r,_type:'capital'}));
+    }
+
+    meritHistoryData = [...meritRecords, ...capRecords]
+      .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+
+    document.getElementById('mstat-today').textContent =
+      meritHistoryData.filter(r=>r.created_at&&r.created_at.slice(0,10)===new Date().toISOString().slice(0,10)).length;
+
+    renderMeritHistory();
+  } catch(e) { console.warn('History error',e); }
+}
+
+function renderMeritHistory(filter='', typeFilter='all') {
+  const list   = document.getElementById('merit-history-list');
+  const fl     = filter.toLowerCase();
+  const tf     = typeFilter;
+  const filtered = meritHistoryData.filter(r=>{
+    if(tf==='merit'   && r._type!=='merit')   return false;
+    if(tf==='capital' && r._type!=='capital') return false;
+    if(fl && !(
+      (r.player_minecraft_name||'').toLowerCase().includes(fl) ||
+      (r.reason||r.description||'').toLowerCase().includes(fl)
+    )) return false;
+    return true;
+  });
+
+  const page = meritHistoryPage;
+  const shown = filtered.slice(0, (page+1)*HISTORY_PAGE_SIZE);
+  const hasMore = shown.length < filtered.length;
+
+  if(!shown.length) {
+    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary);">Nenhuma transação encontrada.</div>`;
+    document.getElementById('merit-history-more').style.display = 'none';
+    return;
+  }
+
+  list.innerHTML = shown.map(r=>{
+    const isMerit   = r._type==='merit';
+    const isCredit  = r.type==='credit'||(r.amount>0 && !r.type);
+    const dotClass  = isMerit ? (isCredit?'credit':'debit') : 'capital';
+    const amtClass  = isMerit ? (isCredit?'pos':'neg') : 'capital-amt';
+    const amtSign   = isMerit ? (isCredit?'+':'-') : (r.type==='credit'?'+':'-');
+    const amtLabel  = isMerit ? `${amtSign}${Math.abs(r.amount)} ⭐` : `${amtSign}💰 ${Math.abs(r.amount).toLocaleString('pt-BR')}`;
+    const reason    = r.reason||r.description||'Sem descrição';
+    const awardedBy = r.awarded_by_username||r.created_by_username||'Sistema';
+    const timeStr   = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div class="merit-tx-item">
+      <div class="merit-tx-dot ${dotClass}"></div>
+      <div class="merit-tx-body">
+        <div class="merit-tx-title">${r.player_minecraft_name||'—'} ${isMerit?'— Mérito':'— Capital'}</div>
+        <div class="merit-tx-sub">${reason} · por ${awardedBy}</div>
+      </div>
+      <div class="merit-tx-amount ${amtClass}">${amtLabel}</div>
+      <div class="merit-tx-time">${timeStr}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('merit-history-more').style.display = hasMore ? 'block' : 'none';
+}
+
+function filterMeritHistory() {
+  meritHistoryPage = 0;
+  renderMeritHistory(
+    document.getElementById('history-search').value,
+    document.getElementById('history-type-filter').value
+  );
+}
+
+function loadMoreMeritHistory() {
+  meritHistoryPage++;
+  renderMeritHistory(
+    document.getElementById('history-search').value,
+    document.getElementById('history-type-filter').value
+  );
+}
+
+/* ── Player Autocomplete ── */
+function meritPlayerSearch(input, prefix) {
+  const q   = input.value.trim().toLowerCase();
+  const ac  = document.getElementById(`${prefix}-ac`);
+  meritSelectedPlayers[prefix] = null;
+  if(prefix==='mg') updateMeritPreview('mg');
+
+  if(!q || q.length < 1) { ac.classList.remove('open'); return; }
+
+  // Try from cache first
+  const results = meritPlayerCache.filter(p=>
+    (p.minecraft_name||'').toLowerCase().includes(q) ||
+    (p.display||'').toLowerCase().includes(q)
+  ).slice(0,6);
+
+  if(!results.length) {
+    // Fallback: try from leaderboard
+    const lb = leaderboardData.filter(p=>(p.minecraft_name||'').toLowerCase().includes(q)).slice(0,6);
+    if(lb.length) {
+      renderAC(ac, lb.map(p=>({
+        minecraft_name:p.minecraft_name,
+        display:p.minecraft_name,
+        merit_total:p.merit_total||0,
+        capital_balance:p.capital_balance||0,
+      })), prefix, input);
+    } else {
+      ac.innerHTML = `<div class="merit-ac-item" style="color:var(--text-secondary);">Nenhum jogador encontrado</div>`;
+      ac.classList.add('open');
+    }
+    return;
+  }
+  renderAC(ac, results, prefix, input);
+}
+
+function renderAC(ac, results, prefix, input) {
+  const rank_fn = p => getRank(p.merit_total||0);
+  ac.innerHTML = results.map((p,i)=>`
+    <div class="merit-ac-item" onclick="selectMeritPlayer('${prefix}','${p.minecraft_name}',${p.merit_total||0},${p.capital_balance||0})">
+      <img src="https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/56.png" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
+      <div>
+        <div class="ac-name">${p.minecraft_name}</div>
+        <div class="ac-rank">${rank_fn(p).label} · ${(p.merit_total||0)} ⭐</div>
+      </div>
+    </div>`).join('');
+  ac.classList.add('open');
+  // Close on outside click
+  setTimeout(()=>{ document.addEventListener('click', ()=>ac.classList.remove('open'), {once:true}); }, 0);
+}
+
+function selectMeritPlayer(prefix, name, merit, capital) {
+  document.getElementById(`${prefix}-player`).value = name;
+  document.getElementById(`${prefix}-ac`).classList.remove('open');
+  meritSelectedPlayers[prefix] = { minecraft_name:name, merit_total:merit, capital_balance:capital };
+  if(prefix==='mg') updateMeritPreview('mg');
+}
+
+/* ── Merit Preview ── */
+function updateMeritPreview(prefix) {
+  const preview = document.getElementById('mg-preview');
+  const player  = meritSelectedPlayers.mg;
+  const amount  = parseInt(document.getElementById('mg-amount').value)||0;
+  const op      = document.getElementById('mg-op').value;
+
+  if(!player || !amount) { preview.classList.remove('visible'); return; }
+
+  const currentMerit = player.merit_total||0;
+  const newMerit     = Math.max(0, op==='credit' ? currentMerit+amount : currentMerit-amount);
+  const rankBefore   = getRank(currentMerit);
+  const rankAfter    = getRank(newMerit);
+  const promoted     = rankAfter.min > rankBefore.min;
+  const demoted      = rankAfter.min < rankBefore.min;
+
+  document.getElementById('mg-preview-skin').src = `https://minotar.net/helm/${encodeURIComponent(player.minecraft_name)}/80.png`;
+  document.getElementById('mg-preview-name').textContent = player.minecraft_name;
+  document.getElementById('mg-preview-rank').textContent = `${rankBefore.label} · ${currentMerit} ⭐`;
+  document.getElementById('mg-from').textContent = `${currentMerit} ⭐`;
+  document.getElementById('mg-to').textContent   = `${newMerit} ⭐`;
+
+  const badge = document.getElementById('mg-badge');
+  if(promoted)      { badge.textContent='↑ Promoção!'; badge.className='promo-badge up'; }
+  else if(demoted)  { badge.textContent='↓ Rebaixamento'; badge.className='promo-badge down'; }
+  else              { badge.textContent='Sem mudança de cargo'; badge.className='promo-badge same'; }
+
+  preview.classList.add('visible');
+}
+
+/* ── Submit Grant Merit ── */
+async function submitGrantMerit() {
+  const player   = document.getElementById('mg-player').value.trim();
+  const amount   = parseInt(document.getElementById('mg-amount').value)||0;
+  const op       = document.getElementById('mg-op').value;
+  const category = document.getElementById('mg-category').value;
+  const reason   = document.getElementById('mg-reason').value.trim();
+  const btn      = document.getElementById('mg-btn');
+  const msg      = document.getElementById('mg-msg');
+
+  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
+  if(!amount||amount<1) { msg.textContent='Informe uma quantidade válida.'; msg.style.color='var(--danger)'; return; }
+  if(!reason) { msg.textContent='O motivo é obrigatório.'; msg.style.color='var(--danger)'; return; }
+
+  btn.disabled=true; btn.textContent='Registrando…';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/merit`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ minecraft_name:player, amount, type:op, category, reason })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Erro ao registrar mérito.');
+
+    msg.textContent = `✅ Mérito registrado! ${player} agora tem ${data.new_total} ⭐ (${data.new_rank})`;
+    msg.style.color = 'var(--success)';
+    // Reset
+    document.getElementById('mg-amount').value = '';
+    document.getElementById('mg-reason').value = '';
+    document.getElementById('mg-preview').classList.remove('visible');
+    meritSelectedPlayers.mg = null;
+    // Refresh data
+    loadMeritStats(); loadLeaderboard(); loadMeritHistory();
+  } catch(e) {
+    msg.textContent = e.message; msg.style.color='var(--danger)';
+  } finally {
+    btn.disabled=false; btn.textContent='Registrar Mérito';
+  }
+}
+
+/* ── Submit Adjust Capital ── */
+async function submitAdjustCapital() {
+  const player = document.getElementById('cap-player').value.trim();
+  const op     = document.getElementById('cap-op').value;
+  const amount = parseInt(document.getElementById('cap-amount').value)||0;
+  const desc   = document.getElementById('cap-desc').value.trim();
+  const btn    = document.getElementById('cap-btn');
+  const msg    = document.getElementById('cap-msg');
+
+  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
+  if(!amount||amount<1) { msg.textContent='Informe um valor válido.'; msg.style.color='var(--danger)'; return; }
+
+  btn.disabled=true; btn.textContent='Ajustando…';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/capital`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ minecraft_name:player, amount, type:op, description:desc||'Ajuste de capital' })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Erro ao ajustar capital.');
+
+    const sign = op==='credit'?'+':'-';
+    msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${data.new_balance}`;
+    msg.style.color = 'var(--success)';
+    document.getElementById('cap-amount').value = '';
+    document.getElementById('cap-desc').value = '';
+    meritSelectedPlayers.cap = null;
+    loadMeritStats(); loadMeritHistory();
+  } catch(e) {
+    msg.textContent = e.message; msg.style.color='var(--danger)';
+  } finally {
+    btn.disabled=false; btn.textContent='Ajustar Capital';
+  }
+}
+</script>
+</body>
+</html>
