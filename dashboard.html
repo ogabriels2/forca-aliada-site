@@ -6,13 +6,30 @@
 
 <script>
 (function(){
-  const key='fa_theme';
-  const token=localStorage.getItem('fa_token');
-  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
-  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  const key = 'fa_theme';
+  const token = localStorage.getItem('fa_token');
+  // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                   ? 'http://localhost:8787' 
+                   : 'https://forca-aliada-site.onrender.com';
+
+  function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+  function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'auto')); }
+  
   apply();
-  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+  
+  if (token) {
+    fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.ok ? r.json() : null)
+      .then(p => {
+        if (p && p.theme) {
+          localStorage.setItem(key, p.theme);
+          apply(p.theme);
+        }
+      }).catch(console.error);
+  }
+  
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'auto'));
 })();
 </script>
 <style>
@@ -807,9 +824,10 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             <div class="h-sub">ms de resposta</div>
           </div>
           <div class="health-card">
-            <div class="h-label">Uptime Estimado</div>
+            <div class="h-label">Online há</div>
             <div class="h-value" id="h-uptime">-</div>
             <div class="uptime-bar"><div class="uptime-fill" id="h-uptime-bar" style="width:0%"></div></div>
+            <div class="h-sub" id="h-uptime-sub">uptime real em 24h</div>
           </div>
           <div class="health-card">
             <div class="h-label">Sessões Hoje</div>
@@ -1370,9 +1388,40 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 <script>
 const SERVER_IP   = 'fa.ogabriels.com';
-const API_BASE    = 'https://forca-aliada-site.onrender.com';
+const PROD_API_BASE = 'https://forca-aliada-site.onrender.com';
+let API_BASE = localStorage.getItem('fa_api_base') || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8787'
+  : PROD_API_BASE);
+const API_FALLBACKS = Array.from(new Set([
+  API_BASE,
+  window.location.origin && window.location.origin !== 'null' ? window.location.origin : null,
+  'http://localhost:8787',
+  PROD_API_BASE,
+].filter(Boolean).map(base => base.replace(/\/$/, ''))));
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
+
+async function apiFetch(path, options = {}) {
+  if (/^https?:\/\//i.test(path)) return fetch(path, options);
+  let lastError;
+  for (const base of API_FALLBACKS) {
+    try {
+      const res = await fetch(`${base}${path}`, options);
+      if (res.status === 404 && base !== PROD_API_BASE && path.startsWith('/api/')) {
+        lastError = new Error(`Endpoint não encontrado em ${base}`);
+        continue;
+      }
+      if (res.status !== 0) {
+        API_BASE = base;
+        localStorage.setItem('fa_api_base', base);
+        return res;
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Backend indisponível');
+}
 
 let session = null;
 const token = localStorage.getItem(TOKEN_KEY);
@@ -1383,6 +1432,7 @@ if (session && session.role === 'limited') { window.location.replace('account.ht
 
 let globalHistData      = null;
 let globalApiData       = null;
+let globalHealthData    = null;
 let globalAdminUsers    = [];
 let globalUnregistered  = [];
 let currentAdminTab     = 'registered';
@@ -1428,7 +1478,7 @@ function normalizeAuditLog(log) {
 
 async function syncThemePreference() {
   try {
-    const res = await fetch(`${API_BASE}/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return;
     const prefs = await res.json();
     if (prefs.theme) {
@@ -1442,7 +1492,7 @@ async function syncThemePreference() {
 // ══ BOOTSTRAP ══
 (async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Sessão inválida');
     const me = await res.json();
     session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
@@ -1496,7 +1546,7 @@ function initDashboard() {
   if (liveInterval) clearInterval(liveInterval);
   liveInterval = setInterval(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await apiFetch(`/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!res.ok) throw new Error();
       const me = await res.json();
       if (session.role !== me.role) {
@@ -1583,10 +1633,14 @@ function normalizeNotification(n) {
 
 async function loadNotifications() {
   try {
-    const res = await fetch(`${API_BASE}/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao buscar notificações');
     notifList = (await res.json()).map(normalizeNotification);
-    notifUnread = notifList.filter(n => n.unread).length;
+
+    const countRes = await apiFetch(`/api/notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!countRes.ok) throw new Error('Falha ao buscar contagem de notificações');
+    const countData = await countRes.json();
+    notifUnread = countData.count;
   } catch (err) {
     console.error('[notifications]', err);
     notifList = [];
@@ -1613,25 +1667,19 @@ function updateNotifBadge() {
 
 async function markAllNotifRead() {
   try {
-    await fetch(`${API_BASE}/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    await apiFetch(`/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
   } catch (err) { console.error('[notifications]', err); }
-  notifList.forEach(n => n.unread = false);
-  notifUnread = 0;
-  updateNotifBadge();
-  renderNotifPanel();
+  loadNotifications();
 }
 
 async function markNotifRead(id) {
   const notif = notifList.find(n => String(n.id) === String(id));
   if (!notif || !notif.unread) return;
   if (!String(id).startsWith('local-')) {
-    try { await fetch(`${API_BASE}/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }
+    try { await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }
     catch (err) { console.error('[notifications]', err); }
   }
-  notif.unread = false;
-  notifUnread = notifList.filter(n => n.unread).length;
-  updateNotifBadge();
-  renderNotifPanel();
+  loadNotifications();
 }
 
 function renderNotifPanel() {
@@ -1689,7 +1737,7 @@ async function submitAdminNotification(event) {
   };
   btn.disabled = true; btn.textContent = 'Publicando...'; msg.textContent = '';
   try {
-    const res = await fetch(`${API_BASE}/api/admin/notifications`, {
+    const res = await apiFetch(`/api/admin/notifications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(payload),
@@ -1716,7 +1764,7 @@ async function loadAdminNotifications() {
   if (!list) return;
   list.innerHTML = '<div class="admin-notification-hint">Carregando publicações...</div>';
   try {
-    const res = await fetch(`${API_BASE}/api/admin/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/admin/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao buscar publicações');
     adminNotificationsCache = await res.json();
     list.innerHTML = adminNotificationsCache.slice(0, 10).map(n => `
@@ -1808,6 +1856,11 @@ function renderAlerts() {
 }
 
 // ══ Saúde do Servidor ══
+function formatDurationFromSeconds(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '<1m';
+  return formatTime(seconds / 3600);
+}
+
 function renderServerHealth() {
   if (!globalHistData || !globalApiData) return;
   const today = new Date().toDateString();
@@ -1828,9 +1881,16 @@ function renderServerHealth() {
   document.getElementById('h-sessions-today').textContent = sessionCount;
   document.getElementById('h-avg-time').textContent = formatTime(avgHoursToday);
 
-  const uptimePct = globalApiData?.online ? 98 : 0;
-  document.getElementById('h-uptime').textContent = globalApiData?.online ? '98%' : 'Offline';
-  document.getElementById('h-uptime-bar').style.width = uptimePct + '%';
+  const mcHealth = globalHealthData?.minecraft || {};
+  const uptimePct = Number.isFinite(mcHealth.uptime24hPct) ? mcHealth.uptime24hPct : (globalApiData?.online ? 100 : 0);
+  const onlineSince = mcHealth.onlineSince ? new Date(mcHealth.onlineSince) : null;
+  const onlineSeconds = globalApiData?.online && onlineSince && !Number.isNaN(onlineSince.getTime())
+    ? Math.max(0, (Date.now() - onlineSince.getTime()) / 1000)
+    : 0;
+  document.getElementById('h-uptime').textContent = globalApiData?.online ? formatDurationFromSeconds(onlineSeconds) : 'Offline';
+  document.getElementById('h-uptime-bar').style.width = Math.max(0, Math.min(100, uptimePct)) + '%';
+  const uptimeSub = document.getElementById('h-uptime-sub');
+  if (uptimeSub) uptimeSub.textContent = `${uptimePct}% nas últimas 24h${mcHealth.samples24h ? ` · ${mcHealth.samples24h} checks` : ''}`;
 
   const trend = document.getElementById('h-sessions-trend');
   if (sessionCount > yesterdaySessions) { trend.textContent = `▲ +${sessionCount - yesterdaySessions} vs ontem`; trend.className = 'h-sub health-trend up'; }
@@ -1912,7 +1972,7 @@ async function fetchAuditLogs() {
   try {
     const params = new URLSearchParams({ limit: '200', page: '0' });
     if (auditFilterActive !== 'all') params.set('type', auditFilterActive);
-    const res = await fetch(`${API_BASE}/api/admin/audit?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/admin/audit?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao buscar auditoria');
     const payload = await res.json();
     const logs = Array.isArray(payload) ? payload : (payload.logs || []);
@@ -1972,7 +2032,7 @@ function renderAuditLogs(append = false) {
 
 // ══ Notas de jogador no modal (compartilhadas via backend) ══
 async function fetchPlayerNotes(playerName) {
-  const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(playerName)}/notes`, { headers: { 'Authorization': `Bearer ${token}` } });
+  const res = await apiFetch(`/api/admin/notes/${encodeURIComponent(playerName)}`, { headers: { 'Authorization': `Bearer ${token}` } });
   if (!res.ok) throw new Error('Falha ao carregar notas');
   return res.json();
 }
@@ -2007,10 +2067,10 @@ async function addPlayerNote() {
   const text = ta.value.trim();
   if (!text || !currentModalPlayerName) return;
   try {
-    const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(currentModalPlayerName)}/notes`, {
+    const res = await apiFetch(`/api/admin/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ minecraft_name: currentModalPlayerName, text })
     });
     if (!res.ok) throw new Error('Falha ao salvar nota');
     ta.value = '';
@@ -2024,7 +2084,7 @@ async function addPlayerNote() {
 
 async function deletePlayerNote(playerName, noteId) {
   try {
-    const res = await fetch(`${API_BASE}/api/player/${encodeURIComponent(playerName)}/notes/${encodeURIComponent(noteId)}`, {
+    const res = await apiFetch(`/api/admin/notes/${encodeURIComponent(noteId)}`, {
       method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Falha ao excluir nota');
@@ -2104,7 +2164,7 @@ async function confirmPwSubmit() {
   if (!pw) { errEl.textContent = 'Digite sua senha para continuar.'; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400); return; }
   btn.disabled = true; btn.textContent = 'Verificando...'; errEl.textContent = '';
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: session.username, password: pw }) });
+    const res = await apiFetch(`/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: session.username, password: pw }) });
     if (!res.ok) throw new Error();
     const cb = _confirmPwCallback; closeConfirmPw(); if (cb) await cb();
   } catch {
@@ -2141,11 +2201,17 @@ function toggleDropdown(e) {
 // ══ Carga de dados ══
 async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
-  const [apiData, histData] = await Promise.all([
-    fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`).then(r => r.json()).catch(() => null),
-    fetch(`${API_BASE}/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => null),
+  const [statusData, histData] = await Promise.all([
+    apiFetch(`/api/server/status`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
+    apiFetch(`/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
-  globalApiData  = apiData;
+  globalHealthData = statusData;
+  globalApiData = statusData?.minecraft ? {
+    online: statusData.minecraft.online,
+    version: statusData.minecraft.version,
+    players: statusData.minecraft.players,
+    debug: { ping: statusData.minecraft.latencyMs },
+  } : null;
   globalHistData = histData;
   renderDashboard();
   updateActivityChart();
@@ -2397,7 +2463,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   renderPlayerNotes(displayMcName);
 
   const [historyData] = await Promise.all([
-    fetch(`${API_BASE}/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
+    apiFetch(`/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
   ]);
   modalHistoryData = historyData;
   const chartBtn = document.getElementById('modal-chart-btn');
@@ -2553,9 +2619,9 @@ async function saveAdminUser() {
   requirePassword({
     title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar',
     onConfirm: async () => {
-      const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+      const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { showToast('Erro ao salvar. Verifique se e-mail ou usuário já existem.', 'error'); return; }
-      if (newPwd) { const pwRes = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
+      if (newPwd) { const pwRes = await apiFetch(`/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
       if (session.role === 'owner') fetchAuditLogs();
       await fetchAdminUsers();
       document.getElementById('av-username').textContent = body.username;
@@ -2576,7 +2642,7 @@ async function executeAdminDelete() {
   requirePassword({
     title: 'Excluir conta', desc: `Esta ação é permanente. Digite sua senha para confirmar a exclusão da conta de ${targetName}.`, btnLabel: 'Excluir', destructive: true,
     onConfirm: async () => {
-      const res = await fetch(`${API_BASE}/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
         if (session.role === 'owner') fetchAuditLogs();
         await fetchAdminUsers(); closeModal(); showToast(`Conta de ${targetName} excluída.`);
@@ -2596,7 +2662,7 @@ async function submitCreateAccount() {
   if (!username || !email || !password) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
   if (password.length < 8) { msg.textContent = 'A senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
   btn.disabled = true; btn.textContent = 'Criando...';
-  const res = await fetch(`${API_BASE}/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
+  const res = await apiFetch(`/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
   btn.disabled = false; btn.textContent = 'Criar Cadastro';
   if (res.ok) {
     const data = await res.json();
@@ -2629,7 +2695,7 @@ async function submitCreateAccount() {
 // ══ Admin Users ══
 async function fetchAdminUsers() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); await fetchUnregistered(); }
   } catch {}
 }
@@ -2639,7 +2705,7 @@ async function fetchUnregistered() {
   if (unregisteredRequest) return unregisteredRequest;
   unregisteredRequest = (async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao buscar jogadores sem cadastro');
     globalUnregistered = await res.json();
   } catch (err) {
@@ -2842,7 +2908,7 @@ async function loadModalMeritData(mcName) {
 
   // Then fetch fresh data from API
   try {
-    const res = await fetch(`${API_BASE}/api/admin/players-with-balances?q=${encodeURIComponent(mcName)}`, {
+    const res = await apiFetch(`/api/admin/players-with-balances?q=${encodeURIComponent(mcName)}`, {
       headers:{ Authorization:`Bearer ${token}` }
     });
     if (res.ok) {
@@ -2898,7 +2964,7 @@ async function submitModalMerit() {
 
   btn.disabled = true; btn.textContent='…';
   try {
-    const res = await fetch(`${API_BASE}/api/admin/merit`, {
+    const res = await apiFetch(`/api/admin/merit`, {
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
       body: JSON.stringify({ minecraft_name:mc, amount, type:op, category:cat, reason })
@@ -2932,7 +2998,7 @@ async function submitModalCapital() {
 
   btn.disabled = true; btn.textContent='…';
   try {
-    const res = await fetch(`${API_BASE}/api/admin/capital`, {
+    const res = await apiFetch(`/api/admin/capital`, {
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
       body: JSON.stringify({ minecraft_name:mc, amount, type:op, description:desc||'Ajuste de capital' })
@@ -3001,7 +3067,7 @@ function switchMeritTab(tab) {
 /* ── Stats mini-cards ── */
 async function loadMeritStats() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
+    const res = await apiFetch(`/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
     if(!res.ok) return;
     const data = await res.json();
     leaderboardData = data.leaderboard || data || [];
@@ -3018,7 +3084,7 @@ async function loadMeritStats() {
 
 async function loadMeritStatsToday() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} });
+    const res = await apiFetch(`/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} });
     if(!res.ok) return;
     const data = await res.json();
     const records = data.records || data || [];
@@ -3031,7 +3097,7 @@ async function loadMeritStatsToday() {
 /* ── Leaderboard ── */
 async function loadLeaderboard() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
+    const res = await apiFetch(`/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
     if(!res.ok) throw new Error();
     const data = await res.json();
     leaderboardData = data.leaderboard || data || [];
@@ -3089,8 +3155,8 @@ function exportLeaderboardCSV() {
 async function loadMeritHistory() {
   try {
     const [meritRes, capRes] = await Promise.all([
-      fetch(`${API_BASE}/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
-      fetch(`${API_BASE}/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
+      apiFetch(`/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
+      apiFetch(`/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
     ]);
     const meritData = meritRes.ok ? await meritRes.json() : { records:[] };
     const meritRecords = (meritData.records||meritData||[]).map(r=>({...r,_type:'merit'}));
@@ -3277,7 +3343,7 @@ async function submitGrantMerit() {
 
   btn.disabled=true; btn.textContent='Registrando…';
   try {
-    const res = await fetch(`${API_BASE}/api/admin/merit`, {
+    const res = await apiFetch(`/api/admin/merit`, {
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
       body: JSON.stringify({ minecraft_name:player, amount, type:op, category, reason })
@@ -3315,7 +3381,7 @@ async function submitAdjustCapital() {
 
   btn.disabled=true; btn.textContent='Ajustando…';
   try {
-    const res = await fetch(`${API_BASE}/api/admin/capital`, {
+    const res = await apiFetch(`/api/admin/capital`, {
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
       body: JSON.stringify({ minecraft_name:player, amount, type:op, description:desc||'Ajuste de capital' })

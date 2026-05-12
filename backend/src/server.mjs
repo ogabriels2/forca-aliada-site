@@ -34,6 +34,8 @@ import pg from 'pg';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
+const PROCESS_STARTED_AT = new Date();
+
 // ─────────────────────────────────────────────
 // App
 // ─────────────────────────────────────────────
@@ -46,8 +48,13 @@ const defaultCorsOrigins = [
   'https://forcaaliada.ogabriels.com',
   'https://forca-aliada-site.vercel.app',
   'https://forca-aliada-site.onrender.com',
+  'http://localhost:8787',
+  'http://127.0.0.1:8787',
   'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5500',
   'http://127.0.0.1:5500',
 ];
 const corsOrigins = Array.from(new Set([
@@ -276,6 +283,19 @@ CREATE TABLE IF NOT EXISTS capital_records (
 );
 CREATE INDEX IF NOT EXISTS idx_capital_mc ON capital_records(LOWER(minecraft_name));
 
+-- Histórico real de disponibilidade do servidor Minecraft
+CREATE TABLE IF NOT EXISTS server_status_checks (
+  id             SERIAL PRIMARY KEY,
+  checked_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  host           VARCHAR(255) NOT NULL,
+  online         BOOLEAN NOT NULL,
+  players_online INTEGER DEFAULT 0,
+  players_max    INTEGER DEFAULT 0,
+  latency_ms     INTEGER,
+  version        VARCHAR(255)
+);
+CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
+
 `);
 }
 
@@ -344,7 +364,106 @@ next();
 // ─────────────────────────────────────────────
 // Health
 // ─────────────────────────────────────────────
-app.get('/healthz', (_req, res) => res.json({ ok: true }));
+app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) }));
+
+async function fetchMinecraftStatus() {
+  const host = process.env.MC_HOST || 'fa.ogabriels.com';
+  const started = Date.now();
+  const resp = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`, {
+    headers: { 'User-Agent': 'forca-aliada-backend/2.0' },
+  });
+  if (!resp.ok) throw new Error(`mcstatus failed: ${resp.status}`);
+  const data = await resp.json();
+  const latencyMs = Math.max(0, Date.now() - started);
+  const onlinePlayers = (data?.players?.list || [])
+    .map(p => p.name_clean || p.name_raw || p.name)
+    .filter(Boolean);
+
+  return {
+    host,
+    checkedAt: new Date(),
+    online: Boolean(data?.online),
+    version: data?.version?.name_clean || data?.version?.name_raw || data?.version?.name || null,
+    players: {
+      online: Number(data?.players?.online || onlinePlayers.length || 0),
+      max: Number(data?.players?.max || 0),
+      list: onlinePlayers,
+    },
+    latencyMs,
+    raw: data,
+  };
+}
+
+async function recordServerStatus(status) {
+  await pool.query(
+    'INSERT INTO server_status_checks(host, online, players_online, players_max, latency_ms, version, checked_at) VALUES($1,$2,$3,$4,$5,$6,$7)',
+    [status.host, status.online, status.players.online, status.players.max, status.latencyMs, status.version, status.checkedAt],
+  );
+}
+
+async function getServerStatusStats(host, currentOnline) {
+  const { rows: uptimeRows } = await pool.query(
+    `SELECT COUNT(*)::int AS total, COALESCE(SUM(CASE WHEN online THEN 1 ELSE 0 END), 0)::int AS online
+     FROM server_status_checks
+     WHERE host=$1 AND checked_at >= NOW() - INTERVAL '24 hours'`,
+    [host],
+  );
+  const total = uptimeRows[0]?.total || 0;
+  const uptime24hPct = total > 0 ? Math.round(((uptimeRows[0].online || 0) / total) * 100) : (currentOnline ? 100 : 0);
+
+  let onlineSince = null;
+  if (currentOnline) {
+    const { rows: offlineRows } = await pool.query(
+      'SELECT checked_at FROM server_status_checks WHERE host=$1 AND online=FALSE ORDER BY checked_at DESC LIMIT 1',
+      [host],
+    );
+    const params = offlineRows.length ? [host, offlineRows[0].checked_at] : [host];
+    const query = offlineRows.length
+      ? 'SELECT MIN(checked_at) AS since FROM server_status_checks WHERE host=$1 AND online=TRUE AND checked_at > $2'
+      : 'SELECT MIN(checked_at) AS since FROM server_status_checks WHERE host=$1 AND online=TRUE';
+    const { rows } = await pool.query(query, params);
+    onlineSince = rows[0]?.since || null;
+  }
+
+  return { uptime24hPct, onlineSince, samples24h: total };
+}
+
+// ─────────────────────────────────────────────
+// Status real do servidor para o dashboard
+// ─────────────────────────────────────────────
+app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
+  const host = process.env.MC_HOST || 'fa.ogabriels.com';
+  try {
+    const status = await fetchMinecraftStatus();
+    await recordServerStatus(status);
+    const stats = await getServerStatusStats(status.host, status.online);
+    return res.json({
+      checked_at: status.checkedAt.toISOString(),
+      backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
+      minecraft: {
+        host: status.host,
+        online: status.online,
+        version: status.version,
+        players: { online: status.players.online, max: status.players.max, list: status.players.list },
+        latencyMs: status.latencyMs,
+        onlineSince: stats.onlineSince,
+        uptime24hPct: stats.uptime24hPct,
+        samples24h: stats.samples24h,
+      },
+    });
+  } catch (err) {
+    console.error('[server status]', err);
+    const checkedAt = new Date();
+    const fallback = { host, checkedAt, online: false, version: null, players: { online: 0, max: 0, list: [] }, latencyMs: null };
+    await recordServerStatus(fallback).catch(e => console.error('[server status record]', e));
+    const stats = await getServerStatusStats(host, false).catch(() => ({ uptime24hPct: 0, onlineSince: null, samples24h: 0 }));
+    return res.json({
+      checked_at: checkedAt.toISOString(),
+      backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
+      minecraft: { ...fallback, checkedAt: undefined, onlineSince: null, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h, error: 'status unavailable' },
+    });
+  }
+});
 
 // ─────────────────────────────────────────────
 // Cron – Minecraft snapshot
@@ -354,18 +473,10 @@ const key = req.query.key || req.headers['x-ingest-secret'];
 if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
 
 try {
-const host = process.env.MC_HOST || 'fa.ogabriels.com';
-const resp = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`, {
-headers: { 'User-Agent': 'forca-aliada-backend/2.0' },
-});
-if (!resp.ok) throw new Error('mcstatus failed');
-const data = await resp.json();
-
-const list = data?.players?.list || [];
-const onlinePlayers = list
-  .map(p => p.name_clean || p.name_raw || p.name)
-  .filter(Boolean);
-const now = new Date();
+const status = await fetchMinecraftStatus();
+await recordServerStatus(status);
+const onlinePlayers = status.players.list;
+const now = status.checkedAt;
 
 const active = await pool.query(
   'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL',
@@ -744,7 +855,11 @@ app.get('/api/me/preferences', auth, async (req, res) => {
 });
 
 app.put('/api/me/preferences', auth, async (req, res) => {
-  const prefs = await ensureUserPreferences(req.user.sub, req.body || {});
+  const { rows } = await pool.query(
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme FROM user_preferences WHERE user_id=$1',
+    [req.user.sub],
+  );
+  const prefs = await ensureUserPreferences(req.user.sub, { ...(rows[0] || {}), ...(req.body || {}) });
   await audit({
     actorId: req.user.sub,
     actorName: req.user.username,
@@ -957,14 +1072,51 @@ res.json({ logs: rows, total: total[0].count });
 // ─────────────────────────────────────────────
 
 /**
+ * GET /api/admin/notes/:minecraft_name
+ */
+app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res) => {
+  const mc = sanitize(req.params.minecraft_name).toLowerCase();
+  const { rows } = await pool.query(
+    'SELECT * FROM player_notes WHERE LOWER(minecraft_name) = $1 ORDER BY created_at DESC',
+    [mc],
+  );
+  res.json(rows);
+});
+
+/**
+ * POST /api/admin/notes
+ * Body: { minecraft_name: string, text: string }
+ */
+app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
+  const { minecraft_name, text } = req.body || {};
+  if (!minecraft_name || !text) return res.status(400).json({ error: 'Campos ausentes' });
+
+  const { rows } = await pool.query(
+    'INSERT INTO player_notes(minecraft_name, author_id, author_name, text) VALUES($1, $2, $3, $4) RETURNING *',
+    [sanitize(minecraft_name), req.user.sub, req.user.username, sanitize(text)],
+  );
+  res.json(rows[0]);
+});
+
+/**
+ * DELETE /api/admin/notes/:id
+ */
+app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
+  const noteId = parseInt(req.params.id);
+  if (!noteId) return res.status(400).json({ error: 'invalid id' });
+  await pool.query('DELETE FROM player_notes WHERE id = $1', [noteId]);
+  res.json({ ok: true });
+});
+
+/**
 
 - GET /api/player/:name/notes
   */
   app.get('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
-  const mc = req.params.name;
+  const mc = sanitize(req.params.name).toLowerCase();
   const { rows } = await pool.query(
   'SELECT id, author_name, text, created_at FROM player_notes WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC',
-  [mc.toLowerCase()],
+  [mc],
   );
   res.json(rows);
   });
@@ -993,14 +1145,14 @@ res.status(201).json(rows[0]);
   */
   app.delete('/api/player/:name/notes/:noteId', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.noteId);
-  const mc     = req.params.name;
+  const mc     = sanitize(req.params.name).toLowerCase();
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
 
 // Owner pode deletar qualquer nota; admin só as suas
 const ownClause = req.user.role === 'owner' ? '' : 'AND author_id=$3';
 const params    = req.user.role === 'owner'
-? [noteId, mc.toLowerCase()]
-: [noteId, mc.toLowerCase(), req.user.sub];
+? [noteId, mc]
+: [noteId, mc, req.user.sub];
 
 const { rowCount } = await pool.query(
 `DELETE FROM player_notes WHERE id=$1 AND LOWER(minecraft_name)=$2 ${ownClause}`,
@@ -1054,9 +1206,10 @@ leftAt: r.left_at, hoursOnline: r.duration_hours,
 // HISTÓRICO POR JOGADOR
 // ─────────────────────────────────────────────
 app.get('/api/player/:name/history', auth, requireAdmin, async (req, res) => {
+const mc = sanitize(req.params.name).toLowerCase();
 const { rows } = await pool.query(
-'SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE player=$1 ORDER BY entered_at DESC',
-[req.params.name],
+'SELECT entered_at, left_at, duration_hours FROM player_sessions WHERE LOWER(player)=$1 ORDER BY entered_at DESC',
+[mc],
 );
 res.json(rows);
 });
@@ -1536,9 +1689,10 @@ res.status(500).json({ error: 'internal error' });
 // ─────────────────────────────────────────────
 // Boot
 // ─────────────────────────────────────────────
+const PORT = process.env.PORT || 8787;
 migrate()
 .then(seedAdmin)
+.then(() => {
+  app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
+})
 .catch(e => { console.error('[migrate]', e); process.exit(1); });
-
-const PORT = process.env.PORT || 8787;
-app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
