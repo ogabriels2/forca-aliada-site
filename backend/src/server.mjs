@@ -1715,6 +1715,3 @@ migrate()
   app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
 })
 .catch(e => { console.error('[migrate]', e); process.exit(1); });
-
-const PORT = process.env.PORT || 8787;
-app.listen(PORT, () => console.log(`✅  API rodando na porta ${PORT}`));
