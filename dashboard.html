@@ -1389,7 +1389,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       <div class="modal-user-info">
         <img id="modal-img" src="https://minotar.net/helm/Steve/100.png" alt="Skin do jogador">
         <div>
-          <h2 id="modal-name">-</h2>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><h2 id="modal-name" style="margin:0;">-</h2><span id="modal-rank-badge" class="li-merit-badge ferro">🪨 Ferro</span></div>
           <span id="modal-status" class="pill">-</span>
           <button id="modal-chart-btn" onclick="focusPlayerInChart(currentModalPlayerName)" title="Isolar jogador no gráfico de atividade" style="display:none;margin-top:8px;padding:5px 12px;border:none;border-radius:980px;background:rgba(0,113,227,0.08);color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;">
             📊 Ver no gráfico
@@ -2713,6 +2713,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
     document.getElementById('modal-site-account').style.display   = 'none';
   }
 
+  await loadModalMeritData(displayMcName);
   renderModalStats(); renderModalTable();
 }
 
@@ -3108,15 +3109,16 @@ async function loadModalMeritData(mcName) {
     renderModalMerit(cached.merit_total||0, cached.capital_balance||0);
   }
 
-  // Then fetch fresh data from API
+  // Then fetch fresh data from API for the selected player specifically.
   try {
-    const res = await apiFetch(`/api/admin/players-with-balances?q=${encodeURIComponent(mcName)}`, {
+    const res = await apiFetch(`/api/player/${encodeURIComponent(mcName)}/merit`, {
       headers:{ Authorization:`Bearer ${token}` }
     });
     if (res.ok) {
       const data = await res.json();
-      const player = (data.players||data||[]).find(p=>p.minecraft_name?.toLowerCase()===mcName.toLowerCase());
-      if (player) renderModalMerit(player.merit_total||0, player.capital_balance||0);
+      renderModalMerit(data.merit||0, data.capital||0);
+      const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mcName.toLowerCase());
+      if (cu) { cu.merit_total = data.merit||0; cu.capital_balance = data.capital||0; }
     }
   } catch(e) { /* keep cached */ }
 
@@ -3138,6 +3140,8 @@ function renderModalMerit(merit, capital) {
   icon.parentElement.style.setProperty('--modal-rank-color', rd.color);
   document.getElementById('modal-rank-name').textContent = rd.label;
   document.getElementById('modal-rank-name').style.color = rd.color;
+  const headerBadge = document.getElementById('modal-rank-badge');
+  if (headerBadge) { headerBadge.className = `li-merit-badge ${rd.key}`; headerBadge.textContent = `${rd.icon} ${rd.label}`; }
   document.getElementById('modal-rank-merit').textContent = `${merit.toLocaleString('pt-BR')} ⭐ de Mérito acumulado`;
   document.getElementById('modal-rank-cur-label').textContent = `${merit} ⭐`;
   document.getElementById('modal-rank-next-label').textContent = nextLabel;
@@ -3174,13 +3178,13 @@ async function submitModalMerit() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error||'Erro');
     msg.style.color = 'var(--success)';
-    msg.textContent = `✅ ${op==='credit'?'+':`-`}${amount} ⭐ → total: ${data.new_total} ⭐ (${data.new_rank})`;
+    msg.textContent = `✅ ${op==='credit'?'+':`-`}${amount} ⭐ → total: ${(data.new_total ?? data.newMerit)} ⭐ (${data.new_rank || data.rank?.label || data.newRank})`;
     document.getElementById('modal-merit-amount').value = '';
     document.getElementById('modal-merit-reason').value = '';
-    renderModalMerit(data.new_total, parseFloat(document.getElementById('modal-capital-val').textContent)||0);
+    renderModalMerit((data.new_total ?? data.newMerit), parseFloat(document.getElementById('modal-capital-val').textContent)||0);
     // Update cache
     const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
-    if (cu) cu.merit_total = data.new_total;
+    if (cu) cu.merit_total = (data.new_total ?? data.newMerit);
     renderAdminTab();
     loadMeritStats(); loadLeaderboard();
   } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
@@ -3209,13 +3213,13 @@ async function submitModalCapital() {
     if (!res.ok) throw new Error(data.error||'Erro');
     msg.style.color = 'var(--success)';
     const sign = op==='credit'?'+':'-';
-    msg.textContent = `✅ Capital: ${sign}💰${amount} → saldo: 💰${data.new_balance}`;
+    msg.textContent = `✅ Capital: ${sign}💰${amount} → saldo: 💰${(data.new_balance ?? data.newCapital)}`;
     document.getElementById('modal-capital-amount').value = '';
     document.getElementById('modal-capital-desc').value   = '';
     const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
     const curMerit = cu ? (cu.merit_total||0) : 0;
-    if (cu) cu.capital_balance = data.new_balance;
-    renderModalMerit(curMerit, data.new_balance);
+    if (cu) cu.capital_balance = (data.new_balance ?? data.newCapital);
+    renderModalMerit(curMerit, (data.new_balance ?? data.newCapital));
     renderAdminTab();
   } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
   finally { btn.disabled=false; btn.textContent='Ajustar'; }
@@ -3553,7 +3557,7 @@ async function submitGrantMerit() {
     const data = await res.json();
     if(!res.ok) throw new Error(data.error||'Erro ao registrar mérito.');
 
-    msg.textContent = `✅ Mérito registrado! ${player} agora tem ${data.new_total} ⭐ (${data.new_rank})`;
+    msg.textContent = `✅ Mérito registrado! ${player} agora tem ${(data.new_total ?? data.newMerit)} ⭐ (${data.new_rank || data.rank?.label || data.newRank})`;
     msg.style.color = 'var(--success)';
     // Reset
     document.getElementById('mg-amount').value = '';
@@ -3592,7 +3596,7 @@ async function submitAdjustCapital() {
     if(!res.ok) throw new Error(data.error||'Erro ao ajustar capital.');
 
     const sign = op==='credit'?'+':'-';
-    msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${data.new_balance}`;
+    msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${(data.new_balance ?? data.newCapital)}`;
     msg.style.color = 'var(--success)';
     document.getElementById('cap-amount').value = '';
     document.getElementById('cap-desc').value = '';
