@@ -705,12 +705,17 @@ app.post('/api/auth/logout', (_req, res) => res.json({ ok: true }));
 // ME – Perfil
 // ─────────────────────────────────────────────
 app.get('/api/me', auth, async (req, res) => {
-const { rows } = await pool.query(
-'SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users WHERE id=$1',
-[req.user.sub],
-);
-if (!rows.length) return res.status(401).json({ error: 'user deleted' });
-res.json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users WHERE id=$1',
+      [req.user.sub],
+    );
+    if (!rows.length) return res.status(401).json({ error: 'user deleted' });
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('[GET /api/me error]', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 app.put('/api/me', auth, async (req, res) => {
