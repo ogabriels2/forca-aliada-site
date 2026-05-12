@@ -6,13 +6,30 @@
 
 <script>
 (function(){
-  const key='fa_theme';
-  const token=localStorage.getItem('fa_token');
-  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
-  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  const key = 'fa_theme';
+  const token = localStorage.getItem('fa_token');
+  // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                   ? 'http://localhost:3000' 
+                   : 'https://forca-aliada-site.onrender.com';
+
+  function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+  function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'auto')); }
+  
   apply();
-  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+  
+  if (token) {
+    fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.ok ? r.json() : null)
+      .then(p => {
+        if (p && p.theme) {
+          localStorage.setItem(key, p.theme);
+          apply(p.theme);
+        }
+      }).catch(console.error);
+  }
+  
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'auto'));
 })();
 </script>
 <style>
@@ -1545,7 +1562,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
      JAVASCRIPT
 ══════════════════════════════════════════════════════════════ -->
 <script>
-const API_BASE = 'https://forca-aliada-site.onrender.com';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY = 'fa_token';
 const THEME_KEY = 'fa_theme';
@@ -1634,10 +1653,27 @@ function applyTheme(theme) {
   document.getElementById(`theme-opt-${theme}`)?.classList.add('active');
   localStorage.setItem(THEME_KEY, theme);
 }
+async function saveThemePreference(newTheme) {
+  localStorage.setItem(THEME_KEY, newTheme);
+  document.documentElement.setAttribute('data-theme', newTheme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : newTheme);
+
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) {
+    await fetch(`${API_BASE}/api/me/preferences`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: newTheme })
+    });
+  }
+}
 function setTheme(t) {
   applyTheme(t);
-  savePref('theme', t);
-  showToast('success', 'Tema atualizado', `Tema ${({light:'claro',dark:'escuro',auto:'automático'})[t]} ativado.`);
+  saveThemePreference(t)
+    .then(() => showToast('success', 'Tema atualizado', `Tema ${({light:'claro',dark:'escuro',auto:'automático'})[t]} ativado.`))
+    .catch(err => {
+      console.error('[theme preferences]', err);
+      showToast('error', 'Tema não salvo', 'Não foi possível salvar o tema no servidor.');
+    });
 }
 
 // ── PREFS ──────────────────────────────────────────────────────
@@ -1701,9 +1737,7 @@ async function markNotifRead(id) {
       method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Falha ao marcar notificação');
-    if (notif) notif.is_read = true;
-    document.getElementById(`notif-dot-${id}`)?.classList.add('read');
-    updateNotifBadges();
+    loadNotifications();
   } catch (err) {
     console.error('[notifications]', err);
     showToast('error', 'Erro', 'Não foi possível marcar a notificação como lida.');
@@ -1713,9 +1747,7 @@ async function markAllNotifRead() {
   try {
     const res = await fetch(`${API_BASE}/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha ao marcar todas');
-    notifCache.forEach(n => n.is_read = true);
-    renderNotifs(currentNotifFilter);
-    updateNotifBadges();
+    loadNotifications();
     showToast('success', 'Feito!', 'Todas as notificações foram marcadas como lidas.');
   } catch (err) {
     console.error('[notifications]', err);
