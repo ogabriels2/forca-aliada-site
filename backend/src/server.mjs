@@ -2054,6 +2054,141 @@ app.delete('/api/me/sessions', auth, async (req, res) => {
   }
 });
 
+
+// ─────────────────────────────────────────────
+// ANALYTICS E "BIG DATA" (Força Aliada BI)
+// ─────────────────────────────────────────────
+
+// 1. Visão "Hoje em Dia" (Live Feed e Pico do Dia)
+app.get('/api/admin/analytics/daily', auth, requireAdmin, async (req, res) => {
+  try {
+    // Pico de jogadores nas últimas 24h
+    const peak = await pool.query(`
+      SELECT MAX(players_online) as max_players, checked_at 
+      FROM server_status_checks 
+      WHERE checked_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY checked_at ORDER BY max_players DESC LIMIT 1
+    `);
+    
+    // Live Feed (Últimos 10 eventos de conexão/desconexão)
+    const recent = await pool.query(`
+      SELECT player, entered_at, left_at, duration_hours 
+      FROM player_sessions 
+      ORDER BY entered_at DESC LIMIT 10
+    `);
+    
+    res.json({ peak: peak.rows[0] || null, liveFeed: recent.rows });
+  } catch(e) { 
+    console.error('[BI Daily Error]', e);
+    res.status(500).json({error: 'internal'}); 
+  }
+});
+
+// 2. Rota Histórica com Paginação e Busca Direta
+app.get('/api/admin/sessions', auth, requireAdmin, async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 20)); // Limite seguro
+  const offset = (page - 1) * limit;
+  const search = req.query.search ? `%${req.query.search}%` : null;
+
+  try {
+    let query = 'SELECT player, entered_at, left_at, duration_hours FROM player_sessions';
+    let countQuery = 'SELECT COUNT(*) as total FROM player_sessions';
+    let params = [];
+    
+    if (search) {
+      query += ' WHERE player ILIKE $1';
+      countQuery += ' WHERE player ILIKE $1';
+      params.push(search);
+    }
+    
+    query += ` ORDER BY entered_at DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`;
+    
+    const countRes = await pool.query(countQuery, params);
+    const dataRes = await pool.query(query, [...params, limit, offset]);
+
+    res.json({
+      data: dataRes.rows,
+      total: parseInt(countRes.rows[0].total),
+      page,
+      pages: Math.ceil(countRes.rows[0].total / limit)
+    });
+  } catch(e) { res.status(500).json({error: 'internal'}); }
+});
+
+// 3. RG do Jogador (Dossiê Completo)
+app.get('/api/admin/player/:nick/rg', auth, requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        player, 
+        SUM(duration_hours) as total_hours, 
+        MIN(entered_at) as first_seen, 
+        MAX(left_at) as last_seen, 
+        COUNT(*) as total_sessions 
+      FROM player_sessions 
+      WHERE LOWER(player) = LOWER($1)
+      GROUP BY player
+    `, [req.params.nick]);
+    
+    if(!rows.length || !rows[0].player) return res.status(404).json({error: 'Jogador não encontrado'});
+    res.json(rows[0]);
+  } catch(e) { res.status(500).json({error: 'internal'}); }
+});
+
+// 4. Heatmap de Atividade e Gráficos de Tendência
+app.get('/api/admin/analytics/trends', auth, requireAdmin, async (req, res) => {
+  try {
+    // Heatmap: Onde o server enche? (Dias da Semana vs Hora)
+    // 0 = Domingo, 6 = Sábado
+    const heatmap = await pool.query(`
+      SELECT EXTRACT(DOW FROM entered_at) as dow, EXTRACT(HOUR FROM entered_at) as hour, COUNT(*) as count 
+      FROM player_sessions 
+      WHERE entered_at >= NOW() - INTERVAL '30 days'
+      GROUP BY dow, hour
+    `);
+    
+    // Crescimento Mensal
+    const monthly = await pool.query(`
+      SELECT TO_CHAR(DATE_TRUNC('month', entered_at), 'YYYY-MM') as month, 
+             SUM(duration_hours) as total_hours,
+             COUNT(DISTINCT player) as unique_players
+      FROM player_sessions 
+      GROUP BY month ORDER BY month ASC LIMIT 12
+    `);
+    
+    res.json({ heatmap: heatmap.rows, monthly: monthly.rows });
+  } catch(e) { res.status(500).json({error: 'internal'}); }
+});
+
+// 5. Novas Ferramentas: Relatórios de Decisão
+app.get('/api/admin/reports', auth, requireAdmin, async (req, res) => {
+  const type = req.query.type;
+  try {
+    if (type === 'churn') {
+      // Evasão: Jogou +10 horas, mas sumiu há >30 dias
+      const { rows } = await pool.query(`
+        SELECT player, SUM(duration_hours) as total_hours, MAX(left_at) as last_seen 
+        FROM player_sessions 
+        GROUP BY player 
+        HAVING SUM(duration_hours) > 10 AND MAX(left_at) < NOW() - INTERVAL '30 days' 
+        ORDER BY total_hours DESC LIMIT 50
+      `);
+      return res.json(rows);
+    } else if (type === 'veterans') {
+      // Veteranos: Ranking dos primeiros que logaram
+      const { rows } = await pool.query(`
+        SELECT player, SUM(duration_hours) as total_hours, MIN(entered_at) as first_seen 
+        FROM player_sessions 
+        GROUP BY player 
+        ORDER BY first_seen ASC LIMIT 50
+      `);
+      return res.json(rows);
+    }
+    res.status(400).json({error: 'Tipo de relatório inválido'});
+  } catch(e) { res.status(500).json({error: 'internal'}); }
+});
+
 // ─────────────────────────────────────────────
 // Error handler
 // ─────────────────────────────────────────────
