@@ -409,14 +409,37 @@ header {
 .pw-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; display: flex; }
 
 /* Sessões ativas */
-.session-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
-.session-item:last-child { border-bottom: none; }
-.session-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.session-icon svg { width: 20px; height: 20px; color: var(--accent); }
-.session-info { flex: 1; min-width: 0; }
-.session-info strong { display: block; font-size: 14px; font-weight: 600; }
-.session-info span { font-size: 12px; color: var(--text-secondary); }
-.session-current { font-size: 11px; font-weight: 700; color: var(--success); background: rgba(52,199,89,0.1); padding: 2px 8px; border-radius: 980px; white-space: nowrap; }
+.session-item { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border-radius: var(--radius-md); border: 1.5px solid var(--border); margin-bottom: 10px; transition: all 0.2s; background: var(--bg-color); }
+.session-item:last-child { margin-bottom: 0; }
+.session-item.current-session { border-color: rgba(52,199,89,0.35); background: rgba(52,199,89,0.04); }
+.session-item:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.06); }
+.session-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--accent-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.session-icon svg { width: 22px; height: 22px; color: var(--accent); }
+.session-icon.mobile-icon { background: rgba(175,82,222,0.1); }
+.session-icon.mobile-icon svg { color: var(--purple); }
+.session-icon.tablet-icon { background: rgba(255,149,0,0.1); }
+.session-icon.tablet-icon svg { color: var(--warning); }
+.session-body { flex: 1; min-width: 0; }
+.session-header-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.session-device-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.session-current-pill { font-size: 10px; font-weight: 800; color: var(--success); background: rgba(52,199,89,0.12); padding: 2px 8px; border-radius: 980px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid rgba(52,199,89,0.25); }
+.session-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+@media (max-width: 600px) { .session-meta-grid { grid-template-columns: 1fr; } }
+.session-meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+.session-meta-item svg { width: 12px; height: 12px; flex-shrink: 0; opacity: 0.7; }
+.session-meta-item strong { color: var(--text-primary); font-weight: 600; }
+.session-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.session-risk { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 980px; white-space: nowrap; }
+.session-risk.safe { background: rgba(52,199,89,0.1); color: var(--success); border: 1px solid rgba(52,199,89,0.2); }
+.session-risk.unknown { background: rgba(255,149,0,0.1); color: var(--warning); border: 1px solid rgba(255,149,0,0.2); }
+.session-terminate-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer; font-family: inherit; transition: all 0.18s; white-space: nowrap; }
+.session-terminate-btn:hover { background: rgba(255,59,48,0.08); border-color: var(--danger); }
+.sessions-summary { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: var(--bg-color); border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 16px; flex-wrap: wrap; }
+.sessions-summary-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.sessions-summary-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sessions-summary-dot.green { background: var(--success); box-shadow: 0 0 0 3px rgba(52,199,89,0.2); }
+.sessions-summary-dot.grey { background: var(--text-secondary); }
+.session-skeleton { height: 90px; border-radius: var(--radius-md); margin-bottom: 10px; }
 
 /* 2FA */
 .twofa-banner { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: var(--radius-md); background: linear-gradient(135deg, rgba(255,149,0,0.08), rgba(255,149,0,0.04)); border: 1.5px solid rgba(255,149,0,0.25); margin-bottom: 20px; }
@@ -1573,16 +1596,23 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             </div>
             <button class="btn-danger-outline btn-sm" onclick="terminateAllSessions()">Encerrar outras sessões</button>
           </div>
-          <p style="font-size:13px; color:var(--text-secondary); margin:-8px 0 16px;">Dispositivos atualmente conectados à sua conta.</p>
-          <div id="sessions-list">
-            <div class="session-item">
-              <div class="session-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-              <div class="session-info">
-                <strong id="session-browser">Carregando...</strong>
-                <span id="session-location">Detectando localização...</span>
-              </div>
-              <span class="session-current">Sessão atual</span>
+          <p style="font-size:13px; color:var(--text-secondary); margin:-8px 0 14px;">Todos os dispositivos com acesso ativo à sua conta. Encerre sessões que você não reconhecer.</p>
+
+          <!-- Resumo rápido -->
+          <div class="sessions-summary" id="sessions-summary">
+            <div class="sessions-summary-item">
+              <span class="sessions-summary-dot green"></span>
+              <span><strong id="sessions-count-active">—</strong> sessão(ões) ativa(s)</span>
             </div>
+            <div class="sessions-summary-item" style="margin-left:auto;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Última verificação: <strong id="sessions-last-check">agora</strong></span>
+            </div>
+          </div>
+
+          <div id="sessions-list">
+            <!-- esqueletos de carregamento -->
+            <div class="skeleton session-skeleton"></div>
           </div>
         </div>
 
@@ -2086,23 +2116,234 @@ function renderRank(totalHours) {
 }
 
 // ── SESSÃO INFO ────────────────────────────────────────────────
-function renderSessionInfo() {
-  const ua = navigator.userAgent;
-  let browser = 'Navegador desconhecido';
-  if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Google Chrome';
-  else if (ua.includes('Firefox')) browser = 'Mozilla Firefox';
-  else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
-  else if (ua.includes('Edg')) browser = 'Microsoft Edge';
-  let os = 'Sistema desconhecido';
-  if (ua.includes('Windows')) os = 'Windows';
-  else if (ua.includes('Mac')) os = 'macOS';
-  else if (ua.includes('Linux')) os = 'Linux';
-  else if (ua.includes('Android')) os = 'Android';
-  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
-  const el = document.getElementById('session-browser');
-  const loc = document.getElementById('session-location');
-  if (el) el.textContent = `${browser} — ${os}`;
-  if (loc) loc.textContent = `Último acesso: agora mesmo`;
+function parseUA(ua) {
+  let browser = 'Navegador desconhecido', browserVer = '';
+  const chromeM  = ua.match(/Chrome\/([\d.]+)/);
+  const firefoxM = ua.match(/Firefox\/([\d.]+)/);
+  const safariM  = ua.match(/Version\/([\d.]+).*Safari/);
+  const edgeM    = ua.match(/Edg\/([\d.]+)/);
+  const operaM   = ua.match(/OPR\/([\d.]+)/);
+  if (edgeM)    { browser = 'Microsoft Edge';   browserVer = edgeM[1].split('.')[0]; }
+  else if (operaM)  { browser = 'Opera';        browserVer = operaM[1].split('.')[0]; }
+  else if (chromeM && !ua.includes('Edg') && !ua.includes('OPR')) { browser = 'Google Chrome'; browserVer = chromeM[1].split('.')[0]; }
+  else if (firefoxM){ browser = 'Mozilla Firefox'; browserVer = firefoxM[1].split('.')[0]; }
+  else if (safariM) { browser = 'Safari';        browserVer = safariM[1].split('.')[0]; }
+
+  let os = 'Sistema desconhecido', osVer = '';
+  const winM = ua.match(/Windows NT ([\d.]+)/);
+  const macM = ua.match(/Mac OS X ([\d_]+)/);
+  const andM = ua.match(/Android ([\d.]+)/);
+  const iosM = ua.match(/OS ([\d_]+) like Mac/);
+  if (andM)      { os = 'Android';  osVer = andM[1]; }
+  else if (iosM) { os = ua.includes('iPad') ? 'iPadOS' : 'iOS'; osVer = iosM[1].replace(/_/g,'.'); }
+  else if (winM) {
+    const map = {'10.0':'10/11','6.3':'8.1','6.2':'8','6.1':'7','6.0':'Vista'};
+    os = 'Windows'; osVer = map[winM[1]] || winM[1];
+  }
+  else if (macM) { os = 'macOS'; osVer = macM[1].replace(/_/g,'.'); }
+  else if (ua.includes('Linux')) { os = 'Linux'; }
+
+  let deviceType = 'desktop';
+  if (/Mobi|Android|iPhone/.test(ua)) deviceType = 'mobile';
+  else if (/iPad|Tablet/.test(ua)) deviceType = 'tablet';
+
+  return { browser, browserVer, os, osVer, deviceType };
+}
+
+function getDeviceSVG(type) {
+  if (type === 'mobile') return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+  if (type === 'tablet') return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+}
+
+function formatSessionDate(iso) {
+  if (!iso) return 'Desconhecido';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH   = Math.floor(diffMs / 3600000);
+  const diffD   = Math.floor(diffMs / 86400000);
+  if (diffMin < 1)  return 'Agora mesmo';
+  if (diffMin < 60) return `há ${diffMin} min`;
+  if (diffH   < 24) return `há ${diffH}h`;
+  if (diffD   === 1) return 'Ontem';
+  if (diffD   < 7)  return `há ${diffD} dias`;
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function formatFullDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+let _sessionsGeoCache = null;
+
+async function fetchGeoInfo() {
+  if (_sessionsGeoCache) return _sessionsGeoCache;
+  try {
+    const r = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    _sessionsGeoCache = {
+      ip:      d.ip       || '—',
+      city:    d.city     || '—',
+      region:  d.region   || '—',
+      country: d.country_name || '—',
+      org:     d.org      || '—',
+      isp:     (d.org||'').replace(/^AS\d+\s*/,'') || '—',
+    };
+  } catch {
+    try {
+      const r2 = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(5000) });
+      const d2 = await r2.json();
+      _sessionsGeoCache = {
+        ip:      d2.ip      || '—',
+        city:    d2.city    || '—',
+        region:  d2.region  || '—',
+        country: d2.country || '—',
+        org:     d2.connection?.org || '—',
+        isp:     d2.connection?.isp || '—',
+      };
+    } catch {
+      _sessionsGeoCache = { ip:'—', city:'Localização indisponível', region:'', country:'', org:'—', isp:'—' };
+    }
+  }
+  return _sessionsGeoCache;
+}
+
+async function renderSessionInfo() {
+  const list = document.getElementById('sessions-list');
+  const countEl = document.getElementById('sessions-count-active');
+  const checkEl = document.getElementById('sessions-last-check');
+  if (!list) return;
+
+  // Esqueleto
+  list.innerHTML = `<div class="skeleton session-skeleton"></div>`;
+
+  const { browser, browserVer, os, osVer, deviceType } = parseUA(navigator.userAgent);
+  const geo = await fetchGeoInfo();
+  const now = new Date();
+  const loginTs = localStorage.getItem('fa_login_ts') || now.toISOString();
+  if (!localStorage.getItem('fa_login_ts')) localStorage.setItem('fa_login_ts', loginTs);
+
+  const locationStr = [geo.city, geo.region, geo.country].filter(s => s && s !== '—').join(', ') || 'Localização indisponível';
+  const deviceClass = deviceType === 'mobile' ? 'mobile-icon' : deviceType === 'tablet' ? 'tablet-icon' : '';
+  const browserDisplay = browserVer ? `${browser} ${browserVer}` : browser;
+  const osDisplay = osVer ? `${os} ${osVer}` : os;
+
+  // Sessão atual sempre aparece primeiro
+  const currentHTML = `
+    <div class="session-item current-session">
+      <div class="session-icon ${deviceClass}">${getDeviceSVG(deviceType)}</div>
+      <div class="session-body">
+        <div class="session-header-row">
+          <span class="session-device-name">${browserDisplay} · ${osDisplay}</span>
+          <span class="session-current-pill">● Sessão atual</span>
+        </div>
+        <div class="session-meta-grid">
+          <div class="session-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>${locationStr}</span>
+          </div>
+          <div class="session-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="18" y="5" width="4" height="16"/></svg>
+            <span>IP: <strong>${geo.ip}</strong></span>
+          </div>
+          <div class="session-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Login: <strong>${formatFullDate(loginTs)}</strong></span>
+          </div>
+          <div class="session-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1.5 8.5L12 3l10.5 5.5v7L12 21 1.5 15.5v-7z"/></svg>
+            <span>Rede: <strong>${geo.isp !== '—' ? geo.isp : '—'}</strong></span>
+          </div>
+        </div>
+      </div>
+      <div class="session-actions">
+        <span class="session-risk safe">✓ Verificada</span>
+      </div>
+    </div>`;
+
+  // Sessões do backend (se disponível)
+  let extraHTML = '';
+  try {
+    const t = localStorage.getItem('fa_token');
+    if (t) {
+      const res = await fetch(`${API_BASE}/api/me/sessions`, { headers: { Authorization: 'Bearer ' + t }, signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        const others = (data.sessions || []).filter(s => !s.is_current);
+        others.forEach(s => {
+          const { browser: sb, browserVer: sbv, os: so, osVer: sov, deviceType: sdt } = parseUA(s.user_agent || '');
+          const sLocStr = [s.city, s.country].filter(Boolean).join(', ') || 'Localização desconhecida';
+          const sBrowser = sbv ? `${sb} ${sbv}` : sb;
+          const sOS = sov ? `${so} ${sov}` : so;
+          const sDClass = sdt === 'mobile' ? 'mobile-icon' : sdt === 'tablet' ? 'tablet-icon' : '';
+          extraHTML += `
+            <div class="session-item">
+              <div class="session-icon ${sDClass}">${getDeviceSVG(sdt)}</div>
+              <div class="session-body">
+                <div class="session-header-row">
+                  <span class="session-device-name">${sBrowser} · ${sOS}</span>
+                </div>
+                <div class="session-meta-grid">
+                  <div class="session-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>${sLocStr}</span>
+                  </div>
+                  <div class="session-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="18" y="5" width="4" height="16"/></svg>
+                    <span>IP: <strong>${s.ip || '—'}</strong></span>
+                  </div>
+                  <div class="session-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Último acesso: <strong>${formatSessionDate(s.last_seen || s.created_at)}</strong></span>
+                  </div>
+                  <div class="session-meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Login: <strong>${formatFullDate(s.created_at)}</strong></span>
+                  </div>
+                </div>
+              </div>
+              <div class="session-actions">
+                <span class="session-risk unknown">? Desconhecida</span>
+                <button class="session-terminate-btn" onclick="terminateSession('${s.id}', this)">Encerrar</button>
+              </div>
+            </div>`;
+        });
+        if (countEl) countEl.textContent = 1 + others.length;
+      }
+    }
+  } catch { /* sem sessões extras do backend */ }
+
+  if (countEl && !extraHTML) countEl.textContent = '1';
+  if (checkEl) checkEl.textContent = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  list.innerHTML = currentHTML + extraHTML;
+}
+
+async function terminateSession(id, btn) {
+  if (!id) return;
+  btn.disabled = true;
+  btn.textContent = 'Encerrando…';
+  try {
+    const t = localStorage.getItem('fa_token');
+    const res = await fetch(`${API_BASE}/api/me/sessions/${id}`, { method:'DELETE', headers:{ Authorization:'Bearer '+t } });
+    if (res.ok) {
+      btn.closest('.session-item').style.opacity = '0.4';
+      btn.closest('.session-item').style.pointerEvents = 'none';
+      showToast('success', 'Sessão encerrada', 'O dispositivo foi desconectado com sucesso.');
+      const countEl = document.getElementById('sessions-count-active');
+      if (countEl) countEl.textContent = Math.max(1, parseInt(countEl.textContent||'1') - 1);
+    } else {
+      showToast('error', 'Erro', 'Não foi possível encerrar essa sessão.');
+      btn.disabled = false; btn.textContent = 'Encerrar';
+    }
+  } catch {
+    showToast('info', 'Em desenvolvimento', 'Encerramento de sessões estará disponível em breve.');
+    btn.disabled = false; btn.textContent = 'Encerrar';
+  }
 }
 
 function terminateAllSessions() {
