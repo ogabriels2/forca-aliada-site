@@ -2432,9 +2432,38 @@ async function terminateSession(id, btn) {
   }
 }
 
-function terminateAllSessions() {
-  showToast('info', 'Funcionalidade em desenvolvimento', 'Encerramento de sessões estará disponível em breve.');
+async function terminateAllSessions() {
+  const t = localStorage.getItem('fa_token') || localStorage.getItem(TOKEN_KEY);
+  if (!t) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/me/sessions`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + t }
+    });
+    if (res.ok) {
+      const d = await res.json();
+      const count = d.revoked || 0;
+      showToast('success', 'Sessões encerradas', count > 0 ? `${count} outro(s) dispositivo(s) desconectado(s).` : 'Nenhuma outra sessão ativa encontrada.');
+      await renderSessionInfo();
+    } else {
+      showToast('error', 'Erro', 'Não foi possível encerrar as sessões.');
+    }
+  } catch {
+    showToast('error', 'Sem conexão', 'Verifique sua conexão e tente novamente.');
+  }
 }
+
+// Heartbeat: mantém last_seen_at atualizado a cada 2 min
+(function startSessionHeartbeat() {
+  const t = localStorage.getItem('fa_token') || localStorage.getItem(TOKEN_KEY || 'fa_token');
+  if (!t) return;
+  const ping = () => fetch(`${API_BASE}/api/me/session/ping`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + t }
+  }).catch(() => {});
+  ping();
+  setInterval(ping, 2 * 60 * 1000);
+})();
 
 // ── FORÇA DA SENHA ──────────────────────────────────────────────
 function checkPasswordStrength(pw) {
