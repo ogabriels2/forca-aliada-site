@@ -438,6 +438,7 @@ header {
 .sessions-summary-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
 .sessions-summary-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .sessions-summary-dot.green { background: var(--success); box-shadow: 0 0 0 3px rgba(52,199,89,0.2); }
+.sessions-summary-dot.orange { background: var(--warning); box-shadow: 0 0 0 3px rgba(255,149,0,0.2); }
 .sessions-summary-dot.grey { background: var(--text-secondary); }
 .session-skeleton { height: 90px; border-radius: var(--radius-md); margin-bottom: 10px; }
 
@@ -2212,34 +2213,45 @@ async function fetchGeoInfo() {
   return _sessionsGeoCache;
 }
 
-async function renderSessionInfo() {
-  const list = document.getElementById('sessions-list');
-  const countEl = document.getElementById('sessions-count-active');
-  const checkEl = document.getElementById('sessions-last-check');
-  if (!list) return;
-
-  // Esqueleto
-  list.innerHTML = `<div class="skeleton session-skeleton"></div>`;
-
-  const { browser, browserVer, os, osVer, deviceType } = parseUA(navigator.userAgent);
-  const geo = await fetchGeoInfo();
-  const now = new Date();
-  const loginTs = localStorage.getItem('fa_login_ts') || now.toISOString();
-  if (!localStorage.getItem('fa_login_ts')) localStorage.setItem('fa_login_ts', loginTs);
-
-  const locationStr = [geo.city, geo.region, geo.country].filter(s => s && s !== '—').join(', ') || 'Localização indisponível';
-  const deviceClass = deviceType === 'mobile' ? 'mobile-icon' : deviceType === 'tablet' ? 'tablet-icon' : '';
+function buildSessionCard(s, isCurrent, geoOverride) {
+  const ua       = s.user_agent || navigator.userAgent;
+  const { browser, browserVer, os, osVer, deviceType } = parseUA(ua);
   const browserDisplay = browserVer ? `${browser} ${browserVer}` : browser;
-  const osDisplay = osVer ? `${os} ${osVer}` : os;
+  const osDisplay      = osVer      ? `${os} ${osVer}`           : os;
+  const deviceClass    = deviceType === 'mobile' ? 'mobile-icon' : deviceType === 'tablet' ? 'tablet-icon' : '';
 
-  // Sessão atual sempre aparece primeiro
-  const currentHTML = `
-    <div class="session-item current-session">
+  // Localização: prefere dados do backend, depois geo do IP atual
+  let locationStr = '—';
+  if (s.city || s.region || s.country) {
+    locationStr = [s.city, s.region, s.country].filter(Boolean).join(', ');
+  } else if (geoOverride) {
+    locationStr = [geoOverride.city, geoOverride.region, geoOverride.country].filter(v => v && v !== '—').join(', ') || '—';
+  }
+
+  const ip       = s.ip  || (geoOverride ? geoOverride.ip  : '—');
+  const isp      = s.isp || (geoOverride ? geoOverride.isp : '—');
+  const loginAt  = formatFullDate(s.created_at || s.login_at || s.logged_in_at);
+  const lastSeen = s.last_seen || s.last_active || s.updated_at;
+  const lastSeenDisplay = isCurrent ? 'Agora mesmo' : (lastSeen ? formatSessionDate(lastSeen) : '—');
+  const lastSeenFull    = isCurrent ? '' : (lastSeen ? formatFullDate(lastSeen) : '');
+
+  const sessionId = s.id || s.session_id || s.token_id || '';
+
+  const riskBadge = isCurrent
+    ? `<span class="session-risk safe">✓ Verificada</span>`
+    : `<span class="session-risk unknown">? Outro dispositivo</span>`;
+
+  const actionBtn = isCurrent
+    ? ''
+    : `<button class="session-terminate-btn" onclick="terminateSession('${sessionId}', this)">Encerrar</button>`;
+
+  return `
+    <div class="session-item ${isCurrent ? 'current-session' : ''}">
       <div class="session-icon ${deviceClass}">${getDeviceSVG(deviceType)}</div>
       <div class="session-body">
         <div class="session-header-row">
           <span class="session-device-name">${browserDisplay} · ${osDisplay}</span>
-          <span class="session-current-pill">● Sessão atual</span>
+          ${isCurrent ? `<span class="session-current-pill">● Sessão atual</span>` : ''}
         </div>
         <div class="session-meta-grid">
           <div class="session-meta-item">
@@ -2248,79 +2260,153 @@ async function renderSessionInfo() {
           </div>
           <div class="session-meta-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="18" y="5" width="4" height="16"/></svg>
-            <span>IP: <strong>${geo.ip}</strong></span>
+            <span>IP: <strong>${ip}</strong></span>
           </div>
           <div class="session-meta-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Login: <strong>${formatFullDate(loginTs)}</strong></span>
+            <span>Login: <strong>${loginAt}</strong></span>
           </div>
+          ${!isCurrent && lastSeenFull ? `
+          <div class="session-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Visto: <strong title="${lastSeenFull}">${lastSeenDisplay}</strong></span>
+          </div>` : `
           <div class="session-meta-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1.5 8.5L12 3l10.5 5.5v7L12 21 1.5 15.5v-7z"/></svg>
-            <span>Rede: <strong>${geo.isp !== '—' ? geo.isp : '—'}</strong></span>
-          </div>
+            <span>Rede: <strong>${isp !== '—' ? isp : '—'}</strong></span>
+          </div>`}
         </div>
       </div>
       <div class="session-actions">
-        <span class="session-risk safe">✓ Verificada</span>
+        ${riskBadge}
+        ${actionBtn}
       </div>
     </div>`;
+}
 
-  // Sessões do backend (se disponível)
-  let extraHTML = '';
+async function renderSessionInfo() {
+  const list    = document.getElementById('sessions-list');
+  const countEl = document.getElementById('sessions-count-active');
+  const checkEl = document.getElementById('sessions-last-check');
+  if (!list) return;
+
+  list.innerHTML = `<div class="skeleton session-skeleton"></div><div class="skeleton session-skeleton" style="opacity:.5"></div>`;
+
+  // Busca geo do dispositivo atual e token em paralelo
+  const [geo] = await Promise.all([fetchGeoInfo()]);
+  const now = new Date();
+  const currentToken = localStorage.getItem('fa_token') || localStorage.getItem(TOKEN_KEY);
+
+  // Salva timestamp de login da sessão atual se ainda não existir
+  if (!localStorage.getItem('fa_login_ts')) localStorage.setItem('fa_login_ts', now.toISOString());
+  const loginTs = localStorage.getItem('fa_login_ts');
+
+  // Monta objeto da sessão atual com dados locais (sempre disponível)
+  const currentSessionLocal = {
+    user_agent: navigator.userAgent,
+    ip:         geo.ip,
+    city:       geo.city,
+    region:     geo.region,
+    country:    geo.country,
+    isp:        geo.isp,
+    created_at: loginTs,
+    is_current: true,
+    _isLocal:   true,   // flag para saber que veio do client
+  };
+
+  let allSessions = [];
+  let backendOk   = false;
+  let currentFromBackend = null;
+
   try {
-    const t = localStorage.getItem('fa_token');
-    if (t) {
-      const res = await fetch(`${API_BASE}/api/me/sessions`, { headers: { Authorization: 'Bearer ' + t }, signal: AbortSignal.timeout(5000) });
+    if (currentToken) {
+      const res = await fetch(`${API_BASE}/api/me/sessions`, {
+        headers: { Authorization: 'Bearer ' + currentToken },
+        signal: AbortSignal.timeout(6000)
+      });
       if (res.ok) {
         const data = await res.json();
-        const others = (data.sessions || []).filter(s => !s.is_current);
-        others.forEach(s => {
-          const { browser: sb, browserVer: sbv, os: so, osVer: sov, deviceType: sdt } = parseUA(s.user_agent || '');
-          const sLocStr = [s.city, s.country].filter(Boolean).join(', ') || 'Localização desconhecida';
-          const sBrowser = sbv ? `${sb} ${sbv}` : sb;
-          const sOS = sov ? `${so} ${sov}` : so;
-          const sDClass = sdt === 'mobile' ? 'mobile-icon' : sdt === 'tablet' ? 'tablet-icon' : '';
-          extraHTML += `
-            <div class="session-item">
-              <div class="session-icon ${sDClass}">${getDeviceSVG(sdt)}</div>
-              <div class="session-body">
-                <div class="session-header-row">
-                  <span class="session-device-name">${sBrowser} · ${sOS}</span>
-                </div>
-                <div class="session-meta-grid">
-                  <div class="session-meta-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    <span>${sLocStr}</span>
-                  </div>
-                  <div class="session-meta-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="13" width="4" height="8"/><rect x="10" y="9" width="4" height="12"/><rect x="18" y="5" width="4" height="16"/></svg>
-                    <span>IP: <strong>${s.ip || '—'}</strong></span>
-                  </div>
-                  <div class="session-meta-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span>Último acesso: <strong>${formatSessionDate(s.last_seen || s.created_at)}</strong></span>
-                  </div>
-                  <div class="session-meta-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span>Login: <strong>${formatFullDate(s.created_at)}</strong></span>
-                  </div>
-                </div>
-              </div>
-              <div class="session-actions">
-                <span class="session-risk unknown">? Desconhecida</span>
-                <button class="session-terminate-btn" onclick="terminateSession('${s.id}', this)">Encerrar</button>
-              </div>
-            </div>`;
-        });
-        if (countEl) countEl.textContent = 1 + others.length;
+        // O backend pode retornar: { sessions: [...] } ou diretamente [...]
+        const raw = Array.isArray(data) ? data : (data.sessions || data.data || []);
+
+        if (raw.length > 0) {
+          backendOk = true;
+          // Identifica sessão atual: campo is_current, ou token igual, ou id igual ao token
+          allSessions = raw.map(s => ({
+            ...s,
+            is_current: !!(
+              s.is_current ||
+              s.current    ||
+              s.token === currentToken ||
+              s.access_token === currentToken ||
+              s.id === currentToken ||
+              s.token_id === currentToken
+            )
+          }));
+
+          // Se nenhum veio marcado como atual, marca o mais recente
+          const hasCurrent = allSessions.some(s => s.is_current);
+          if (!hasCurrent) {
+            // Ordena por created_at desc e marca o primeiro
+            allSessions.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            allSessions[0].is_current = true;
+          }
+
+          currentFromBackend = allSessions.find(s => s.is_current);
+          // Completa dados da sessão atual com geo local se o backend não tiver
+          if (currentFromBackend) {
+            currentFromBackend.ip     = currentFromBackend.ip     || geo.ip;
+            currentFromBackend.city   = currentFromBackend.city   || geo.city;
+            currentFromBackend.region = currentFromBackend.region || geo.region;
+            currentFromBackend.country= currentFromBackend.country|| geo.country;
+            currentFromBackend.isp    = currentFromBackend.isp    || geo.isp;
+            currentFromBackend.created_at = currentFromBackend.created_at || loginTs;
+          }
+        }
       }
     }
-  } catch { /* sem sessões extras do backend */ }
+  } catch (e) {
+    console.warn('[sessions] backend indisponível:', e.message);
+  }
 
-  if (countEl && !extraHTML) countEl.textContent = '1';
-  if (checkEl) checkEl.textContent = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  // Se o backend não trouxe nada, usa apenas a sessão local
+  if (!backendOk || allSessions.length === 0) {
+    allSessions = [currentSessionLocal];
+  }
 
-  list.innerHTML = currentHTML + extraHTML;
+  // Separa atual das outras e ordena as outras pela mais recente
+  const currentSession = allSessions.find(s => s.is_current) || currentSessionLocal;
+  const otherSessions  = allSessions
+    .filter(s => !s.is_current)
+    .sort((a, b) => new Date(b.last_seen || b.updated_at || b.created_at || 0) - new Date(a.last_seen || a.updated_at || a.created_at || 0));
+
+  const totalCount = 1 + otherSessions.length;
+  if (countEl) countEl.textContent = totalCount;
+  if (checkEl) checkEl.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  // Atualiza o resumo: se houver outras sessões, mostra aviso
+  const summaryEl = document.getElementById('sessions-summary');
+  if (summaryEl && otherSessions.length > 0) {
+    summaryEl.style.borderColor = 'rgba(255,149,0,0.35)';
+    summaryEl.style.background  = 'rgba(255,149,0,0.04)';
+    const dot = summaryEl.querySelector('.sessions-summary-dot.green');
+    if (dot) { dot.classList.remove('green'); dot.classList.add('orange'); dot.style.background = 'var(--warning)'; dot.style.boxShadow = '0 0 0 3px rgba(255,149,0,0.2)'; }
+  }
+
+  // Divisor entre sessões ativas e outras
+  const divider = otherSessions.length > 0
+    ? `<div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px;">
+         <div style="flex:1;height:1px;background:var(--border);"></div>
+         <span style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;">
+           ${otherSessions.length} outro${otherSessions.length > 1 ? 's' : ''} dispositivo${otherSessions.length > 1 ? 's' : ''}
+         </span>
+         <div style="flex:1;height:1px;background:var(--border);"></div>
+       </div>`
+    : '';
+
+  const othersHTML = otherSessions.map(s => buildSessionCard(s, false, null)).join('');
+
+  list.innerHTML = buildSessionCard(currentSession, true, geo) + divider + othersHTML;
 }
 
 async function terminateSession(id, btn) {
