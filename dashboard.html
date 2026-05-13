@@ -49,11 +49,7 @@
   --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 * { box-sizing: border-box; }
-html, body { 
-  height: 100%; 
-  overscroll-behavior-y: none; /* Previne bounce scroll excessivo no body de mobile */
-  -webkit-tap-highlight-color: transparent; 
-}
+html, body { height: 100%; }
 body { margin: 0; display: flex; flex-direction: column; visibility: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-color); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
 a { text-decoration: none; color: inherit; }
 
@@ -245,11 +241,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .create-account-body { max-height: 0; overflow: hidden; transition: max-height 0.4s, opacity 0.3s; opacity: 0; }
 .create-account-body.open { max-height: 600px; opacity: 1; }
 
-/* ── BI GRIDS (Server-side & Snap scroll) ── */
-.stats-grid, .server-health-grid, .dashboard-grid, .merit-stat-mini { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; gap: 16px; padding-bottom: 8px; flex-wrap: nowrap; }
-.stats-grid::-webkit-scrollbar, .server-health-grid::-webkit-scrollbar, .dashboard-grid::-webkit-scrollbar, .merit-stat-mini::-webkit-scrollbar { display: none; }
-.stat-box, .health-card, .mini-card, .msm-card { min-width: 200px; scroll-snap-align: start; flex: 0 0 auto; }
-
+.stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
 .stat-box { background: var(--bg-color); padding: 16px; border-radius: var(--radius-md); text-align: center; transition: var(--transicao); }
 .stat-box span { display: block; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
 .stat-box strong { font-size: 20px; }
@@ -376,6 +368,7 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .btn-export:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,113,227,0.04); transform: translateY(-1px); }
 
 /* ── NOVO: Status Badge Servidor Detalhado ── */
+.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
 .health-card { background: var(--bg-color); padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
 .health-card .h-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .health-card .h-value { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
@@ -447,54 +440,16 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .user-dropdown, [data-theme="dark"] .notif-panel { background:rgba(28,28,30,0.96); border:1px solid var(--border); }
 [data-theme="dark"] .list-item:hover, [data-theme="dark"] .dropdown-item:hover, [data-theme="dark"] .sort-chip:hover { background:rgba(255,255,255,0.06); }
 
-/* ── Responsividade Padrão "Big Tech" Mobile ── */
+/* ── Responsividade ── */
 @media (max-width: 860px) {
   .dashboard-layout { grid-template-columns: 1fr; margin-top: 24px; gap: 24px; }
-  .account-summary-card { position: relative; top: 0; padding-bottom: 24px; border: none; box-shadow: none; background: transparent; }
-  
-  /* Substituir menu de ações rápidas por Bottom Navigation (Área do polegar) */
-  .quick-actions {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    flex-direction: row !important;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-top: 1px solid var(--border);
-    justify-content: space-around;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-    z-index: 9999;
-    margin: 0;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-  }
-  [data-theme="dark"] .quick-actions { background: rgba(28, 28, 30, 0.85); }
-
-  .quick-action-btn {
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 6px;
-    font-size: 10px;
-    gap: 4px;
-    border-radius: 12px;
-    background: transparent;
-    border: none;
-  }
-  .quick-action-btn:hover { background: transparent; transform: none; color: var(--accent); }
-  .quick-action-btn .qa-label { font-size: 10px; margin-top: 4px; display: block; }
-  .quick-action-btn .qa-icon { font-size: 20px; }
-  .quick-action-btn .qa-arrow { display: none; }
-
-  /* Impede que o conteúdo fique escondido sob a navegação inferior */
-  .main-content { padding-bottom: 90px; }
-
+  .account-summary-card { position: relative; top: 0; }
   .filter-bar { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr; }
   .admin-field-group { grid-template-columns: 1fr; }
   .create-account-form { grid-template-columns: 1fr; }
   .notif-panel { width: 300px; }
+  .server-health-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* Preferência de tema sincronizada com a conta */
@@ -727,6 +682,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 .merit-tx-amount.pos { color:var(--success); }
 .merit-tx-amount.neg { color:var(--danger); }
 .merit-tx-amount.capital-amt { color:var(--rank-ouro); }
+
+.merit-stat-mini { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+.msm-card { flex:1; min-width:120px; background:var(--bg-color); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.msm-card .msm-val { font-size:22px; font-weight:700; margin-bottom:2px; }
+.msm-card .msm-lbl { font-size:12px; color:var(--text-secondary); }
 
 [data-theme="dark"] .merit-preview  { background:rgba(0,113,227,.1); border-color:rgba(0,113,227,.25); }
 [data-theme="dark"] .msm-card       { background:rgba(255,255,255,.05); }
@@ -995,26 +955,23 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         <div class="section-label"><span>Ações Rápidas</span></div>
         <div class="quick-actions" id="quick-actions-section">
           <button class="quick-action-btn" onclick="scrollToSection('server-overview')">
-            <span class="qa-icon">🖥️</span><span class="qa-label">Servidor</span><span class="qa-arrow">›</span>
-          </button>
-          <button class="quick-action-btn" onclick="scrollToSection('stats-card')">
-            <span class="qa-icon">📈</span><span class="qa-label">Tendências</span><span class="qa-arrow">›</span>
-          </button>
-          <button class="quick-action-btn" onclick="scrollToSection('operations-card')">
-            <span class="qa-icon">🗂️</span><span class="qa-label">Mesa OP</span><span class="qa-arrow">›</span>
-          </button>
-          <button class="quick-action-btn" id="qa-merit" onclick="scrollToSection('merit-card')" style="display:none;">
-            <span class="qa-icon">⭐</span><span class="qa-label">Economia</span><span class="qa-arrow">›</span>
+            <span class="qa-icon">🖥️</span><span class="qa-label">Visão do Servidor</span><span class="qa-arrow">›</span>
           </button>
           <button class="quick-action-btn" onclick="scrollToSection('admin-users-card')">
-            <span class="qa-icon">👥</span><span class="qa-label">Staff</span><span class="qa-arrow">›</span>
+            <span class="qa-icon">👥</span><span class="qa-label">Contas da Staff</span><span class="qa-arrow">›</span>
           </button>
           <button class="quick-action-btn" id="qa-audit" onclick="scrollToSection('audit-card')" style="display:none;">
-            <span class="qa-icon">🕵️</span><span class="qa-label">Auditoria</span><span class="qa-arrow">›</span>
+            <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" id="qa-merit" onclick="scrollToSection('merit-card')" style="display:none;">
+            <span class="qa-icon">⭐</span><span class="qa-label">Mérito & Capital</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" id="qa-stats" onclick="scrollToSection('stats-card')">
+            <span class="qa-icon">📊</span><span class="qa-label">Estatísticas</span><span class="qa-arrow">›</span>
           </button>
         </div>
 
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;" class="sidebar-footer-actions">
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
           <a href="account.html" class="btn-primary w-100">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             Gerenciar Conta
@@ -1103,7 +1060,18 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
         <div class="chart-container"><canvas id="activityChart"></canvas></div>
 
-        <h4 style="margin:8px 0;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Conectados Agora (Live Feed)</h4>
+        <h3 style="margin-top:8px;margin-bottom:8px;font-size:16px;">Buscar Jogador</h3>
+        <div class="filter-bar" id="dashboard-filters" style="display:none;">
+          <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
+          <input type="date" id="search-date" onchange="applyFilters()">
+          <select id="search-duration" onchange="applyFilters()">
+            <option value="0">Qualquer duração</option>
+            <option value="1">> 1 hora</option>
+            <option value="5">> 5 horas</option>
+          </select>
+        </div>
+
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Conectados Agora</h4>
         <ul id="online" style="margin-bottom:24px;">
           <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
         </ul>
@@ -1115,7 +1083,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
 
       <div class="card" id="stats-card">
-        <h3>Tendências (BI) <span id="stats-period-label">Últimos 30 dias</span></h3>
+        <h3>Estatísticas do Servidor <span id="stats-period-label">Últimos 30 dias</span></h3>
 
         <div class="server-health-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));">
           <div class="health-card">
@@ -1140,15 +1108,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <div id="trends-section" style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px;">
-          <h4 style="margin:0 0 12px;font-size:15px;font-weight:600;">🔥 Mapa de Calor (Sessões nos últimos 30 dias)</h4>
-          <div id="heatmap-container" style="display:grid; grid-template-columns: auto repeat(24, 1fr); gap: 2px; overflow-x: auto; font-size:10px; padding-bottom: 8px;">
-             <div style="text-align:center; padding: 12px; grid-column: 1/-1; color: var(--text-secondary);">Carregando heatmap...</div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:12px; border-top: 1px solid var(--border); padding-top: 16px;">
-          <h4 style="margin:0;font-size:15px;font-weight:600;">🏆 Veteranos (Top Jogadores)</h4>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;margin-bottom:12px;">
+          <h4 style="margin:0;font-size:15px;font-weight:600;">🏆 Top Jogadores</h4>
           <div style="display:flex;gap:6px;">
             <button class="sort-chip active" id="top-by-hours" onclick="renderTopPlayers('hours')">Por Horas</button>
             <button class="sort-chip" id="top-by-sessions" onclick="renderTopPlayers('sessions')">Por Sessões</button>
@@ -1161,31 +1122,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             <div class="skeleton-line" style="height:52px;border-radius:12px;"></div>
           </div>
         </div>
-      </div>
-
-      <div class="card" id="operations-card">
-        <h3>Mesa de Operações <span>Pesquisa global e histórico completo (Server-Side)</span></h3>
-        <div class="filter-bar">
-          <input type="text" id="bi-search" placeholder="Pesquisar RG do Jogador (Nick Minecraft)..." onkeydown="if(event.key==='Enter') loadPaginatedSessions(1)">
-          <button class="btn-primary" onclick="loadPaginatedSessions(1)">🔍 Buscar RG</button>
-          <button class="btn-export" onclick="exportBI_CSV()" title="Exportar página atual como CSV">⬇ Exportar CSV</button>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>Jogador</th>
-                <th>Entrou em</th>
-                <th>Saiu em</th>
-                <th>Duração (Horas)</th>
-              </tr>
-            </thead>
-            <tbody id="bi-table-body">
-               <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-secondary);">Carregando histórico paginado...</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div id="bi-pagination" style="display:flex; justify-content:center; align-items:center; gap: 12px; margin-top: 16px;"></div>
       </div>
 
       <div class="card" id="admin-users-card" style="display:none;">
@@ -1219,6 +1155,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
         </ul>
       </div>
+
+
 
       <div class="card" id="admin-notifications-card" style="display:none;">
         <h3>Publicações e Notificações <span>Envie avisos sincronizados para usuários logados</span></h3>
@@ -1278,7 +1216,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-    <div class="card" id="merit-card" style="display:none; margin-top:24px;">
+    </div><div class="card" id="merit-card" style="display:none; margin-top:24px;">
         <h3>⭐ Mérito &amp; Capital <span id="merit-card-sub">Gerencie reputação e economia</span></h3>
 
         <div class="merit-stat-mini" id="merit-stats-mini">
@@ -1641,9 +1579,6 @@ const API_FALLBACKS = Array.from(new Set([localStorage.getItem('fa_api_base'), A
 const SESSION_KEY   = 'fa_session';
 const TOKEN_KEY     = 'fa_token';
 
-window.biLoaded = false;
-window.trendsLoaded = false;
-
 async function apiFetch(path, options = {}) {
   if (/^https?:\/\//i.test(path)) return fetch(path, options);
   let lastError;
@@ -1693,28 +1628,6 @@ let currentModalPlayerName = null;
 let adminSortState      = { key: 'name', asc: true };
 let topPlayersMode      = 'hours';
 
-// ══ Exportar CSV Inteligente ══
-function exportToCSV(filename, rows) {
-    if (!rows || !rows.length) { showToast("Não há dados para exportar.", "warning"); return; }
-    const separator = ',';
-    const keys = Object.keys(rows[0]);
-    const csvContent =
-        keys.join(separator) + '\n' +
-        rows.map(row => {
-            return keys.map(k => {
-                let cell = row[k] === null || row[k] === undefined ? '' : row[k];
-                cell = String(cell).replace(/"/g, '""');
-                if (cell.search(/("|,|\n)/g) >= 0) cell = `"${cell}"`;
-                return cell;
-            }).join(separator);
-        }).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `${filename}.csv`); document.body.appendChild(link);
-    link.click(); document.body.removeChild(link);
-}
-
 // ══ Toast ══
 function showToast(message, type = 'success', duration = 3500) {
   const container = document.getElementById('toast-container');
@@ -1759,6 +1672,7 @@ async function syncThemePreference() {
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
 
+    // Só desloga se o token for realmente rejeitado (inválido/expirado)
     if (res.status === 401 || res.status === 403) {
       logout();
       return;
@@ -1773,6 +1687,7 @@ async function syncThemePreference() {
     if (session.role === 'limited') { window.location.replace('account.html'); return; }
   } catch (err) {
     console.error('Erro crítico no Bootstrap:', err);
+    // Em vez de um loop invisível, mostra a você o exato erro na tela
     document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar o painel. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
     document.body.style.visibility = 'visible';
     return;
@@ -1792,6 +1707,7 @@ function initDashboard() {
   fetchAdminUsers();
   updateSortBarForTab('registered');
 
+  // Funções apenas para owner
   if (session.role === 'owner') {
     document.getElementById('audit-card').style.display = 'block';
     document.getElementById('qa-audit').style.display = 'flex';
@@ -1799,9 +1715,11 @@ function initDashboard() {
     fetchAuditLogs();
   }
 
+  // Merit & Capital — visível para full e owner
   if (session.role === 'full' || session.role === 'owner') {
     document.getElementById('merit-card').style.display = 'block';
     document.getElementById('qa-merit').style.display = 'flex';
+    // Cache admin users for autocomplete once they're loaded
     setTimeout(()=>{
       if(globalAdminUsers && globalAdminUsers.length > 0) {
           meritPlayerCache = globalAdminUsers
@@ -1821,8 +1739,14 @@ function initDashboard() {
   liveInterval = setInterval(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.status === 401 || res.status === 403) { logout(); return; }
-      if (!res.ok) return;
+
+      // SÓ desloga se o token for explicitamente rejeitado
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        return;
+      }
+
+      if (!res.ok) return; // Servidor em baixo ou erro 500? Ignora e não expulsa o utilizador.
 
       const me = await res.json();
       if (session.role !== me.role) {
@@ -1830,7 +1754,9 @@ function initDashboard() {
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
         if (session.role === 'limited') window.location.replace('account.html');
       }
-    } catch (err) {}
+    } catch (err) {
+      // Falha de rede: Mantém o utilizador na página.
+    }
     applyFilters();
     if (document.getElementById('player-modal').classList.contains('active')) renderModalTable();
   }, 10000);
@@ -1875,20 +1801,8 @@ function renderProfile() {
   }
 }
 
-// ══ Scroll auxiliar & Lazy Loading ══
-function scrollToSection(id) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
-    // Otimização "Lazy Loading" (BI)
-    if (id === 'operations-card' && !window.biLoaded) {
-        loadPaginatedSessions(1);
-        window.biLoaded = true;
-    }
-    if (id === 'stats-card' && !window.trendsLoaded) {
-        loadTrends();
-        window.trendsLoaded = true;
-    }
-}
+// ══ Scroll auxiliar ══
+function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
 // ══ Notificações ══
 let notifList = [];
@@ -2119,7 +2033,7 @@ function buildAlerts() {
 
 function renderAlerts() {
   const alerts = buildAlerts();
-  const card   = document.getElementById('alerts-card');
+  const card    = document.getElementById('alerts-card');
   const wrapper = document.getElementById('alerts-wrapper');
   if (!alerts.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
@@ -2131,6 +2045,7 @@ function renderAlerts() {
     </div>
   `).join('');
 
+  // Dispara notificações para alertas críticos
   if (!window._alertsNotifFired) {
     window._alertsNotifFired = true;
     alerts.filter(a => a.type === 'danger').forEach(a => {
@@ -2253,107 +2168,6 @@ function renderTopPlayers(mode) {
 }
 
 function hashStr(s) { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return h; }
-
-// ══ Paginação Server-Side (Mesa de Operações) ══
-let currentBIPage = 1;
-let biDataCache = [];
-
-async function loadPaginatedSessions(page = 1) {
-    currentBIPage = page;
-    const search = document.getElementById('bi-search').value.trim();
-    const tbody = document.getElementById('bi-table-body');
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-secondary);">Buscando no banco de dados...</td></tr>';
-
-    try {
-        const url = `/api/admin/sessions?page=${page}&limit=20&search=${encodeURIComponent(search)}`;
-        const res = await apiFetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error('Falha ao buscar sessões paginadas');
-        const data = await res.json();
-        biDataCache = data.data;
-
-        renderBITable(data.data);
-        renderBIPagination(data.page, data.pages);
-    } catch (err) {
-        console.error('Mesa OP Error:', err);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--danger);">Erro ao carregar dados do histórico.</td></tr>';
-    }
-}
-
-function renderBITable(rows) {
-    const tbody = document.getElementById('bi-table-body');
-    if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-secondary);">Nenhum registro encontrado nesta busca.</td></tr>';
-        return;
-    }
-    tbody.innerHTML = rows.map(r => {
-        const dIn = new Date(r.entered_at);
-        const dOut = r.left_at ? new Date(r.left_at) : null;
-        const dur = r.duration_hours ? r.duration_hours.toFixed(2) : '-';
-        return `<tr>
-            <td><strong style="cursor:pointer;color:var(--text-primary);display:flex;align-items:center;gap:8px;" onclick="openPlayerProfile('${r.player}')"><img src="https://minotar.net/helm/${r.player}/24.png" onerror="this.src='https://minotar.net/helm/Steve/24.png'" style="border-radius:4px;"> ${r.player}</strong></td>
-            <td>${dIn.toLocaleString('pt-BR')}</td>
-            <td>${dOut ? dOut.toLocaleString('pt-BR') : '<span class="status-dot"></span> Ao vivo'}</td>
-            <td>${dur}</td>
-        </tr>`;
-    }).join('');
-}
-
-function renderBIPagination(currentPage, totalPages) {
-    const pag = document.getElementById('bi-pagination');
-    let html = '';
-    if (currentPage > 1) {
-        html += `<button class="btn-secondary" style="padding:6px 16px;border-radius:8px;font-size:12px;border:none;" onclick="loadPaginatedSessions(${currentPage - 1})">Anterior</button>`;
-    }
-    html += `<span style="padding:6px 12px;font-size:13px;font-weight:600;color:var(--text-secondary);">Pág ${currentPage} de ${totalPages || 1}</span>`;
-    if (currentPage < totalPages) {
-        html += `<button class="btn-secondary" style="padding:6px 16px;border-radius:8px;font-size:12px;border:none;" onclick="loadPaginatedSessions(${currentPage + 1})">Próxima</button>`;
-    }
-    pag.innerHTML = html;
-}
-
-function exportBI_CSV() {
-    exportToCSV('mesa_operacoes_page' + currentBIPage, biDataCache);
-}
-
-// ══ Heatmap de Tendências ══
-async function loadTrends() {
-    const container = document.getElementById('heatmap-container');
-    try {
-        const res = await apiFetch(`/api/admin/analytics/trends`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error('Falha trends');
-        const data = await res.json();
-        renderHeatmap(data.heatmap);
-    } catch (err) { 
-        console.error('Trends error', err); 
-        if(container) container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--danger);">Não foi possível carregar o mapa de calor.</div>';
-    }
-}
-
-function renderHeatmap(data) {
-    const container = document.getElementById('heatmap-container');
-    if (!container) return;
-    if(!data || !data.length) {
-      container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--text-secondary);">Não há dados de mapa de calor suficientes.</div>';
-      return;
-    }
-    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    let html = '<div style="font-weight:600;text-align:center;color:var(--text-secondary);align-self:center;">Hora ></div>';
-    for (let h = 0; h < 24; h++) html += `<div style="text-align:center;color:var(--text-secondary);">${h}h</div>`;
-
-    const maxCount = Math.max(...data.map(d => parseInt(d.count)), 1);
-
-    for (let d = 0; d < 7; d++) {
-        html += `<div style="font-weight:600;padding-right:8px;text-align:right;align-self:center;color:var(--text-primary);">${days[d]}</div>`;
-        for (let h = 0; h < 24; h++) {
-            const cell = data.find(item => parseInt(item.dow) === d && parseInt(item.hour) === h);
-            const count = cell ? parseInt(cell.count) : 0;
-            const opacity = count === 0 ? 0.03 : 0.2 + (count / maxCount) * 0.8;
-            const title = `${days[d]} ${h}h: ${count} sessões`;
-            html += `<div title="${title}" style="background:rgba(0,113,227,${opacity}); border-radius:4px; height:20px; min-width:20px; cursor:crosshair; transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`;
-        }
-    }
-    container.innerHTML = html;
-}
 
 // ══ Logs de Auditoria (dados persistidos no backend) ══
 async function fetchAuditLogs() {
@@ -2484,7 +2298,7 @@ async function deletePlayerNote(playerName, noteId) {
   }
 }
 
-// ══ Exportação CSV local (Fallbacks) ══
+// ══ Exportação CSV ══
 function downloadCSV(filename, rows, headers) {
   const csvContent = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
   const a = document.createElement('a');
@@ -2629,14 +2443,13 @@ function emptyStateHTML(icon, title, sub) {
 
 function applyFilters() {
   if (!globalHistData) return;
-  const nameFilter     = document.getElementById('search-player')?.value.toLowerCase().trim() || '';
-  const dateFilter     = document.getElementById('search-date')?.value || '';
-  const durationFilter = parseInt(document.getElementById('search-duration')?.value) || 0;
+  const nameFilter     = document.getElementById('search-player').value.toLowerCase().trim();
+  const dateFilter     = document.getElementById('search-date').value;
+  const durationFilter = parseInt(document.getElementById('search-duration').value) || 0;
   const livePlayers    = globalHistData.onlinePlayers || [];
   const activeSess     = globalHistData.activeSessions || {};
   const hasData        = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
-  const dfFilters      = document.getElementById('dashboard-filters');
-  if(dfFilters) dfFilters.style.display = hasData ? 'grid' : 'none';
+  document.getElementById('dashboard-filters').style.display = hasData ? 'grid' : 'none';
 
   let filteredLive = livePlayers.filter(p => p.toLowerCase().includes(nameFilter));
   if (durationFilter > 0) {
@@ -2839,941 +2652,962 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   if (siteAccountId) { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
 
   document.getElementById('modal-name').textContent  = displayMcName;
-  document.getElementById('modal-img').src            = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`;
-  document.getElementById('modal-img').onerror        = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
+  document.getElementById('modal-img').src           = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`;
+  document.getElementById('modal-img').onerror       = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
   document.getElementById('modal-site-account').style.display  = 'none';
   document.getElementById('modal-create-account').style.display = 'none';
   document.getElementById('stats-grid').innerHTML = `<div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div>`;
   document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div></div>`;
-      document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
+  document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
 
-      // Carrega notas compartilhadas do backend imediatamente
-      renderPlayerNotes(displayMcName);
+  // Carrega notas compartilhadas do backend imediatamente
+  renderPlayerNotes(displayMcName);
 
-      const [historyData] = await Promise.all([
-        apiFetch(`/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
-      ]);
-      modalHistoryData = historyData;
-      const chartBtn = document.getElementById('modal-chart-btn');
-      if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
+  const [historyData] = await Promise.all([
+    apiFetch(`/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
+  ]);
+  modalHistoryData = historyData;
+  const chartBtn = document.getElementById('modal-chart-btn');
+  if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
 
-      const siteAcc = siteAccountId
-        ? globalAdminUsers.find(u => u.id === siteAccountId)
-        : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
+  const siteAcc = siteAccountId
+    ? globalAdminUsers.find(u => u.id === siteAccountId)
+    : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
 
-      if (siteAcc) {
-        currentEditingAdminId = siteAcc.id;
-        document.getElementById('av-username').textContent = siteAcc.username;
-        document.getElementById('av-email').textContent    = siteAcc.email;
-        document.getElementById('av-mc').textContent       = siteAcc.minecraft_name || 'Nenhuma vinculada';
-        document.getElementById('av-role').textContent     = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
-        document.getElementById('ai-username').value  = siteAcc.username;
-        document.getElementById('ai-email').value     = siteAcc.email;
-        document.getElementById('ai-mc').value        = siteAcc.minecraft_name || '';
-        document.getElementById('ai-role').value      = siteAcc.role;
-        document.getElementById('ai-newpassword').value = '';
-        document.getElementById('modal-site-account').style.display  = 'block';
-        document.getElementById('modal-create-account').style.display = 'none';
+  if (siteAcc) {
+    currentEditingAdminId = siteAcc.id;
+    document.getElementById('av-username').textContent = siteAcc.username;
+    document.getElementById('av-email').textContent    = siteAcc.email;
+    document.getElementById('av-mc').textContent       = siteAcc.minecraft_name || 'Nenhuma vinculada';
+    document.getElementById('av-role').textContent     = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+    document.getElementById('ai-username').value  = siteAcc.username;
+    document.getElementById('ai-email').value     = siteAcc.email;
+    document.getElementById('ai-mc').value        = siteAcc.minecraft_name || '';
+    document.getElementById('ai-role').value      = siteAcc.role;
+    document.getElementById('ai-newpassword').value = '';
+    document.getElementById('modal-site-account').style.display  = 'block';
+    document.getElementById('modal-create-account').style.display = 'none';
 
-        if (session.role === 'full') {
-          document.getElementById('admin-lock-screen').style.display   = 'block';
-          document.getElementById('admin-data-content').style.display  = 'none';
-          document.getElementById('btn-edit-account').style.display    = 'none';
-          document.getElementById('action-bar-edit').style.display     = 'none';
-          document.getElementById('advanced-security-wrapper').style.display = 'none';
-          setAdminEditMode(false);
-        } else {
-          document.getElementById('admin-lock-screen').style.display   = 'none';
-          document.getElementById('admin-data-content').style.display  = 'grid';
-          document.getElementById('btn-edit-account').style.display    = 'block';
-          setAdminEditMode(false);
-        }
-      } else {
-        currentEditingAdminId = null;
-        document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = '';
-        document.getElementById('ci-mc').value       = playerName; document.getElementById('ci-role').value = 'limited';
-        document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
-        const body = document.getElementById('create-account-body'), chevron = document.getElementById('create-acc-chevron');
-        body.classList.remove('open'); chevron.classList.remove('open');
-        document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none';
-        document.getElementById('modal-site-account').style.display   = 'none';
-      }
-
-      await loadModalMeritData(displayMcName);
-      renderModalStats(); renderModalTable();
+    if (session.role === 'full') {
+      document.getElementById('admin-lock-screen').style.display   = 'block';
+      document.getElementById('admin-data-content').style.display  = 'none';
+      document.getElementById('btn-edit-account').style.display    = 'none';
+      document.getElementById('action-bar-edit').style.display     = 'none';
+      document.getElementById('advanced-security-wrapper').style.display = 'none';
+      setAdminEditMode(false);
+    } else {
+      document.getElementById('admin-lock-screen').style.display   = 'none';
+      document.getElementById('admin-data-content').style.display  = 'grid';
+      document.getElementById('btn-edit-account').style.display    = 'block';
+      setAdminEditMode(false);
     }
+  } else {
+    currentEditingAdminId = null;
+    document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = '';
+    document.getElementById('ci-mc').value       = playerName; document.getElementById('ci-role').value = 'limited';
+    document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
+    const body = document.getElementById('create-account-body'), chevron = document.getElementById('create-acc-chevron');
+    body.classList.remove('open'); chevron.classList.remove('open');
+    document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none';
+    document.getElementById('modal-site-account').style.display   = 'none';
+  }
 
-    function unlockAdminData() {
-      requirePassword({
-        title: 'Visualizar Dados Protegidos',
-        desc: 'Confirme sua senha para visualizar informações de contato e login desta pessoa.',
-        btnLabel: 'Desbloquear',
-        onConfirm: () => {
-          document.getElementById('admin-lock-screen').style.display  = 'none';
-          document.getElementById('admin-data-content').style.display = 'grid';
-        }
-      });
+  await loadModalMeritData(displayMcName);
+  renderModalStats(); renderModalTable();
+}
+
+function unlockAdminData() {
+  requirePassword({
+    title: 'Visualizar Dados Protegidos',
+    desc: 'Confirme sua senha para visualizar informações de contato e login desta pessoa.',
+    btnLabel: 'Desbloquear',
+    onConfirm: () => {
+      document.getElementById('admin-lock-screen').style.display  = 'none';
+      document.getElementById('admin-data-content').style.display = 'grid';
     }
+  });
+}
 
-    function renderModalStats() {
-      const playerName = currentModalPlayerName;
-      const isOnline   = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName?.toLowerCase());
-      const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === (playerName || '').toLowerCase());
-      let totalHours   = modalHistoryData.reduce((a, h) => a + (h.duration_hours || h.hoursOnline || 0), 0);
-      if (isOnline && activeSess) totalHours += (Date.now() - new Date(activeSess.enteredAt).getTime()) / 3600000;
-      const totalSessions = modalHistoryData.length + (isOnline ? 1 : 0);
-      document.getElementById('stats-grid').innerHTML = `
-        <div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div>
-        <div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div>
-        <div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalSessions > 0 ? totalHours / totalSessions : 0)}</strong></div>`;
+function renderModalStats() {
+  const playerName = currentModalPlayerName;
+  const isOnline   = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName?.toLowerCase());
+  const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === (playerName || '').toLowerCase());
+  let totalHours   = modalHistoryData.reduce((a, h) => a + (h.duration_hours || h.hoursOnline || 0), 0);
+  if (isOnline && activeSess) totalHours += (Date.now() - new Date(activeSess.enteredAt).getTime()) / 3600000;
+  const totalSessions = modalHistoryData.length + (isOnline ? 1 : 0);
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-box"><span>Tempo Total Logado</span><strong>${formatTime(totalHours)}</strong></div>
+    <div class="stat-box"><span>Total de Sessões</span><strong>${totalSessions}</strong></div>
+    <div class="stat-box"><span>Média por Sessão</span><strong>${formatTime(totalSessions > 0 ? totalHours / totalSessions : 0)}</strong></div>`;
+}
+
+function renderModalTable() {
+  const playerName = currentModalPlayerName; if (!playerName) return;
+  const isOnline   = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName.toLowerCase());
+  const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === playerName.toLowerCase());
+  const badge      = document.getElementById('modal-status');
+  badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline';
+  badge.className   = isOnline ? 'pill success' : 'pill limited-status';
+
+  const filterDate = document.getElementById('modal-date-filter').value;
+  let filtered = [...modalHistoryData];
+  if (filterDate) filtered = filtered.filter(h => (h.entered_at || h.enteredAt)?.startsWith(filterDate));
+  filtered.sort((a, b) => {
+    if (modalSortConfig.key === 'date') { const dA = new Date(a.entered_at||a.enteredAt||0), dB = new Date(b.entered_at||b.enteredAt||0); return modalSortConfig.asc ? dA - dB : dB - dA; }
+    if (modalSortConfig.key === 'duration') { const dA = a.duration_hours||a.hoursOnline||0, dB = b.duration_hours||b.hoursOnline||0; return modalSortConfig.asc ? dA - dB : dB - dA; }
+    return 0;
+  });
+
+  function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(),0,4); return `${d.getFullYear()}-W${Math.ceil(((d-jan4)/86400000+jan4.getDay()+1)/7)}`; }
+  function getWeekLabel(dateStr) {
+    const d = new Date(dateStr), day = d.getDay()||7, monday = new Date(d); monday.setDate(d.getDate()-day+1);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+    const fmt = dt => dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+    const now2 = new Date(), thisMonday = new Date(now2); thisMonday.setDate(now2.getDate()-(now2.getDay()||7)+1);
+    const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate()-7);
+    if (monday.toDateString()===thisMonday.toDateString()) return 'Esta semana';
+    if (monday.toDateString()===lastMonday.toDateString()) return 'Semana passada';
+    return `${fmt(monday)} – ${fmt(sunday)}`;
+  }
+
+  const sortDateIcon     = modalSortConfig.key === 'date'     ? (modalSortConfig.asc ? '▲' : '▼') : '';
+  const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
+  let rows = '';
+  if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) {
+    rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td></tr>`;
+  }
+  let lastWeekKey = isOnline && activeSess ? getWeekKey(activeSess.enteredAt) : null;
+  rows += filtered.map(h => {
+    const lAt = h.left_at||h.leftAt, eAt = h.entered_at||h.enteredAt; if (!lAt) return '';
+    const weekKey = getWeekKey(eAt); let separator = '';
+    if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator-row"><td colspan="3"><div class="week-separator"><span>${getWeekLabel(eAt)}</span></div></td></tr>`; }
+    const d = new Date(eAt), l = new Date(lAt);
+    return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours||h.hoursOnline||0)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('modal-table-wrapper').innerHTML = `
+    <table class="history-table">
+      <thead><tr>
+        <th onclick="sortModal('date')">Entrada <span>${sortDateIcon}</span></th>
+        <th>Saída</th>
+        <th onclick="sortModal('duration')">Duração <span>${sortDurationIcon}</span></th>
+      </tr></thead>
+      <tbody>${rows || `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Ainda não há sessões registradas para este jogador.</span></div></td></tr>`}</tbody>
+    </table>`;
+  renderModalStats();
+}
+
+function sortModal(key) { if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc; else { modalSortConfig.key = key; modalSortConfig.asc = false; } renderModalTable(); }
+function toggleCreateAccount() { const b = document.getElementById('create-account-body'), c = document.getElementById('create-acc-chevron'), o = b.classList.toggle('open'); c.classList.toggle('open', o); }
+
+// ══ Edição de conta no modal ══
+function setAdminEditMode(isEditing) {
+  const card    = document.getElementById('modal-site-account');
+  const advWrap = document.getElementById('advanced-security-wrapper');
+  if (isEditing) { card.classList.add('edit-mode'); advWrap.style.display = 'block'; hideAdminDeleteConfirm(); }
+  else { card.classList.remove('edit-mode'); advWrap.style.display = 'none'; const b = document.getElementById('adv-sec-body'), btn = document.getElementById('adv-sec-btn'); if (b.classList.contains('open')) { b.classList.remove('open'); btn.classList.remove('open'); } }
+}
+function showAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'none'; document.getElementById('admin-delete-confirm').style.display = 'flex'; }
+function hideAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'block'; document.getElementById('admin-delete-confirm').style.display = 'none'; }
+
+async function saveAdminUser() {
+  if (!currentEditingAdminId) return;
+  const newPwd = document.getElementById('ai-newpassword').value.trim();
+  const body   = { username: document.getElementById('ai-username').value.trim(), email: document.getElementById('ai-email').value.trim(), minecraftName: document.getElementById('ai-mc').value.trim(), role: document.getElementById('ai-role').value };
+  if (newPwd) body.newPassword = newPwd;
+  if (!body.username || !body.email) { showToast('Preencha usuário e e-mail.', 'error'); return; }
+  if (newPwd && newPwd.length < 8) { showToast('A nova senha deve ter ao menos 8 caracteres.', 'error'); return; }
+
+  requirePassword({
+    title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar',
+    onConfirm: async () => {
+      const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+      if (!res.ok) { showToast('Erro ao salvar. Verifique se e-mail ou usuário já existem.', 'error'); return; }
+      if (newPwd) { const pwRes = await apiFetch(`/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
+      if (session.role === 'owner') fetchAuditLogs();
+      await fetchAdminUsers();
+      document.getElementById('av-username').textContent = body.username;
+      document.getElementById('av-email').textContent    = body.email;
+      document.getElementById('av-mc').textContent       = body.minecraftName || 'Nenhuma vinculada';
+      document.getElementById('av-role').textContent     = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      setAdminEditMode(false);
+      showToast('Alterações salvas com sucesso!');
     }
+  });
+}
 
-    function renderModalTable() {
-      const playerName = currentModalPlayerName; if (!playerName) return;
-      const isOnline   = (globalHistData?.onlinePlayers || []).some(p => p.toLowerCase() === playerName.toLowerCase());
-      const activeSess = Object.values(globalHistData?.activeSessions || {}).find(s => s.name.toLowerCase() === playerName.toLowerCase());
-      const badge      = document.getElementById('modal-status');
-      badge.textContent = isOnline ? '🟢 Online Agora' : '⚪ Offline';
-      badge.className   = isOnline ? 'pill success' : 'pill limited-status';
-
-      const filterDate = document.getElementById('modal-date-filter').value;
-      let filtered = [...modalHistoryData];
-      if (filterDate) filtered = filtered.filter(h => (h.entered_at || h.enteredAt)?.startsWith(filterDate));
-      filtered.sort((a, b) => {
-        if (modalSortConfig.key === 'date') { const dA = new Date(a.entered_at||a.enteredAt||0), dB = new Date(b.entered_at||b.enteredAt||0); return modalSortConfig.asc ? dA - dB : dB - dA; }
-        if (modalSortConfig.key === 'duration') { const dA = a.duration_hours||a.hoursOnline||0, dB = b.duration_hours||b.hoursOnline||0; return modalSortConfig.asc ? dA - dB : dB - dA; }
-        return 0;
-      });
-
-      function getWeekKey(dateStr) { const d = new Date(dateStr); const jan4 = new Date(d.getFullYear(),0,4); return `${d.getFullYear()}-W${Math.ceil(((d-jan4)/86400000+jan4.getDay()+1)/7)}`; }
-      function getWeekLabel(dateStr) {
-        const d = new Date(dateStr), day = d.getDay()||7, monday = new Date(d); monday.setDate(d.getDate()-day+1);
-        const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
-        const fmt = dt => dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
-        const now2 = new Date(), thisMonday = new Date(now2); thisMonday.setDate(now2.getDate()-(now2.getDay()||7)+1);
-        const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate()-7);
-        if (monday.toDateString()===thisMonday.toDateString()) return 'Esta semana';
-        if (monday.toDateString()===lastMonday.toDateString()) return 'Semana passada';
-        return `${fmt(monday)} – ${fmt(sunday)}`;
-      }
-
-      const sortDateIcon     = modalSortConfig.key === 'date'     ? (modalSortConfig.asc ? '▲' : '▼') : '';
-      const sortDurationIcon = modalSortConfig.key === 'duration' ? (modalSortConfig.asc ? '▲' : '▼') : '';
-      let rows = '';
-      if (isOnline && activeSess && (!filterDate || activeSess.enteredAt.startsWith(filterDate))) {
-        rows += `<tr style="background:rgba(52,199,89,0.05)"><td><strong>Hoje</strong><br><span style="font-size:12px;color:var(--text-secondary)">${getLiveEntryText(activeSess.enteredAt)}</span></td><td><span style="color:var(--success);font-weight:600;">Ao Vivo</span></td><td><strong style="color:var(--success);">${getLiveDuration(activeSess.enteredAt)}</strong></td></tr>`;
-      }
-      let lastWeekKey = isOnline && activeSess ? getWeekKey(activeSess.enteredAt) : null;
-      rows += filtered.map(h => {
-        const lAt = h.left_at||h.leftAt, eAt = h.entered_at||h.enteredAt; if (!lAt) return '';
-        const weekKey = getWeekKey(eAt); let separator = '';
-        if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator-row"><td colspan="3"><div class="week-separator"><span>${getWeekLabel(eAt)}</span></div></td></tr>`; }
-        const d = new Date(eAt), l = new Date(lAt);
-        return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours||h.hoursOnline||0)}</td></tr>`;
-      }).join('');
-
-      document.getElementById('modal-table-wrapper').innerHTML = `
-        <table class="history-table">
-          <thead><tr>
-            <th onclick="sortModal('date')">Entrada <span>${sortDateIcon}</span></th>
-            <th>Saída</th>
-            <th onclick="sortModal('duration')">Duração <span>${sortDurationIcon}</span></th>
-          </tr></thead>
-          <tbody>${rows || `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhum registro</strong><span>Ainda não há sessões registradas para este jogador.</span></div></td></tr>`}</tbody>
-        </table>`;
-      renderModalStats();
-    }
-
-    function sortModal(key) { if (modalSortConfig.key === key) modalSortConfig.asc = !modalSortConfig.asc; else { modalSortConfig.key = key; modalSortConfig.asc = false; } renderModalTable(); }
-    function toggleCreateAccount() { const b = document.getElementById('create-account-body'), c = document.getElementById('create-acc-chevron'), o = b.classList.toggle('open'); c.classList.toggle('open', o); }
-
-    // ══ Edição de conta no modal ══
-    function setAdminEditMode(isEditing) {
-      const card    = document.getElementById('modal-site-account');
-      const advWrap = document.getElementById('advanced-security-wrapper');
-      if (isEditing) { card.classList.add('edit-mode'); advWrap.style.display = 'block'; hideAdminDeleteConfirm(); }
-      else { card.classList.remove('edit-mode'); advWrap.style.display = 'none'; const b = document.getElementById('adv-sec-body'), btn = document.getElementById('adv-sec-btn'); if (b.classList.contains('open')) { b.classList.remove('open'); btn.classList.remove('open'); } }
-    }
-    function showAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'none'; document.getElementById('admin-delete-confirm').style.display = 'flex'; }
-    function hideAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'block'; document.getElementById('admin-delete-confirm').style.display = 'none'; }
-
-    async function saveAdminUser() {
-      if (!currentEditingAdminId) return;
-      const newPwd = document.getElementById('ai-newpassword').value.trim();
-      const body   = { username: document.getElementById('ai-username').value.trim(), email: document.getElementById('ai-email').value.trim(), minecraftName: document.getElementById('ai-mc').value.trim(), role: document.getElementById('ai-role').value };
-      if (newPwd) body.newPassword = newPwd;
-      if (!body.username || !body.email) { showToast('Preencha usuário e e-mail.', 'error'); return; }
-      if (newPwd && newPwd.length < 8) { showToast('A nova senha deve ter ao menos 8 caracteres.', 'error'); return; }
-
-      requirePassword({
-        title: 'Confirmar alterações', desc: `Digite sua senha para salvar as alterações${newPwd ? ' e redefinir a senha' : ''} na conta de ${body.username}.`, btnLabel: 'Salvar',
-        onConfirm: async () => {
-          const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
-          if (!res.ok) { showToast('Erro ao salvar. Verifique se e-mail ou usuário já existem.', 'error'); return; }
-          if (newPwd) { const pwRes = await apiFetch(`/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
-          if (session.role === 'owner') fetchAuditLogs();
-          await fetchAdminUsers();
-          document.getElementById('av-username').textContent = body.username;
-          document.getElementById('av-email').textContent    = body.email;
-          document.getElementById('av-mc').textContent       = body.minecraftName || 'Nenhuma vinculada';
-          document.getElementById('av-role').textContent     = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito');
-          setAdminEditMode(false);
-          showToast('Alterações salvas com sucesso!');
-        }
-      });
-    }
-
-    async function executeAdminDelete() {
-      if (!currentEditingAdminId) return;
-      const targetUser = globalAdminUsers.find(u => u.id === currentEditingAdminId);
-      const targetName = targetUser?.username || 'este usuário';
-      hideAdminDeleteConfirm();
-      requirePassword({
-        title: 'Excluir conta', desc: `Esta ação é permanente. Digite sua senha para confirmar a exclusão da conta de ${targetName}.`, btnLabel: 'Excluir', destructive: true,
-        onConfirm: async () => {
-          const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-          if (res.ok) {
-            if (session.role === 'owner') fetchAuditLogs();
-            await fetchAdminUsers(); closeModal(); showToast(`Conta de ${targetName} excluída.`);
-          } else { showToast('Erro ao excluir. O admin principal não pode ser removido.', 'error'); }
-        }
-      });
-    }
-
-    async function submitCreateAccount() {
-      const username     = document.getElementById('ci-username').value.trim();
-      const email        = document.getElementById('ci-email').value.trim();
-      const minecraftName = document.getElementById('ci-mc').value.trim();
-      const role         = document.getElementById('ci-role').value;
-      const password     = document.getElementById('ci-password').value;
-      const msg          = document.getElementById('create-form-msg');
-      const btn          = document.getElementById('btn-create-account');
-      if (!username || !email || !password) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
-      if (password.length < 8) { msg.textContent = 'A senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
-      btn.disabled = true; btn.textContent = 'Criando...';
-      const res = await apiFetch(`/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
-      btn.disabled = false; btn.textContent = 'Criar Cadastro';
+async function executeAdminDelete() {
+  if (!currentEditingAdminId) return;
+  const targetUser = globalAdminUsers.find(u => u.id === currentEditingAdminId);
+  const targetName = targetUser?.username || 'este usuário';
+  hideAdminDeleteConfirm();
+  requirePassword({
+    title: 'Excluir conta', desc: `Esta ação é permanente. Digite sua senha para confirmar a exclusão da conta de ${targetName}.`, btnLabel: 'Excluir', destructive: true,
+    onConfirm: async () => {
+      const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
-        const data = await res.json();
         if (session.role === 'owner') fetchAuditLogs();
-        await fetchAdminUsers();
-        currentEditingAdminId = data.id;
-        const newAcc = globalAdminUsers.find(u => u.id === data.id);
-        if (newAcc) {
-          document.getElementById('av-username').textContent = newAcc.username;
-          document.getElementById('av-email').textContent    = newAcc.email;
-          document.getElementById('av-mc').textContent       = newAcc.minecraft_name || 'Nenhuma vinculada';
-          document.getElementById('av-role').textContent     = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
-          document.getElementById('ai-username').value       = newAcc.username;
-          document.getElementById('ai-email').value         = newAcc.email;
-          document.getElementById('ai-mc').value             = newAcc.minecraft_name || '';
-          document.getElementById('ai-role').value          = newAcc.role;
-          document.getElementById('ai-newpassword').value   = '';
-        }
-        setAdminEditMode(false);
-        document.getElementById('modal-create-account').style.display = 'none';
-        document.getElementById('modal-site-account').style.display   = 'block';
-        showToast(`Conta criada para ${username}!`);
-      } else {
-        const data = await res.json();
-        msg.textContent  = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.';
-        msg.style.color  = 'var(--danger)';
-      }
+        await fetchAdminUsers(); closeModal(); showToast(`Conta de ${targetName} excluída.`);
+      } else { showToast('Erro ao excluir. O admin principal não pode ser removido.', 'error'); }
     }
+  });
+}
 
-    // ══ Admin Users ══
-    async function fetchAdminUsers() {
-      try {
-        const res = await apiFetch(`/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); await fetchUnregistered(); }
-      } catch {}
+async function submitCreateAccount() {
+  const username     = document.getElementById('ci-username').value.trim();
+  const email        = document.getElementById('ci-email').value.trim();
+  const minecraftName = document.getElementById('ci-mc').value.trim();
+  const role         = document.getElementById('ci-role').value;
+  const password     = document.getElementById('ci-password').value;
+  const msg          = document.getElementById('create-form-msg');
+  const btn          = document.getElementById('btn-create-account');
+  if (!username || !email || !password) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
+  if (password.length < 8) { msg.textContent = 'A senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
+  btn.disabled = true; btn.textContent = 'Criando...';
+  const res = await apiFetch(`/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
+  btn.disabled = false; btn.textContent = 'Criar Cadastro';
+  if (res.ok) {
+    const data = await res.json();
+    if (session.role === 'owner') fetchAuditLogs();
+    await fetchAdminUsers();
+    currentEditingAdminId = data.id;
+    const newAcc = globalAdminUsers.find(u => u.id === data.id);
+    if (newAcc) {
+      document.getElementById('av-username').textContent = newAcc.username;
+      document.getElementById('av-email').textContent    = newAcc.email;
+      document.getElementById('av-mc').textContent       = newAcc.minecraft_name || 'Nenhuma vinculada';
+      document.getElementById('av-role').textContent     = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      document.getElementById('ai-username').value       = newAcc.username;
+      document.getElementById('ai-email').value         = newAcc.email;
+      document.getElementById('ai-mc').value             = newAcc.minecraft_name || '';
+      document.getElementById('ai-role').value          = newAcc.role;
+      document.getElementById('ai-newpassword').value   = '';
     }
+    setAdminEditMode(false);
+    document.getElementById('modal-create-account').style.display = 'none';
+    document.getElementById('modal-site-account').style.display   = 'block';
+    showToast(`Conta criada para ${username}!`);
+  } else {
+    const data = await res.json();
+    msg.textContent  = data.error === 'username/email already exists' ? 'Usuário ou e-mail já cadastrado.' : 'Erro ao criar cadastro.';
+    msg.style.color  = 'var(--danger)';
+  }
+}
 
-    let unregisteredRequest = null;
-    async function fetchUnregistered() {
-      if (unregisteredRequest) return unregisteredRequest;
-      unregisteredRequest = (async () => {
-      try {
-        const res = await apiFetch(`/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) throw new Error('Falha ao buscar jogadores sem cadastro');
-        globalUnregistered = await res.json();
-      } catch (err) {
-        console.error('[unregistered]', err);
-        globalUnregistered = [];
-        showToast('Não foi possível carregar jogadores sem cadastro do backend.', 'error');
-      }
-      const badge = document.getElementById('unreg-count-badge');
-      if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
-      if (currentAdminTab === 'unregistered') renderUnregisteredList();
-      renderAlerts();
-      })().finally(() => { unregisteredRequest = null; });
-      return unregisteredRequest;
-    }
+// ══ Admin Users ══
+async function fetchAdminUsers() {
+  try {
+    const res = await apiFetch(`/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) { globalAdminUsers = await res.json(); renderAdminTab(); await fetchUnregistered(); }
+  } catch {}
+}
 
-    let activeRankFilter = 'all';
+let unregisteredRequest = null;
+async function fetchUnregistered() {
+  if (unregisteredRequest) return unregisteredRequest;
+  unregisteredRequest = (async () => {
+  try {
+    const res = await apiFetch(`/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao buscar jogadores sem cadastro');
+    globalUnregistered = await res.json();
+  } catch (err) {
+    console.error('[unregistered]', err);
+    globalUnregistered = [];
+    showToast('Não foi possível carregar jogadores sem cadastro do backend.', 'error');
+  }
+  const badge = document.getElementById('unreg-count-badge');
+  if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
+  if (currentAdminTab === 'unregistered') renderUnregisteredList();
+  renderAlerts();
+  })().finally(() => { unregisteredRequest = null; });
+  return unregisteredRequest;
+}
 
-    function setRankFilter(rank) {
-      activeRankFilter = rank;
-      document.querySelectorAll('.rank-chip').forEach(c => {
-        c.classList.toggle('active', c.classList.contains(rank));
-      });
-      renderAdminTab();
-    }
+let activeRankFilter = 'all';
 
-    function switchAdminTab(tab) {
-      currentAdminTab = tab;
-      document.getElementById('tab-registered').classList.toggle('active', tab === 'registered');
-      document.getElementById('tab-unregistered').classList.toggle('active', tab === 'unregistered');
-      const rfb = document.getElementById('rank-filter-bar');
-      if (rfb) rfb.style.display = tab === 'registered' ? 'flex' : 'none';
-      updateSortBarForTab(tab);
-      renderAdminTab();
-    }
+function setRankFilter(rank) {
+  activeRankFilter = rank;
+  document.querySelectorAll('.rank-chip').forEach(c => {
+    c.classList.toggle('active', c.classList.contains(rank));
+  });
+  renderAdminTab();
+}
 
-    function setSortAdmin(key) {
-      if (adminSortState.key === key) { adminSortState.asc = !adminSortState.asc; }
-      else { adminSortState.key = key; adminSortState.asc = key !== 'merit_total' && key !== 'capital_balance'; }
-      updateSortBarForTab(currentAdminTab);
-      renderAdminTab();
-    }
+function switchAdminTab(tab) {
+  currentAdminTab = tab;
+  document.getElementById('tab-registered').classList.toggle('active', tab === 'registered');
+  document.getElementById('tab-unregistered').classList.toggle('active', tab === 'unregistered');
+  const rfb = document.getElementById('rank-filter-bar');
+  if (rfb) rfb.style.display = tab === 'registered' ? 'flex' : 'none';
+  updateSortBarForTab(tab);
+  renderAdminTab();
+}
 
-    function updateSortBarForTab(tab) {
-      const bar = document.getElementById('admin-sort-bar');
-      if (!bar) return;
-      const chips = tab === 'registered'
-        ? [
-            { key:'name',          label:'Nome' },
-            { key:'created',       label:'Cadastro' },
-            { key:'last_session',  label:'Último Acesso' },
-            { key:'merit_total',   label:'⭐ Mérito' },
-            { key:'capital_balance', label:'💰 Capital' },
-            { key:'verified',      label:'Não Verificados' },
-          ]
-        : [
-            { key:'name',         label:'Nome' },
-            { key:'sessions',     label:'Sessões' },
-            { key:'total_hours',  label:'Tempo' },
-            { key:'last_session', label:'Último Acesso' },
-          ];
-      bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span>` +
-        chips.map(c => `<button class="sort-chip ${adminSortState.key===c.key?'active':''}" onclick="setSortAdmin('${c.key}')">${c.label}${adminSortState.key===c.key ? (adminSortState.asc?' ↑':' ↓') : ''}</button>`).join('');
-    }
+function setSortAdmin(key) {
+  if (adminSortState.key === key) { adminSortState.asc = !adminSortState.asc; }
+  else { adminSortState.key = key; adminSortState.asc = key !== 'merit_total' && key !== 'capital_balance'; }
+  updateSortBarForTab(currentAdminTab);
+  renderAdminTab();
+}
 
-    function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
-
-    function renderRegisteredList() {
-      const RANK_DEFS = [
-        { key:'ferro',     min:0,    max:149,  next:150,  icon:'🪨', label:'Ferro',     color:'#8e8e93' },
-        { key:'ouro',      min:150,  max:499,  next:500,  icon:'🟡', label:'Ouro',      color:'#ff9f0a' },
-        { key:'diamante',  min:500,  max:999,  next:1000, icon:'🟢', label:'Diamante',  color:'#30d158' },
-        { key:'netherite', min:1000, max:Infinity, next:Infinity, icon:'⚫', label:'Netherite', color:'#af52de' },
+function updateSortBarForTab(tab) {
+  const bar = document.getElementById('admin-sort-bar');
+  if (!bar) return;
+  const chips = tab === 'registered'
+    ? [
+        { key:'name',          label:'Nome' },
+        { key:'created',       label:'Cadastro' },
+        { key:'last_session',  label:'Último Acesso' },
+        { key:'merit_total',   label:'⭐ Mérito' },
+        { key:'capital_balance', label:'💰 Capital' },
+        { key:'verified',      label:'Não Verificados' },
+      ]
+    : [
+        { key:'name',         label:'Nome' },
+        { key:'sessions',     label:'Sessões' },
+        { key:'total_hours',  label:'Tempo' },
+        { key:'last_session', label:'Último Acesso' },
       ];
-      const getRankDef = m => RANK_DEFS.find(r=>m>=r.min&&m<=r.max)||RANK_DEFS[0];
+  bar.innerHTML = `<span class="sort-bar-label">Ordenar:</span>` +
+    chips.map(c => `<button class="sort-chip ${adminSortState.key===c.key?'active':''}" onclick="setSortAdmin('${c.key}')">${c.label}${adminSortState.key===c.key ? (adminSortState.asc?' ↑':' ↓') : ''}</button>`).join('');
+}
 
-      const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
-      const list   = document.getElementById('admin-users-list');
-      let filtered = globalAdminUsers.filter(u =>
-        u.username.toLowerCase().includes(term) ||
-        u.email.toLowerCase().includes(term) ||
-        (u.minecraft_name||'').toLowerCase().includes(term)
-      );
-      if (adminSortState.key === 'verified') filtered = filtered.filter(u => u.is_verified === false);
+function renderAdminTab() { if (currentAdminTab === 'registered') renderRegisteredList(); else renderUnregisteredList(); }
 
-      // Rank filter
-      if (activeRankFilter !== 'all') {
-        filtered = filtered.filter(u => {
-          const rd = getRankDef(u.merit_total||0);
-          return rd.key === activeRankFilter;
-        });
-      }
+function renderRegisteredList() {
+  const RANK_DEFS = [
+    { key:'ferro',     min:0,    max:149,  next:150,  icon:'🪨', label:'Ferro',     color:'#8e8e93' },
+    { key:'ouro',      min:150,  max:499,  next:500,  icon:'🟡', label:'Ouro',      color:'#ff9f0a' },
+    { key:'diamante',  min:500,  max:999,  next:1000, icon:'🟢', label:'Diamante',  color:'#30d158' },
+    { key:'netherite', min:1000, max:Infinity, next:Infinity, icon:'⚫', label:'Netherite', color:'#af52de' },
+  ];
+  const getRankDef = m => RANK_DEFS.find(r=>m>=r.min&&m<=r.max)||RANK_DEFS[0];
 
-      const historyMap = {};
-      (globalHistData?.history || []).forEach(h => {
-        const k = h.player?.toLowerCase(); if (!k) return;
-        if (!historyMap[k]) historyMap[k] = { last: h.leftAt||h.left_at };
-        const la = h.leftAt||h.left_at; if (la && la > historyMap[k].last) historyMap[k].last = la;
-      });
+  const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
+  const list   = document.getElementById('admin-users-list');
+  let filtered = globalAdminUsers.filter(u =>
+    u.username.toLowerCase().includes(term) ||
+    u.email.toLowerCase().includes(term) ||
+    (u.minecraft_name||'').toLowerCase().includes(term)
+  );
+  if (adminSortState.key === 'verified') filtered = filtered.filter(u => u.is_verified === false);
 
-      if (adminSortState.key !== 'verified') {
-        filtered.sort((a, b) => {
-          const amc = (a.minecraft_name||'').toLowerCase(), bmc = (b.minecraft_name||'').toLowerCase();
-          if (adminSortState.key === 'name') { return adminSortState.asc ? a.username.toLowerCase().localeCompare(b.username.toLowerCase()) : b.username.toLowerCase().localeCompare(a.username.toLowerCase()); }
-          if (adminSortState.key === 'created') { const va = new Date(a.created_at||0), vb = new Date(b.created_at||0); return adminSortState.asc ? va-vb : vb-va; }
-          if (adminSortState.key === 'last_session') { const va = new Date(historyMap[amc]?.last||0), vb = new Date(historyMap[bmc]?.last||0); return adminSortState.asc ? va-vb : vb-va; }
-          if (adminSortState.key === 'merit_total') { return adminSortState.asc ? (a.merit_total||0)-(b.merit_total||0) : (b.merit_total||0)-(a.merit_total||0); }
-          if (adminSortState.key === 'capital_balance') { return adminSortState.asc ? (a.capital_balance||0)-(b.capital_balance||0) : (b.capital_balance||0)-(a.capital_balance||0); }
-          return 0;
-        });
-      }
+  // Rank filter
+  if (activeRankFilter !== 'all') {
+    filtered = filtered.filter(u => {
+      const rd = getRankDef(u.merit_total||0);
+      return rd.key === activeRankFilter;
+    });
+  }
 
-      if (!filtered.length) {
-        list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${activeRankFilter!=='all'?'🔍':'👥'}</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : activeRankFilter!=='all' ? `Nenhum jogador com cargo ${activeRankFilter}.` : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`;
-        return;
-      }
+  const historyMap = {};
+  (globalHistData?.history || []).forEach(h => {
+    const k = h.player?.toLowerCase(); if (!k) return;
+    if (!historyMap[k]) historyMap[k] = { last: h.leftAt||h.left_at };
+    const la = h.leftAt||h.left_at; if (la && la > historyMap[k].last) historyMap[k].last = la;
+  });
 
-      list.innerHTML = filtered.map(u => {
-        const mc        = u.minecraft_name || u.username;
-        const hist      = historyMap[mc.toLowerCase()];
-        const lastStr   = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
-        const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
-        const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
-        const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
-        const merit     = u.merit_total || 0;
-        const capital   = u.capital_balance || 0;
-        const rd        = getRankDef(merit);
-        const pct       = rd.next === Infinity ? 100 : Math.round(((merit - rd.min) / (rd.next - rd.min)) * 100);
-        const meritBadge = `<span class="li-merit-badge ${rd.key}">${rd.icon} ${rd.label}</span>`;
-        const capitalStr = capital > 0 ? `<span style="font-size:11px;color:var(--text-secondary);margin-left:4px;">💰 ${capital.toLocaleString('pt-BR')}</span>` : '';
-        return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})">
-          <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
-          <div class="item-details" style="flex:1;min-width:0;">
-            <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${meritBadge} ${capitalStr}</strong>
-            <span>${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
-            <div class="li-merit-bar" title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
-              <div class="li-merit-bar-fill" style="width:${pct}%;background:${rd.color};"></div>
-            </div>
-          </div>
-        </li>`;
-      }).join('');
+  if (adminSortState.key !== 'verified') {
+    filtered.sort((a, b) => {
+      const amc = (a.minecraft_name||'').toLowerCase(), bmc = (b.minecraft_name||'').toLowerCase();
+      if (adminSortState.key === 'name') { return adminSortState.asc ? a.username.toLowerCase().localeCompare(b.username.toLowerCase()) : b.username.toLowerCase().localeCompare(a.username.toLowerCase()); }
+      if (adminSortState.key === 'created') { const va = new Date(a.created_at||0), vb = new Date(b.created_at||0); return adminSortState.asc ? va-vb : vb-va; }
+      if (adminSortState.key === 'last_session') { const va = new Date(historyMap[amc]?.last||0), vb = new Date(historyMap[bmc]?.last||0); return adminSortState.asc ? va-vb : vb-va; }
+      if (adminSortState.key === 'merit_total') { return adminSortState.asc ? (a.merit_total||0)-(b.merit_total||0) : (b.merit_total||0)-(a.merit_total||0); }
+      if (adminSortState.key === 'capital_balance') { return adminSortState.asc ? (a.capital_balance||0)-(b.capital_balance||0) : (b.capital_balance||0)-(a.capital_balance||0); }
+      return 0;
+    });
+  }
+
+  if (!filtered.length) {
+    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${activeRankFilter!=='all'?'🔍':'👥'}</div><strong>Nenhuma conta encontrada</strong><span>${term ? 'Tente outros termos de busca.' : activeRankFilter!=='all' ? `Nenhum jogador com cargo ${activeRankFilter}.` : 'Nenhum usuário corresponde aos filtros.'}</span></div></li>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(u => {
+    const mc        = u.minecraft_name || u.username;
+    const hist      = historyMap[mc.toLowerCase()];
+    const lastStr   = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
+    const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
+    const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
+    const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
+    const merit     = u.merit_total || 0;
+    const capital   = u.capital_balance || 0;
+    const rd        = getRankDef(merit);
+    const pct       = rd.next === Infinity ? 100 : Math.round(((merit - rd.min) / (rd.next - rd.min)) * 100);
+    const meritBadge = `<span class="li-merit-badge ${rd.key}">${rd.icon} ${rd.label}</span>`;
+    const capitalStr = capital > 0 ? `<span style="font-size:11px;color:var(--text-secondary);margin-left:4px;">💰 ${capital.toLocaleString('pt-BR')}</span>` : '';
+    return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})">
+      <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
+      <div class="item-details" style="flex:1;min-width:0;">
+        <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${meritBadge} ${capitalStr}</strong>
+        <span>${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
+        <div class="li-merit-bar" title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
+          <div class="li-merit-bar-fill" style="width:${pct}%;background:${rd.color};"></div>
+        </div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+
+function renderUnregisteredList() {
+  const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
+  const list   = document.getElementById('admin-users-list');
+  let filtered = globalUnregistered.filter(p => p.player.toLowerCase().includes(term));
+  filtered.sort((a, b) => {
+    if (adminSortState.key === 'name')         return adminSortState.asc ? a.player.localeCompare(b.player) : b.player.localeCompare(a.player);
+    if (adminSortState.key === 'sessions')     return adminSortState.asc ? (a.total_sessions||0)-(b.total_sessions||0) : (b.total_sessions||0)-(a.total_sessions||0);
+    if (adminSortState.key === 'total_hours')  return adminSortState.asc ? (a.total_hours||0)-(b.total_hours||0) : (b.total_hours||0)-(a.total_hours||0);
+    if (adminSortState.key === 'last_session') return adminSortState.asc ? new Date(a.last_seen||0)-new Date(b.last_seen||0) : new Date(b.last_seen||0)-new Date(a.last_seen||0);
+    return 0;
+  });
+  if (!filtered.length) {
+    list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhum jogador sem cadastro</strong><span>${term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores já possuem conta no painel.'}</span></div></li>`;
+    return;
+  }
+  list.innerHTML = filtered.map(p => {
+    const lastSeen  = p.last_seen  ? new Date(p.last_seen).toLocaleDateString('pt-BR') : '-';
+    const firstSeen = p.first_seen ? new Date(p.first_seen).toLocaleDateString('pt-BR') : '-';
+    return `<li class="list-item" onclick="openPlayerProfile('${p.player}')">
+      <img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
+      <div class="item-details">
+        <strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong>
+        <span>${p.total_sessions||0} sessão(ões) · ${formatTime(p.total_hours||0)} · 1ª vez ${firstSeen} · Último acesso ${lastSeen}</span>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+// ══ Fechar modal ══
+function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; currentModalPlayerName = null; }
+function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
+
+// ══ Logout ══
+function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+
+/* ══════════════════════════════════════════
+   MODAL MÉRITO & CAPITAL — funções inline
+══════════════════════════════════════════ */
+const SAQUE_LIMITS = { ferro:64, ouro:128, diamante:192, netherite:320, adm:640 };
+const RANK_DEFS_MODAL = [
+  { key:'ferro',     min:0,    next:150,  icon:'🪨', label:'Ferro',     color:'#8e8e93' },
+  { key:'ouro',      min:150,  next:500,  icon:'🟡', label:'Ouro',      color:'#ff9f0a' },
+  { key:'diamante',  min:500,  next:1000, icon:'🟢', label:'Diamante',  color:'#30d158' },
+  { key:'netherite', min:1000, next:null, icon:'⚫', label:'Netherite', color:'#af52de' },
+];
+function getRankModal(m) { return RANK_DEFS_MODAL.find(r=>m>=r.min&&(r.next===null||m<r.next))||RANK_DEFS_MODAL[0]; }
+
+async function loadModalMeritData(mcName) {
+  const section = document.getElementById('modal-merit-section');
+  if (!section) return;
+
+  // Try cached admin user data first (instant render)
+  const cached = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mcName.toLowerCase());
+  if (cached && (cached.merit_total !== undefined)) {
+    renderModalMerit(cached.merit_total||0, cached.capital_balance||0);
+  }
+
+  // Then fetch fresh data from API for the selected player specifically.
+  try {
+    const res = await apiFetch(`/api/player/${encodeURIComponent(mcName)}/merit`, {
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      renderModalMerit(data.merit||0, data.capital||0);
+      const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mcName.toLowerCase());
+      if (cu) { cu.merit_total = data.merit||0; cu.capital_balance = data.capital||0; }
+    }
+  } catch(e) { /* keep cached */ }
+
+  section.style.display = 'block';
+}
+
+function renderModalMerit(merit, capital) {
+  const rd     = getRankModal(merit);
+  const pct    = rd.next ? Math.min(100, Math.round(((merit-rd.min)/(rd.next-rd.min))*100)) : 100;
+  const nextLabel = rd.next ? `Próximo: ${RANK_DEFS_MODAL.find(r=>r.min===rd.next)?.label||'—'} (${rd.next} ⭐)` : '🏆 Cargo máximo';
+  const saque  = SAQUE_LIMITS[rd.key] || 64;
+
+  const icon   = document.getElementById('modal-rank-icon');
+  const bar    = document.getElementById('modal-rank-bar');
+  if (!icon) return;
+
+  icon.textContent = rd.icon;
+  icon.style.setProperty('--modal-rank-color', rd.color);
+  icon.parentElement.style.setProperty('--modal-rank-color', rd.color);
+  document.getElementById('modal-rank-name').textContent = rd.label;
+  document.getElementById('modal-rank-name').style.color = rd.color;
+  const headerBadge = document.getElementById('modal-rank-badge');
+  if (headerBadge) { headerBadge.className = `li-merit-badge ${rd.key}`; headerBadge.textContent = `${rd.icon} ${rd.label}`; }
+  document.getElementById('modal-rank-merit').textContent = `${merit.toLocaleString('pt-BR')} ⭐ de Mérito acumulado`;
+  document.getElementById('modal-rank-cur-label').textContent = `${merit} ⭐`;
+  document.getElementById('modal-rank-next-label').textContent = nextLabel;
+  bar.style.background = rd.color;
+  bar.style.width = '0%';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.width = pct+'%'; }));
+  document.getElementById('modal-capital-val').textContent = `${capital.toLocaleString('pt-BR')} 💰`;
+  document.getElementById('modal-saque-limit').textContent = `${saque} 💰`;
+
+  // Store for submit functions
+  document.getElementById('modal-merit-section').dataset.mcName = currentModalPlayerName;
+}
+
+async function submitModalMerit() {
+  const mc     = document.getElementById('modal-merit-section').dataset.mcName;
+  const op     = document.getElementById('modal-merit-op').value;
+  const amount = parseInt(document.getElementById('modal-merit-amount').value)||0;
+  const reason = document.getElementById('modal-merit-reason').value.trim();
+  const cat    = document.getElementById('modal-merit-cat').value;
+  const btn    = document.getElementById('modal-merit-btn');
+  const msg    = document.getElementById('modal-merit-msg');
+
+  if (!mc)     { msg.textContent='Jogador não identificado.'; msg.style.color='var(--danger)'; return; }
+  if (!amount) { msg.textContent='Informe a quantidade.';     msg.style.color='var(--danger)'; return; }
+  if (!reason) { msg.textContent='Motivo é obrigatório.';     msg.style.color='var(--danger)'; return; }
+
+  btn.disabled = true; btn.textContent='…';
+  try {
+    const res = await apiFetch(`/api/admin/merit`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ minecraft_name:mc, amount, type:op, category:cat, reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error||'Erro');
+    msg.style.color = 'var(--success)';
+    msg.textContent = `✅ ${op==='credit'?'+':`-`}${amount} ⭐ → total: ${(data.new_total ?? data.newMerit)} ⭐ (${data.new_rank || data.rank?.label || data.newRank})`;
+    document.getElementById('modal-merit-amount').value = '';
+    document.getElementById('modal-merit-reason').value = '';
+    renderModalMerit((data.new_total ?? data.newMerit), parseFloat(document.getElementById('modal-capital-val').textContent)||0);
+    // Update cache
+    const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
+    if (cu) cu.merit_total = (data.new_total ?? data.newMerit);
+    renderAdminTab();
+    loadMeritStats(); loadLeaderboard();
+  } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
+  finally { btn.disabled=false; btn.textContent='Registrar'; }
+}
+
+async function submitModalCapital() {
+  const mc     = document.getElementById('modal-merit-section').dataset.mcName;
+  const op     = document.getElementById('modal-capital-op').value;
+  const amount = parseInt(document.getElementById('modal-capital-amount').value)||0;
+  const desc   = document.getElementById('modal-capital-desc').value.trim();
+  const btn    = document.getElementById('modal-capital-btn');
+  const msg    = document.getElementById('modal-merit-msg');
+
+  if (!mc)     { msg.textContent='Jogador não identificado.'; msg.style.color='var(--danger)'; return; }
+  if (!amount) { msg.textContent='Informe o valor.';          msg.style.color='var(--danger)'; return; }
+
+  btn.disabled = true; btn.textContent='…';
+  try {
+    const res = await apiFetch(`/api/admin/capital`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ minecraft_name:mc, amount, type:op, description:desc||'Ajuste de capital' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error||'Erro');
+    msg.style.color = 'var(--success)';
+    const sign = op==='credit'?'+':'-';
+    msg.textContent = `✅ Capital: ${sign}💰${amount} → saldo: 💰${(data.new_balance ?? data.newCapital)}`;
+    document.getElementById('modal-capital-amount').value = '';
+    document.getElementById('modal-capital-desc').value   = '';
+    const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
+    const curMerit = cu ? (cu.merit_total||0) : 0;
+    if (cu) cu.capital_balance = (data.new_balance ?? data.newCapital);
+    renderModalMerit(curMerit, (data.new_balance ?? data.newCapital));
+    renderAdminTab();
+  } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
+  finally { btn.disabled=false; btn.textContent='Ajustar'; }
+}
+
+/* ══════════════════════════════════════════
+   MÉRITO & CAPITAL — SISTEMA COMPLETO
+══════════════════════════════════════════ */
+const RANKS = [
+  { key:'ferro',     label:'🪨 Ferro',     min:0,    max:149,  color:'#8e8e93' },
+  { key:'ouro',      label:'🟡 Ouro',      min:150,  max:499,  color:'#ff9f0a' },
+  { key:'diamante',  label:'🟢 Diamante',  min:500,  max:999,  color:'#30d158' },
+  { key:'netherite', label:'⚫ Netherite', min:1000, max:Infinity, color:'#af52de' },
+];
+function getRank(merit){ return RANKS.find(r=>merit>=r.min&&merit<=r.max)||RANKS[0]; }
+
+/* ── player cache from admin users list ── */
+let meritPlayerCache   = [];   // [{minecraft_name, merit_total, capital_balance}]
+let leaderboardData    = [];
+let meritHistoryData   = [];
+let meritHistoryPage   = 0;
+const HISTORY_PAGE_SIZE = 20;
+let meritSelectedPlayers = { mg: null, cap: null };
+
+/* ── Init ── */
+function initMeritSystem() {
+  loadMeritStats();
+  loadLeaderboard();
+  loadMeritHistory();
+  // Populate player cache from already-fetched admin users
+  if (globalAdminUsers && globalAdminUsers.length > 0) {
+    meritPlayerCache = globalAdminUsers.map(u=>({
+      minecraft_name: u.minecraft_name||u.username,
+      display: u.minecraft_name ? `${u.minecraft_name} (${u.username})` : u.username,
+      merit_total: u.merit_total||0,
+      capital_balance: u.capital_balance||0,
+    })).filter(u=>u.minecraft_name);
+  }
+}
+
+/* ── Tab switching ── */
+function switchMeritTab(tab) {
+  ['grant','capital','leaderboard','history'].forEach(t=>{
+    document.getElementById(`mpanel-${t}`).style.display = t===tab?'block':'none';
+    document.getElementById(`mtab-${t}`).classList.toggle('active', t===tab);
+  });
+  if(tab==='leaderboard') renderLeaderboard();
+  if(tab==='history')     renderMeritHistory();
+}
+
+/* ── Stats mini-cards ── */
+async function loadMeritStats() {
+  try {
+    const res = await apiFetch(`/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!res.ok) return;
+    const data = await res.json();
+    leaderboardData = data.leaderboard || data || [];
+
+    const totalMerit   = leaderboardData.reduce((s,p)=>s+((p.merit_total??p.merit)??0), 0);
+    const topPlayer    = leaderboardData[0];
+    const topRank      = topPlayer ? getRank((topPlayer.merit_total??topPlayer.merit)??0) : null;
+
+    document.getElementById('mstat-total-merit').textContent = totalMerit.toLocaleString('pt-BR') + ' ⭐';
+    document.getElementById('mstat-players').textContent     = leaderboardData.length;
+    document.getElementById('mstat-top-rank').textContent    = topRank ? topRank.label : '—';
+  } catch(e) { console.warn('Merit stats error', e); }
+}
+
+async function loadMeritStatsToday() {
+  try {
+    const res = await apiFetch(`/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!res.ok) return;
+    const data = await res.json();
+    const records = data.records || data || [];
+    const today = new Date().toISOString().slice(0,10);
+    const todayCount = records.filter(r=>r.created_at&&r.created_at.slice(0,10)===today).length;
+    document.getElementById('mstat-today').textContent = todayCount;
+  } catch(e) { document.getElementById('mstat-today').textContent = '—'; }
+}
+
+/* ── Leaderboard ── */
+async function loadLeaderboard() {
+  try {
+    const res = await apiFetch(`/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    leaderboardData = data.leaderboard || data || [];
+    renderLeaderboard();
+  } catch(e) { document.getElementById('lb-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">Não foi possível carregar.</td></tr>`; }
+}
+
+function renderLeaderboard(filter='') {
+  const tbody = document.getElementById('lb-tbody');
+  const fl = filter.toLowerCase();
+  const rows = leaderboardData.filter(p=> !fl || (p.minecraft_name||'').toLowerCase().includes(fl));
+
+  if(!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">${filter?'Nenhum resultado para "'+filter+'"':'Nenhum jogador cadastrado ainda.'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((p,i)=>{
+    const merit   = p.merit_total ?? p.merit ?? 0;
+    const capital = p.capital_balance ?? p.capital ?? null;
+    const rank    = getRank(merit);
+    const podium  = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/60.png` : `https://minotar.net/helm/Steve/60.png`;
+    const capStr  = capital !== null ? `💰 ${Number(capital).toLocaleString('pt-BR')}` : '—';
+    return `<tr>
+      <td class="lb-pos">${podium||'<span style="color:var(--text-secondary)">'+(i+1)+'</span>'}</td>
+      <td><div class="lb-player">
+        <img src="${skin}" onerror="this.src='https://minotar.net/helm/Steve/60.png'" alt="">
+        <span class="lbname">${p.minecraft_name||'—'}</span>
+      </div></td>
+      <td><span class="lb-rank-badge ${rank.key}">${rank.label}</span></td>
+      <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐</td>
+      <td class="lb-capital">${capStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLeaderboard() {
+  renderLeaderboard(document.getElementById('lb-search').value);
+}
+
+function exportLeaderboardCSV() {
+  const rows = [['#','Nick','Cargo','Merit','Capital']];
+  leaderboardData.forEach((p,i)=>{
+    const rank = getRank(p.merit_total||0);
+    rows.push([i+1, p.minecraft_name||'', rank.label, p.merit_total||0, p.capital_balance||0]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `fa_leaderboard_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+/* ── History ── */
+async function loadMeritHistory() {
+  try {
+    const [meritRes, capRes] = await Promise.all([
+      apiFetch(`/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
+      apiFetch(`/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
+    ]);
+    const meritData = meritRes.ok ? await meritRes.json() : { records:[] };
+    const meritRecords = (meritData.records||meritData||[]).map(r=>({...r,_type:'merit'}));
+
+    let capRecords = [];
+    if(capRes && capRes.ok) {
+      const capData = await capRes.json();
+      capRecords = (capData.records||capData||[]).map(r=>({...r,_type:'capital'}));
     }
 
-    function renderUnregisteredList() {
-      const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
-      const list   = document.getElementById('admin-users-list');
-      let filtered = globalUnregistered.filter(p => p.player.toLowerCase().includes(term));
-      filtered.sort((a, b) => {
-        if (adminSortState.key === 'name')         return adminSortState.asc ? a.player.localeCompare(b.player) : b.player.localeCompare(a.player);
-        if (adminSortState.key === 'sessions')     return adminSortState.asc ? (a.total_sessions||0)-(b.total_sessions||0) : (b.total_sessions||0)-(a.total_sessions||0);
-        if (adminSortState.key === 'total_hours')  return adminSortState.asc ? (a.total_hours||0)-(b.total_hours||0) : (b.total_hours||0)-(a.total_hours||0);
-        if (adminSortState.key === 'last_session') return adminSortState.asc ? new Date(a.last_seen||0)-new Date(b.last_seen||0) : new Date(b.last_seen||0)-new Date(a.last_seen||0);
-        return 0;
-      });
-      if (!filtered.length) {
-        list.innerHTML = `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhum jogador sem cadastro</strong><span>${term ? 'Nenhum resultado para a busca.' : 'Todos os jogadores já possuem conta no painel.'}</span></div></li>`;
-        return;
-      }
-      list.innerHTML = filtered.map(p => {
-        const lastSeen  = p.last_seen  ? new Date(p.last_seen).toLocaleDateString('pt-BR') : '-';
-        const firstSeen = p.first_seen ? new Date(p.first_seen).toLocaleDateString('pt-BR') : '-';
-        return `<li class="list-item" onclick="openPlayerProfile('${p.player}')">
-          <img src="https://minotar.net/helm/${p.player}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
-          <div class="item-details">
-            <strong>${p.player} <span class="unregistered-badge">Sem conta</span></strong>
-            <span>${p.total_sessions||0} sessão(ões) · ${formatTime(p.total_hours||0)} · 1ª vez ${firstSeen} · Último acesso ${lastSeen}</span>
-          </div>
-        </li>`;
-      }).join('');
-    }
+    meritHistoryData = [...meritRecords, ...capRecords]
+      .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
 
-    // ══ Fechar modal ══
-    function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; currentModalPlayerName = null; }
-    function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
+    document.getElementById('mstat-today').textContent =
+      meritHistoryData.filter(r=>r.created_at&&r.created_at.slice(0,10)===new Date().toISOString().slice(0,10)).length;
 
-    // ══ Logout ══
-    function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+    renderMeritHistory();
+  } catch(e) { console.warn('History error',e); }
+}
 
-    /* ══════════════════════════════════════════
-       MODAL MÉRITO & CAPITAL — funções inline
-    ══════════════════════════════════════════ */
-    const SAQUE_LIMITS = { ferro:64, ouro:128, diamante:192, netherite:320, adm:640 };
-    const RANK_DEFS_MODAL = [
-      { key:'ferro',     min:0,    next:150,  icon:'🪨', label:'Ferro',     color:'#8e8e93' },
-      { key:'ouro',      min:150,  next:500,  icon:'🟡', label:'Ouro',      color:'#ff9f0a' },
-      { key:'diamante',  min:500,  next:1000, icon:'🟢', label:'Diamante',  color:'#30d158' },
-      { key:'netherite', min:1000, next:null, icon:'⚫', label:'Netherite', color:'#af52de' },
-    ];
-    function getRankModal(m) { return RANK_DEFS_MODAL.find(r=>m>=r.min&&(r.next===null||m<r.next))||RANK_DEFS_MODAL[0]; }
+function renderMeritHistory(filter='', typeFilter='all') {
+  const list   = document.getElementById('merit-history-list');
+  const fl     = filter.toLowerCase();
+  const tf     = typeFilter;
+  const filtered = meritHistoryData.filter(r=>{
+    if(tf==='merit'   && r._type!=='merit')   return false;
+    if(tf==='capital' && r._type!=='capital') return false;
+    if(fl && !(
+      (r.player_minecraft_name||'').toLowerCase().includes(fl) ||
+      (r.reason||r.description||'').toLowerCase().includes(fl)
+    )) return false;
+    return true;
+  });
 
-    async function loadModalMeritData(mcName) {
-      const section = document.getElementById('modal-merit-section');
-      if (!section) return;
+  const page = meritHistoryPage;
+  const shown = filtered.slice(0, (page+1)*HISTORY_PAGE_SIZE);
+  const hasMore = shown.length < filtered.length;
 
-      const cached = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mcName.toLowerCase());
-      if (cached && (cached.merit_total !== undefined)) {
-        renderModalMerit(cached.merit_total||0, cached.capital_balance||0);
-      }
+  if(!shown.length) {
+    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary);">Nenhuma transação encontrada.</div>`;
+    document.getElementById('merit-history-more').style.display = 'none';
+    return;
+  }
 
-      try {
-        const res = await apiFetch(`/api/player/${encodeURIComponent(mcName)}/merit`, {
-          headers:{ Authorization:`Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          renderModalMerit(data.merit||0, data.capital||0);
-          const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mcName.toLowerCase());
-          if (cu) { cu.merit_total = data.merit||0; cu.capital_balance = data.capital||0; }
-        }
-      } catch(e) { }
+  list.innerHTML = shown.map(r=>{
+    const isMerit   = r._type==='merit';
+    const isCredit  = r.type==='credit'||(r.amount>0 && !r.type);
+    const dotClass  = isMerit ? (isCredit?'credit':'debit') : 'capital';
+    const amtClass  = isMerit ? (isCredit?'pos':'neg') : 'capital-amt';
+    const amtSign   = isMerit ? (isCredit?'+':'-') : (r.type==='credit'?'+':'-');
+    const amtLabel  = isMerit ? `${amtSign}${Math.abs(r.amount)} ⭐` : `${amtSign}💰 ${Math.abs(r.amount).toLocaleString('pt-BR')}`;
+    const reason    = r.reason||r.description||'Sem descrição';
+    const awardedBy = r.awarded_by_username||r.created_by_username||'Sistema';
+    const timeStr   = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div class="merit-tx-item">
+      <div class="merit-tx-dot ${dotClass}"></div>
+      <div class="merit-tx-body">
+        <div class="merit-tx-title">${r.player_minecraft_name||'—'} ${isMerit?'— Mérito':'— Capital'}</div>
+        <div class="merit-tx-sub">${reason} · por ${awardedBy}</div>
+      </div>
+      <div class="merit-tx-amount ${amtClass}">${amtLabel}</div>
+      <div class="merit-tx-time">${timeStr}</div>
+    </div>`;
+  }).join('');
 
-      section.style.display = 'block';
-    }
+  document.getElementById('merit-history-more').style.display = hasMore ? 'block' : 'none';
+}
 
-    function renderModalMerit(merit, capital) {
-      const rd     = getRankModal(merit);
-      const pct    = rd.next ? Math.min(100, Math.round(((merit-rd.min)/(rd.next-rd.min))*100)) : 100;
-      const nextLabel = rd.next ? `Próximo: ${RANK_DEFS_MODAL.find(r=>r.min===rd.next)?.label||'—'} (${rd.next} ⭐)` : '🏆 Cargo máximo';
-      const saque  = SAQUE_LIMITS[rd.key] || 64;
+function filterMeritHistory() {
+  meritHistoryPage = 0;
+  renderMeritHistory(
+    document.getElementById('history-search').value,
+    document.getElementById('history-type-filter').value
+  );
+}
 
-      const icon   = document.getElementById('modal-rank-icon');
-      const bar    = document.getElementById('modal-rank-bar');
-      if (!icon) return;
+function loadMoreMeritHistory() {
+  meritHistoryPage++;
+  renderMeritHistory(
+    document.getElementById('history-search').value,
+    document.getElementById('history-type-filter').value
+  );
+}
 
-      icon.textContent = rd.icon;
-      icon.style.setProperty('--modal-rank-color', rd.color);
-      icon.parentElement.style.setProperty('--modal-rank-color', rd.color);
-      document.getElementById('modal-rank-name').textContent = rd.label;
-      document.getElementById('modal-rank-name').style.color = rd.color;
-      const headerBadge = document.getElementById('modal-rank-badge');
-      if (headerBadge) { headerBadge.className = `li-merit-badge ${rd.key}`; headerBadge.textContent = `${rd.icon} ${rd.label}`; }
-      document.getElementById('modal-rank-merit').textContent = `${merit.toLocaleString('pt-BR')} ⭐ de Mérito acumulado`;
-      document.getElementById('modal-rank-cur-label').textContent = `${merit} ⭐`;
-      document.getElementById('modal-rank-next-label').textContent = nextLabel;
-      bar.style.background = rd.color;
-      bar.style.width = '0%';
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.width = pct+'%'; }));
-      document.getElementById('modal-capital-val').textContent = `${capital.toLocaleString('pt-BR')} 💰`;
-      document.getElementById('modal-saque-limit').textContent = `${saque} 💰`;
+/* ── Player Autocomplete ── */
+function meritPlayerSearch(input, prefix) {
+  const q   = input.value.trim().toLowerCase();
+  const ac  = document.getElementById(`${prefix}-ac`);
+  meritSelectedPlayers[prefix] = null;
+  if(prefix==='mg') updateMeritPreview('mg');
 
-      document.getElementById('modal-merit-section').dataset.mcName = currentModalPlayerName;
-    }
+  if(!q || q.length < 1) { ac.classList.remove('open'); return; }
 
-    async function submitModalMerit() {
-      const mc     = document.getElementById('modal-merit-section').dataset.mcName;
-      const op     = document.getElementById('modal-merit-op').value;
-      const amount = parseInt(document.getElementById('modal-merit-amount').value)||0;
-      const reason = document.getElementById('modal-merit-reason').value.trim();
-      const cat    = document.getElementById('modal-merit-cat').value;
-      const btn    = document.getElementById('modal-merit-btn');
-      const msg    = document.getElementById('modal-merit-msg');
+  // Try from cache first
+  const results = meritPlayerCache.filter(p=>
+    (p.minecraft_name||'').toLowerCase().includes(q) ||
+    (p.display||'').toLowerCase().includes(q)
+  ).slice(0,6);
 
-      if (!mc)     { msg.textContent='Jogador não identificado.'; msg.style.color='var(--danger)'; return; }
-      if (!amount) { msg.textContent='Informe a quantidade.';     msg.style.color='var(--danger)'; return; }
-      if (!reason) { msg.textContent='Motivo é obrigatório.';     msg.style.color='var(--danger)'; return; }
-
-      btn.disabled = true; btn.textContent='…';
-      try {
-        const res = await apiFetch(`/api/admin/merit`, {
-          method:'POST',
-          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-          body: JSON.stringify({ minecraft_name:mc, amount, type:op, category:cat, reason })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error||'Erro');
-        msg.style.color = 'var(--success)';
-        msg.textContent = `✅ ${op==='credit'?'+':`-`}${amount} ⭐ → total: ${(data.new_total ?? data.newMerit)} ⭐ (${data.new_rank || data.rank?.label || data.newRank})`;
-        document.getElementById('modal-merit-amount').value = '';
-        document.getElementById('modal-merit-reason').value = '';
-        renderModalMerit((data.new_total ?? data.newMerit), parseFloat(document.getElementById('modal-capital-val').textContent)||0);
-        const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
-        if (cu) cu.merit_total = (data.new_total ?? data.newMerit);
-        renderAdminTab();
-        loadMeritStats(); loadLeaderboard();
-      } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
-      finally { btn.disabled=false; btn.textContent='Registrar'; }
-    }
-
-    async function submitModalCapital() {
-      const mc     = document.getElementById('modal-merit-section').dataset.mcName;
-      const op     = document.getElementById('modal-capital-op').value;
-      const amount = parseInt(document.getElementById('modal-capital-amount').value)||0;
-      const desc   = document.getElementById('modal-capital-desc').value.trim();
-      const btn    = document.getElementById('modal-capital-btn');
-      const msg    = document.getElementById('modal-merit-msg');
-
-      if (!mc)     { msg.textContent='Jogador não identificado.'; msg.style.color='var(--danger)'; return; }
-      if (!amount) { msg.textContent='Informe o valor.';          msg.style.color='var(--danger)'; return; }
-
-      btn.disabled = true; btn.textContent='…';
-      try {
-        const res = await apiFetch(`/api/admin/capital`, {
-          method:'POST',
-          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-          body: JSON.stringify({ minecraft_name:mc, amount, type:op, description:desc||'Ajuste de capital' })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error||'Erro');
-        msg.style.color = 'var(--success)';
-        const sign = op==='credit'?'+':'-';
-        msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${(data.new_balance ?? data.newCapital)}`;
-        document.getElementById('modal-capital-amount').value = '';
-        document.getElementById('modal-capital-desc').value   = '';
-        const cu = globalAdminUsers.find(u=>(u.minecraft_name||'').toLowerCase()===mc.toLowerCase());
-        const curMerit = cu ? (cu.merit_total||0) : 0;
-        if (cu) cu.capital_balance = (data.new_balance ?? data.newCapital);
-        renderModalMerit(curMerit, (data.new_balance ?? data.newCapital));
-        renderAdminTab();
-      } catch(e) { msg.textContent=e.message; msg.style.color='var(--danger)'; }
-      finally { btn.disabled=false; btn.textContent='Ajustar'; }
-    }
-
-    /* ══════════════════════════════════════════
-       MÉRITO & CAPITAL — SISTEMA COMPLETO
-    ══════════════════════════════════════════ */
-    const RANKS = [
-      { key:'ferro',     label:'🪨 Ferro',     min:0,    max:149,  color:'#8e8e93' },
-      { key:'ouro',      label:'🟡 Ouro',      min:150,  max:499,  color:'#ff9f0a' },
-      { key:'diamante',  label:'🟢 Diamante',  min:500,  max:999,  color:'#30d158' },
-      { key:'netherite', label:'⚫ Netherite', min:1000, max:Infinity, color:'#af52de' },
-    ];
-    function getRank(merit){ return RANKS.find(r=>merit>=r.min&&merit<=r.max)||RANKS[0]; }
-
-    let meritPlayerCache   = [];   // [{minecraft_name, merit_total, capital_balance}]
-    let leaderboardData    = [];
-    let meritHistoryData   = [];
-    let meritHistoryPage   = 0;
-    const HISTORY_PAGE_SIZE = 20;
-    let meritSelectedPlayers = { mg: null, cap: null };
-
-    function initMeritSystem() {
-      loadMeritStats();
-      loadLeaderboard();
-      loadMeritHistory();
-      if (globalAdminUsers && globalAdminUsers.length > 0) {
-        meritPlayerCache = globalAdminUsers.map(u=>({
-          minecraft_name: u.minecraft_name||u.username,
-          display: u.minecraft_name ? `${u.minecraft_name} (${u.username})` : u.username,
-          merit_total: u.merit_total||0,
-          capital_balance: u.capital_balance||0,
-        })).filter(u=>u.minecraft_name);
-      }
-    }
-
-    function switchMeritTab(tab) {
-      ['grant','capital','leaderboard','history'].forEach(t=>{
-        document.getElementById(`mpanel-${t}`).style.display = t===tab?'block':'none';
-        document.getElementById(`mtab-${t}`).classList.toggle('active', t===tab);
-      });
-      if(tab==='leaderboard') renderLeaderboard();
-      if(tab==='history')     renderMeritHistory();
-    }
-
-    async function loadMeritStats() {
-      try {
-        const res = await apiFetch(`/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
-        if(!res.ok) return;
-        const data = await res.json();
-        leaderboardData = data.leaderboard || data || [];
-
-        const totalMerit   = leaderboardData.reduce((s,p)=>s+((p.merit_total??p.merit)??0), 0);
-        const topPlayer    = leaderboardData[0];
-        const topRank      = topPlayer ? getRank((topPlayer.merit_total??topPlayer.merit)??0) : null;
-
-        document.getElementById('mstat-total-merit').textContent = totalMerit.toLocaleString('pt-BR') + ' ⭐';
-        document.getElementById('mstat-players').textContent     = leaderboardData.length;
-        document.getElementById('mstat-top-rank').textContent    = topRank ? topRank.label : '—';
-      } catch(e) { console.warn('Merit stats error', e); }
-    }
-
-    async function loadMeritStatsToday() {
-      try {
-        const res = await apiFetch(`/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} });
-        if(!res.ok) return;
-        const data = await res.json();
-        const records = data.records || data || [];
-        const today = new Date().toISOString().slice(0,10);
-        const todayCount = records.filter(r=>r.created_at&&r.created_at.slice(0,10)===today).length;
-        document.getElementById('mstat-today').textContent = todayCount;
-      } catch(e) { document.getElementById('mstat-today').textContent = '—'; }
-    }
-
-    async function loadLeaderboard() {
-      try {
-        const res = await apiFetch(`/api/admin/leaderboard`, { headers:{Authorization:`Bearer ${token}`} });
-        if(!res.ok) throw new Error();
-        const data = await res.json();
-        leaderboardData = data.leaderboard || data || [];
-        renderLeaderboard();
-      } catch(e) { document.getElementById('lb-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">Não foi possível carregar.</td></tr>`; }
-    }
-
-    function renderLeaderboard(filter='') {
-      const tbody = document.getElementById('lb-tbody');
-      const fl = filter.toLowerCase();
-      const rows = leaderboardData.filter(p=> !fl || (p.minecraft_name||'').toLowerCase().includes(fl));
-
-      if(!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">${filter?'Nenhum resultado para "'+filter+'"':'Nenhum jogador cadastrado ainda.'}</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = rows.map((p,i)=>{
-        const merit   = p.merit_total ?? p.merit ?? 0;
-        const capital = p.capital_balance ?? p.capital ?? null;
-        const rank    = getRank(merit);
-        const podium  = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-        const skin    = p.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/60.png` : `https://minotar.net/helm/Steve/60.png`;
-        const capStr  = capital !== null ? `💰 ${Number(capital).toLocaleString('pt-BR')}` : '—';
-        return `<tr>
-          <td class="lb-pos">${podium||'<span style="color:var(--text-secondary)">'+(i+1)+'</span>'}</td>
-          <td><div class="lb-player">
-            <img src="${skin}" onerror="this.src='https://minotar.net/helm/Steve/60.png'" alt="">
-            <span class="lbname">${p.minecraft_name||'—'}</span>
-          </div></td>
-          <td><span class="lb-rank-badge ${rank.key}">${rank.label}</span></td>
-          <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐</td>
-          <td class="lb-capital">${capStr}</td>
-        </tr>`;
-      }).join('');
-    }
-
-    function filterLeaderboard() {
-      renderLeaderboard(document.getElementById('lb-search').value);
-    }
-
-    function exportLeaderboardCSV() {
-      const rows = [['#','Nick','Cargo','Merit','Capital']];
-      leaderboardData.forEach((p,i)=>{
-        const rank = getRank(p.merit_total||0);
-        rows.push([i+1, p.minecraft_name||'', rank.label, p.merit_total||0, p.capital_balance||0]);
-      });
-      const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-      const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `fa_leaderboard_${new Date().toISOString().slice(0,10)}.csv`; a.click();
-    }
-
-    async function loadMeritHistory() {
-      try {
-        const [meritRes, capRes] = await Promise.all([
-          apiFetch(`/api/admin/merit-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }),
-          apiFetch(`/api/admin/capital-records?limit=200`, { headers:{Authorization:`Bearer ${token}`} }).catch(()=>null),
-        ]);
-        const meritData = meritRes.ok ? await meritRes.json() : { records:[] };
-        const meritRecords = (meritData.records||meritData||[]).map(r=>({...r,_type:'merit'}));
-
-        let capRecords = [];
-        if(capRes && capRes.ok) {
-          const capData = await capRes.json();
-          capRecords = (capData.records||capData||[]).map(r=>({...r,_type:'capital'}));
-        }
-
-        meritHistoryData = [...meritRecords, ...capRecords]
-          .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-
-        document.getElementById('mstat-today').textContent =
-          meritHistoryData.filter(r=>r.created_at&&r.created_at.slice(0,10)===new Date().toISOString().slice(0,10)).length;
-
-        renderMeritHistory();
-      } catch(e) { console.warn('History error',e); }
-    }
-
-    function renderMeritHistory(filter='', typeFilter='all') {
-      const list   = document.getElementById('merit-history-list');
-      const fl     = filter.toLowerCase();
-      const tf     = typeFilter;
-      const filtered = meritHistoryData.filter(r=>{
-        if(tf==='merit'   && r._type!=='merit')   return false;
-        if(tf==='capital' && r._type!=='capital') return false;
-        if(fl && !(
-          (r.player_minecraft_name||'').toLowerCase().includes(fl) ||
-          (r.reason||r.description||'').toLowerCase().includes(fl)
-        )) return false;
-        return true;
-      });
-
-      const page = meritHistoryPage;
-      const shown = filtered.slice(0, (page+1)*HISTORY_PAGE_SIZE);
-      const hasMore = shown.length < filtered.length;
-
-      if(!shown.length) {
-        list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-secondary);">Nenhuma transação encontrada.</div>`;
-        document.getElementById('merit-history-more').style.display = 'none';
-        return;
-      }
-
-      list.innerHTML = shown.map(r=>{
-        const isMerit   = r._type==='merit';
-        const isCredit  = r.type==='credit'||(r.amount>0 && !r.type);
-        const dotClass  = isMerit ? (isCredit?'credit':'debit') : 'capital';
-        const amtClass  = isMerit ? (isCredit?'pos':'neg') : 'capital-amt';
-        const amtSign   = isMerit ? (isCredit?'+':'-') : (r.type==='credit'?'+':'-');
-        const amtLabel  = isMerit ? `${amtSign}${Math.abs(r.amount)} ⭐` : `${amtSign}💰 ${Math.abs(r.amount).toLocaleString('pt-BR')}`;
-        const reason    = r.reason||r.description||'Sem descrição';
-        const awardedBy = r.awarded_by_username||r.created_by_username||'Sistema';
-        const timeStr   = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
-        return `<div class="merit-tx-item">
-          <div class="merit-tx-dot ${dotClass}"></div>
-          <div class="merit-tx-body">
-            <div class="merit-tx-title">${r.player_minecraft_name||'—'} ${isMerit?'— Mérito':'— Capital'}</div>
-            <div class="merit-tx-sub">${reason} · por ${awardedBy}</div>
-          </div>
-          <div class="merit-tx-amount ${amtClass}">${amtLabel}</div>
-          <div class="merit-tx-time">${timeStr}</div>
-        </div>`;
-      }).join('');
-
-      document.getElementById('merit-history-more').style.display = hasMore ? 'block' : 'none';
-    }
-
-    function filterMeritHistory() {
-      meritHistoryPage = 0;
-      renderMeritHistory(
-        document.getElementById('history-search').value,
-        document.getElementById('history-type-filter').value
-      );
-    }
-
-    function loadMoreMeritHistory() {
-      meritHistoryPage++;
-      renderMeritHistory(
-        document.getElementById('history-search').value,
-        document.getElementById('history-type-filter').value
-      );
-    }
-
-    function meritPlayerSearch(input, prefix) {
-      const q   = input.value.trim().toLowerCase();
-      const ac  = document.getElementById(`${prefix}-ac`);
-      meritSelectedPlayers[prefix] = null;
-      if(prefix==='mg') updateMeritPreview('mg');
-
-      if(!q || q.length < 1) { ac.classList.remove('open'); return; }
-
-      const results = meritPlayerCache.filter(p=>
-        (p.minecraft_name||'').toLowerCase().includes(q) ||
-        (p.display||'').toLowerCase().includes(q)
-      ).slice(0,6);
-
-      if(!results.length) {
-        const lb = leaderboardData.filter(p=>(p.minecraft_name||'').toLowerCase().includes(q)).slice(0,6);
-        if(lb.length) {
-          renderAC(ac, lb.map(p=>({
-            minecraft_name:p.minecraft_name,
-            display:p.minecraft_name,
-            merit_total:p.merit_total||0,
-            capital_balance:p.capital_balance||0,
-          })), prefix, input);
-        } else {
-          ac.innerHTML = `<div class="merit-ac-item" style="color:var(--text-secondary);">Nenhum jogador encontrado</div>`;
-          ac.classList.add('open');
-        }
-        return;
-      }
-      renderAC(ac, results, prefix, input);
-    }
-
-    function renderAC(ac, results, prefix, input) {
-      const rank_fn = p => getRank(p.merit_total||0);
-      ac.innerHTML = results.map((p,i)=>`
-        <div class="merit-ac-item" onclick="selectMeritPlayer('${prefix}','${p.minecraft_name}',${p.merit_total||0},${p.capital_balance||0})">
-          <img src="https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/56.png" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
-          <div>
-            <div class="ac-name">${p.minecraft_name}</div>
-            <div class="ac-rank">${rank_fn(p).label} · ${(p.merit_total||0)} ⭐</div>
-          </div>
-        </div>`).join('');
+  if(!results.length) {
+    // Fallback: try from leaderboard
+    const lb = leaderboardData.filter(p=>(p.minecraft_name||'').toLowerCase().includes(q)).slice(0,6);
+    if(lb.length) {
+      renderAC(ac, lb.map(p=>({
+        minecraft_name:p.minecraft_name,
+        display:p.minecraft_name,
+        merit_total:p.merit_total||0,
+        capital_balance:p.capital_balance||0,
+      })), prefix, input);
+    } else {
+      ac.innerHTML = `<div class="merit-ac-item" style="color:var(--text-secondary);">Nenhum jogador encontrado</div>`;
       ac.classList.add('open');
-      setTimeout(()=>{ document.addEventListener('click', ()=>ac.classList.remove('open'), {once:true}); }, 0);
     }
+    return;
+  }
+  renderAC(ac, results, prefix, input);
+}
 
-    function selectMeritPlayer(prefix, name, merit, capital) {
-      document.getElementById(`${prefix}-player`).value = name;
-      document.getElementById(`${prefix}-ac`).classList.remove('open');
-      meritSelectedPlayers[prefix] = { minecraft_name:name, merit_total:merit, capital_balance:capital };
-      if(prefix==='mg') updateMeritPreview('mg');
-    }
+function renderAC(ac, results, prefix, input) {
+  const rank_fn = p => getRank(p.merit_total||0);
+  ac.innerHTML = results.map((p,i)=>`
+    <div class="merit-ac-item" onclick="selectMeritPlayer('${prefix}','${p.minecraft_name}',${p.merit_total||0},${p.capital_balance||0})">
+      <img src="https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/56.png" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
+      <div>
+        <div class="ac-name">${p.minecraft_name}</div>
+        <div class="ac-rank">${rank_fn(p).label} · ${(p.merit_total||0)} ⭐</div>
+      </div>
+    </div>`).join('');
+  ac.classList.add('open');
+  // Close on outside click
+  setTimeout(()=>{ document.addEventListener('click', ()=>ac.classList.remove('open'), {once:true}); }, 0);
+}
 
-    function updateMeritPreview(prefix) {
-      const preview = document.getElementById('mg-preview');
-      const player  = meritSelectedPlayers.mg;
-      const amount  = parseInt(document.getElementById('mg-amount').value)||0;
-      const op      = document.getElementById('mg-op').value;
+function selectMeritPlayer(prefix, name, merit, capital) {
+  document.getElementById(`${prefix}-player`).value = name;
+  document.getElementById(`${prefix}-ac`).classList.remove('open');
+  meritSelectedPlayers[prefix] = { minecraft_name:name, merit_total:merit, capital_balance:capital };
+  if(prefix==='mg') updateMeritPreview('mg');
+}
 
-      if(!player || !amount) { preview.classList.remove('visible'); return; }
+/* ── Merit Preview ── */
+function updateMeritPreview(prefix) {
+  const preview = document.getElementById('mg-preview');
+  const player  = meritSelectedPlayers.mg;
+  const amount  = parseInt(document.getElementById('mg-amount').value)||0;
+  const op      = document.getElementById('mg-op').value;
 
-      const currentMerit = player.merit_total||0;
-      const newMerit     = Math.max(0, op==='credit' ? currentMerit+amount : currentMerit-amount);
-      const rankBefore   = getRank(currentMerit);
-      const rankAfter    = getRank(newMerit);
-      const promoted     = rankAfter.min > rankBefore.min;
-      const demoted      = rankAfter.min < rankBefore.min;
+  if(!player || !amount) { preview.classList.remove('visible'); return; }
 
-      document.getElementById('mg-preview-skin').src = `https://minotar.net/helm/${encodeURIComponent(player.minecraft_name)}/80.png`;
-      document.getElementById('mg-preview-name').textContent = player.minecraft_name;
-      document.getElementById('mg-preview-rank').textContent = `${rankBefore.label} · ${currentMerit} ⭐`;
-      document.getElementById('mg-from').textContent = `${currentMerit} ⭐`;
-      document.getElementById('mg-to').textContent   = `${newMerit} ⭐`;
+  const currentMerit = player.merit_total||0;
+  const newMerit     = Math.max(0, op==='credit' ? currentMerit+amount : currentMerit-amount);
+  const rankBefore   = getRank(currentMerit);
+  const rankAfter    = getRank(newMerit);
+  const promoted     = rankAfter.min > rankBefore.min;
+  const demoted      = rankAfter.min < rankBefore.min;
 
-      const badge = document.getElementById('mg-badge');
-      if(promoted)      { badge.textContent='↑ Promoção!'; badge.className='promo-badge up'; }
-      else if(demoted)  { badge.textContent='↓ Rebaixamento'; badge.className='promo-badge down'; }
-      else              { badge.textContent='Sem mudança de cargo'; badge.className='promo-badge same'; }
+  document.getElementById('mg-preview-skin').src = `https://minotar.net/helm/${encodeURIComponent(player.minecraft_name)}/80.png`;
+  document.getElementById('mg-preview-name').textContent = player.minecraft_name;
+  document.getElementById('mg-preview-rank').textContent = `${rankBefore.label} · ${currentMerit} ⭐`;
+  document.getElementById('mg-from').textContent = `${currentMerit} ⭐`;
+  document.getElementById('mg-to').textContent   = `${newMerit} ⭐`;
 
-      preview.classList.add('visible');
-    }
+  const badge = document.getElementById('mg-badge');
+  if(promoted)      { badge.textContent='↑ Promoção!'; badge.className='promo-badge up'; }
+  else if(demoted)  { badge.textContent='↓ Rebaixamento'; badge.className='promo-badge down'; }
+  else              { badge.textContent='Sem mudança de cargo'; badge.className='promo-badge same'; }
 
-    async function submitGrantMerit() {
-      const player   = document.getElementById('mg-player').value.trim();
-      const amount   = parseInt(document.getElementById('mg-amount').value)||0;
-      const op       = document.getElementById('mg-op').value;
-      const category = document.getElementById('mg-category').value;
-      const reason   = document.getElementById('mg-reason').value.trim();
-      const btn      = document.getElementById('mg-btn');
-      const msg      = document.getElementById('mg-msg');
+  preview.classList.add('visible');
+}
 
-      if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
-      if(!amount||amount<1) { msg.textContent='Informe uma quantidade válida.'; msg.style.color='var(--danger)'; return; }
-      if(!reason) { msg.textContent='O motivo é obrigatório.'; msg.style.color='var(--danger)'; return; }
+/* ── Submit Grant Merit ── */
+async function submitGrantMerit() {
+  const player   = document.getElementById('mg-player').value.trim();
+  const amount   = parseInt(document.getElementById('mg-amount').value)||0;
+  const op       = document.getElementById('mg-op').value;
+  const category = document.getElementById('mg-category').value;
+  const reason   = document.getElementById('mg-reason').value.trim();
+  const btn      = document.getElementById('mg-btn');
+  const msg      = document.getElementById('mg-msg');
 
-      btn.disabled=true; btn.textContent='Registrando…';
-      try {
-        const res = await apiFetch(`/api/admin/merit`, {
-          method:'POST',
-          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-          body: JSON.stringify({ minecraft_name:player, amount, type:op, category, reason })
-        });
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error||'Erro ao registrar mérito.');
+  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
+  if(!amount||amount<1) { msg.textContent='Informe uma quantidade válida.'; msg.style.color='var(--danger)'; return; }
+  if(!reason) { msg.textContent='O motivo é obrigatório.'; msg.style.color='var(--danger)'; return; }
 
-        msg.textContent = `✅ Mérito registrado! ${player} agora tem ${(data.new_total ?? data.newMerit)} ⭐ (${data.new_rank || data.rank?.label || data.newRank})`;
-        msg.style.color = 'var(--success)';
-        document.getElementById('mg-amount').value = '';
-        document.getElementById('mg-reason').value = '';
-        document.getElementById('mg-preview').classList.remove('visible');
-        meritSelectedPlayers.mg = null;
-        loadMeritStats(); loadLeaderboard(); loadMeritHistory();
-      } catch(e) {
-        msg.textContent = e.message; msg.style.color='var(--danger)';
-      } finally {
-        btn.disabled=false; btn.textContent='Registrar Mérito';
-      }
-    }
+  btn.disabled=true; btn.textContent='Registrando…';
+  try {
+    const res = await apiFetch(`/api/admin/merit`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ minecraft_name:player, amount, type:op, category, reason })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Erro ao registrar mérito.');
 
-    async function submitAdjustCapital() {
-      const player = document.getElementById('cap-player').value.trim();
-      const op     = document.getElementById('cap-op').value;
-      const amount = parseInt(document.getElementById('cap-amount').value)||0;
-      const desc   = document.getElementById('cap-desc').value.trim();
-      const btn    = document.getElementById('cap-btn');
-      const msg    = document.getElementById('cap-msg');
+    msg.textContent = `✅ Mérito registrado! ${player} agora tem ${(data.new_total ?? data.newMerit)} ⭐ (${data.new_rank || data.rank?.label || data.newRank})`;
+    msg.style.color = 'var(--success)';
+    // Reset
+    document.getElementById('mg-amount').value = '';
+    document.getElementById('mg-reason').value = '';
+    document.getElementById('mg-preview').classList.remove('visible');
+    meritSelectedPlayers.mg = null;
+    // Refresh data
+    loadMeritStats(); loadLeaderboard(); loadMeritHistory();
+  } catch(e) {
+    msg.textContent = e.message; msg.style.color='var(--danger)';
+  } finally {
+    btn.disabled=false; btn.textContent='Registrar Mérito';
+  }
+}
 
-      if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
-      if(!amount||amount<1) { msg.textContent='Informe um valor válido.'; msg.style.color='var(--danger)'; return; }
+/* ── Submit Adjust Capital ── */
+async function submitAdjustCapital() {
+  const player = document.getElementById('cap-player').value.trim();
+  const op     = document.getElementById('cap-op').value;
+  const amount = parseInt(document.getElementById('cap-amount').value)||0;
+  const desc   = document.getElementById('cap-desc').value.trim();
+  const btn    = document.getElementById('cap-btn');
+  const msg    = document.getElementById('cap-msg');
 
-      btn.disabled=true; btn.textContent='Ajustando…';
-      try {
-        const res = await apiFetch(`/api/admin/capital`, {
-          method:'POST',
-          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-          body: JSON.stringify({ minecraft_name:player, amount, type:op, description:desc||'Ajuste de capital' })
-        });
-        const data = await res.json();
-        if(!res.ok) throw new Error(data.error||'Erro ao ajustar capital.');
+  if(!player) { msg.textContent='Informe o nick do jogador.'; msg.style.color='var(--danger)'; return; }
+  if(!amount||amount<1) { msg.textContent='Informe um valor válido.'; msg.style.color='var(--danger)'; return; }
 
-        const sign = op==='credit'?'+':'-';
-        msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${(data.new_balance ?? data.newCapital)}`;
-        msg.style.color = 'var(--success)';
-        document.getElementById('cap-amount').value = '';
-        document.getElementById('cap-desc').value = '';
-        meritSelectedPlayers.cap = null;
-        loadMeritStats(); loadMeritHistory();
-      } catch(e) {
-        msg.textContent = e.message; msg.style.color='var(--danger)';
-      } finally {
-        btn.disabled=false; btn.textContent='Ajustar Capital';
-      }
-    }
+  btn.disabled=true; btn.textContent='Ajustando…';
+  try {
+    const res = await apiFetch(`/api/admin/capital`, {
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body: JSON.stringify({ minecraft_name:player, amount, type:op, description:desc||'Ajuste de capital' })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Erro ao ajustar capital.');
+
+    const sign = op==='credit'?'+':'-';
+    msg.textContent = `✅ Capital ajustado! ${player}: ${sign}💰${amount}. Saldo: 💰${(data.new_balance ?? data.newCapital)}`;
+    msg.style.color = 'var(--success)';
+    document.getElementById('cap-amount').value = '';
+    document.getElementById('cap-desc').value = '';
+    meritSelectedPlayers.cap = null;
+    loadMeritStats(); loadMeritHistory();
+  } catch(e) {
+    msg.textContent = e.message; msg.style.color='var(--danger)';
+  } finally {
+    btn.disabled=false; btn.textContent='Ajustar Capital';
+  }
+}
 </script>
 </body>
 </html>
