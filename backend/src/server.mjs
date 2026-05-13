@@ -26,6 +26,7 @@
 
 */
 
+import * as util from 'minecraft-server-util';
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -444,29 +445,39 @@ app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_START
 async function fetchMinecraftStatus() {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   const started = Date.now();
-  const resp = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`, {
-    headers: { 'User-Agent': 'forca-aliada-backend/2.0' },
-  });
-  if (!resp.ok) throw new Error(`mcstatus failed: ${resp.status}`);
-  const data = await resp.json();
-  const latencyMs = Math.max(0, Date.now() - started);
-  const onlinePlayers = (data?.players?.list || [])
-    .map(p => p.name_clean || p.name_raw || p.name)
-    .filter(Boolean);
 
-  return {
-    host,
-    checkedAt: new Date(),
-    online: Boolean(data?.online),
-    version: data?.version?.name_clean || data?.version?.name_raw || data?.version?.name || null,
-    players: {
-      online: Number(data?.players?.online || onlinePlayers.length || 0),
-      max: Number(data?.players?.max || 0),
-      list: onlinePlayers,
-    },
-    latencyMs,
-    raw: data,
-  };
+  try {
+    // Faz o ping direto no servidor através do domínio (TCPShield)
+    // O enableSRV garante que ele siga os redirecionamentos do Cloudflare/TCPShield corretamente
+    const result = await util.status(host, 25565, {
+      timeout: 5000,
+      enableSRV: true 
+    });
+
+    const latencyMs = Math.max(0, Date.now() - started);
+    
+    // O util.status retorna os jogadores no array "sample"
+    const onlinePlayers = (result.players.sample || [])
+      .map(p => p.name)
+      .filter(Boolean);
+
+    return {
+      host,
+      checkedAt: new Date(),
+      online: true,
+      version: result.version.name || null,
+      players: {
+        online: Number(result.players.online || 0),
+        max: Number(result.players.max || 0),
+        list: onlinePlayers,
+      },
+      latencyMs: result.roundTripLatency || latencyMs,
+      raw: result,
+    };
+  } catch (err) {
+    // Se o ping falhar, lança o erro para a rota de catch principal tratar
+    throw new Error(`Falha ao pingar o servidor localmente: ${err.message}`);
+  }
 }
 
 async function recordServerStatus(status) {
