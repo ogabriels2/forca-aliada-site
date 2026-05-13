@@ -202,6 +202,30 @@ ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT;
 CREATE INDEX IF NOT EXISTS idx_player_name      ON player_sessions(player);
 CREATE INDEX IF NOT EXISTS idx_player_left_at   ON player_sessions(left_at DESC);
 
+-- Sessões Web de usuários
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id           SERIAL PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash   VARCHAR(64) NOT NULL UNIQUE,
+  user_agent   TEXT,
+  ip           VARCHAR(64),
+  city         VARCHAR(128),
+  region       VARCHAR(128),
+  country      VARCHAR(128),
+  isp          VARCHAR(255),
+  last_seen_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  revoked      BOOLEAN DEFAULT FALSE
+);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS city    VARCHAR(128);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS region  VARCHAR(128);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS country VARCHAR(128);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS isp     VARCHAR(255);
+ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS revoked BOOLEAN DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_hash ON user_sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_seen ON user_sessions(last_seen_at DESC);
+
 -- Password resets
 CREATE TABLE IF NOT EXISTS password_resets (
   id         SERIAL PRIMARY KEY,
@@ -727,6 +751,36 @@ return res.status(403).json({ error: 'unverified_email', email: user.email });
 await audit({ actorId: user.id, actorName: user.username, type: 'login', message: `${user.username} fez login no painel` });
 
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+
+// Registra sessão web
+const { createHash } = await import('node:crypto');
+const tokenHash = createHash('sha256').update(token).digest('hex');
+const ua = req.headers['user-agent'] || null;
+const ip = req.ip || req.socket?.remoteAddress || null;
+// Geo lookup assíncrono (não bloqueia o login)
+(async () => {
+  let city = null, region = null, country = null, isp = null;
+  try {
+    const cleanIp = (ip || '').replace(/^::ffff:/, '');
+    if (cleanIp && cleanIp !== '127.0.0.1' && cleanIp !== '::1') {
+      const geoRes = await fetch(`https://ipapi.co/${cleanIp}/json/`, { signal: AbortSignal.timeout(4000) });
+      if (geoRes.ok) {
+        const g = await geoRes.json();
+        city = g.city || null; region = g.region || null; country = g.country_name || null;
+        isp  = (g.org || '').replace(/^AS\d+\s*/, '') || null;
+      }
+    }
+  } catch { /* geo opcional */ }
+  try {
+    await pool.query(
+      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, city, region, country, isp, last_seen_at, created_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
+       ON CONFLICT(token_hash) DO UPDATE SET last_seen_at=NOW()`,
+      [user.id, tokenHash, ua, ip, city, region, country, isp]
+    );
+  } catch(e) { console.error('[sessions] insert error:', e.message); }
+})();
+
 res.json({
 token,
 user: {
@@ -1892,6 +1946,112 @@ app.get('/api/admin/players-with-balances', auth, requireAdmin, async (req, res)
     LIMIT 30
   `, [q]);
   res.json(rows);
+});
+
+
+// ─────────────────────────────────────────────
+// Heartbeat de sessão (atualiza last_seen_at)
+// ─────────────────────────────────────────────
+app.post('/api/me/session/ping', auth, async (req, res) => {
+  try {
+    const { createHash } = await import('node:crypto');
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    await pool.query(
+      'UPDATE user_sessions SET last_seen_at=NOW() WHERE token_hash=$1 AND revoked=FALSE',
+      [tokenHash]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
+// ─────────────────────────────────────────────
+// ME – Sessões web
+// ─────────────────────────────────────────────
+app.get('/api/me/sessions', auth, async (req, res) => {
+  try {
+    const { createHash } = await import('node:crypto');
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    const currentHash = createHash('sha256').update(rawToken).digest('hex');
+
+    const { rows } = await pool.query(
+      `SELECT id, token_hash, user_agent, ip, city, region, country, isp,
+              last_seen_at, created_at, revoked
+       FROM user_sessions
+       WHERE user_id=$1 AND revoked=FALSE
+       ORDER BY last_seen_at DESC`,
+      [req.user.sub]
+    );
+
+    const sessions = rows.map(s => ({
+      id:          s.id,
+      is_current:  s.token_hash === currentHash,
+      user_agent:  s.user_agent,
+      ip:          s.ip,
+      city:        s.city,
+      region:      s.region,
+      country:     s.country,
+      isp:         s.isp,
+      last_seen:   s.last_seen_at,
+      created_at:  s.created_at,
+    }));
+
+    res.json({ sessions });
+  } catch(e) {
+    console.error('[GET /api/me/sessions]', e);
+    res.status(500).json({ error: 'internal error' });
+  }
+});
+
+// DELETE /api/me/sessions/:id  – Encerra uma sessão específica
+app.delete('/api/me/sessions/:id', auth, async (req, res) => {
+  try {
+    const { createHash } = await import('node:crypto');
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    const currentHash = createHash('sha256').update(rawToken).digest('hex');
+
+    const { rows } = await pool.query(
+      'SELECT id, token_hash FROM user_sessions WHERE id=$1 AND user_id=$2',
+      [req.params.id, req.user.sub]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'session not found' });
+    if (rows[0].token_hash === currentHash)
+      return res.status(400).json({ error: 'cannot revoke current session' });
+
+    await pool.query('UPDATE user_sessions SET revoked=TRUE WHERE id=$1', [rows[0].id]);
+    await audit({
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'update', targetId: req.user.sub,
+      message: `Sessão #${rows[0].id} encerrada remotamente`,
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[DELETE /api/me/sessions/:id]', e);
+    res.status(500).json({ error: 'internal error' });
+  }
+});
+
+// DELETE /api/me/sessions  – Encerra todas as outras sessões
+app.delete('/api/me/sessions', auth, async (req, res) => {
+  try {
+    const { createHash } = await import('node:crypto');
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    const currentHash = createHash('sha256').update(rawToken).digest('hex');
+
+    const { rowCount } = await pool.query(
+      'UPDATE user_sessions SET revoked=TRUE WHERE user_id=$1 AND token_hash!=$2 AND revoked=FALSE',
+      [req.user.sub, currentHash]
+    );
+    await audit({
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'update', targetId: req.user.sub,
+      message: `${rowCount} outras sessões encerradas remotamente`,
+    });
+    res.json({ ok: true, revoked: rowCount });
+  } catch(e) {
+    console.error('[DELETE /api/me/sessions]', e);
+    res.status(500).json({ error: 'internal error' });
+  }
 });
 
 // ─────────────────────────────────────────────
