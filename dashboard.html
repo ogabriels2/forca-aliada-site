@@ -2535,41 +2535,33 @@ function toggleDropdown(e) {
 }
 
 // ══ Carga de dados ══
-// ══ Carga de dados ══
-// ══ Carga de dados ══
 async function loadData() {
   document.getElementById('meta').textContent = new Date().toLocaleTimeString('pt-BR');
   
-  // Voltando a usar a rota original que alimenta o site perfeitamente
-  const [statusData, histData] = await Promise.all([
-    apiFetch(`/api/server/status`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
-    apiFetch(`/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
-  ]);
+  try {
+    const [statusData, histData] = await Promise.all([
+      apiFetch(`/api/server/status`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
+      apiFetch(`/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
 
-  globalHealthData = statusData;
-  globalApiData = statusData?.minecraft ? {
-    online: statusData.minecraft.online,
-    version: statusData.minecraft.version,
-    players: statusData.minecraft.players,
-    debug: { ping: statusData.minecraft.latencyMs },
-  } : null;
-  
-  globalHistData = histData; // O site volta a receber onlinePlayers, activeSessions e history no formato que ele ama
-  
-  renderDashboard();
-  updateActivityChart();
-  renderServerHealth();
-  renderGlobalStats();
-  renderAlerts();
-}
-
+    globalHealthData = statusData;
+    globalApiData = statusData?.minecraft ? {
+      online: statusData.minecraft.online,
+      version: statusData.minecraft.version,
+      players: statusData.minecraft.players,
+      debug: { ping: statusData.minecraft.latencyMs },
+    } : null;
+    
+    // O site volta a receber onlinePlayers, activeSessions e history no formato correto
+    globalHistData = histData; 
+    
     renderDashboard();
     updateActivityChart();
     renderServerHealth();
     renderGlobalStats();
     renderAlerts();
   } catch (err) {
-    console.error("Erro ao carregar dados vitais:", err);
+    console.error("Erro ao carregar os dados principais do servidor:", err);
   }
 }
 
