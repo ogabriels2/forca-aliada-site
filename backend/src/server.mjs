@@ -577,6 +577,37 @@ res.status(500).json({ error: 'snapshot failed' });
 });
 
 // ─────────────────────────────────────────────
+// DADOS DO DASHBOARD (Rota Original Restaurada)
+// ─────────────────────────────────────────────
+app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
+  const limit = Math.min(Number(req.query.limit || 500), 2000);
+
+  try {
+    const online  = await pool.query(
+      'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL'
+    );
+    const history = await pool.query(
+      'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1',
+      [limit]
+    );
+
+    res.json({
+      onlinePlayers: online.rows.map(r => r.player),
+      activeSessions: online.rows.reduce((acc, r) => ({
+        ...acc, [r.player]: { name: r.player, enteredAt: r.entered_at }
+      }), {}),
+      history: history.rows.map(r => ({
+        player: r.player, enteredAt: r.entered_at,
+        leftAt: r.left_at, hoursOnline: r.duration_hours,
+      })),
+    });
+  } catch (err) {
+    console.error('[snapshots latest]', err);
+    res.status(500).json({ error: 'Falha ao buscar histórico' });
+  }
+});
+
+// ─────────────────────────────────────────────
 // INTEGRAÇÃO DE APLICATIVO (FASE 2)
 // ─────────────────────────────────────────────
 
