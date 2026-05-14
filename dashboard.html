@@ -433,6 +433,12 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 .admin-notification-list { display:grid; gap:8px; margin-top:16px; }
 .admin-notification-item { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--border); border-radius:12px; background:rgba(0,0,0,0.025); }
 .admin-notification-item .meta { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+.app-key-item { display:flex; align-items:center; justify-content:space-between; padding:16px; border:1px solid var(--border); border-radius:12px; margin-bottom:8px; background:var(--bg-color); transition: var(--transicao); }
+.app-key-item:hover { border-color: var(--accent); }
+.app-key-info strong { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:4px; }
+.app-key-info span { font-size:12px; color:var(--text-secondary); display:block; margin-top:2px;}
+.app-key-actions { display:flex; gap:8px; }
+[data-theme="dark"] .app-key-item { background:rgba(255,255,255,0.02); }
 [data-theme="dark"] .admin-notification-item { background:rgba(255,255,255,0.04); }
 [data-theme="dark"] .modal-header, [data-theme="dark"] .admin-account-card, [data-theme="dark"] .create-account-collapsed { background:#161b22; }
 [data-theme="dark"] .advanced-security-section, [data-theme="dark"] .player-notes-panel { background:rgba(255,255,255,0.04); }
@@ -963,6 +969,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <button class="quick-action-btn" id="qa-audit" onclick="scrollToSection('audit-card')" style="display:none;">
             <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
           </button>
+          <button class="quick-action-btn" id="qa-appkeys" onclick="scrollToSection('app-keys-card')" style="display:none;">
+            <span class="qa-icon">🔌</span><span class="qa-label">Integração App</span><span class="qa-arrow">›</span>
+          </button>
           <button class="quick-action-btn" id="qa-merit" onclick="scrollToSection('merit-card')" style="display:none;">
             <span class="qa-icon">⭐</span><span class="qa-label">Mérito & Capital</span><span class="qa-arrow">›</span>
           </button>
@@ -1370,7 +1379,30 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-      </div></div></main>
+      </div>
+
+      <div class="card" id="app-keys-card" style="display:none; margin-top:24px;">
+        <h3>🔌 Integração de Sistema <span>Gerencie os acessos do Força Aliada Manager (App PC)</span></h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
+          <p style="font-size:13px; color:var(--text-secondary); margin:0; flex:1; min-width:200px;">Gere chaves seguras para permitir que o seu aplicativo de computador sincronize logs e gerencie o servidor remotamente.</p>
+          <button class="btn-primary" onclick="generateAppKey()" style="padding: 10px 16px; font-size: 13px; white-space:nowrap;">+ Gerar Nova Chave</button>
+        </div>
+        
+        <div id="new-key-alert" style="display:none; background:rgba(48,209,88,0.08); border:1px solid var(--success); padding:16px; border-radius:12px; margin-bottom:16px; animation: slideIn 0.3s ease;">
+          <strong style="color:var(--success); display:block; margin-bottom:8px;">✅ Chave gerada com sucesso!</strong>
+          <p style="margin:0 0 12px 0; font-size:13px; color:var(--text-primary);">Copie a chave abaixo e cole na tela inicial do seu Força Aliada Manager. <b>Por segurança, ela desaparecerá e não poderá ser vista novamente!</b></p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="new-key-value" readonly style="flex:1; font-family:monospace; color:var(--success); font-weight:bold; background:rgba(0,0,0,0.05); border-color:var(--success);">
+            <button class="btn-secondary" onclick="copyNewKey()">Copiar</button>
+          </div>
+        </div>
+
+        <div class="app-keys-list" id="app-keys-list">
+          <div class="empty-state"><div class="empty-icon">🔌</div><strong>Carregando chaves...</strong></div>
+        </div>
+      </div>
+
+    </div></div></main>
 
 <footer>
   <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
@@ -1713,6 +1745,11 @@ function initDashboard() {
     document.getElementById('qa-audit').style.display = 'flex';
     document.getElementById('btn-export-staff').style.display = 'inline-flex';
     fetchAuditLogs();
+    
+    // Inicia a aba do App Desktop
+    document.getElementById('app-keys-card').style.display = 'block';
+    document.getElementById('qa-appkeys').style.display = 'flex';
+    fetchAppKeys();
   }
 
   // Merit & Capital — visível para full e owner
@@ -2168,6 +2205,103 @@ function renderTopPlayers(mode) {
 }
 
 function hashStr(s) { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return h; }
+
+// ══ Integração App (Desktop Keys) ══
+async function fetchAppKeys() {
+  const list = document.getElementById('app-keys-list');
+  try {
+    const res = await apiFetch('/api/admin/app-keys', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error();
+    const keys = await res.json();
+    if (!keys.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">🔌</div><strong>Nenhuma chave ativa</strong><span>Nenhum aplicativo externo possui acesso ao servidor no momento.</span></div>';
+      return;
+    }
+    list.innerHTML = keys.map(k => {
+      const created = new Date(k.created_at).toLocaleDateString('pt-BR');
+      const used = k.last_used_at ? new Date(k.last_used_at).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Nunca conectou';
+      const isOnline = k.last_used_at && (Date.now() - new Date(k.last_used_at).getTime()) < 60000;
+      const statusDot = isOnline ? '<span class="status-dot"></span>' : '<span class="status-dot offline"></span>';
+      
+      return `<div class="app-key-item">
+        <div class="app-key-info">
+          <strong>${statusDot} ${escapeHTML(k.name)}</strong>
+          <span>Criada em: ${created} por ${escapeHTML(k.created_by)}</span>
+          <span>Última sincronização: <b>${used}</b></span>
+        </div>
+        <div class="app-key-actions">
+          <button class="btn-secondary btn-danger-outline" style="padding:8px 16px; font-size:13px; border-radius:8px;" onclick="revokeAppKey(${k.id}, '${escapeHTML(k.name)}')">Revogar Acesso</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="admin-notification-hint" style="color:var(--danger); padding:16px;">Erro ao carregar as chaves de integração do banco de dados.</div>';
+  }
+}
+
+function generateAppKey() {
+  requirePassword({
+    title: 'Gerar Nova Chave de Integração',
+    desc: 'O aplicativo Desktop usa essa chave para agir em nome do servidor. Insira sua senha para aprovar a geração.',
+    btnLabel: 'Gerar Chave',
+    onConfirm: async () => {
+      try {
+        const d = new Date();
+        const res = await apiFetch('/api/admin/app-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name: `App Manager - ${d.getDate()}/${d.getMonth()+1}` })
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        
+        document.getElementById('new-key-alert').style.display = 'block';
+        document.getElementById('new-key-value').value = data.key;
+        fetchAppKeys();
+        if(session.role === 'owner') fetchAuditLogs();
+        
+        showToast('Chave de integração gerada com sucesso!', 'success');
+      } catch (e) {
+        showToast('Erro ao gerar a chave. Tente novamente.', 'error');
+      }
+    }
+  });
+}
+
+function copyNewKey() {
+  const input = document.getElementById('new-key-value');
+  input.select();
+  input.setSelectionRange(0, 99999); // Para mobile
+  document.execCommand('copy');
+  showToast('Chave copiada para a área de transferência!');
+  
+  // Esconde o painel após 15 segundos por segurança
+  setTimeout(() => { document.getElementById('new-key-alert').style.display = 'none'; }, 15000);
+}
+
+function revokeAppKey(id, name) {
+  requirePassword({
+    title: 'Revogar Chave',
+    desc: `Tem certeza que deseja revogar "${name}"? O aplicativo Desktop que estiver usando essa chave será desconectado e bloqueado imediatamente.`,
+    btnLabel: 'Revogar e Bloquear',
+    destructive: true,
+    onConfirm: async () => {
+      try {
+        const res = await apiFetch(`/api/admin/app-keys/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error();
+        
+        fetchAppKeys();
+        if(session.role === 'owner') fetchAuditLogs();
+        showToast('Chave revogada com sucesso. Acesso cortado.', 'success');
+      } catch (e) {
+        showToast('Erro ao tentar revogar a chave.', 'error');
+      }
+    }
+  });
+}
 
 // ══ Logs de Auditoria (dados persistidos no backend) ══
 async function fetchAuditLogs() {
