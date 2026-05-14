@@ -457,10 +457,6 @@ async function fetchMinecraftStatus() {
   return {
     host,
     checkedAt: new Date(),
-
-  return {
-    host,
-    checkedAt: new Date(),
     online: true,
     version: result.version?.name || null,
     players: {
