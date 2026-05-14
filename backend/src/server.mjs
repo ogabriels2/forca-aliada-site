@@ -449,9 +449,14 @@ async function fetchMinecraftStatus() {
 
   const latencyMs = Math.max(0, Date.now() - started);
   
+  // Limpa os nomes, e IGNORA a pegadinha do "Anonymous Player" do Velocity
   const onlinePlayers = (result.players.sample || [])
     .map(p => p.name)
-    .filter(Boolean);
+    .filter(name => Boolean(name) && name !== 'Anonymous Player');
+
+  return {
+    host,
+    checkedAt: new Date(),
 
   return {
     host,
@@ -508,34 +513,33 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
     const status = await fetchMinecraftStatus();
     await recordServerStatus(status);
 
-    // --- SISTEMA DE AUTO-CURA (HÍBRIDO) ---
-    // Se o app estiver desligado, o painel assume a correção do banco de dados
+    // --- SISTEMA DE AUTO-CURA (HÍBRIDO E INTELIGENTE) ---
     const now = status.checkedAt;
     const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
     
     if (status.online) {
       const onlinePlayers = status.players.list;
+      const reportedCount = status.players.online;
       
-      // 1. Mata fantasmas (estão no banco como online, mas não estão no servidor)
-      for (const row of active.rows) {
-        if (!onlinePlayers.includes(row.player)) {
-          const dur = (now - new Date(row.entered_at)) / 3600000;
-          await pool.query(
-            'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
-            [now, +dur.toFixed(2), row.player]
-          );
+      // Detecta se o Velocity está escondendo os nomes (Diz que tem gente, mas a lista vem vazia)
+      const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
+
+      if (!isProxyHidingNames) {
+        // Se a lista é confiável (ou o servidor está 100% vazio), aplica a auto-cura
+        for (const row of active.rows) {
+          if (!onlinePlayers.includes(row.player)) {
+            const dur = (now - new Date(row.entered_at)) / 3600000;
+            await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
+          }
+        }
+        for (const p of onlinePlayers) {
+          const already = active.rows.some(r => r.player === p);
+          if (!already) await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
         }
       }
-      
-      // 2. Registra quem entrou (caso liguem o servidor ignorando o aplicativo de PC)
-      for (const p of onlinePlayers) {
-        const already = active.rows.some(r => r.player === p);
-        if (!already) {
-          await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
-        }
-      }
+      // Se isProxyHidingNames for TRUE, a Auto-Cura não faz nada e confia cegamente no App de PC!
     }
-    // ---------------------------------------
+    // ----------------------------------------------------
 
     const stats = await getServerStatusStats(status.host, status.online);
     return res.json({
@@ -589,35 +593,32 @@ const key = req.query.key || req.headers['x-ingest-secret'];
 if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
 
 try {
-const status = await fetchMinecraftStatus();
-await recordServerStatus(status);
-const onlinePlayers = status.players.list;
-const now = status.checkedAt;
+  const status = await fetchMinecraftStatus();
+  await recordServerStatus(status);
+  const onlinePlayers = status.players.list;
+  const reportedCount = status.players.online;
+  const now = status.checkedAt;
 
-const active = await pool.query(
-  'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL',
-);
+  const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+  const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
 
-for (const row of active.rows) {
-  if (!onlinePlayers.includes(row.player)) {
-    const dur = (now - new Date(row.entered_at)) / 3600000;
-    await pool.query(
-      'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
-      [now, +dur.toFixed(2), row.player],
-    );
+  if (!isProxyHidingNames) {
+    for (const row of active.rows) {
+      if (!onlinePlayers.includes(row.player)) {
+        const dur = (now - new Date(row.entered_at)) / 3600000;
+        await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
+      }
+    }
+    for (const p of onlinePlayers) {
+      const already = active.rows.some(r => r.player === p);
+      if (!already) await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
+    }
   }
-}
 
-for (const p of onlinePlayers) {
-  const already = active.rows.some(r => r.player === p);
-  if (!already)
-    await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
-}
-
-res.json({ ok: true, online: onlinePlayers.length });
+  res.json({ ok: true, online: onlinePlayers.length });
 } catch (err) {
-console.error('[cron]', err);
-res.status(500).json({ error: 'snapshot failed' });
+  console.error('[cron]', err);
+  res.status(500).json({ error: 'snapshot failed' });
 }
 });
 
