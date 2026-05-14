@@ -1,30 +1,17 @@
 /**
-
-- Força Aliada – Backend API  (server.mjs)
-- ─────────────────────────────────────────
-- Stack : Node.js (ESM) + Express + PostgreSQL + JWT + bcrypt
-- 
-- Novidades nesta versão
-- ──────────────────────
-- • Sistema completo de Notificações
-   - Criar notificação (admin/owner)
-   - Envio público, por role, por minecraft_name ou para usuário específico
-   - Marcar lida / marcar todas lidas
-   - Listar com badge de não-lidas
-- • Logs de Auditoria
-   - Registra automaticamente: login, criação, edição, exclusão de contas,
-     envio de notificações, alteração de senha (owner/full)
-   - Endpoint GET /api/admin/audit com paginação e filtro por tipo
-- • Notas de Jogadores (server-side)
-   - CRUD de notas por minecraft_name, vinculadas ao autor
-- • Jogadores Não-Registrados
-   - GET /api/players/unregistered  – lista players com sessões mas sem conta
-- • Preferências do Usuário (server-side)
-   - GET / PUT /api/me/preferences
-- • Todas as rotas que o account.html e dashboard.html consomem
-   mas não tinham endpoint real
-
-*/
+ * Força Aliada – Backend API  (server.mjs)
+ * ─────────────────────────────────────────
+ * Stack : Node.js (ESM) + Express + PostgreSQL + JWT + bcrypt
+ * * Novidades nesta versão
+ * ──────────────────────
+ * • Sistema completo de Notificações
+ * • Logs de Auditoria
+ * • Notas de Jogadores (server-side)
+ * • Jogadores Não-Registrados
+ * • Preferências do Usuário (server-side)
+ * • Correção Anti-Bloqueio do TCPShield (Fallback mcstatus.io)
+ * • Rotas Analíticas de Big Data e Paginação para Histórico
+ */
 
 import * as util from 'minecraft-server-util';
 import express from 'express';
@@ -83,8 +70,8 @@ app.use(express.urlencoded({ extended: false }));
 // ─────────────────────────────────────────────
 const { Pool } = pg;
 const pool = new Pool({
-connectionString: process.env.DATABASE_URL,
-ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
 
@@ -466,42 +453,57 @@ next();
 // ─────────────────────────────────────────────
 app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) }));
 
+// ─────────────────────────────────────────────
+// Minecraft Status (Híbrido)
+// ─────────────────────────────────────────────
 async function fetchMinecraftStatus() {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   const started = Date.now();
+  let result;
 
   try {
-    // Faz o ping direto no servidor através do domínio (TCPShield)
-    // O enableSRV garante que ele siga os redirecionamentos do Cloudflare/TCPShield corretamente
-    const result = await util.status(host, 25565, {
-      timeout: 5000,
+    // Tentativa 1: Ping direto (Rápido, mas pode ser bloqueado pelo TCPShield)
+    result = await util.status(host, 25565, {
+      timeout: 3000,
       enableSRV: true 
     });
-
-    const latencyMs = Math.max(0, Date.now() - started);
+  } catch (localErr) {
+    // Tentativa 2: Fallback (Se o TCPShield bloquear o IP do Render, usa serviço externo seguro)
+    const res = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
+    if (!res.ok) throw new Error('Ambos ping local e fallback falharam');
+    const data = await res.json();
     
-    // O util.status retorna os jogadores no array "sample"
-    const onlinePlayers = (result.players.sample || [])
-      .map(p => p.name)
-      .filter(Boolean);
-
-    return {
-      host,
-      checkedAt: new Date(),
-      online: true,
-      version: result.version.name || null,
+    // Converte a resposta da API para o mesmo formato do util.status
+    result = {
+      version: { name: data.version?.name_raw || data.version?.name },
       players: {
-        online: Number(result.players.online || 0),
-        max: Number(result.players.max || 0),
-        list: onlinePlayers,
+        online: data.players?.online || 0,
+        max: data.players?.max || 0,
+        sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
       },
-      latencyMs: result.roundTripLatency || latencyMs,
-      raw: result,
+      roundTripLatency: data.latency
     };
-  } catch (err) {
-    // Se o ping falhar, lança o erro para a rota de catch principal tratar
-    throw new Error(`Falha ao pingar o servidor localmente: ${err.message}`);
   }
+
+  const latencyMs = Math.max(0, Date.now() - started);
+  // Garante que pega os nomes limpos de jogadores
+  const onlinePlayers = (result.players.sample || [])
+    .map(p => p.name)
+    .filter(Boolean);
+
+  return {
+    host,
+    checkedAt: new Date(),
+    online: true,
+    version: result.version?.name || null,
+    players: {
+      online: Number(result.players.online || 0),
+      max: Number(result.players.max || 0),
+      list: onlinePlayers,
+    },
+    latencyMs: result.roundTripLatency || latencyMs,
+    raw: result,
+  };
 }
 
 async function recordServerStatus(status) {
@@ -1021,13 +1023,7 @@ app.put('/api/me/preferences', auth, async (req, res) => {
 // NOTIFICAÇÕES
 // ─────────────────────────────────────────────
 
-/**
-
-- GET /api/notifications
-- Retorna notificações relevantes para o usuário autenticado.
-- Inclui campo `is_read` e metadados.
-  */
-  app.get('/api/notifications', auth, async (req, res) => {
+app.get('/api/notifications', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
@@ -1037,12 +1033,7 @@ const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (n
 res.json(rows);
 });
 
-/**
-
-- GET /api/notifications/unread-count
-- Contagem de não-lidas (para badge).
-  */
-  app.get('/api/notifications/unread-count', auth, async (req, res) => {
+app.get('/api/notifications/unread-count', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
@@ -1052,12 +1043,7 @@ const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notificati
 res.json({ count: rows[0].count });
 });
 
-/**
-
-- POST /api/notifications/:id/read
-- Marca uma notificação como lida.
-  */
-  app.post('/api/notifications/:id/read', auth, async (req, res) => {
+app.post('/api/notifications/:id/read', auth, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
   const role = req.user.role;
@@ -1088,11 +1074,6 @@ res.json({ count: rows[0].count });
   res.json({ ok: true });
 });
 
-/**
-
-- DELETE /api/notifications/:id
-- Oculta uma notificação para o usuário autenticado.
-  */
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
@@ -1124,12 +1105,7 @@ app.delete('/api/notifications/:id', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-/**
-
-- POST /api/notifications/read-all
-- Marca todas as notificações visíveis como lidas.
-  */
-  app.post('/api/notifications/read-all', auth, async (req, res) => {
+app.post('/api/notifications/read-all', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
@@ -1148,26 +1124,7 @@ await audit({
 res.json({ ok: true });
 });
 
-/**
-
-- POST /api/admin/notifications
-- Cria uma nova notificação.
-- 
-- Body:
-- {
-- title        : string  (obrigatório)
-- body         : string  (obrigatório)
-- type         : 'info' | 'event' | 'system' | 'social' | 'warning'
-- icon         : string emoji
-- audience     : 'all' | 'role' | 'user' | 'minecraft'
-- audience_val : valor dependente do audience
-               - role:      'owner' | 'full' | 'limited'
-               - user:      id numérico (string)
-               - minecraft: nome do jogador
-               - all:       ignorado
-- }
-  */
-  app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
+app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   try {
     const title       = sanitize(req.body?.title);
     const body        = sanitize(req.body?.body);
@@ -1203,22 +1160,12 @@ res.json({ ok: true });
   }
 });
 
-/**
-
-- GET /api/admin/notifications
-- Lista todas as notificações com contagem de leituras (admin).
-  */
-  app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
+app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY n.created_at DESC  `);
   res.json(rows);
-  });
+});
 
-/**
-
-- DELETE /api/admin/notifications/:id
-- Remove uma notificação (owner only).
-  */
-  app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) => {
+app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
 
@@ -1237,12 +1184,7 @@ res.json({ ok: true });
 // AUDIT LOGS
 // ─────────────────────────────────────────────
 
-/**
-
-- GET /api/admin/audit
-- Parâmetros: ?type=all|create|update|delete|login|notify&page=0&limit=50
-  */
-  app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
+app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
     try {
       const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
       const page  = Math.max(0, parseInt(req.query.page  || 0));
@@ -1273,9 +1215,6 @@ res.json({ ok: true });
 // NOTAS DE JOGADORES
 // ─────────────────────────────────────────────
 
-/**
- * GET /api/admin/notes/:minecraft_name
- */
 app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res) => {
   const mc = sanitize(req.params.minecraft_name).toLowerCase();
   const { rows } = await pool.query(
@@ -1285,10 +1224,6 @@ app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res)
   res.json(rows);
 });
 
-/**
- * POST /api/admin/notes
- * Body: { minecraft_name: string, text: string }
- */
 app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
   const { minecraft_name, text } = req.body || {};
   if (!minecraft_name || !text) return res.status(400).json({ error: 'Campos ausentes' });
@@ -1300,9 +1235,6 @@ app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
   res.json(rows[0]);
 });
 
-/**
- * DELETE /api/admin/notes/:id
- */
 app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.id);
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
@@ -1310,25 +1242,16 @@ app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-/**
-
-- GET /api/player/:name/notes
-  */
-  app.get('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
+app.get('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
   const mc = sanitize(req.params.name).toLowerCase();
   const { rows } = await pool.query(
   'SELECT id, author_name, text, created_at FROM player_notes WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC',
   [mc],
   );
   res.json(rows);
-  });
+});
 
-/**
-
-- POST /api/player/:name/notes
-- Body: { text: string }
-  */
-  app.post('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
+app.post('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
   const mc   = sanitize(req.params.name);
   const text = sanitize(req.body?.text || '');
   if (!text) return res.status(400).json({ error: 'text is required' });
@@ -1341,16 +1264,11 @@ const { rows } = await pool.query(
 res.status(201).json(rows[0]);
 });
 
-/**
-
-- DELETE /api/player/:name/notes/:noteId
-  */
-  app.delete('/api/player/:name/notes/:noteId', auth, requireAdmin, async (req, res) => {
+app.delete('/api/player/:name/notes/:noteId', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.noteId);
   const mc     = sanitize(req.params.name).toLowerCase();
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
 
-// Owner pode deletar qualquer nota; admin só as suas
 const ownClause = req.user.role === 'owner' ? '' : 'AND author_id=$3';
 const params    = req.user.role === 'owner'
 ? [noteId, mc]
@@ -1365,7 +1283,96 @@ res.json({ ok: true });
 });
 
 // ─────────────────────────────────────────────
-// SNAPSHOTS / HISTÓRICO
+// ANALYTICS & BIG DATA (Novas rotas!)
+// ─────────────────────────────────────────────
+
+app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
+  try {
+    // Agrupa as horas jogadas por mês (para gráficos de linha)
+    const { rows: monthly } = await pool.query(`
+      SELECT 
+        TO_CHAR(entered_at, 'YYYY-MM') as month,
+        SUM(duration_hours) as total_hours,
+        COUNT(id) as sessions_count
+      FROM player_sessions 
+      WHERE duration_hours IS NOT NULL
+      GROUP BY TO_CHAR(entered_at, 'YYYY-MM')
+      ORDER BY month ASC
+    `);
+
+    // Top 10 veteranos (para gráfico de barras)
+    const { rows: topPlayers } = await pool.query(`
+      SELECT player, SUM(duration_hours) as total_hours 
+      FROM player_sessions 
+      WHERE duration_hours IS NOT NULL 
+      GROUP BY player 
+      ORDER BY total_hours DESC 
+      LIMIT 10
+    `);
+
+    // Cards de resumo gigantes
+    const { rows: summary } = await pool.query(`
+      SELECT 
+        COUNT(id)::int as total_sessions, 
+        SUM(duration_hours)::float as total_hours,
+        COUNT(DISTINCT player)::int as unique_players
+      FROM player_sessions
+    `);
+
+    res.json({
+      summary: summary[0],
+      monthly: monthly,
+      topPlayers: topPlayers
+    });
+  } catch (err) {
+    console.error('[analytics]', err);
+    res.status(500).json({ error: 'Erro ao gerar relatórios analíticos' });
+  }
+});
+
+app.get('/api/admin/sessions/history', auth, requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(0, parseInt(req.query.page || 0));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || 20)));
+    const search = req.query.q ? `%${sanitize(req.query.q).toLowerCase()}%` : null;
+
+    let query = 'FROM player_sessions WHERE left_at IS NOT NULL';
+    let params = [limit, page * limit];
+
+    if (search) {
+      query += ' AND LOWER(player) LIKE $3';
+      params.push(search);
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, player, entered_at, left_at, duration_hours 
+       ${query} 
+       ORDER BY left_at DESC 
+       LIMIT $1 OFFSET $2`,
+      params
+    );
+    
+    // Descobre o total de páginas existentes para aquele termo
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int as total ${query}`,
+      search ? [search] : []
+    );
+
+    res.json({ 
+      data: rows, 
+      total: countRows[0].total, 
+      page, 
+      limit,
+      totalPages: Math.ceil(countRows[0].total / limit)
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro na paginação de histórico' });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// SNAPSHOTS / HISTÓRICO (Rota antiga mantida para retrocompatibilidade)
 // ─────────────────────────────────────────────
 app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
 const limit = Math.min(Number(req.query.limit || 500), 2000);
@@ -1393,13 +1400,7 @@ leftAt: r.left_at, hoursOnline: r.duration_hours,
 // ─────────────────────────────────────────────
 // JOGADORES NÃO REGISTRADOS
 // ─────────────────────────────────────────────
-/**
-
-- GET /api/players/unregistered
-- Lista jogadores que têm sessões mas não têm conta vinculada.
-- Inclui: total_sessions, total_hours, last_seen, first_seen
-  */
-  app.get('/api/players/unregistered', auth, requireAdmin, async (req, res) => {
+app.get('/api/players/unregistered', auth, requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT ps.player, COUNT(ps.id)::int AS total_sessions, COALESCE(SUM(ps.duration_hours), 0)::float AS total_hours, MIN(ps.entered_at) AS first_seen, MAX(COALESCE(ps.left_at, ps.entered_at)) AS last_seen 
@@ -1550,7 +1551,6 @@ res.json({ ok: true });
 // SISTEMA DE CAPITAL E MÉRITO
 // ─────────────────────────────────────────────
 
-// Mapeamento de cargos por Mérito
 const RANKS = [
   { id: 'ferro',     label: 'Ferro',     icon: '🪨', minMerit: 0,    maxMerit: 149,  color: '#8E8E93' },
   { id: 'ouro',      label: 'Ouro',      icon: '🟡', minMerit: 150,  maxMerit: 499,  color: '#FF9F0A' },
@@ -1579,7 +1579,6 @@ const RANK_BENEFITS = {
   adm:       ['Cargo administrativo', 'Independente do sistema de Mérito', 'Acesso total ao painel'],
 };
 
-// Recalcula e persiste o rank de um jogador dado o total de mérito
 async function recalcRank(mcName, meritTotal) {
   const rank = getRankByMerit(meritTotal);
   await pool.query(`
@@ -1591,7 +1590,6 @@ async function recalcRank(mcName, meritTotal) {
   return rank;
 }
 
-// Garante que um jogador tem registro em player_balances
 async function ensureBalance(mcName) {
   const mc = mcName.toLowerCase();
   await pool.query(`
@@ -1603,8 +1601,6 @@ async function ensureBalance(mcName) {
   return rows[0];
 }
 
-// ── GET /api/me/merit ─────────────────────────────────────
-// Retorna saldo de Mérito, cargo e histórico do jogador logado
 app.get('/api/me/merit', auth, async (req, res) => {
   if (!req.user.minecraft_name)
     return res.json({ merit: 0, rank: RANKS[0], nextRank: RANKS[1], progress: 0, records: [] });
@@ -1634,7 +1630,6 @@ app.get('/api/me/merit', auth, async (req, res) => {
   });
 });
 
-// ── GET /api/me/capital ───────────────────────────────────
 app.get('/api/me/capital', auth, async (req, res) => {
   if (!req.user.minecraft_name)
     return res.json({ capital: 0, records: [] });
@@ -1650,8 +1645,6 @@ app.get('/api/me/capital', auth, async (req, res) => {
   res.json({ capital: balance.capital_balance, records });
 });
 
-// ── GET /api/me/rank-info ─────────────────────────────────
-// Retorna cargo atual, progresso e todos os ranks (para UI)
 app.get('/api/me/rank-info', auth, async (req, res) => {
   const mc = req.user.minecraft_name?.toLowerCase();
   let merit = 0;
@@ -1671,7 +1664,6 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
     capitalRecords = capitalRows.rows;
   }
 
-  // Se for staff, mostra cargo administrativo sem esconder capital/histórico pessoal.
   if (['owner', 'full'].includes(req.user.role)) {
     return res.json({
       merit,
@@ -1706,8 +1698,6 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
   });
 });
 
-// ── GET /api/leaderboard ──────────────────────────────────
-// Ranking público por Mérito
 app.get('/api/leaderboard', async (req, res) => {
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || 20)));
   const { rows } = await pool.query(`
@@ -1727,7 +1717,6 @@ app.get('/api/leaderboard', async (req, res) => {
   })));
 });
 
-// ── GET /api/player/:name/merit ───────────────────────────
 app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
   const mc = req.params.name.toLowerCase();
   const balance = await ensureBalance(mc);
@@ -1752,8 +1741,6 @@ app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
   });
 });
 
-// ── POST /api/admin/merit ─────────────────────────────────
-// Concede ou remove Mérito de um jogador
 app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   const mc       = sanitize(req.body?.minecraft_name).toLowerCase();
   const rawAmount = parseInt(req.body?.amount);
@@ -1771,19 +1758,16 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   if (Math.abs(amount) > 500)
     return res.status(400).json({ error: 'Limite de ±500 Mérito por transação.' });
 
-  // Garante registro e busca saldo atual
   await ensureBalance(mc);
   const { rows: cur } = await pool.query('SELECT merit_total FROM player_balances WHERE minecraft_name=$1', [mc]);
   const currentMerit = cur[0]?.merit_total || 0;
   const newMerit = Math.max(0, currentMerit + amount);
 
-  // Registra a transação
   await pool.query(
     'INSERT INTO merit_records(minecraft_name, amount, reason, category, awarded_by_id, awarded_by_name) VALUES($1,$2,$3,$4,$5,$6)',
     [mc, amount, reason, category, req.user.sub, req.user.username]
   );
 
-  // Atualiza saldo e recalcula rank
   const newRank = await recalcRank(mc, newMerit);
 
   await audit({
@@ -1814,8 +1798,6 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   res.json({ ok: true, newMerit, new_total: newMerit, newRank: newRank.id, new_rank: newRank.label, rank: { ...newRank, benefits: RANK_BENEFITS[newRank.id] || [] }, prevMerit: currentMerit });
 });
 
-// ── POST /api/admin/capital ───────────────────────────────
-// Ajusta Capital de um jogador
 app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   const mc          = sanitize(req.body?.minecraft_name).toLowerCase();
   const rawAmount   = parseFloat(req.body?.amount);
@@ -1835,13 +1817,11 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   const currentCapital = cur[0]?.capital_balance || 0;
   const newCapital = Math.max(0, currentCapital + amount);
 
-  // Registra transação
   await pool.query(
     'INSERT INTO capital_records(minecraft_name, amount, type, description, created_by_id, created_by_name) VALUES($1,$2,$3,$4,$5,$6)',
     [mc, amount, type, description, req.user.sub, req.user.username]
   );
 
-  // Atualiza saldo
   await pool.query(
     'UPDATE player_balances SET capital_balance=$1, updated_at=NOW() WHERE minecraft_name=$2',
     [newCapital, mc]
@@ -1875,8 +1855,6 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   res.json({ ok: true, newCapital, new_balance: newCapital, prevCapital: currentCapital });
 });
 
-// ── GET /api/admin/merit-records ──────────────────────────
-// Histórico completo de Mérito (admin)
 app.get('/api/admin/merit-records', auth, requireAdmin, async (req, res) => {
   const page  = Math.max(0, parseInt(req.query.page || 0));
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || 50)));
@@ -1892,8 +1870,6 @@ app.get('/api/admin/merit-records', auth, requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
-// ── GET /api/admin/capital-records ────────────────────────
-// Histórico completo de Capital (admin)
 app.get('/api/admin/capital-records', auth, requireAdmin, async (req, res) => {
   const page  = Math.max(0, parseInt(req.query.page || 0));
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
@@ -1909,7 +1885,6 @@ app.get('/api/admin/capital-records', auth, requireAdmin, async (req, res) => {
   res.json({ records: rows });
 });
 
-// ── GET /api/admin/leaderboard ────────────────────────────
 app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT pb.*, 
@@ -1930,8 +1905,6 @@ app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
   })));
 });
 
-// ── GET /api/admin/players-with-balances ─────────────────
-// Lista jogadores com saldo (para autocomplete no admin)
 app.get('/api/admin/players-with-balances', auth, requireAdmin, async (req, res) => {
   const q = req.query.q ? `%${sanitize(req.query.q).toLowerCase()}%` : '%';
   const { rows } = await pool.query(`
@@ -2003,7 +1976,6 @@ app.get('/api/me/sessions', auth, async (req, res) => {
   }
 });
 
-// DELETE /api/me/sessions/:id  – Encerra uma sessão específica
 app.delete('/api/me/sessions/:id', auth, async (req, res) => {
   try {
     const { createHash } = await import('node:crypto');
@@ -2031,7 +2003,6 @@ app.delete('/api/me/sessions/:id', auth, async (req, res) => {
   }
 });
 
-// DELETE /api/me/sessions  – Encerra todas as outras sessões
 app.delete('/api/me/sessions', auth, async (req, res) => {
   try {
     const { createHash } = await import('node:crypto');
