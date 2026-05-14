@@ -2207,6 +2207,7 @@ function renderTopPlayers(mode) {
 function hashStr(s) { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return h; }
 
 // ══ Integração App (Desktop Keys) ══
+// ══ Integração App (Desktop Keys) ══
 async function fetchAppKeys() {
   const list = document.getElementById('app-keys-list');
   try {
@@ -2220,13 +2221,17 @@ async function fetchAppKeys() {
     list.innerHTML = keys.map(k => {
       const created = new Date(k.created_at).toLocaleDateString('pt-BR');
       const used = k.last_used_at ? new Date(k.last_used_at).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Nunca conectou';
+      
+      // Se comunicou nos últimos 60 segundos, está conectado!
       const isOnline = k.last_used_at && (Date.now() - new Date(k.last_used_at).getTime()) < 60000;
-      const statusDot = isOnline ? '<span class="status-dot"></span>' : '<span class="status-dot offline"></span>';
+      const statusBadge = isOnline 
+        ? '<span style="color:var(--success);font-weight:700;font-size:12px;margin-left:8px;">🟢 CONECTADO</span>' 
+        : '<span style="color:var(--text-secondary);font-weight:700;font-size:12px;margin-left:8px;">⚪ DESCONECTADO</span>';
       
       return `<div class="app-key-item">
         <div class="app-key-info">
-          <strong>${statusDot} ${escapeHTML(k.name)}</strong>
-          <span>Criada em: ${created} por ${escapeHTML(k.created_by)}</span>
+          <strong style="margin-bottom:2px;">${escapeHTML(k.name)} ${statusBadge}</strong>
+          <span style="margin-top:6px;">Criada em: ${created} por ${escapeHTML(k.created_by)}</span>
           <span>Última sincronização: <b>${used}</b></span>
         </div>
         <div class="app-key-actions">
@@ -2926,7 +2931,11 @@ function renderModalTable() {
     const weekKey = getWeekKey(eAt); let separator = '';
     if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator-row"><td colspan="3"><div class="week-separator"><span>${getWeekLabel(eAt)}</span></div></td></tr>`; }
     const d = new Date(eAt), l = new Date(lAt);
-    return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong><br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours||h.hoursOnline||0)}</td></tr>`;
+    
+    // Etiqueta de Origem: 💻 = App de PC, ☁️ = Site
+    const originBadge = h.origin === 'app' ? '<span title="Registrado via App Desktop" style="font-size:10px; margin-left:4px;">💻</span>' : '<span title="Registrado via Site (Ping)" style="font-size:10px; margin-left:4px;">☁️</span>';
+    
+    return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong>${originBadge}<br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours||h.hoursOnline||0)}</td></tr>`;
   }).join('');
 
   document.getElementById('modal-table-wrapper').innerHTML = `
