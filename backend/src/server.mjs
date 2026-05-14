@@ -1,30 +1,14 @@
 /**
-
-- Força Aliada – Backend API  (server.mjs)
-- ─────────────────────────────────────────
-- Stack : Node.js (ESM) + Express + PostgreSQL + JWT + bcrypt
-- 
-- Novidades nesta versão
-- ──────────────────────
-- • Sistema completo de Notificações
-   - Criar notificação (admin/owner)
-   - Envio público, por role, por minecraft_name ou para usuário específico
-   - Marcar lida / marcar todas lidas
-   - Listar com badge de não-lidas
-- • Logs de Auditoria
-   - Registra automaticamente: login, criação, edição, exclusão de contas,
-     envio de notificações, alteração de senha (owner/full)
-   - Endpoint GET /api/admin/audit com paginação e filtro por tipo
-- • Notas de Jogadores (server-side)
-   - CRUD de notas por minecraft_name, vinculadas ao autor
-- • Jogadores Não-Registrados
-   - GET /api/players/unregistered  – lista players com sessões mas sem conta
-- • Preferências do Usuário (server-side)
-   - GET / PUT /api/me/preferences
-- • Todas as rotas que o account.html e dashboard.html consomem
-   mas não tinham endpoint real
-
-*/
+ * Força Aliada – Backend API  (server.mjs)
+ * ─────────────────────────────────────────
+ * Stack : Node.js (ESM) + Express + PostgreSQL + JWT + bcrypt
+ * * Novidades nesta versão
+ * ──────────────────────
+ * • Sistema de Integração (App Keys) para Desktop App.
+ * • Rota /api/app/sync para receber dados push em tempo real com segurança máxima.
+ * • Correção Anti-Bloqueio do TCPShield (Fallback mcstatus.io)
+ * • Rotas Analíticas de Big Data e Paginação para Histórico
+ */
 
 import * as util from 'minecraft-server-util';
 import express from 'express';
@@ -34,6 +18,7 @@ import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -67,12 +52,11 @@ const corsOrigins = Array.from(new Set([
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
-    // Libera se estiver na lista explícita ou se for um domínio github.io
     if (corsOrigins.includes(origin) || origin.endsWith('.github.io')) return cb(null, true);
     return cb(new Error('CORS blocked'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret', 'x-app-key'],
 }));
 
 app.use(express.json({ limit: '2mb' }));
@@ -83,10 +67,9 @@ app.use(express.urlencoded({ extended: false }));
 // ─────────────────────────────────────────────
 const { Pool } = pg;
 const pool = new Pool({
-connectionString: process.env.DATABASE_URL,
-ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
-
 
 const DEPLOY_SCHEMA_VERSION = 'audit-schema-v3-statement-array';
 const AUDIT_SCHEMA_STATEMENTS = [
@@ -122,12 +105,8 @@ async function ensureAuditSchema() {
 // Env guards
 // ─────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET || JWT_SECRET.length < 32)
-throw new Error('JWT_SECRET must be at least 32 chars');
-
-const INGEST_SECRET = process.env.INGEST_SECRET;
-if (!INGEST_SECRET || INGEST_SECRET.length < 16)
-throw new Error('INGEST_SECRET must be at least 16 chars');
+if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 chars');
+const INGEST_SECRET = process.env.INGEST_SECRET; // Usado agora apenas como Fallback de emergência
 
 // ─────────────────────────────────────────────
 // Rate limiters
@@ -173,7 +152,6 @@ body: JSON.stringify({ from, to: email, subject, html }),
 // ─────────────────────────────────────────────
 async function migrate() {
 const baseSchemaSql = String.raw`
--- Usuários
 CREATE TABLE IF NOT EXISTS users (
 id            SERIAL PRIMARY KEY,
 username      VARCHAR(255) UNIQUE NOT NULL,
@@ -187,10 +165,8 @@ created_at    TIMESTAMPTZ  DEFAULT NOW()
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check
-CHECK (role IN ('owner','full','limited'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'));
 
--- Sessões Minecraft
 CREATE TABLE IF NOT EXISTS player_sessions (
   id            SERIAL PRIMARY KEY,
   player        VARCHAR(255) NOT NULL,
@@ -202,7 +178,6 @@ ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT;
 CREATE INDEX IF NOT EXISTS idx_player_name      ON player_sessions(player);
 CREATE INDEX IF NOT EXISTS idx_player_left_at   ON player_sessions(left_at DESC);
 
--- Sessões Web de usuários
 CREATE TABLE IF NOT EXISTS user_sessions (
   id           SERIAL PRIMARY KEY,
   user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -226,7 +201,6 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_hash ON user_sessions(token_hash);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_seen ON user_sessions(last_seen_at DESC);
 
--- Password resets
 CREATE TABLE IF NOT EXISTS password_resets (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL,
@@ -234,7 +208,6 @@ CREATE TABLE IF NOT EXISTS password_resets (
   expires_at TIMESTAMPTZ  NOT NULL
 );
 
--- Email verifications
 CREATE TABLE IF NOT EXISTS email_verifications (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL,
@@ -242,26 +215,21 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   expires_at TIMESTAMPTZ  NOT NULL
 );
 
--- ── NOVO: Notificações ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (
   id          SERIAL PRIMARY KEY,
   title       VARCHAR(255) NOT NULL,
   body        TEXT         NOT NULL,
   type        VARCHAR(50)  NOT NULL DEFAULT 'info',
   icon        VARCHAR(20)  DEFAULT '🔔',
-  -- audience type: 'all' | 'role' | 'user' | 'minecraft'
   audience    VARCHAR(20)  NOT NULL DEFAULT 'all',
-  -- audience value: role name, user id (text), or minecraft_name
   audience_val TEXT,
   created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at  TIMESTAMPTZ  DEFAULT NOW()
 );
--- Garante as colunas novas nas notificações
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'info';
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience VARCHAR(20) DEFAULT 'all';
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience_val TEXT;
 
--- Exclusões individuais de notificações (a notificação global continua auditável)
 CREATE TABLE IF NOT EXISTS notification_deletes (
   notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
   user_id         INTEGER REFERENCES users(id)         ON DELETE CASCADE,
@@ -269,7 +237,6 @@ CREATE TABLE IF NOT EXISTS notification_deletes (
   PRIMARY KEY (notification_id, user_id)
 );
 
--- Leituras de notificações
 CREATE TABLE IF NOT EXISTS notification_reads (
   notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
   user_id         INTEGER REFERENCES users(id)         ON DELETE CASCADE,
@@ -277,36 +244,20 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   PRIMARY KEY (notification_id, user_id)
 );
 
--- ── NOVO: Logs de auditoria ───────────────────────────────
--- Isto garante que a tabela existe
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id         SERIAL PRIMARY KEY,
-  actor_id   INTEGER,
-  actor_name VARCHAR(255),
-  type       VARCHAR(50) DEFAULT 'system',
-  target_id  INTEGER,
-  target_name VARCHAR(255),
-  message    TEXT,
-  metadata   JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- NOVO: Tabela para gerenciar as Chaves do Aplicativo Desktop (Server Manager)
+CREATE TABLE IF NOT EXISTS app_integration_keys (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  key_hash VARCHAR(255) NOT NULL UNIQUE,
+  created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ
 );
-
--- Adiciona as colunas se elas não existirem (compatibilidade com bancos antigos)
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER;
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER;
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255);
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS message TEXT;
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB;
-CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
 `;
 
 await pool.query(baseSchemaSql);
 
 const featureSchemaSql = `
--- ── NOVO: Notas de jogadores ──────────────────────────────
 CREATE TABLE IF NOT EXISTS player_notes (
   id           SERIAL PRIMARY KEY,
   minecraft_name VARCHAR(255) NOT NULL,
@@ -317,7 +268,6 @@ CREATE TABLE IF NOT EXISTS player_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_notes_mc ON player_notes(LOWER(minecraft_name));
 
--- ── NOVO: Preferências do usuário ─────────────────────────
 CREATE TABLE IF NOT EXISTS user_preferences (
   user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   email_server     BOOLEAN DEFAULT TRUE,
@@ -331,7 +281,6 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'auto';
 
--- ── Capital e Mérito: saldos por jogador ─────────────────
 CREATE TABLE IF NOT EXISTS player_balances (
   minecraft_name  VARCHAR(255) PRIMARY KEY,
   merit_total     INTEGER      NOT NULL DEFAULT 0,
@@ -341,7 +290,6 @@ CREATE TABLE IF NOT EXISTS player_balances (
 );
 CREATE INDEX IF NOT EXISTS idx_balances_merit ON player_balances(merit_total DESC);
 
--- ── Registros de Mérito (log imutável) ────────────────────
 CREATE TABLE IF NOT EXISTS merit_records (
   id              SERIAL PRIMARY KEY,
   minecraft_name  VARCHAR(255) NOT NULL,
@@ -355,7 +303,6 @@ CREATE TABLE IF NOT EXISTS merit_records (
 CREATE INDEX IF NOT EXISTS idx_merit_mc      ON merit_records(LOWER(minecraft_name));
 CREATE INDEX IF NOT EXISTS idx_merit_created ON merit_records(created_at DESC);
 
--- ── Registros de Capital (log imutável) ───────────────────
 CREATE TABLE IF NOT EXISTS capital_records (
   id              SERIAL PRIMARY KEY,
   minecraft_name  VARCHAR(255) NOT NULL,
@@ -366,11 +313,9 @@ CREATE TABLE IF NOT EXISTS capital_records (
   created_by_name VARCHAR(255),
   created_at      TIMESTAMPTZ  DEFAULT NOW()
 );
--- Garante que a coluna type exista no Capital também
 ALTER TABLE capital_records ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'ajuste';
 CREATE INDEX IF NOT EXISTS idx_capital_mc ON capital_records(LOWER(minecraft_name));
 
--- Histórico real de disponibilidade do servidor Minecraft
 CREATE TABLE IF NOT EXISTS server_status_checks (
   id             SERIAL PRIMARY KEY,
   checked_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -382,7 +327,6 @@ CREATE TABLE IF NOT EXISTS server_status_checks (
   version        VARCHAR(255)
 );
 CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
-
 `;
 await pool.query(featureSchemaSql);
 }
@@ -466,42 +410,62 @@ next();
 // ─────────────────────────────────────────────
 app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) }));
 
+// ─────────────────────────────────────────────
+// Minecraft Status (Híbrido) - ANTI BLOQUEIO TCPSHIELD
+// ─────────────────────────────────────────────
 async function fetchMinecraftStatus() {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   const started = Date.now();
+  let result = null;
 
   try {
-    // Faz o ping direto no servidor através do domínio (TCPShield)
-    // O enableSRV garante que ele siga os redirecionamentos do Cloudflare/TCPShield corretamente
-    const result = await util.status(host, 25565, {
-      timeout: 5000,
-      enableSRV: true 
+    result = await util.status(host, 25565, {
+      timeout: 2500,
+      enableSRV: false 
     });
+  } catch (err1) {
+    try {
+      result = await util.status(host, 25565, {
+        timeout: 2500,
+        enableSRV: true
+      });
+    } catch (err2) {
+      const res = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
+      if (!res.ok) throw new Error('Todas as tentativas de ping falharam.');
+      const data = await res.json();
+      if (!data.online) throw new Error('Servidor offline reportado pela API.');
 
-    const latencyMs = Math.max(0, Date.now() - started);
-    
-    // O util.status retorna os jogadores no array "sample"
-    const onlinePlayers = (result.players.sample || [])
-      .map(p => p.name)
-      .filter(Boolean);
-
-    return {
-      host,
-      checkedAt: new Date(),
-      online: true,
-      version: result.version.name || null,
-      players: {
-        online: Number(result.players.online || 0),
-        max: Number(result.players.max || 0),
-        list: onlinePlayers,
-      },
-      latencyMs: result.roundTripLatency || latencyMs,
-      raw: result,
-    };
-  } catch (err) {
-    // Se o ping falhar, lança o erro para a rota de catch principal tratar
-    throw new Error(`Falha ao pingar o servidor localmente: ${err.message}`);
+      result = {
+        version: { name: data.version?.name_raw || data.version?.name },
+        players: {
+          online: data.players?.online || 0,
+          max: data.players?.max || 0,
+          sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
+        },
+        roundTripLatency: data.latency
+      };
+    }
   }
+
+  const latencyMs = Math.max(0, Date.now() - started);
+  
+  const onlinePlayers = (result.players.sample || [])
+    .map(p => p.name)
+    .filter(Boolean);
+
+  return {
+    host,
+    checkedAt: new Date(),
+    online: true,
+    version: result.version?.name || null,
+    players: {
+      online: Number(result.players.online || 0),
+      max: Number(result.players.max || 0),
+      list: onlinePlayers,
+    },
+    latencyMs: result.roundTripLatency || latencyMs,
+    raw: result,
+  };
 }
 
 async function recordServerStatus(status) {
@@ -538,9 +502,6 @@ async function getServerStatusStats(host, currentOnline) {
   return { uptime24hPct, onlineSince, samples24h: total };
 }
 
-// ─────────────────────────────────────────────
-// Status real do servidor para o dashboard
-// ─────────────────────────────────────────────
 app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   try {
@@ -576,7 +537,7 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// Cron – Minecraft snapshot
+// CRON e SNAPSHOT (Rota Antiga Mantida por Segurança)
 // ─────────────────────────────────────────────
 app.get('/api/cron', async (req, res) => {
 const key = req.query.key || req.headers['x-ingest-secret'];
@@ -609,7 +570,6 @@ for (const p of onlinePlayers) {
 }
 
 res.json({ ok: true, online: onlinePlayers.length });
-
 } catch (err) {
 console.error('[cron]', err);
 res.status(500).json({ error: 'snapshot failed' });
@@ -617,44 +577,121 @@ res.status(500).json({ error: 'snapshot failed' });
 });
 
 // ─────────────────────────────────────────────
-// Ingest (monitor.mjs)
+// INTEGRAÇÃO DE APLICATIVO (FASE 2)
 // ─────────────────────────────────────────────
-app.post('/api/snapshots/import', async (req, res) => {
-const key = req.headers['x-ingest-secret'];
-if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
 
-try {
-const payload  = req.body?.payload || req.body;
-const online   = (payload?.onlinePlayers || []).filter(Boolean);
-const now      = new Date();
+// GERAÇÃO DE CHAVES NO PAINEL (Apenas OWNER)
+app.post('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
+    const name = sanitize(req.body.name || 'Força Aliada Manager PC');
+    
+    // Gera uma chave estilo token do Discord/AWS
+    const rawKey = 'FA-' + crypto.randomBytes(24).toString('hex');
+    
+    // Guarda apenas a versão embaralhada (Hash) no banco. Se o banco for invadido, não perdem as chaves.
+    const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+    
+    try {
+        const { rows } = await pool.query(
+            'INSERT INTO app_integration_keys(name, key_hash, created_by) VALUES($1, $2, $3) RETURNING id, name, created_at',
+            [name, keyHash, req.user.sub]
+        );
+        
+        await audit({
+            actorId: req.user.sub, actorName: req.user.username, type: 'create',
+            message: `Chave de Integração para App criada: "${name}"`
+        });
 
-const active   = await pool.query(
-  'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL',
-);
-
-for (const row of active.rows) {
-  if (!online.includes(row.player)) {
-    const dur = (now - new Date(row.entered_at)) / 3600000;
-    await pool.query(
-      'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
-      [now, +dur.toFixed(2), row.player],
-    );
-  }
-}
-
-for (const p of online) {
-  const already = active.rows.some(r => r.player === p);
-  if (!already)
-    await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
-}
-
-res.json({ ok: true });
-
-} catch (err) {
-console.error('[ingest]', err);
-res.status(500).json({ error: 'ingest failed' });
-}
+        // O rawKey (chave limpa) só é retornado UMA ÚNICA VEZ para ser copiado na tela.
+        res.json({ id: rows[0].id, name: rows[0].name, created_at: rows[0].created_at, key: rawKey });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao gerar chave' });
+    }
 });
+
+// LISTAR CHAVES ATIVAS
+app.get('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
+    const { rows } = await pool.query(`
+        SELECT k.id, k.name, k.created_at, k.last_used_at, u.username as created_by
+        FROM app_integration_keys k
+        LEFT JOIN users u ON u.id = k.created_by
+        ORDER BY k.created_at DESC
+    `);
+    res.json(rows);
+});
+
+// DELETAR / REVOGAR CHAVE
+app.delete('/api/admin/app-keys/:id', auth, requireOwner, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Id inválido' });
+
+    const { rows } = await pool.query('DELETE FROM app_integration_keys WHERE id=$1 RETURNING name', [id]);
+    if (rows.length) {
+        await audit({
+            actorId: req.user.sub, actorName: req.user.username, type: 'delete',
+            message: `Chave de Integração revogada: "${rows[0].name}"`
+        });
+    }
+    res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────
+// O "PUSH" DO APLICATIVO DESKTOP
+// ─────────────────────────────────────────────
+app.post('/api/app/sync', async (req, res) => {
+    // Aceita a nova chave ou a velha como "Plano B"
+    const key = req.headers['x-app-key'] || req.headers['x-ingest-secret']; 
+    if (!key) return res.status(401).json({ error: 'Chave não fornecida' });
+    
+    let isValid = false;
+
+    // Validação
+    if (key === INGEST_SECRET && INGEST_SECRET) {
+        isValid = true; // Fallback
+    } else {
+        const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+        const { rows } = await pool.query(
+            'UPDATE app_integration_keys SET last_used_at=NOW() WHERE key_hash=$1 RETURNING id', 
+            [keyHash]
+        );
+        if (rows.length > 0) isValid = true;
+    }
+
+    if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
+
+    // Se passou, processa os jogadores
+    try {
+        const payload  = req.body?.payload || req.body;
+        const online   = (payload?.onlinePlayers || []).filter(Boolean);
+        const now      = new Date();
+
+        const active   = await pool.query(
+            'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL'
+        );
+
+        for (const row of active.rows) {
+            if (!online.includes(row.player)) {
+                const dur = (now - new Date(row.entered_at)) / 3600000;
+                await pool.query(
+                    'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+                    [now, +dur.toFixed(2), row.player]
+                );
+            }
+        }
+
+        for (const p of online) {
+            const already = active.rows.some(r => r.player === p);
+            if (!already)
+                await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
+        }
+
+        res.json({ ok: true });
+
+    } catch (err) {
+        console.error('[sync]', err);
+        res.status(500).json({ error: 'Falha na sincronização' });
+    }
+});
+
 
 // ─────────────────────────────────────────────
 // AUTH – Signup
@@ -684,7 +721,6 @@ await pool.query(
 );
 await sendSystemEmail(email, rows[0].username, code, 'verify');
 
-// Audit
 await audit({ type: 'create', targetId: rows[0].id, targetName: username, message: `Conta criada: ${username}` });
 
 res.json({ ok: true, requireVerification: true, email });
@@ -694,9 +730,6 @@ res.status(409).json({ error: 'username/email already exists' });
 }
 });
 
-// ─────────────────────────────────────────────
-// AUTH – Verify email
-// ─────────────────────────────────────────────
 app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
 const email = sanitize(req.body?.email).toLowerCase();
 const code  = sanitize(req.body?.code);
@@ -723,9 +756,6 @@ const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresI
 res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
 });
 
-// ─────────────────────────────────────────────
-// AUTH – Login
-// ─────────────────────────────────────────────
 app.post('/api/auth/login', authLimiter, async (req, res) => {
 const login    = sanitize(req.body?.login).toLowerCase();
 const password = req.body?.password || '';
@@ -747,17 +777,14 @@ await sendSystemEmail(user.email, user.username, code, 'verify');
 return res.status(403).json({ error: 'unverified_email', email: user.email });
 }
 
-// Audit login
 await audit({ actorId: user.id, actorName: user.username, type: 'login', message: `${user.username} fez login no painel` });
 
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
-// Registra sessão web
 const { createHash } = await import('node:crypto');
 const tokenHash = createHash('sha256').update(token).digest('hex');
 const ua = req.headers['user-agent'] || null;
 const ip = req.ip || req.socket?.remoteAddress || null;
-// Geo lookup assíncrono (não bloqueia o login)
 (async () => {
   let city = null, region = null, country = null, isp = null;
   try {
@@ -790,16 +817,13 @@ minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role,
 });
 });
 
-// ─────────────────────────────────────────────
-// AUTH – Forgot / Reset password
-// ─────────────────────────────────────────────
 app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
 const email = sanitize(req.body?.email).toLowerCase();
 if (!validateEmail(email)) return res.status(400).json({ error: 'E-mail inválido' });
 
 await pool.query('DELETE FROM password_resets WHERE email=$1 OR expires_at<NOW()', [email]);
 const { rows } = await pool.query('SELECT username FROM users WHERE email=$1', [email]);
-if (!rows.length) return res.json({ ok: true }); // security: don't reveal existence
+if (!rows.length) return res.json({ ok: true }); 
 
 const code      = Math.floor(100000 + Math.random() * 900000).toString();
 const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -879,7 +903,6 @@ res.status(409).json({ error: 'username/email already exists' });
 }
 });
 
-// ME – Alterar senha
 async function changeMyPassword(req, res) {
 const currentPassword = req.body?.currentPassword || '';
 const newPassword     = req.body?.newPassword || '';
@@ -904,7 +927,6 @@ res.json({ ok: true });
 app.post('/api/me/password', auth, changeMyPassword);
 app.put('/api/me/password',  auth, changeMyPassword);
 
-// ME – Deletar conta
 app.delete('/api/me', auth, async (req, res) => {
 const email    = sanitize(req.body?.email).toLowerCase();
 const password = req.body?.password || '';
@@ -925,7 +947,6 @@ await pool.query('DELETE FROM users WHERE id=$1', [req.user.sub]);
 res.json({ ok: true });
 });
 
-// ME – Histórico Minecraft
 app.get('/api/me/history', auth, async (req, res) => {
 if (!req.user.minecraft_name)
 return res.json({ history: [], activeSession: null });
@@ -947,7 +968,7 @@ activeSession: active.rows[0]?.entered_at || null,
 });
 
 // ─────────────────────────────────────────────
-// ME – Preferências (server-side)
+// ME – Preferências
 // ─────────────────────────────────────────────
 const DEFAULT_PREFERENCES = Object.freeze({
   email_server: true,
@@ -1020,154 +1041,64 @@ app.put('/api/me/preferences', auth, async (req, res) => {
 // ─────────────────────────────────────────────
 // NOTIFICAÇÕES
 // ─────────────────────────────────────────────
-
-/**
-
-- GET /api/notifications
-- Retorna notificações relevantes para o usuário autenticado.
-- Inclui campo `is_read` e metadados.
-  */
-  app.get('/api/notifications', auth, async (req, res) => {
+app.get('/api/notifications', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
 const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
-
 res.json(rows);
 });
 
-/**
-
-- GET /api/notifications/unread-count
-- Contagem de não-lidas (para badge).
-  */
-  app.get('/api/notifications/unread-count', auth, async (req, res) => {
+app.get('/api/notifications/unread-count', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
 const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
-
 res.json({ count: rows[0].count });
 });
 
-/**
-
-- POST /api/notifications/:id/read
-- Marca uma notificação como lida.
-  */
-  app.post('/api/notifications/:id/read', auth, async (req, res) => {
+app.post('/api/notifications/:id/read', auth, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
   const role = req.user.role;
   const mc = (req.user.minecraft_name || '').toLowerCase();
   const visible = await pool.query(
-    `SELECT id FROM notifications
-     WHERE id=$1 AND (
-       audience='all'
-       OR (audience='role' AND audience_val=$2)
-       OR (audience='user' AND audience_val=$3::text)
-       OR (audience='minecraft' AND LOWER(audience_val)=$4)
-     )`,
+    `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
     [id, role, String(req.user.sub), mc],
   );
   if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
 
   await pool.query(`INSERT INTO notification_reads(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
-  await audit({
-    actorId: req.user.sub,
-    actorName: req.user.username,
-    type: 'notification_read',
-    targetId: id,
-    targetName: `notification:${id}`,
-    message: `${req.user.username} marcou a notificação #${id} como vista`,
-    metadata: { notificationId: id },
-  });
-
   res.json({ ok: true });
 });
 
-/**
-
-- DELETE /api/notifications/:id
-- Oculta uma notificação para o usuário autenticado.
-  */
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
   const role = req.user.role;
   const mc = (req.user.minecraft_name || '').toLowerCase();
   const visible = await pool.query(
-    `SELECT id FROM notifications
-     WHERE id=$1 AND (
-       audience='all'
-       OR (audience='role' AND audience_val=$2)
-       OR (audience='user' AND audience_val=$3::text)
-       OR (audience='minecraft' AND LOWER(audience_val)=$4)
-     )`,
+    `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
     [id, role, String(req.user.sub), mc],
   );
   if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
 
   await pool.query(`INSERT INTO notification_deletes(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
-  await audit({
-    actorId: req.user.sub,
-    actorName: req.user.username,
-    type: 'notification_delete',
-    targetId: id,
-    targetName: `notification:${id}`,
-    message: `${req.user.username} excluiu a notificação #${id} da própria central`,
-    metadata: { notificationId: id },
-  });
-
   res.json({ ok: true });
 });
 
-/**
-
-- POST /api/notifications/read-all
-- Marca todas as notificações visíveis como lidas.
-  */
-  app.post('/api/notifications/read-all', auth, async (req, res) => {
+app.post('/api/notifications/read-all', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
 await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
-await audit({
-  actorId: req.user.sub,
-  actorName: req.user.username,
-  type: 'notification_read_all',
-  targetId: req.user.sub,
-  targetName: req.user.username,
-  message: `${req.user.username} marcou todas as notificações visíveis como vistas`,
-  metadata: { userId },
-});
-
 res.json({ ok: true });
 });
 
-/**
-
-- POST /api/admin/notifications
-- Cria uma nova notificação.
-- 
-- Body:
-- {
-- title        : string  (obrigatório)
-- body         : string  (obrigatório)
-- type         : 'info' | 'event' | 'system' | 'social' | 'warning'
-- icon         : string emoji
-- audience     : 'all' | 'role' | 'user' | 'minecraft'
-- audience_val : valor dependente do audience
-               - role:      'owner' | 'full' | 'limited'
-               - user:      id numérico (string)
-               - minecraft: nome do jogador
-               - all:       ignorado
-- }
-  */
-  app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
+app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   try {
     const title       = sanitize(req.body?.title);
     const body        = sanitize(req.body?.body);
@@ -1203,32 +1134,17 @@ res.json({ ok: true });
   }
 });
 
-/**
-
-- GET /api/admin/notifications
-- Lista todas as notificações com contagem de leituras (admin).
-  */
-  app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
+app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY n.created_at DESC  `);
   res.json(rows);
-  });
+});
 
-/**
-
-- DELETE /api/admin/notifications/:id
-- Remove uma notificação (owner only).
-  */
-  app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) => {
+app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
 
 const { rowCount } = await pool.query('DELETE FROM notifications WHERE id=$1', [id]);
 if (!rowCount) return res.status(404).json({ error: 'not found' });
-
-await audit({
-actorId: req.user.sub, actorName: req.user.username,
-type: 'delete', message: `Notificação #${id} excluída`,
-});
 
 res.json({ ok: true });
 });
@@ -1236,13 +1152,7 @@ res.json({ ok: true });
 // ─────────────────────────────────────────────
 // AUDIT LOGS
 // ─────────────────────────────────────────────
-
-/**
-
-- GET /api/admin/audit
-- Parâmetros: ?type=all|create|update|delete|login|notify&page=0&limit=50
-  */
-  app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
+app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
     try {
       const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
       const page  = Math.max(0, parseInt(req.query.page  || 0));
@@ -1272,10 +1182,6 @@ res.json({ ok: true });
 // ─────────────────────────────────────────────
 // NOTAS DE JOGADORES
 // ─────────────────────────────────────────────
-
-/**
- * GET /api/admin/notes/:minecraft_name
- */
 app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res) => {
   const mc = sanitize(req.params.minecraft_name).toLowerCase();
   const { rows } = await pool.query(
@@ -1285,10 +1191,6 @@ app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res)
   res.json(rows);
 });
 
-/**
- * POST /api/admin/notes
- * Body: { minecraft_name: string, text: string }
- */
 app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
   const { minecraft_name, text } = req.body || {};
   if (!minecraft_name || !text) return res.status(400).json({ error: 'Campos ausentes' });
@@ -1300,9 +1202,6 @@ app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
   res.json(rows[0]);
 });
 
-/**
- * DELETE /api/admin/notes/:id
- */
 app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.id);
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
@@ -1310,25 +1209,16 @@ app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-/**
-
-- GET /api/player/:name/notes
-  */
-  app.get('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
+app.get('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
   const mc = sanitize(req.params.name).toLowerCase();
   const { rows } = await pool.query(
   'SELECT id, author_name, text, created_at FROM player_notes WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC',
   [mc],
   );
   res.json(rows);
-  });
+});
 
-/**
-
-- POST /api/player/:name/notes
-- Body: { text: string }
-  */
-  app.post('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
+app.post('/api/player/:name/notes', auth, requireAdmin, async (req, res) => {
   const mc   = sanitize(req.params.name);
   const text = sanitize(req.body?.text || '');
   if (!text) return res.status(400).json({ error: 'text is required' });
@@ -1341,16 +1231,11 @@ const { rows } = await pool.query(
 res.status(201).json(rows[0]);
 });
 
-/**
-
-- DELETE /api/player/:name/notes/:noteId
-  */
-  app.delete('/api/player/:name/notes/:noteId', auth, requireAdmin, async (req, res) => {
+app.delete('/api/player/:name/notes/:noteId', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.noteId);
   const mc     = sanitize(req.params.name).toLowerCase();
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
 
-// Owner pode deletar qualquer nota; admin só as suas
 const ownClause = req.user.role === 'owner' ? '' : 'AND author_id=$3';
 const params    = req.user.role === 'owner'
 ? [noteId, mc]
@@ -1365,41 +1250,90 @@ res.json({ ok: true });
 });
 
 // ─────────────────────────────────────────────
-// SNAPSHOTS / HISTÓRICO
+// ANALYTICS & BIG DATA 
 // ─────────────────────────────────────────────
-app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
-const limit = Math.min(Number(req.query.limit || 500), 2000);
 
-const online  = await pool.query(
-'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL',
-);
-const history = await pool.query(
-'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1',
-[limit],
-);
+app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
+  try {
+    const { rows: monthly } = await pool.query(`
+      SELECT 
+        TO_CHAR(entered_at, 'YYYY-MM') as month,
+        SUM(duration_hours) as total_hours,
+        COUNT(id) as sessions_count
+      FROM player_sessions 
+      WHERE duration_hours IS NOT NULL
+      GROUP BY TO_CHAR(entered_at, 'YYYY-MM')
+      ORDER BY month ASC
+    `);
 
-res.json({
-onlinePlayers: online.rows.map(r => r.player),
-activeSessions: online.rows.reduce((acc, r) => ({
-...acc, [r.player]: { name: r.player, enteredAt: r.entered_at },
-}), {}),
-history: history.rows.map(r => ({
-player: r.player, enteredAt: r.entered_at,
-leftAt: r.left_at, hoursOnline: r.duration_hours,
-})),
+    const { rows: topPlayers } = await pool.query(`
+      SELECT player, SUM(duration_hours) as total_hours 
+      FROM player_sessions 
+      WHERE duration_hours IS NOT NULL 
+      GROUP BY player 
+      ORDER BY total_hours DESC 
+      LIMIT 10
+    `);
+
+    const { rows: summary } = await pool.query(`
+      SELECT 
+        COUNT(id)::int as total_sessions, 
+        SUM(duration_hours)::float as total_hours,
+        COUNT(DISTINCT player)::int as unique_players
+      FROM player_sessions
+    `);
+
+    res.json({
+      summary: summary[0],
+      monthly: monthly,
+      topPlayers: topPlayers
+    });
+  } catch (err) {
+    console.error('[analytics]', err);
+    res.status(500).json({ error: 'Erro ao gerar relatórios analíticos' });
+  }
 });
+
+app.get('/api/admin/sessions/history', auth, requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(0, parseInt(req.query.page || 0));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || 20)));
+    const search = req.query.q ? `%${sanitize(req.query.q).toLowerCase()}%` : null;
+
+    let query = 'FROM player_sessions WHERE left_at IS NOT NULL';
+    let params = [limit, page * limit];
+
+    if (search) {
+      query += ' AND LOWER(player) LIKE $3';
+      params.push(search);
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, player, entered_at, left_at, duration_hours 
+       ${query} 
+       ORDER BY left_at DESC 
+       LIMIT $1 OFFSET $2`,
+      params
+    );
+    
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int as total ${query}`,
+      search ? [search] : []
+    );
+
+    res.json({ 
+      data: rows, 
+      total: countRows[0].total, 
+      page, 
+      limit,
+      totalPages: Math.ceil(countRows[0].total / limit)
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro na paginação de histórico' });
+  }
 });
 
-// ─────────────────────────────────────────────
-// JOGADORES NÃO REGISTRADOS
-// ─────────────────────────────────────────────
-/**
-
-- GET /api/players/unregistered
-- Lista jogadores que têm sessões mas não têm conta vinculada.
-- Inclui: total_sessions, total_hours, last_seen, first_seen
-  */
-  app.get('/api/players/unregistered', auth, requireAdmin, async (req, res) => {
+app.get('/api/players/unregistered', auth, requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT ps.player, COUNT(ps.id)::int AS total_sessions, COALESCE(SUM(ps.duration_hours), 0)::float AS total_hours, MIN(ps.entered_at) AS first_seen, MAX(COALESCE(ps.left_at, ps.entered_at)) AS last_seen 
@@ -1414,9 +1348,6 @@ leftAt: r.left_at, hoursOnline: r.duration_hours,
   }
 });
 
-// ─────────────────────────────────────────────
-// HISTÓRICO POR JOGADOR
-// ─────────────────────────────────────────────
 app.get('/api/player/:name/history', auth, requireAdmin, async (req, res) => {
 const mc = sanitize(req.params.name).toLowerCase();
 const { rows } = await pool.query(
@@ -1550,7 +1481,6 @@ res.json({ ok: true });
 // SISTEMA DE CAPITAL E MÉRITO
 // ─────────────────────────────────────────────
 
-// Mapeamento de cargos por Mérito
 const RANKS = [
   { id: 'ferro',     label: 'Ferro',     icon: '🪨', minMerit: 0,    maxMerit: 149,  color: '#8E8E93' },
   { id: 'ouro',      label: 'Ouro',      icon: '🟡', minMerit: 150,  maxMerit: 499,  color: '#FF9F0A' },
@@ -1579,7 +1509,6 @@ const RANK_BENEFITS = {
   adm:       ['Cargo administrativo', 'Independente do sistema de Mérito', 'Acesso total ao painel'],
 };
 
-// Recalcula e persiste o rank de um jogador dado o total de mérito
 async function recalcRank(mcName, meritTotal) {
   const rank = getRankByMerit(meritTotal);
   await pool.query(`
@@ -1591,7 +1520,6 @@ async function recalcRank(mcName, meritTotal) {
   return rank;
 }
 
-// Garante que um jogador tem registro em player_balances
 async function ensureBalance(mcName) {
   const mc = mcName.toLowerCase();
   await pool.query(`
@@ -1603,8 +1531,6 @@ async function ensureBalance(mcName) {
   return rows[0];
 }
 
-// ── GET /api/me/merit ─────────────────────────────────────
-// Retorna saldo de Mérito, cargo e histórico do jogador logado
 app.get('/api/me/merit', auth, async (req, res) => {
   if (!req.user.minecraft_name)
     return res.json({ merit: 0, rank: RANKS[0], nextRank: RANKS[1], progress: 0, records: [] });
@@ -1634,7 +1560,6 @@ app.get('/api/me/merit', auth, async (req, res) => {
   });
 });
 
-// ── GET /api/me/capital ───────────────────────────────────
 app.get('/api/me/capital', auth, async (req, res) => {
   if (!req.user.minecraft_name)
     return res.json({ capital: 0, records: [] });
@@ -1650,8 +1575,6 @@ app.get('/api/me/capital', auth, async (req, res) => {
   res.json({ capital: balance.capital_balance, records });
 });
 
-// ── GET /api/me/rank-info ─────────────────────────────────
-// Retorna cargo atual, progresso e todos os ranks (para UI)
 app.get('/api/me/rank-info', auth, async (req, res) => {
   const mc = req.user.minecraft_name?.toLowerCase();
   let merit = 0;
@@ -1671,7 +1594,6 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
     capitalRecords = capitalRows.rows;
   }
 
-  // Se for staff, mostra cargo administrativo sem esconder capital/histórico pessoal.
   if (['owner', 'full'].includes(req.user.role)) {
     return res.json({
       merit,
@@ -1706,8 +1628,6 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
   });
 });
 
-// ── GET /api/leaderboard ──────────────────────────────────
-// Ranking público por Mérito
 app.get('/api/leaderboard', async (req, res) => {
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || 20)));
   const { rows } = await pool.query(`
@@ -1727,7 +1647,6 @@ app.get('/api/leaderboard', async (req, res) => {
   })));
 });
 
-// ── GET /api/player/:name/merit ───────────────────────────
 app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
   const mc = req.params.name.toLowerCase();
   const balance = await ensureBalance(mc);
@@ -1752,8 +1671,6 @@ app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
   });
 });
 
-// ── POST /api/admin/merit ─────────────────────────────────
-// Concede ou remove Mérito de um jogador
 app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   const mc       = sanitize(req.body?.minecraft_name).toLowerCase();
   const rawAmount = parseInt(req.body?.amount);
@@ -1771,19 +1688,16 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   if (Math.abs(amount) > 500)
     return res.status(400).json({ error: 'Limite de ±500 Mérito por transação.' });
 
-  // Garante registro e busca saldo atual
   await ensureBalance(mc);
   const { rows: cur } = await pool.query('SELECT merit_total FROM player_balances WHERE minecraft_name=$1', [mc]);
   const currentMerit = cur[0]?.merit_total || 0;
   const newMerit = Math.max(0, currentMerit + amount);
 
-  // Registra a transação
   await pool.query(
     'INSERT INTO merit_records(minecraft_name, amount, reason, category, awarded_by_id, awarded_by_name) VALUES($1,$2,$3,$4,$5,$6)',
     [mc, amount, reason, category, req.user.sub, req.user.username]
   );
 
-  // Atualiza saldo e recalcula rank
   const newRank = await recalcRank(mc, newMerit);
 
   await audit({
@@ -1814,8 +1728,6 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
   res.json({ ok: true, newMerit, new_total: newMerit, newRank: newRank.id, new_rank: newRank.label, rank: { ...newRank, benefits: RANK_BENEFITS[newRank.id] || [] }, prevMerit: currentMerit });
 });
 
-// ── POST /api/admin/capital ───────────────────────────────
-// Ajusta Capital de um jogador
 app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   const mc          = sanitize(req.body?.minecraft_name).toLowerCase();
   const rawAmount   = parseFloat(req.body?.amount);
@@ -1835,13 +1747,11 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   const currentCapital = cur[0]?.capital_balance || 0;
   const newCapital = Math.max(0, currentCapital + amount);
 
-  // Registra transação
   await pool.query(
     'INSERT INTO capital_records(minecraft_name, amount, type, description, created_by_id, created_by_name) VALUES($1,$2,$3,$4,$5,$6)',
     [mc, amount, type, description, req.user.sub, req.user.username]
   );
 
-  // Atualiza saldo
   await pool.query(
     'UPDATE player_balances SET capital_balance=$1, updated_at=NOW() WHERE minecraft_name=$2',
     [newCapital, mc]
@@ -1875,8 +1785,6 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
   res.json({ ok: true, newCapital, new_balance: newCapital, prevCapital: currentCapital });
 });
 
-// ── GET /api/admin/merit-records ──────────────────────────
-// Histórico completo de Mérito (admin)
 app.get('/api/admin/merit-records', auth, requireAdmin, async (req, res) => {
   const page  = Math.max(0, parseInt(req.query.page || 0));
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || 50)));
@@ -1892,8 +1800,6 @@ app.get('/api/admin/merit-records', auth, requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
-// ── GET /api/admin/capital-records ────────────────────────
-// Histórico completo de Capital (admin)
 app.get('/api/admin/capital-records', auth, requireAdmin, async (req, res) => {
   const page  = Math.max(0, parseInt(req.query.page || 0));
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
@@ -1909,7 +1815,6 @@ app.get('/api/admin/capital-records', auth, requireAdmin, async (req, res) => {
   res.json({ records: rows });
 });
 
-// ── GET /api/admin/leaderboard ────────────────────────────
 app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT pb.*, 
@@ -1930,8 +1835,6 @@ app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
   })));
 });
 
-// ── GET /api/admin/players-with-balances ─────────────────
-// Lista jogadores com saldo (para autocomplete no admin)
 app.get('/api/admin/players-with-balances', auth, requireAdmin, async (req, res) => {
   const q = req.query.q ? `%${sanitize(req.query.q).toLowerCase()}%` : '%';
   const { rows } = await pool.query(`
@@ -2003,7 +1906,6 @@ app.get('/api/me/sessions', auth, async (req, res) => {
   }
 });
 
-// DELETE /api/me/sessions/:id  – Encerra uma sessão específica
 app.delete('/api/me/sessions/:id', auth, async (req, res) => {
   try {
     const { createHash } = await import('node:crypto');
@@ -2031,7 +1933,6 @@ app.delete('/api/me/sessions/:id', auth, async (req, res) => {
   }
 });
 
-// DELETE /api/me/sessions  – Encerra todas as outras sessões
 app.delete('/api/me/sessions', auth, async (req, res) => {
   try {
     const { createHash } = await import('node:crypto');
