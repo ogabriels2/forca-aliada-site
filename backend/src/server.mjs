@@ -9,8 +9,8 @@
  * • Notas de Jogadores (server-side)
  * • Jogadores Não-Registrados
  * • Preferências do Usuário (server-side)
- * • Correção Anti-Bloqueio do TCPShield (Fallback mcstatus.io)
  * • Rotas Analíticas de Big Data e Paginação para Histórico
+ * • BYPASS DO TCPSHIELD: Cascata tripla de ping para garantir leitura de jogadores.
  */
 
 import * as util from 'minecraft-server-util';
@@ -54,7 +54,6 @@ const corsOrigins = Array.from(new Set([
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
-    // Libera se estiver na lista explícita ou se for um domínio github.io
     if (corsOrigins.includes(origin) || origin.endsWith('.github.io')) return cb(null, true);
     return cb(new Error('CORS blocked'));
   },
@@ -73,7 +72,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
-
 
 const DEPLOY_SCHEMA_VERSION = 'audit-schema-v3-statement-array';
 const AUDIT_SCHEMA_STATEMENTS = [
@@ -160,7 +158,6 @@ body: JSON.stringify({ from, to: email, subject, html }),
 // ─────────────────────────────────────────────
 async function migrate() {
 const baseSchemaSql = String.raw`
--- Usuários
 CREATE TABLE IF NOT EXISTS users (
 id            SERIAL PRIMARY KEY,
 username      VARCHAR(255) UNIQUE NOT NULL,
@@ -174,10 +171,8 @@ created_at    TIMESTAMPTZ  DEFAULT NOW()
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check
-CHECK (role IN ('owner','full','limited'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'));
 
--- Sessões Minecraft
 CREATE TABLE IF NOT EXISTS player_sessions (
   id            SERIAL PRIMARY KEY,
   player        VARCHAR(255) NOT NULL,
@@ -189,7 +184,6 @@ ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT;
 CREATE INDEX IF NOT EXISTS idx_player_name      ON player_sessions(player);
 CREATE INDEX IF NOT EXISTS idx_player_left_at   ON player_sessions(left_at DESC);
 
--- Sessões Web de usuários
 CREATE TABLE IF NOT EXISTS user_sessions (
   id           SERIAL PRIMARY KEY,
   user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -213,7 +207,6 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_hash ON user_sessions(token_hash);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_seen ON user_sessions(last_seen_at DESC);
 
--- Password resets
 CREATE TABLE IF NOT EXISTS password_resets (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL,
@@ -221,7 +214,6 @@ CREATE TABLE IF NOT EXISTS password_resets (
   expires_at TIMESTAMPTZ  NOT NULL
 );
 
--- Email verifications
 CREATE TABLE IF NOT EXISTS email_verifications (
   id         SERIAL PRIMARY KEY,
   email      VARCHAR(255) NOT NULL,
@@ -229,26 +221,21 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   expires_at TIMESTAMPTZ  NOT NULL
 );
 
--- ── NOVO: Notificações ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (
   id          SERIAL PRIMARY KEY,
   title       VARCHAR(255) NOT NULL,
   body        TEXT         NOT NULL,
   type        VARCHAR(50)  NOT NULL DEFAULT 'info',
   icon        VARCHAR(20)  DEFAULT '🔔',
-  -- audience type: 'all' | 'role' | 'user' | 'minecraft'
   audience    VARCHAR(20)  NOT NULL DEFAULT 'all',
-  -- audience value: role name, user id (text), or minecraft_name
   audience_val TEXT,
   created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at  TIMESTAMPTZ  DEFAULT NOW()
 );
--- Garante as colunas novas nas notificações
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'info';
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience VARCHAR(20) DEFAULT 'all';
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS audience_val TEXT;
 
--- Exclusões individuais de notificações (a notificação global continua auditável)
 CREATE TABLE IF NOT EXISTS notification_deletes (
   notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
   user_id         INTEGER REFERENCES users(id)         ON DELETE CASCADE,
@@ -256,7 +243,6 @@ CREATE TABLE IF NOT EXISTS notification_deletes (
   PRIMARY KEY (notification_id, user_id)
 );
 
--- Leituras de notificações
 CREATE TABLE IF NOT EXISTS notification_reads (
   notification_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
   user_id         INTEGER REFERENCES users(id)         ON DELETE CASCADE,
@@ -264,8 +250,6 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   PRIMARY KEY (notification_id, user_id)
 );
 
--- ── NOVO: Logs de auditoria ───────────────────────────────
--- Isto garante que a tabela existe
 CREATE TABLE IF NOT EXISTS audit_logs (
   id         SERIAL PRIMARY KEY,
   actor_id   INTEGER,
@@ -277,8 +261,6 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   metadata   JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Adiciona as colunas se elas não existirem (compatibilidade com bancos antigos)
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system';
@@ -293,7 +275,6 @@ CREATE INDEX IF NOT EXISTS idx_audit_type    ON audit_logs(type);
 await pool.query(baseSchemaSql);
 
 const featureSchemaSql = `
--- ── NOVO: Notas de jogadores ──────────────────────────────
 CREATE TABLE IF NOT EXISTS player_notes (
   id           SERIAL PRIMARY KEY,
   minecraft_name VARCHAR(255) NOT NULL,
@@ -304,7 +285,6 @@ CREATE TABLE IF NOT EXISTS player_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_notes_mc ON player_notes(LOWER(minecraft_name));
 
--- ── NOVO: Preferências do usuário ─────────────────────────
 CREATE TABLE IF NOT EXISTS user_preferences (
   user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   email_server     BOOLEAN DEFAULT TRUE,
@@ -318,7 +298,6 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'auto';
 
--- ── Capital e Mérito: saldos por jogador ─────────────────
 CREATE TABLE IF NOT EXISTS player_balances (
   minecraft_name  VARCHAR(255) PRIMARY KEY,
   merit_total     INTEGER      NOT NULL DEFAULT 0,
@@ -328,7 +307,6 @@ CREATE TABLE IF NOT EXISTS player_balances (
 );
 CREATE INDEX IF NOT EXISTS idx_balances_merit ON player_balances(merit_total DESC);
 
--- ── Registros de Mérito (log imutável) ────────────────────
 CREATE TABLE IF NOT EXISTS merit_records (
   id              SERIAL PRIMARY KEY,
   minecraft_name  VARCHAR(255) NOT NULL,
@@ -342,7 +320,6 @@ CREATE TABLE IF NOT EXISTS merit_records (
 CREATE INDEX IF NOT EXISTS idx_merit_mc      ON merit_records(LOWER(minecraft_name));
 CREATE INDEX IF NOT EXISTS idx_merit_created ON merit_records(created_at DESC);
 
--- ── Registros de Capital (log imutável) ───────────────────
 CREATE TABLE IF NOT EXISTS capital_records (
   id              SERIAL PRIMARY KEY,
   minecraft_name  VARCHAR(255) NOT NULL,
@@ -353,11 +330,9 @@ CREATE TABLE IF NOT EXISTS capital_records (
   created_by_name VARCHAR(255),
   created_at      TIMESTAMPTZ  DEFAULT NOW()
 );
--- Garante que a coluna type exista no Capital também
 ALTER TABLE capital_records ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'ajuste';
 CREATE INDEX IF NOT EXISTS idx_capital_mc ON capital_records(LOWER(minecraft_name));
 
--- Histórico real de disponibilidade do servidor Minecraft
 CREATE TABLE IF NOT EXISTS server_status_checks (
   id             SERIAL PRIMARY KEY,
   checked_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -369,7 +344,6 @@ CREATE TABLE IF NOT EXISTS server_status_checks (
   version        VARCHAR(255)
 );
 CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
-
 `;
 await pool.query(featureSchemaSql);
 }
@@ -454,39 +428,52 @@ next();
 app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) }));
 
 // ─────────────────────────────────────────────
-// Minecraft Status (Híbrido)
+// Minecraft Status (Híbrido) - ANTI BLOQUEIO TCPSHIELD
 // ─────────────────────────────────────────────
 async function fetchMinecraftStatus() {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   const started = Date.now();
-  let result;
+  let result = null;
 
+  // TENTATIVA 1: Bater direto no IP (A Record). Bypass do SRV e do TCPShield.
+  // Como o Cloudflare está DNS Only, isso conecta direto no seu Velocity (porta 25565)
   try {
-    // Tentativa 1: Ping direto (Rápido, mas pode ser bloqueado pelo TCPShield)
     result = await util.status(host, 25565, {
-      timeout: 3000,
-      enableSRV: true 
+      timeout: 2500,
+      enableSRV: false // <-- O PULO DO GATO ESTÁ AQUI
     });
-  } catch (localErr) {
-    // Tentativa 2: Fallback (Se o TCPShield bloquear o IP do Render, usa serviço externo seguro)
-    const res = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
-    if (!res.ok) throw new Error('Ambos ping local e fallback falharam');
-    const data = await res.json();
+  } catch (err1) {
     
-    // Converte a resposta da API para o mesmo formato do util.status
-    result = {
-      version: { name: data.version?.name_raw || data.version?.name },
-      players: {
-        online: data.players?.online || 0,
-        max: data.players?.max || 0,
-        sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
-      },
-      roundTripLatency: data.latency
-    };
+    // TENTATIVA 2: Bater via SRV (Isso passará pelo TCPShield)
+    try {
+      result = await util.status(host, 25565, {
+        timeout: 2500,
+        enableSRV: true
+      });
+    } catch (err2) {
+      
+      // TENTATIVA 3: Fallback Externo via API do mcstatus.io
+      const res = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
+      if (!res.ok) throw new Error('Todas as tentativas de ping falharam.');
+      const data = await res.json();
+      
+      if (!data.online) throw new Error('Servidor offline reportado pela API.');
+
+      result = {
+        version: { name: data.version?.name_raw || data.version?.name },
+        players: {
+          online: data.players?.online || 0,
+          max: data.players?.max || 0,
+          sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
+        },
+        roundTripLatency: data.latency
+      };
+    }
   }
 
   const latencyMs = Math.max(0, Date.now() - started);
-  // Garante que pega os nomes limpos de jogadores
+  
+  // Limpa os nomes e garante que não haja lixo
   const onlinePlayers = (result.players.sample || [])
     .map(p => p.name)
     .filter(Boolean);
@@ -540,9 +527,6 @@ async function getServerStatusStats(host, currentOnline) {
   return { uptime24hPct, onlineSince, samples24h: total };
 }
 
-// ─────────────────────────────────────────────
-// Status real do servidor para o dashboard
-// ─────────────────────────────────────────────
 app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   try {
@@ -577,9 +561,6 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// Cron – Minecraft snapshot
-// ─────────────────────────────────────────────
 app.get('/api/cron', async (req, res) => {
 const key = req.query.key || req.headers['x-ingest-secret'];
 if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
@@ -618,9 +599,6 @@ res.status(500).json({ error: 'snapshot failed' });
 }
 });
 
-// ─────────────────────────────────────────────
-// Ingest (monitor.mjs)
-// ─────────────────────────────────────────────
 app.post('/api/snapshots/import', async (req, res) => {
 const key = req.headers['x-ingest-secret'];
 if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
@@ -686,7 +664,6 @@ await pool.query(
 );
 await sendSystemEmail(email, rows[0].username, code, 'verify');
 
-// Audit
 await audit({ type: 'create', targetId: rows[0].id, targetName: username, message: `Conta criada: ${username}` });
 
 res.json({ ok: true, requireVerification: true, email });
@@ -696,9 +673,6 @@ res.status(409).json({ error: 'username/email already exists' });
 }
 });
 
-// ─────────────────────────────────────────────
-// AUTH – Verify email
-// ─────────────────────────────────────────────
 app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
 const email = sanitize(req.body?.email).toLowerCase();
 const code  = sanitize(req.body?.code);
@@ -725,9 +699,6 @@ const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresI
 res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
 });
 
-// ─────────────────────────────────────────────
-// AUTH – Login
-// ─────────────────────────────────────────────
 app.post('/api/auth/login', authLimiter, async (req, res) => {
 const login    = sanitize(req.body?.login).toLowerCase();
 const password = req.body?.password || '';
@@ -749,17 +720,14 @@ await sendSystemEmail(user.email, user.username, code, 'verify');
 return res.status(403).json({ error: 'unverified_email', email: user.email });
 }
 
-// Audit login
 await audit({ actorId: user.id, actorName: user.username, type: 'login', message: `${user.username} fez login no painel` });
 
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
-// Registra sessão web
 const { createHash } = await import('node:crypto');
 const tokenHash = createHash('sha256').update(token).digest('hex');
 const ua = req.headers['user-agent'] || null;
 const ip = req.ip || req.socket?.remoteAddress || null;
-// Geo lookup assíncrono (não bloqueia o login)
 (async () => {
   let city = null, region = null, country = null, isp = null;
   try {
@@ -792,16 +760,13 @@ minecraftName: user.minecraft_name, photoUrl: user.photo_url, role: user.role,
 });
 });
 
-// ─────────────────────────────────────────────
-// AUTH – Forgot / Reset password
-// ─────────────────────────────────────────────
 app.post('/api/auth/forgot-password', emailLimiter, async (req, res) => {
 const email = sanitize(req.body?.email).toLowerCase();
 if (!validateEmail(email)) return res.status(400).json({ error: 'E-mail inválido' });
 
 await pool.query('DELETE FROM password_resets WHERE email=$1 OR expires_at<NOW()', [email]);
 const { rows } = await pool.query('SELECT username FROM users WHERE email=$1', [email]);
-if (!rows.length) return res.json({ ok: true }); // security: don't reveal existence
+if (!rows.length) return res.json({ ok: true }); 
 
 const code      = Math.floor(100000 + Math.random() * 900000).toString();
 const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -881,7 +846,6 @@ res.status(409).json({ error: 'username/email already exists' });
 }
 });
 
-// ME – Alterar senha
 async function changeMyPassword(req, res) {
 const currentPassword = req.body?.currentPassword || '';
 const newPassword     = req.body?.newPassword || '';
@@ -906,7 +870,6 @@ res.json({ ok: true });
 app.post('/api/me/password', auth, changeMyPassword);
 app.put('/api/me/password',  auth, changeMyPassword);
 
-// ME – Deletar conta
 app.delete('/api/me', auth, async (req, res) => {
 const email    = sanitize(req.body?.email).toLowerCase();
 const password = req.body?.password || '';
@@ -927,7 +890,6 @@ await pool.query('DELETE FROM users WHERE id=$1', [req.user.sub]);
 res.json({ ok: true });
 });
 
-// ME – Histórico Minecraft
 app.get('/api/me/history', auth, async (req, res) => {
 if (!req.user.minecraft_name)
 return res.json({ history: [], activeSession: null });
@@ -949,7 +911,7 @@ activeSession: active.rows[0]?.entered_at || null,
 });
 
 // ─────────────────────────────────────────────
-// ME – Preferências (server-side)
+// ME – Preferências
 // ─────────────────────────────────────────────
 const DEFAULT_PREFERENCES = Object.freeze({
   email_server: true,
@@ -1022,14 +984,12 @@ app.put('/api/me/preferences', auth, async (req, res) => {
 // ─────────────────────────────────────────────
 // NOTIFICAÇÕES
 // ─────────────────────────────────────────────
-
 app.get('/api/notifications', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
 const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
-
 res.json(rows);
 });
 
@@ -1039,7 +999,6 @@ app.get('/api/notifications/unread-count', auth, async (req, res) => {
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
 const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
-
 res.json({ count: rows[0].count });
 });
 
@@ -1049,28 +1008,12 @@ app.post('/api/notifications/:id/read', auth, async (req, res) => {
   const role = req.user.role;
   const mc = (req.user.minecraft_name || '').toLowerCase();
   const visible = await pool.query(
-    `SELECT id FROM notifications
-     WHERE id=$1 AND (
-       audience='all'
-       OR (audience='role' AND audience_val=$2)
-       OR (audience='user' AND audience_val=$3::text)
-       OR (audience='minecraft' AND LOWER(audience_val)=$4)
-     )`,
+    `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
     [id, role, String(req.user.sub), mc],
   );
   if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
 
   await pool.query(`INSERT INTO notification_reads(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
-  await audit({
-    actorId: req.user.sub,
-    actorName: req.user.username,
-    type: 'notification_read',
-    targetId: id,
-    targetName: `notification:${id}`,
-    message: `${req.user.username} marcou a notificação #${id} como vista`,
-    metadata: { notificationId: id },
-  });
-
   res.json({ ok: true });
 });
 
@@ -1080,28 +1023,12 @@ app.delete('/api/notifications/:id', auth, async (req, res) => {
   const role = req.user.role;
   const mc = (req.user.minecraft_name || '').toLowerCase();
   const visible = await pool.query(
-    `SELECT id FROM notifications
-     WHERE id=$1 AND (
-       audience='all'
-       OR (audience='role' AND audience_val=$2)
-       OR (audience='user' AND audience_val=$3::text)
-       OR (audience='minecraft' AND LOWER(audience_val)=$4)
-     )`,
+    `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
     [id, role, String(req.user.sub), mc],
   );
   if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
 
   await pool.query(`INSERT INTO notification_deletes(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
-  await audit({
-    actorId: req.user.sub,
-    actorName: req.user.username,
-    type: 'notification_delete',
-    targetId: id,
-    targetName: `notification:${id}`,
-    message: `${req.user.username} excluiu a notificação #${id} da própria central`,
-    metadata: { notificationId: id },
-  });
-
   res.json({ ok: true });
 });
 
@@ -1111,16 +1038,6 @@ app.post('/api/notifications/read-all', auth, async (req, res) => {
   const mc     = (req.user.minecraft_name || '').toLowerCase();
 
 await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
-await audit({
-  actorId: req.user.sub,
-  actorName: req.user.username,
-  type: 'notification_read_all',
-  targetId: req.user.sub,
-  targetName: req.user.username,
-  message: `${req.user.username} marcou todas as notificações visíveis como vistas`,
-  metadata: { userId },
-});
-
 res.json({ ok: true });
 });
 
@@ -1172,18 +1089,12 @@ app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) 
 const { rowCount } = await pool.query('DELETE FROM notifications WHERE id=$1', [id]);
 if (!rowCount) return res.status(404).json({ error: 'not found' });
 
-await audit({
-actorId: req.user.sub, actorName: req.user.username,
-type: 'delete', message: `Notificação #${id} excluída`,
-});
-
 res.json({ ok: true });
 });
 
 // ─────────────────────────────────────────────
 // AUDIT LOGS
 // ─────────────────────────────────────────────
-
 app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
     try {
       const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
@@ -1214,7 +1125,6 @@ app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────
 // NOTAS DE JOGADORES
 // ─────────────────────────────────────────────
-
 app.get('/api/admin/notes/:minecraft_name', auth, requireAdmin, async (req, res) => {
   const mc = sanitize(req.params.minecraft_name).toLowerCase();
   const { rows } = await pool.query(
@@ -1283,12 +1193,11 @@ res.json({ ok: true });
 });
 
 // ─────────────────────────────────────────────
-// ANALYTICS & BIG DATA (Novas rotas!)
+// ANALYTICS & BIG DATA (NOVAS ROTAS OTIMIZADAS)
 // ─────────────────────────────────────────────
 
 app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
   try {
-    // Agrupa as horas jogadas por mês (para gráficos de linha)
     const { rows: monthly } = await pool.query(`
       SELECT 
         TO_CHAR(entered_at, 'YYYY-MM') as month,
@@ -1300,7 +1209,6 @@ app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) =>
       ORDER BY month ASC
     `);
 
-    // Top 10 veteranos (para gráfico de barras)
     const { rows: topPlayers } = await pool.query(`
       SELECT player, SUM(duration_hours) as total_hours 
       FROM player_sessions 
@@ -1310,7 +1218,6 @@ app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) =>
       LIMIT 10
     `);
 
-    // Cards de resumo gigantes
     const { rows: summary } = await pool.query(`
       SELECT 
         COUNT(id)::int as total_sessions, 
@@ -1352,7 +1259,6 @@ app.get('/api/admin/sessions/history', auth, requireAdmin, async (req, res) => {
       params
     );
     
-    // Descobre o total de páginas existentes para aquele termo
     const { rows: countRows } = await pool.query(
       `SELECT COUNT(*)::int as total ${query}`,
       search ? [search] : []
@@ -1370,9 +1276,8 @@ app.get('/api/admin/sessions/history', auth, requireAdmin, async (req, res) => {
   }
 });
 
-
 // ─────────────────────────────────────────────
-// SNAPSHOTS / HISTÓRICO (Rota antiga mantida para retrocompatibilidade)
+// SNAPSHOTS / HISTÓRICO (Retrocompatibilidade)
 // ─────────────────────────────────────────────
 app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
 const limit = Math.min(Number(req.query.limit || 500), 2000);
