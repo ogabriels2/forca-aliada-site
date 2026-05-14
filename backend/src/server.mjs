@@ -6,8 +6,8 @@
  * ──────────────────────
  * • Sistema de Integração (App Keys) para Desktop App.
  * • Rota /api/app/sync para receber dados push em tempo real com segurança máxima.
- * • Correção Anti-Bloqueio do TCPShield (Fallback mcstatus.io)
- * • Rotas Analíticas de Big Data e Paginação para Histórico
+ * • Auto-cura Híbrida: O Site entra em repouso se a App estiver conectada.
+ * • Rastreamento de Origem: O banco sabe se a sessão veio da App ou do Site.
  */
 
 import * as util from 'minecraft-server-util';
@@ -127,10 +127,7 @@ function validateUsername(u)    { return /^[a-z0-9_]{3,32}$/i.test(u); }
 // ─────────────────────────────────────────────
 async function sendSystemEmail(email, username, code, type = 'verify') {
 const key = process.env.RESEND_API_KEY;
-if (!key) {
-console.log(`\n[DEV] email→${email}  code→${code}  type→${type}\n`);
-return;
-}
+if (!key) { return; }
 const from    = process.env.EMAIL_FROM || 'no-reply@ogabriels.com';
 const subject = type === 'verify' ? 'Verifique sua conta' : 'Código de Recuperação';
 const title   = type === 'verify' ? 'Bem-vindo à Força Aliada!' : 'Força Aliada';
@@ -175,6 +172,7 @@ CREATE TABLE IF NOT EXISTS player_sessions (
   duration_hours FLOAT
 );
 ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT;
+ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS origin VARCHAR(20) DEFAULT 'site';
 CREATE INDEX IF NOT EXISTS idx_player_name      ON player_sessions(player);
 CREATE INDEX IF NOT EXISTS idx_player_left_at   ON player_sessions(left_at DESC);
 
@@ -244,7 +242,6 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   PRIMARY KEY (notification_id, user_id)
 );
 
--- NOVO: Tabela para gerenciar as Chaves do Aplicativo Desktop (Server Manager)
 CREATE TABLE IF NOT EXISTS app_integration_keys (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -346,7 +343,6 @@ await pool.query(
 'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,TRUE)',
 [u.toLowerCase(), e, u, hash, 'owner'],
 );
-console.log('[seed] admin created:', u.toLowerCase());
 }
 
 // ─────────────────────────────────────────────
@@ -419,16 +415,10 @@ async function fetchMinecraftStatus() {
   let result = null;
 
   try {
-    result = await util.status(host, 25565, {
-      timeout: 2500,
-      enableSRV: false 
-    });
+    result = await util.status(host, 25565, { timeout: 2500, enableSRV: false });
   } catch (err1) {
     try {
-      result = await util.status(host, 25565, {
-        timeout: 2500,
-        enableSRV: true
-      });
+      result = await util.status(host, 25565, { timeout: 2500, enableSRV: true });
     } catch (err2) {
       const res = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
       if (!res.ok) throw new Error('Todas as tentativas de ping falharam.');
@@ -448,8 +438,6 @@ async function fetchMinecraftStatus() {
   }
 
   const latencyMs = Math.max(0, Date.now() - started);
-  
-  // Limpa os nomes, e IGNORA a pegadinha do "Anonymous Player" do Velocity
   const onlinePlayers = (result.players.sample || [])
     .map(p => p.name)
     .filter(name => Boolean(name) && name !== 'Anonymous Player');
@@ -509,19 +497,21 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
     const status = await fetchMinecraftStatus();
     await recordServerStatus(status);
 
-    // --- SISTEMA DE AUTO-CURA (HÍBRIDO E INTELIGENTE) ---
+    // --- SISTEMA DE AUTO-CURA (MASTER/SLAVE) ---
     const now = status.checkedAt;
     const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
     
-    if (status.online) {
+    // Verifica se a App Desktop esteve ativa no último minuto
+    const { rows: activeApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
+    const isAppConnected = activeApps.length > 0;
+
+    // Se o Site for o Ativo (App desconectada)
+    if (status.online && !isAppConnected) {
       const onlinePlayers = status.players.list;
       const reportedCount = status.players.online;
-      
-      // Detecta se o Velocity está escondendo os nomes (Diz que tem gente, mas a lista vem vazia)
       const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
 
       if (!isProxyHidingNames) {
-        // Se a lista é confiável (ou o servidor está 100% vazio), aplica a auto-cura
         for (const row of active.rows) {
           if (!onlinePlayers.includes(row.player)) {
             const dur = (now - new Date(row.entered_at)) / 3600000;
@@ -530,26 +520,21 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
         }
         for (const p of onlinePlayers) {
           const already = active.rows.some(r => r.player === p);
-          if (!already) await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
+          // O Site marca as suas próprias sessões com origin 'site'
+          if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')", [p, now]);
         }
       }
-      // Se isProxyHidingNames for TRUE, a Auto-Cura não faz nada e confia cegamente no App de PC!
     }
-    // ----------------------------------------------------
+    // Se a App está conectada, o site "cruza os braços" e não faz nada, evitando duplicados!
 
     const stats = await getServerStatusStats(status.host, status.online);
     return res.json({
       checked_at: status.checkedAt.toISOString(),
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
       minecraft: {
-        host: status.host,
-        online: status.online,
-        version: status.version,
+        host: status.host, online: status.online, version: status.version,
         players: { online: status.players.online, max: status.players.max, list: status.players.list },
-        latencyMs: status.latencyMs,
-        onlineSince: stats.onlineSince,
-        uptime24hPct: stats.uptime24hPct,
-        samples24h: stats.samples24h,
+        latencyMs: status.latencyMs, onlineSince: stats.onlineSince, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h,
       },
     });
   } catch (err) {
@@ -558,19 +543,17 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
     const fallback = { host, checkedAt, online: false, version: null, players: { online: 0, max: 0, list: [] }, latencyMs: null };
     await recordServerStatus(fallback).catch(e => console.error('[server status record]', e));
 
-    // --- AUTO-CURA (SERVIDOR OFFLINE) ---
-    // Se o servidor caiu/fechou, todo mundo que tava online no banco deve ser deslogado na hora
+    // O Servidor caiu de vez. Vamos verificar se a App também caiu antes de auto-deslogar toda a gente
     try {
-      const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-      for (const row of active.rows) {
-        const dur = (checkedAt - new Date(row.entered_at)) / 3600000;
-        await pool.query(
-          'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
-          [checkedAt, +dur.toFixed(2), row.player]
-        );
+      const { rows: fallbackApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
+      if (fallbackApps.length === 0) {
+        const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+        for (const row of active.rows) {
+          const dur = (checkedAt - new Date(row.entered_at)) / 3600000;
+          await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [checkedAt, +dur.toFixed(2), row.player]);
+        }
       }
-    } catch (e) { console.error('[auto-cura offline]', e); }
-    // ------------------------------------
+    } catch (e) {}
 
     const stats = await getServerStatusStats(host, false).catch(() => ({ uptime24hPct: 0, onlineSince: null, samples24h: 0 }));
     return res.json({
@@ -582,7 +565,7 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// CRON e SNAPSHOT (Rota Antiga Mantida por Segurança)
+// CRON e SNAPSHOT
 // ─────────────────────────────────────────────
 app.get('/api/cron', async (req, res) => {
 const key = req.query.key || req.headers['x-ingest-secret'];
@@ -591,35 +574,39 @@ if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
 try {
   const status = await fetchMinecraftStatus();
   await recordServerStatus(status);
-  const onlinePlayers = status.players.list;
-  const reportedCount = status.players.online;
-  const now = status.checkedAt;
+  
+  const { rows: activeApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
+  const isAppConnected = activeApps.length > 0;
 
-  const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-  const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
+  if (status.online && !isAppConnected) {
+    const onlinePlayers = status.players.list;
+    const reportedCount = status.players.online;
+    const now = status.checkedAt;
+    const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+    const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
 
-  if (!isProxyHidingNames) {
-    for (const row of active.rows) {
-      if (!onlinePlayers.includes(row.player)) {
-        const dur = (now - new Date(row.entered_at)) / 3600000;
-        await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
+    if (!isProxyHidingNames) {
+      for (const row of active.rows) {
+        if (!onlinePlayers.includes(row.player)) {
+          const dur = (now - new Date(row.entered_at)) / 3600000;
+          await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
+        }
       }
-    }
-    for (const p of onlinePlayers) {
-      const already = active.rows.some(r => r.player === p);
-      if (!already) await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
+      for (const p of onlinePlayers) {
+        const already = active.rows.some(r => r.player === p);
+        if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')", [p, now]);
+      }
     }
   }
 
-  res.json({ ok: true, online: onlinePlayers.length });
+  res.json({ ok: true });
 } catch (err) {
-  console.error('[cron]', err);
   res.status(500).json({ error: 'snapshot failed' });
 }
 });
 
 // ─────────────────────────────────────────────
-// DADOS DO DASHBOARD (Rota Original Restaurada)
+// DADOS DO DASHBOARD (Lê a origem)
 // ─────────────────────────────────────────────
 app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 500), 2000);
@@ -629,7 +616,7 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
       'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL'
     );
     const history = await pool.query(
-      'SELECT player, entered_at, left_at, duration_hours FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1',
+      'SELECT player, entered_at, left_at, duration_hours, origin FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1',
       [limit]
     );
 
@@ -641,128 +628,79 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
       history: history.rows.map(r => ({
         player: r.player, enteredAt: r.entered_at,
         leftAt: r.left_at, hoursOnline: r.duration_hours,
+        origin: r.origin // Exporta a origem
       })),
     });
   } catch (err) {
-    console.error('[snapshots latest]', err);
     res.status(500).json({ error: 'Falha ao buscar histórico' });
   }
 });
 
 // ─────────────────────────────────────────────
-// INTEGRAÇÃO DE APLICATIVO (FASE 2)
+// INTEGRAÇÃO DE APLICATIVO (O PUSH)
 // ─────────────────────────────────────────────
 
-// GERAÇÃO DE CHAVES NO PAINEL (Apenas OWNER)
 app.post('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
     const name = sanitize(req.body.name || 'Força Aliada Manager PC');
-    
-    // Gera uma chave estilo token do Discord/AWS
     const rawKey = 'FA-' + crypto.randomBytes(24).toString('hex');
-    
-    // Guarda apenas a versão embaralhada (Hash) no banco. Se o banco for invadido, não perdem as chaves.
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
-    
     try {
-        const { rows } = await pool.query(
-            'INSERT INTO app_integration_keys(name, key_hash, created_by) VALUES($1, $2, $3) RETURNING id, name, created_at',
-            [name, keyHash, req.user.sub]
-        );
-        
-        await audit({
-            actorId: req.user.sub, actorName: req.user.username, type: 'create',
-            message: `Chave de Integração para App criada: "${name}"`
-        });
-
-        // O rawKey (chave limpa) só é retornado UMA ÚNICA VEZ para ser copiado na tela.
+        const { rows } = await pool.query('INSERT INTO app_integration_keys(name, key_hash, created_by) VALUES($1, $2, $3) RETURNING id, name, created_at', [name, keyHash, req.user.sub]);
+        await audit({ actorId: req.user.sub, actorName: req.user.username, type: 'create', message: `Chave de Integração para App criada: "${name}"` });
         res.json({ id: rows[0].id, name: rows[0].name, created_at: rows[0].created_at, key: rawKey });
-    } catch (err) {
-        res.status(500).json({ error: 'Erro ao gerar chave' });
-    }
+    } catch (err) { res.status(500).json({ error: 'Erro ao gerar chave' }); }
 });
 
-// LISTAR CHAVES ATIVAS
 app.get('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
-    const { rows } = await pool.query(`
-        SELECT k.id, k.name, k.created_at, k.last_used_at, u.username as created_by
-        FROM app_integration_keys k
-        LEFT JOIN users u ON u.id = k.created_by
-        ORDER BY k.created_at DESC
-    `);
+    const { rows } = await pool.query(`SELECT k.id, k.name, k.created_at, k.last_used_at, u.username as created_by FROM app_integration_keys k LEFT JOIN users u ON u.id = k.created_by ORDER BY k.created_at DESC`);
     res.json(rows);
 });
 
-// DELETAR / REVOGAR CHAVE
 app.delete('/api/admin/app-keys/:id', auth, requireOwner, async (req, res) => {
     const id = parseInt(req.params.id);
     if (!id) return res.status(400).json({ error: 'Id inválido' });
-
     const { rows } = await pool.query('DELETE FROM app_integration_keys WHERE id=$1 RETURNING name', [id]);
-    if (rows.length) {
-        await audit({
-            actorId: req.user.sub, actorName: req.user.username, type: 'delete',
-            message: `Chave de Integração revogada: "${rows[0].name}"`
-        });
-    }
+    if (rows.length) await audit({ actorId: req.user.sub, actorName: req.user.username, type: 'delete', message: `Chave de Integração revogada: "${rows[0].name}"` });
     res.json({ ok: true });
 });
 
-// ─────────────────────────────────────────────
-// O "PUSH" DO APLICATIVO DESKTOP
-// ─────────────────────────────────────────────
 app.post('/api/app/sync', async (req, res) => {
-    // Aceita a nova chave ou a velha como "Plano B"
     const key = req.headers['x-app-key'] || req.headers['x-ingest-secret']; 
     if (!key) return res.status(401).json({ error: 'Chave não fornecida' });
-    
     let isValid = false;
 
-    // Validação
     if (key === INGEST_SECRET && INGEST_SECRET) {
-        isValid = true; // Fallback
+        isValid = true;
     } else {
         const keyHash = crypto.createHash('sha256').update(key).digest('hex');
-        const { rows } = await pool.query(
-            'UPDATE app_integration_keys SET last_used_at=NOW() WHERE key_hash=$1 RETURNING id', 
-            [keyHash]
-        );
+        const { rows } = await pool.query('UPDATE app_integration_keys SET last_used_at=NOW() WHERE key_hash=$1 RETURNING id', [keyHash]);
         if (rows.length > 0) isValid = true;
     }
 
     if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
-    // Se passou, processa os jogadores
     try {
         const payload  = req.body?.payload || req.body;
         const online   = (payload?.onlinePlayers || []).filter(Boolean);
         const now      = new Date();
 
-        const active   = await pool.query(
-            'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL'
-        );
+        const active   = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
 
         for (const row of active.rows) {
             if (!online.includes(row.player)) {
                 const dur = (now - new Date(row.entered_at)) / 3600000;
-                await pool.query(
-                    'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
-                    [now, +dur.toFixed(2), row.player]
-                );
+                await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
             }
         }
 
         for (const p of online) {
             const already = active.rows.some(r => r.player === p);
-            if (!already)
-                await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
+            // A App marca as sessões como 'app'
+            if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'app')", [p, now]);
         }
 
         res.json({ ok: true });
-
-    } catch (err) {
-        console.error('[sync]', err);
-        res.status(500).json({ error: 'Falha na sincronização' });
-    }
+    } catch (err) { res.status(500).json({ error: 'Falha na sincronização' }); }
 });
 
 
