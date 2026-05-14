@@ -507,6 +507,36 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
   try {
     const status = await fetchMinecraftStatus();
     await recordServerStatus(status);
+
+    // --- SISTEMA DE AUTO-CURA (HÍBRIDO) ---
+    // Se o app estiver desligado, o painel assume a correção do banco de dados
+    const now = status.checkedAt;
+    const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+    
+    if (status.online) {
+      const onlinePlayers = status.players.list;
+      
+      // 1. Mata fantasmas (estão no banco como online, mas não estão no servidor)
+      for (const row of active.rows) {
+        if (!onlinePlayers.includes(row.player)) {
+          const dur = (now - new Date(row.entered_at)) / 3600000;
+          await pool.query(
+            'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+            [now, +dur.toFixed(2), row.player]
+          );
+        }
+      }
+      
+      // 2. Registra quem entrou (caso liguem o servidor ignorando o aplicativo de PC)
+      for (const p of onlinePlayers) {
+        const already = active.rows.some(r => r.player === p);
+        if (!already) {
+          await pool.query('INSERT INTO player_sessions(player,entered_at) VALUES($1,$2)', [p, now]);
+        }
+      }
+    }
+    // ---------------------------------------
+
     const stats = await getServerStatusStats(status.host, status.online);
     return res.json({
       checked_at: status.checkedAt.toISOString(),
@@ -527,6 +557,21 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
     const checkedAt = new Date();
     const fallback = { host, checkedAt, online: false, version: null, players: { online: 0, max: 0, list: [] }, latencyMs: null };
     await recordServerStatus(fallback).catch(e => console.error('[server status record]', e));
+
+    // --- AUTO-CURA (SERVIDOR OFFLINE) ---
+    // Se o servidor caiu/fechou, todo mundo que tava online no banco deve ser deslogado na hora
+    try {
+      const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+      for (const row of active.rows) {
+        const dur = (checkedAt - new Date(row.entered_at)) / 3600000;
+        await pool.query(
+          'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+          [checkedAt, +dur.toFixed(2), row.player]
+        );
+      }
+    } catch (e) { console.error('[auto-cura offline]', e); }
+    // ------------------------------------
+
     const stats = await getServerStatusStats(host, false).catch(() => ({ uptime24hPct: 0, onlineSince: null, samples24h: 0 }));
     return res.json({
       checked_at: checkedAt.toISOString(),
