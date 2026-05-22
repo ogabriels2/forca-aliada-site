@@ -1342,7 +1342,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-    </div><div class="card" id="merit-card" style="display:none; margin-top:24px;">
+      <div class="card" id="merit-card" style="display:none;">
         <h3>⭐ Mérito &amp; Capital <span id="merit-card-sub">Gerencie reputação e economia</span></h3>
 
         <div class="merit-stat-mini" id="merit-stats-mini">
@@ -1498,28 +1498,143 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
       </div>
 
-      <div class="card" id="app-keys-card" style="display:none; margin-top:24px;">
-        <h3>🔌 Integração de Sistema <span>Gerencie os acessos do Força Aliada Manager (App PC)</span></h3>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
-          <p style="font-size:13px; color:var(--text-secondary); margin:0; flex:1; min-width:200px;">Gere chaves seguras para permitir que o seu aplicativo de computador sincronize logs e gerencie o servidor remotamente.</p>
-          <button class="btn-primary" onclick="generateAppKey()" style="padding: 10px 16px; font-size: 13px; white-space:nowrap;">+ Gerar Nova Chave</button>
+      <div class="card" id="app-keys-card" style="display:none;">
+
+        <!-- Cabeçalho -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+          <div>
+            <h3 style="margin:0 0 4px;">🔌 Integração de Sistema</h3>
+            <p style="font-size:13px; color:var(--text-secondary); margin:0; max-width:480px; line-height:1.5;">
+              Chaves de acesso usadas pelo Força Aliada Manager (App PC) para sincronizar dados e gerenciar o servidor. Cada chave é mostrada apenas uma vez no momento da geração. Não é possível recuperá-la depois.
+            </p>
+          </div>
+          <button class="btn-primary" onclick="generateAppKey()" style="padding:10px 18px; font-size:13px; white-space:nowrap; flex-shrink:0;">
+            + Gerar Nova Chave
+          </button>
         </div>
-        
-        <div id="new-key-alert" style="display:none; background:rgba(48,209,88,0.08); border:1px solid var(--success); padding:16px; border-radius:12px; margin-bottom:16px; animation: slideIn 0.3s ease;">
-          <strong style="color:var(--success); display:block; margin-bottom:8px;">✅ Chave gerada com sucesso!</strong>
-          <p style="margin:0 0 12px 0; font-size:13px; color:var(--text-primary);">Copie a chave abaixo e cole na tela inicial do seu Força Aliada Manager. <b>Por segurança, ela desaparecerá e não poderá ser vista novamente!</b></p>
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="new-key-value" readonly style="flex:1; font-family:monospace; color:var(--success); font-weight:bold; background:rgba(0,0,0,0.05); border-color:var(--success);">
-            <button class="btn-secondary" onclick="copyNewKey()">Copiar</button>
+
+        <!-- Aviso de segurança contextual -->
+        <div style="display:flex; align-items:flex-start; gap:10px; background:rgba(255,159,10,0.07); border:1px solid rgba(255,159,10,0.25); border-radius:10px; padding:12px 14px; margin:16px 0;">
+          <span style="font-size:16px; flex-shrink:0; margin-top:1px;">⚠️</span>
+          <p style="font-size:12px; color:var(--text-secondary); margin:0; line-height:1.6;">
+            <strong style="color:var(--text-primary);">Trate essas chaves como senhas.</strong>
+            Cada chave concede acesso direto ao servidor. Revogue imediatamente qualquer chave que não esteja em uso ou que possa ter sido comprometida. Não compartilhe chaves entre máquinas diferentes — gere uma para cada instalação.
+          </p>
+        </div>
+
+        <!-- Alerta de nova chave gerada -->
+        <div id="new-key-alert" style="display:none; border-radius:12px; margin-bottom:16px; overflow:hidden; border:1px solid var(--success);">
+          <div style="background:rgba(48,209,88,0.08); padding:16px 18px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+              <span style="font-size:18px;">✅</span>
+              <strong style="color:var(--success); font-size:14px;">Chave gerada com sucesso</strong>
+            </div>
+            <p style="margin:0 0 14px; font-size:13px; color:var(--text-primary); line-height:1.5;">
+              Copie a chave abaixo e cole no campo de configuração do Força Aliada Manager. <strong>Ela não poderá ser recuperada depois que você fechar ou sair desta página.</strong>
+            </p>
+            <!-- Campo da chave com toggle de visibilidade -->
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div style="position:relative; flex:1;">
+                <input type="password" id="new-key-value" readonly
+                  style="width:100%; font-family:monospace; font-size:13px; font-weight:600;
+                         color:var(--success); background:rgba(0,0,0,0.06);
+                         border:1px solid rgba(48,209,88,0.4); border-radius:8px;
+                         padding:10px 40px 10px 12px; letter-spacing:0.04em;">
+                <button onclick="toggleKeyVisibility()" id="key-eye-btn" title="Mostrar/ocultar chave"
+                  style="position:absolute; right:10px; top:50%; transform:translateY(-50%);
+                         background:none; border:none; cursor:pointer; padding:2px; color:var(--text-secondary); line-height:1;">
+                  <svg id="key-eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+              <button id="copy-key-btn" onclick="copyNewKey()"
+                style="display:inline-flex; align-items:center; gap:6px; padding:10px 16px;
+                       background:var(--success); color:#fff; border:none; border-radius:8px;
+                       font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+                       transition:opacity .2s; flex-shrink:0; font-family:inherit;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copiar chave
+              </button>
+            </div>
+            <!-- Contador regressivo -->
+            <p id="key-countdown" style="margin:10px 0 0; font-size:11px; color:var(--text-secondary); font-family:monospace;"></p>
           </div>
         </div>
 
+        <!-- Lista de chaves -->
         <div class="app-keys-list" id="app-keys-list">
           <div class="empty-state"><div class="empty-icon">🔌</div><strong>Carregando chaves...</strong></div>
         </div>
+
       </div>
 
     </div></div></main>
+
+    <style>
+      /* Animação de entrada do alerta de nova chave */
+      @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+      #new-key-alert { animation: slideIn 0.25s ease; }
+    </style>
+
+    <script>
+      // Toggle visibilidade da chave
+      function toggleKeyVisibility() {
+        const input = document.getElementById('new-key-value');
+        const icon  = document.getElementById('key-eye-icon');
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        icon.innerHTML = isHidden
+          ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'
+          : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+      }
+
+      // Copia a chave com clipboard moderno e feedback visual
+      async function copyNewKey() {
+        const input = document.getElementById('new-key-value');
+        const btn   = document.getElementById('copy-key-btn');
+        const val   = input.value;
+        if (!val) return;
+        try {
+          await navigator.clipboard.writeText(val);
+        } catch (e) {
+          // Fallback para browsers sem clipboard API
+          input.type = 'text';
+          input.select();
+          input.setSelectionRange(0, 99999);
+          document.execCommand('copy');
+          input.type = 'password';
+        }
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado!';
+        btn.style.background = 'var(--accent)';
+        setTimeout(() => {
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar chave';
+          btn.style.background = 'var(--success)';
+        }, 2500);
+        showToast('Chave copiada para a área de transferência!');
+      }
+
+      // Contador regressivo de auto-ocultamento (60s)
+      let _keyCountdownTimer = null;
+      function startKeyCountdown(seconds) {
+        const el = document.getElementById('key-countdown');
+        if (_keyCountdownTimer) clearInterval(_keyCountdownTimer);
+        let remaining = seconds;
+        function tick() {
+          if (!el) return;
+          if (remaining <= 0) {
+            clearInterval(_keyCountdownTimer);
+            const alert = document.getElementById('new-key-alert');
+            if (alert) alert.style.display = 'none';
+            return;
+          }
+          el.textContent = `Esta janela fecha automaticamente em ${remaining}s por segurança.`;
+          remaining--;
+        }
+        tick();
+        _keyCountdownTimer = setInterval(tick, 1000);
+      }
+    </script>
 
 <footer>
   <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
