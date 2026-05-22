@@ -335,11 +335,18 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .audit-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 10px; transition: background 0.2s; }
 .audit-item:hover { background: rgba(0,0,0,0.03); }
 .audit-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
-.audit-dot.create  { background: var(--success); }
-.audit-dot.update  { background: var(--accent); }
-.audit-dot.delete  { background: var(--danger); }
-.audit-dot.login   { background: var(--warning); }
-.audit-dot.system  { background: #af52de; }
+.audit-dot.create   { background: var(--success); }
+.audit-dot.update   { background: var(--accent); }
+.audit-dot.delete   { background: var(--danger); }
+.audit-dot.login    { background: var(--warning); }
+.audit-dot.logout   { background: var(--warning); }
+.audit-dot.security { background: var(--danger); }
+.audit-dot.system   { background: #af52de; }
+.audit-item--warning  { background: rgba(255,159,10,0.06); border-left: 3px solid var(--warning); padding-left: 9px; }
+.audit-item--critical { background: rgba(255,59,48,0.07);  border-left: 3px solid var(--danger);  padding-left: 9px; }
+.audit-item--warning:hover  { background: rgba(255,159,10,0.1); }
+.audit-item--critical:hover { background: rgba(255,59,48,0.11); }
+.audit-ip { font-size: 11px; color: var(--text-secondary); margin-left: 6px; }
 .audit-content { flex: 1; min-width: 0; }
 .audit-content strong { font-size: 13px; font-weight: 600; display: block; }
 .audit-content span { font-size: 12px; color: var(--text-secondary); }
@@ -869,6 +876,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .nav-item:hover,
 [data-theme="dark"] .audit-item:hover,
 [data-theme="dark"] .notif-item:hover { background: rgba(30, 41, 59, 0.72) !important; }
+[data-theme="dark"] .audit-item--warning  { background: rgba(255,159,10,0.1); }
+[data-theme="dark"] .audit-item--critical { background: rgba(255,59,48,0.12); }
 [data-theme="dark"] .pill.owner { background: rgba(192, 132, 252, 0.18) !important; color: #e9d5ff !important; }
 [data-theme="dark"] .pill.full { background: rgba(96, 165, 250, 0.18) !important; color: #bfdbfe !important; }
 [data-theme="dark"] .pill.limited { background: rgba(148, 163, 184, 0.16) !important; color: #e2e8f0 !important; }
@@ -980,12 +989,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </button>
         </div>
 
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-          <a href="https://manager.forcaaliada.ogabriels.com" target="_blank" class="quick-action-btn" style="text-decoration:none;color:var(--accent);border-color:rgba(0,113,227,0.2);background:rgba(0,113,227,0.04);">
-            <span class="qa-icon">⚡</span><span class="qa-label">Baixar o Manager</span><span class="qa-arrow" style="font-size:11px;">↗</span>
-          </a>
-        </div>
-
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
           <a href="account.html" class="btn-primary w-100">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -1004,117 +1007,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       <div id="alerts-card" style="display:none;">
         <div class="alerts-wrapper" id="alerts-wrapper"></div>
       </div>
-
-      <!-- FAIXA FORÇA ALIADA MANAGER -->
-      <a href="https://manager.forcaaliada.ogabriels.com" target="_blank" rel="noopener" id="mgr-strip" style="
-        display:flex; align-items:center; justify-content:space-between; gap:16px;
-        padding:14px 22px;
-        background:#0D0D0A;
-        border-radius:14px;
-        text-decoration:none;
-        position:relative; overflow:hidden;
-        border:1px solid rgba(201,168,76,.32);
-        box-shadow:0 0 0 1px rgba(201,168,76,.06), 0 2px 16px rgba(0,0,0,.18);
-        transition:border-color .2s, box-shadow .2s;
-        flex-shrink:0;
-      ">
-        <!-- grid dourado de fundo -->
-        <div aria-hidden="true" style="
-          position:absolute; inset:0; pointer-events:none;
-          background-image:
-            linear-gradient(rgba(201,168,76,.07) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(201,168,76,.07) 1px, transparent 1px);
-          background-size:28px 28px;
-          mask-image:radial-gradient(ellipse 140% 220% at 18% 50%, black 0%, transparent 100%);
-        "></div>
-        <!-- glow âmbar -->
-        <div aria-hidden="true" style="
-          position:absolute; inset:0; pointer-events:none;
-          background:
-            radial-gradient(ellipse 50% 220% at 0% 50%, rgba(201,168,76,.13) 0%, transparent 70%),
-            radial-gradient(ellipse 25% 140% at 100% 50%, rgba(201,168,76,.05) 0%, transparent 70%);
-        "></div>
-        <!-- linha dourada no topo -->
-        <div aria-hidden="true" style="
-          position:absolute; top:0; left:0; right:0; height:1px; pointer-events:none;
-          background:linear-gradient(90deg, rgba(201,168,76,.6), rgba(201,168,76,.15) 60%, transparent);
-        "></div>
-
-        <!-- esquerda: dot + texto -->
-        <div style="display:flex; align-items:center; gap:12px; position:relative; z-index:1; min-width:0;">
-          <span style="width:7px; height:7px; border-radius:50%; background:#C9A84C; flex-shrink:0; animation:mgrDotPulse 2s infinite; box-shadow:0 0 6px rgba(201,168,76,.5);"></span>
-          <span style="
-            font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
-            color:#C9A84C; white-space:nowrap; flex-shrink:0;
-            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-          ">Força Aliada Manager</span>
-          <span style="width:1px; height:14px; background:rgba(201,168,76,.25); flex-shrink:0;"></span>
-          <span class="mgr-strip-desc" style="
-            font-size:13px; font-weight:500; color:rgba(255,255,255,.6);
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-          ">Gerencie o servidor sem abrir um terminal. Console ao vivo, backup automático e controle de jogadores.</span>
-        </div>
-
-        <!-- direita: CTA -->
-        <span id="mgr-strip-cta">
-          Baixar grátis
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </span>
-      </a>
-      <style>
-        @keyframes mgrDotPulse {
-          0%,100% { opacity:1; transform:scale(1); }
-          50%      { opacity:.35; transform:scale(.7); }
-        }
-        /* Pulso do brilho — só roda depois que o preenchimento termina (delay 0.32s) */
-        @keyframes mgrCtaGlow {
-          0%   { box-shadow: 0 0 0px 0px rgba(201,168,76,0); }
-          40%  { box-shadow: 0 0 10px 3px rgba(201,168,76,.45); }
-          100% { box-shadow: 0 0 0px 0px rgba(201,168,76,0); }
-        }
-
-        #mgr-strip-cta {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 7px 16px;
-          background: rgba(201,168,76,.1);
-          border: 1px solid rgba(201,168,76,.5);
-          color: #E8C96A;
-          font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-          white-space: nowrap; flex-shrink: 0;
-          position: relative; z-index: 1; overflow: hidden;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          border-radius: 6px;
-          transition: border-color .28s, color .28s;
-        }
-        /* Camada de preenchimento diagonal */
-        #mgr-strip-cta::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          /* gradiente inclinado ~20° que simula o preenchimento em diagonal */
-          background: linear-gradient(108deg, #C9A84C 0%, #E8C96A 60%, #C9A84C 100%);
-          transform: scaleX(0);
-          transform-origin: left center;
-          /* skew cria a diagonal na borda direita do preenchimento */
-          skew: -8deg;
-          transition: transform .32s cubic-bezier(.4, 0, .2, 1);
-          z-index: -1;
-        }
-
-        #mgr-strip:hover #mgr-strip-cta {
-          border-color: #C9A84C;
-          color: #0A0A08;
-          /* brilho pulsa após 0.32s (quando o preenchimento termina) */
-          animation: mgrCtaGlow .55s ease-out .32s both;
-        }
-        #mgr-strip:hover #mgr-strip-cta::before {
-          transform: scaleX(1);
-        }
-
-        #mgr-strip:hover { border-color: rgba(201,168,76,.6); box-shadow: 0 0 0 1px rgba(201,168,76,.1), 0 4px 24px rgba(201,168,76,.12); }
-        @media(max-width:700px) { .mgr-strip-desc { display:none !important; } }
-      </style>
 
       <div class="card" id="server-overview">
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
@@ -1318,14 +1210,33 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
 
       <div class="card" id="audit-card" style="display:none;">
-        <h3>Logs de Auditoria <span>Ações recentes no painel</span></h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <h3 style="margin:0;font-size:17px;font-weight:600;">Logs de Auditoria</h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span id="audit-total-count" style="font-size:12px;color:var(--text-secondary);"></span>
+            <input type="text" id="audit-actor-filter" placeholder="Filtrar por ator…"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);font-family:inherit;width:150px;"
+              oninput="auditActorFilter=this.value.trim();auditPage=0;fetchAuditLogs()">
+            <select id="audit-severity-select" onchange="auditSeverityFilter=this.value;auditPage=0;fetchAuditLogs()"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);font-family:inherit;">
+              <option value="all">Todas severidades</option>
+              <option value="info">Info</option>
+              <option value="warning">Atenção</option>
+              <option value="critical">Crítico</option>
+            </select>
+            <button onclick="exportAuditCSV()"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);cursor:pointer;font-family:inherit;">⬇ Exportar CSV</button>
+          </div>
+        </div>
 
         <div class="audit-tabs">
-          <button class="audit-tab active" id="atab-all"    onclick="filterAuditLogs('all')">Todos</button>
-          <button class="audit-tab" id="atab-create" onclick="filterAuditLogs('create')">Criações</button>
-          <button class="audit-tab" id="atab-update" onclick="filterAuditLogs('update')">Edições</button>
-          <button class="audit-tab" id="atab-delete" onclick="filterAuditLogs('delete')">Exclusões</button>
-          <button class="audit-tab" id="atab-login"  onclick="filterAuditLogs('login')">Logins</button>
+          <button class="audit-tab active" id="atab-all"      onclick="filterAuditLogs('all')">Todos</button>
+          <button class="audit-tab"        id="atab-create"   onclick="filterAuditLogs('create')">Criações</button>
+          <button class="audit-tab"        id="atab-update"   onclick="filterAuditLogs('update')">Edições</button>
+          <button class="audit-tab"        id="atab-delete"   onclick="filterAuditLogs('delete')">Exclusões</button>
+          <button class="audit-tab"        id="atab-login"    onclick="filterAuditLogs('login')">Logins</button>
+          <button class="audit-tab"        id="atab-security" onclick="filterAuditLogs('security')">Segurança</button>
+          <button class="audit-tab"        id="atab-system"   onclick="filterAuditLogs('system')">Sistema</button>
         </div>
 
         <div class="audit-list" id="audit-log-list">
@@ -1337,12 +1248,21 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <div style="display:flex;justify-content:center;margin-top:8px;">
-          <button class="btn-secondary" id="audit-load-more" onclick="loadMoreAuditLogs()" style="padding:8px 20px;font-size:13px;border-radius:8px;border:none;">Carregar mais</button>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">
+          <button class="btn-secondary" id="audit-prev-btn"
+            onclick="auditPage=Math.max(0,auditPage-1);fetchAuditLogs()"
+            style="display:none;padding:8px 20px;font-size:13px;border-radius:8px;border:none;">
+            ← Anterior
+          </button>
+          <button class="btn-secondary" id="audit-load-more"
+            onclick="auditPage++;fetchAuditLogs()"
+            style="padding:8px 20px;font-size:13px;border-radius:8px;border:none;">
+            Próxima página →
+          </button>
         </div>
       </div>
 
-      <div class="card" id="merit-card" style="display:none;">
+    </div><div class="card" id="merit-card" style="display:none; margin-top:24px;">
         <h3>⭐ Mérito &amp; Capital <span id="merit-card-sub">Gerencie reputação e economia</span></h3>
 
         <div class="merit-stat-mini" id="merit-stats-mini">
@@ -1498,152 +1418,35 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
       </div>
 
-      <div class="card" id="app-keys-card" style="display:none;">
-
-        <!-- Cabeçalho -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
-          <div>
-            <h3 style="margin:0 0 4px;">🔌 Integração de Sistema</h3>
-            <p style="font-size:13px; color:var(--text-secondary); margin:0; max-width:480px; line-height:1.5;">
-              Chaves de acesso usadas pelo Força Aliada Manager (App PC) para sincronizar dados e gerenciar o servidor. Cada chave é mostrada apenas uma vez no momento da geração. Não é possível recuperá-la depois.
-            </p>
-          </div>
-          <button class="btn-primary" onclick="generateAppKey()" style="padding:10px 18px; font-size:13px; white-space:nowrap; flex-shrink:0;">
-            + Gerar Nova Chave
-          </button>
+      <div class="card" id="app-keys-card" style="display:none; margin-top:24px;">
+        <h3>🔌 Integração de Sistema <span>Gerencie os acessos do Força Aliada Manager (App PC)</span></h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
+          <p style="font-size:13px; color:var(--text-secondary); margin:0; flex:1; min-width:200px;">Gere chaves seguras para permitir que o seu aplicativo de computador sincronize logs e gerencie o servidor remotamente.</p>
+          <button class="btn-primary" onclick="generateAppKey()" style="padding: 10px 16px; font-size: 13px; white-space:nowrap;">+ Gerar Nova Chave</button>
         </div>
-
-        <!-- Aviso de segurança contextual -->
-        <div style="display:flex; align-items:flex-start; gap:10px; background:rgba(255,159,10,0.07); border:1px solid rgba(255,159,10,0.25); border-radius:10px; padding:12px 14px; margin:16px 0;">
-          <span style="font-size:16px; flex-shrink:0; margin-top:1px;">⚠️</span>
-          <p style="font-size:12px; color:var(--text-secondary); margin:0; line-height:1.6;">
-            <strong style="color:var(--text-primary);">Trate essas chaves como senhas.</strong>
-            Cada chave concede acesso direto ao servidor. Revogue imediatamente qualquer chave que não esteja em uso ou que possa ter sido comprometida. Não compartilhe chaves entre máquinas diferentes — gere uma para cada instalação.
-          </p>
-        </div>
-
-        <!-- Alerta de nova chave gerada -->
-        <div id="new-key-alert" style="display:none; border-radius:12px; margin-bottom:16px; overflow:hidden; border:1px solid var(--success);">
-          <div style="background:rgba(48,209,88,0.08); padding:16px 18px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-              <span style="font-size:18px;">✅</span>
-              <strong style="color:var(--success); font-size:14px;">Chave gerada com sucesso</strong>
-            </div>
-            <p style="margin:0 0 14px; font-size:13px; color:var(--text-primary); line-height:1.5;">
-              Copie a chave abaixo e cole no campo de configuração do Força Aliada Manager. <strong>Ela não poderá ser recuperada depois que você fechar ou sair desta página.</strong>
-            </p>
-            <!-- Campo da chave com toggle de visibilidade -->
-            <div style="display:flex; gap:8px; align-items:center;">
-              <div style="position:relative; flex:1;">
-                <input type="password" id="new-key-value" readonly
-                  style="width:100%; font-family:monospace; font-size:13px; font-weight:600;
-                         color:var(--success); background:rgba(0,0,0,0.06);
-                         border:1px solid rgba(48,209,88,0.4); border-radius:8px;
-                         padding:10px 40px 10px 12px; letter-spacing:0.04em;">
-                <button onclick="toggleKeyVisibility()" id="key-eye-btn" title="Mostrar/ocultar chave"
-                  style="position:absolute; right:10px; top:50%; transform:translateY(-50%);
-                         background:none; border:none; cursor:pointer; padding:2px; color:var(--text-secondary); line-height:1;">
-                  <svg id="key-eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </button>
-              </div>
-              <button id="copy-key-btn" onclick="copyNewKey()"
-                style="display:inline-flex; align-items:center; gap:6px; padding:10px 16px;
-                       background:var(--success); color:#fff; border:none; border-radius:8px;
-                       font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
-                       transition:opacity .2s; flex-shrink:0; font-family:inherit;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Copiar chave
-              </button>
-            </div>
-            <!-- Contador regressivo -->
-            <p id="key-countdown" style="margin:10px 0 0; font-size:11px; color:var(--text-secondary); font-family:monospace;"></p>
+        
+        <div id="new-key-alert" style="display:none; background:rgba(48,209,88,0.08); border:1px solid var(--success); padding:16px; border-radius:12px; margin-bottom:16px; animation: slideIn 0.3s ease;">
+          <strong style="color:var(--success); display:block; margin-bottom:8px;">✅ Chave gerada com sucesso!</strong>
+          <p style="margin:0 0 12px 0; font-size:13px; color:var(--text-primary);">Copie a chave abaixo e cole na tela inicial do seu Força Aliada Manager. <b>Por segurança, ela desaparecerá e não poderá ser vista novamente!</b></p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="new-key-value" readonly style="flex:1; font-family:monospace; color:var(--success); font-weight:bold; background:rgba(0,0,0,0.05); border-color:var(--success);">
+            <button class="btn-secondary" onclick="copyNewKey()">Copiar</button>
           </div>
         </div>
 
-        <!-- Lista de chaves -->
         <div class="app-keys-list" id="app-keys-list">
           <div class="empty-state"><div class="empty-icon">🔌</div><strong>Carregando chaves...</strong></div>
         </div>
-
       </div>
 
     </div></div></main>
 
-    <style>
-      /* Animação de entrada do alerta de nova chave */
-      @keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-      #new-key-alert { animation: slideIn 0.25s ease; }
-    </style>
-
-    <script>
-      // Toggle visibilidade da chave
-      function toggleKeyVisibility() {
-        const input = document.getElementById('new-key-value');
-        const icon  = document.getElementById('key-eye-icon');
-        const isHidden = input.type === 'password';
-        input.type = isHidden ? 'text' : 'password';
-        icon.innerHTML = isHidden
-          ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'
-          : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
-      }
-
-      // Copia a chave com clipboard moderno e feedback visual
-      async function copyNewKey() {
-        const input = document.getElementById('new-key-value');
-        const btn   = document.getElementById('copy-key-btn');
-        const val   = input.value;
-        if (!val) return;
-        try {
-          await navigator.clipboard.writeText(val);
-        } catch (e) {
-          // Fallback para browsers sem clipboard API
-          input.type = 'text';
-          input.select();
-          input.setSelectionRange(0, 99999);
-          document.execCommand('copy');
-          input.type = 'password';
-        }
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado!';
-        btn.style.background = 'var(--accent)';
-        setTimeout(() => {
-          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar chave';
-          btn.style.background = 'var(--success)';
-        }, 2500);
-        showToast('Chave copiada para a área de transferência!');
-      }
-
-      // Contador regressivo de auto-ocultamento (60s)
-      let _keyCountdownTimer = null;
-      function startKeyCountdown(seconds) {
-        const el = document.getElementById('key-countdown');
-        if (_keyCountdownTimer) clearInterval(_keyCountdownTimer);
-        let remaining = seconds;
-        function tick() {
-          if (!el) return;
-          if (remaining <= 0) {
-            clearInterval(_keyCountdownTimer);
-            const alert = document.getElementById('new-key-alert');
-            if (alert) alert.style.display = 'none';
-            return;
-          }
-          el.textContent = `Esta janela fecha automaticamente em ${remaining}s por segurança.`;
-          remaining--;
-        }
-        tick();
-        _keyCountdownTimer = setInterval(tick, 1000);
-      }
-    </script>
-
 <footer>
   <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
   <div class="footer-links">
-    <a href="https://manager.forcaaliada.ogabriels.com/politica-de-privacidade">Política de Privacidade</a>
+    <a href="#">Política de Privacidade</a>
     <span class="footer-dot">&bull;</span>
     <a href="#">Termos de Uso</a>
-    <span class="footer-dot">&bull;</span>
-    <a href="https://manager.forcaaliada.ogabriels.com" target="_blank">⚡ Força Aliada Manager</a>
     <span class="footer-dot">&bull;</span>
     <a href="mailto:forcaaliada@ogabriels.com">Contato</a>
   </div>
@@ -1885,7 +1688,11 @@ let liveInterval        = null;
 let auditLogs           = [];
 let auditFilterActive   = 'all';
 let auditPage           = 0;
-const AUDIT_PAGE_SIZE   = 15;
+let auditTotalPages     = 1;
+let auditTotalCount     = 0;
+let auditSeverityFilter = 'all';
+let auditActorFilter    = '';
+const AUDIT_PAGE_SIZE   = 50;
 
 let modalHistoryData    = [];
 let modalSortConfig     = { key: 'date', asc: false };
@@ -1910,12 +1717,19 @@ function escapeHTML(value) {
 }
 function normalizeAuditLog(log) {
   return {
-    id: log.id,
-    type: log.type || 'system',
-    actor: log.actor_name || log.actor || 'Sistema',
-    target: log.target_name || log.target || null,
-    message: log.message || '',
-    time: log.created_at || log.time || new Date().toISOString()
+    id:        log.id,
+    type:      log.type      || 'system',
+    severity:  log.severity  || 'info',
+    actor:     log.actor_name || log.actor || 'Sistema',
+    actorId:   log.actor_id  || null,
+    target:    log.target_name || log.target || null,
+    targetId:  log.target_id  || null,
+    message:   log.message   || '',
+    ip:        log.ip         || null,
+    userAgent: log.user_agent || null,
+    sessionId: log.session_id || null,
+    time:      log.created_at || log.time || new Date().toISOString(),
+    metadata:  log.metadata   || null,
   };
 }
 
@@ -1980,6 +1794,11 @@ function initDashboard() {
     document.getElementById('btn-export-staff').style.display = 'inline-flex';
     fetchAuditLogs();
     
+    // Recarrega logs de auditoria a cada 60 segundos automaticamente
+    setInterval(() => {
+      if (document.visibilityState === 'visible') fetchAuditLogs(0);
+    }, 60_000);
+
     // Inicia a aba do App Desktop
     document.getElementById('app-keys-card').style.display = 'block';
     document.getElementById('qa-appkeys').style.display = 'flex';
@@ -2543,66 +2362,110 @@ function revokeAppKey(id, name) {
 }
 
 // ══ Logs de Auditoria (dados persistidos no backend) ══
-async function fetchAuditLogs() {
+async function fetchAuditLogs(pageOverride = null) {
+  const pageToLoad = pageOverride !== null ? pageOverride : auditPage;
   try {
-    const params = new URLSearchParams({ limit: '200', page: '0' });
-    if (auditFilterActive !== 'all') params.set('type', auditFilterActive);
+    const params = new URLSearchParams({
+      limit: String(AUDIT_PAGE_SIZE),
+      page:  String(pageToLoad),
+    });
+    if (auditFilterActive !== 'all')   params.set('type',     auditFilterActive);
+    if (auditSeverityFilter !== 'all') params.set('severity', auditSeverityFilter);
+    if (auditActorFilter)              params.set('actor',    auditActorFilter);
+
     const res = await apiFetch(`/api/admin/audit?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Falha ao buscar auditoria');
-    const payload = await res.json();
-    const logs = Array.isArray(payload) ? payload : (payload.logs || []);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const payload   = await res.json();
+    const logs      = Array.isArray(payload) ? payload : (payload.logs || []);
+    auditTotalCount = payload.total      || logs.length;
+    auditTotalPages = payload.totalPages || 1;
+    auditPage       = pageToLoad;
+
     auditLogs = logs.map(normalizeAuditLog);
-    auditPage = 0;
     renderAuditLogs();
   } catch (err) {
     console.error('[audit]', err);
     auditLogs = [];
     renderAuditLogs();
-    showToast('Não foi possível carregar os logs reais de auditoria.', 'error');
+    showToast(`Não foi possível carregar os logs: ${err.message}`, 'error');
   }
 }
 
 function filterAuditLogs(type) {
   auditFilterActive = type;
   auditPage = 0;
-  ['all', 'create', 'update', 'delete', 'login'].forEach(t => {
+  ['all', 'create', 'update', 'delete', 'login', 'security', 'system'].forEach(t => {
     document.getElementById(`atab-${t}`)?.classList.toggle('active', t === type);
   });
   fetchAuditLogs();
 }
 
-function loadMoreAuditLogs() { auditPage++; renderAuditLogs(true); }
+async function exportAuditCSV() {
+  try {
+    const res = await apiFetch('/api/admin/audit/export', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha na exportação');
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    showToast('Erro ao exportar: ' + e.message, 'error');
+  }
+}
 
-function renderAuditLogs(append = false) {
-  const filtered = auditFilterActive === 'all' ? auditLogs : auditLogs.filter(l => l.type === auditFilterActive);
-  const start = 0, end = (auditPage + 1) * AUDIT_PAGE_SIZE;
-  const slice = filtered.slice(start, end);
-  const list  = document.getElementById('audit-log-list');
-  const moreBtn = document.getElementById('audit-load-more');
+function renderAuditLogs() {
+  const list     = document.getElementById('audit-log-list');
+  const moreBtn  = document.getElementById('audit-load-more');
+  const prevBtn  = document.getElementById('audit-prev-btn');
+  const countEl  = document.getElementById('audit-total-count');
 
-  if (!slice.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log real encontrado</strong><span>O backend não retornou registros para este filtro.</span></div>';
-    moreBtn.style.display = 'none';
+  if (countEl) countEl.textContent = `${auditTotalCount} evento${auditTotalCount !== 1 ? 's' : ''}`;
+
+  if (!auditLogs.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log encontrado</strong><span>Nenhum evento registrado para este filtro.</span></div>';
+    if (moreBtn) moreBtn.style.display = 'none';
+    if (prevBtn) prevBtn.style.display = 'none';
     return;
   }
 
-  const typeIcon  = { create: '✅', update: '✏️', delete: '🗑️', login: '🔑', notify: '🔔', system: '⚙️' };
-  const dotClass  = { notify: 'system' };
+  const typeIcon = {
+    create:              '✅',
+    update:              '✏️',
+    delete:              '🗑️',
+    login:               '🔑',
+    logout:              '🚪',
+    notify:              '🔔',
+    notification_create: '🔔',
+    security:            '🛡️',
+    system:              '⚙️',
+  };
 
-  list.innerHTML = slice.map(l => {
-    const d = new Date(l.time); const timeStr = d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-    const typeClass = dotClass[l.type] || l.type || 'system';
-    return `<div class="audit-item">
-      <div class="audit-dot ${escapeHTML(typeClass)}"></div>
+  const severityClass = { info: '', warning: 'audit-item--warning', critical: 'audit-item--critical' };
+
+  list.innerHTML = auditLogs.map(l => {
+    const d       = new Date(l.time);
+    const timeStr = d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const dotType = (l.type === 'notification_create') ? 'system' : (l.type || 'system');
+    const sevCls  = severityClass[l.severity] || '';
+    const ipHint  = l.ip ? `<span class="audit-ip" title="IP: ${escapeHTML(l.ip)}">🌐 ${escapeHTML(l.ip)}</span>` : '';
+    return `<div class="audit-item ${sevCls}" title="ID: ${l.id}${l.userAgent ? '\nUA: ' + escapeHTML(l.userAgent) : ''}">
+      <div class="audit-dot ${escapeHTML(dotType)}"></div>
       <div class="audit-content">
-        <strong>${typeIcon[l.type] || '•'} ${escapeHTML(l.message || 'Registro de auditoria')}</strong>
-        <span>Por: ${escapeHTML(l.actor)}${l.target ? ` · Alvo: ${escapeHTML(l.target)}` : ''}</span>
+        <strong>${typeIcon[l.type] || '•'} ${escapeHTML(l.message || 'Evento de auditoria')}</strong>
+        <span>Por: <b>${escapeHTML(l.actor)}</b>${l.target ? ` · Alvo: <b>${escapeHTML(l.target)}</b>` : ''}${ipHint}</span>
       </div>
       <div class="audit-time">${escapeHTML(timeStr)}</div>
     </div>`;
   }).join('');
 
-  moreBtn.style.display = filtered.length > end ? 'inline-flex' : 'none';
+  const hasPrev = auditPage > 0;
+  const hasNext = auditPage < auditTotalPages - 1;
+  if (moreBtn) moreBtn.style.display = hasNext ? 'inline-flex' : 'none';
+  if (prevBtn) prevBtn.style.display = hasPrev ? 'inline-flex' : 'none';
 }
 
 // ══ Notas de jogador no modal (compartilhadas via backend) ══
