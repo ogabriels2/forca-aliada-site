@@ -152,46 +152,42 @@ header {
 
 /* --- MANAGER NAV CHIP --- */
 .mgr-nav-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 9px 5px 7px;
-  background: #1a1a17;
-  border: 1px solid rgba(201,168,76,.28);
-  border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 980px;
+  background: transparent;
   text-decoration: none;
-  color: #C9A84C;
-  font-size: 13px; font-weight: 600;
-  letter-spacing: -.01em;
-  transition: background .2s, border-color .2s, box-shadow .2s;
+  color: var(--text-secondary);
+  font-size: 14px; font-weight: 500;
+  transition: color .2s;
   flex-shrink: 0;
   position: relative;
+  /* Separador à esquerda */
+  margin-left: 4px;
+  padding-left: 16px;
 }
-.mgr-nav-chip svg { width: 13px; height: 13px; color: #C9A84C; flex-shrink: 0; }
-.mgr-nav-chip:hover {
-  background: #242420;
-  border-color: rgba(201,168,76,.55);
-  box-shadow: 0 0 12px rgba(201,168,76,.12);
-  color: #E8C96A;
+.mgr-nav-chip::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 1px; height: 14px;
+  background: var(--border);
 }
-.mgr-nav-chip-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: #C9A84C; flex-shrink: 0;
-  animation: mgr-chip-pulse 2.2s infinite;
-}
-@keyframes mgr-chip-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.6)} }
-.mgr-nav-chip-label { color: #C9A84C; }
+.mgr-nav-chip svg { width: 13px; height: 13px; color: var(--text-secondary); flex-shrink: 0; transition: color .2s; }
+.mgr-nav-chip:hover { color: var(--text-primary); }
+.mgr-nav-chip:hover svg { color: var(--text-primary); }
+.mgr-nav-chip-dot { display: none; }
+.mgr-nav-chip-label { letter-spacing: 0; }
 .mgr-nav-chip-badge {
-  font-size: 9px; font-weight: 800; letter-spacing: .08em;
+  font-size: 9px; font-weight: 800; letter-spacing: .06em;
   text-transform: uppercase;
-  background: #C9A84C; color: #0A0A08;
-  padding: 1px 5px; border-radius: 3px;
-  line-height: 1.6;
+  background: #C9A84C; color: #fff;
+  padding: 2px 6px; border-radius: 980px;
+  line-height: 1.5;
+  position: relative; top: -.5px;
+  box-shadow: 0 1px 4px rgba(201,168,76,.35);
 }
-[data-theme="dark"] .mgr-nav-chip {
-  background: rgba(201,168,76,.08);
-  border-color: rgba(201,168,76,.3);
-  color: #C9A84C;
-}
-[data-theme="dark"] .mgr-nav-chip:hover { background: rgba(201,168,76,.15); border-color: rgba(201,168,76,.6); color: #E8C96A; }
+[data-theme="dark"] .mgr-nav-chip-badge { color: #0A0A08; }
 @media (max-width: 860px) { .mgr-nav-chip { display: none; } }
 
 /* --- MENU MOBILE SANDUÍCHE (Apenas Navegação) --- */
@@ -1056,6 +1052,28 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(201,168,76,.2), transparent);
 }
+/* Code decoration */
+.mgr-code-deco {
+  position: absolute;
+  right: max(5%, calc((100vw - 1100px)/2 + 5%));
+  top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 3px;
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11.5px; line-height: 1.7;
+  opacity: .18;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  white-space: nowrap;
+}
+.mgr-cd-line { display: block; }
+.mgr-cd-indent { padding-left: 1.2em; }
+.mgr-cd-kw  { color: #C9A84C; }
+.mgr-cd-fn  { color: #a5c9ff; }
+.mgr-cd-str { color: #98e0a0; }
+.mgr-cd-num { color: #ff9f8a; }
+.mgr-cd-comment { color: #7A7870; }
+@media (max-width: 1100px) { .mgr-code-deco { display: none; } }
 @media (max-width: 700px) {
   .mgr-teaser { flex-direction: column; align-items: flex-start; gap: 28px; padding: 52px 5%; }
   .mgr-cta { width: 100%; justify-content: center; }
@@ -1064,12 +1082,20 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <div class="mgr-divider"></div>
 <div class="mgr-teaser reveal" id="manager">
+  <div class="mgr-code-deco" aria-hidden="true">
+    <span class="mgr-cd-line"><span class="mgr-cd-kw">val</span> server = <span class="mgr-cd-fn">Manager</span>(<span class="mgr-cd-str">"fa.ogabriels.com"</span>)</span>
+    <span class="mgr-cd-line"><span class="mgr-cd-kw">server</span>.<span class="mgr-cd-fn">start</span>() <span class="mgr-cd-comment">// sem terminal</span></span>
+    <span class="mgr-cd-line"><span class="mgr-cd-kw">server</span>.<span class="mgr-cd-fn">backup</span>(<span class="mgr-cd-str">interval</span> = <span class="mgr-cd-num">30</span>)</span>
+    <span class="mgr-cd-line"><span class="mgr-cd-kw">server</span>.<span class="mgr-cd-fn">onPlayerJoin</span> { <span class="mgr-cd-kw">player</span> -&gt;</span>
+    <span class="mgr-cd-line mgr-cd-indent">  notify(<span class="mgr-cd-str">"${player.name} entrou"</span>)</span>
+    <span class="mgr-cd-line">}</span>
+  </div>
   <div class="mgr-left">
     <div class="mgr-icon-wrap">
       <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
     </div>
     <div class="mgr-copy">
-      <div class="mgr-eyebrow"><span class="mgr-dot"></span>Novo · Windows</div>
+      <div class="mgr-eyebrow"><span class="mgr-dot"></span>Força Aliada Manager · Novo</div>
       <div class="mgr-headline">Gerencie o servidor.<br>Sem abrir um <em>terminal.</em></div>
       <div class="mgr-sub">Console ao vivo · Backup automático · Controle de jogadores</div>
     </div>
