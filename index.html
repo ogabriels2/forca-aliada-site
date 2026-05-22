@@ -707,7 +707,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
-    <li><a href="manager.html" style="color: var(--accent);" onclick="toggleMenu()">⚡ Manager</a></li>
+    <li><a href="https://manager.forcaaliada.ogabriels.com" style="color: var(--accent);" onclick="toggleMenu()">⚡ Manager</a></li>
     <li><a href="#status" onclick="toggleMenu()" style="color: var(--accent);">Jogar Agora</a></li>
   </ul>
   <div class="mobile-status-card" onclick="document.getElementById('status').scrollIntoView(); toggleMenu();">
@@ -736,7 +736,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
-      <li><a href="manager.html" style="color: var(--accent); font-weight: 600;">⚡ Manager</a></li>
+      <li><a href="https://manager.forcaaliada.ogabriels.com" style="color: var(--accent); font-weight: 600;">⚡ Manager</a></li>
     </ul>
   </nav>
 
@@ -899,150 +899,722 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 </section>
 
 <!-- ── FORÇA ALIADA MANAGER PROMO ─────────────────────────── -->
-<section class="manager-promo reveal" id="manager">
-  <div class="manager-promo-inner">
-    <div class="manager-badge">⚡ Novo</div>
-    <h2 class="manager-promo-title">Força Aliada<br><span class="manager-promo-accent">Manager</span></h2>
-    <p class="manager-promo-desc">Gerencie o servidor diretamente do seu PC.<br>Sem terminal. Sem dor de cabeça.</p>
-    <div class="manager-features-row">
-      <div class="manager-feat"><span>🖥️</span><span>Console ao vivo</span></div>
-      <div class="manager-feat"><span>💾</span><span>Backup automático</span></div>
-      <div class="manager-feat"><span>👥</span><span>Controle de jogadores</span></div>
-      <div class="manager-feat"><span>🔔</span><span>Alertas em tempo real</span></div>
-    </div>
-    <a href="manager.html" class="manager-promo-cta">
-      Conhecer o Manager
-      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-    </a>
-    <span class="manager-platform-tag">Grátis · Windows</span>
-  </div>
-  <div class="manager-promo-visual" aria-hidden="true">
-    <div class="manager-window">
-      <div class="manager-window-bar">
-        <span class="manager-dot manager-dot-red"></span>
-        <span class="manager-dot manager-dot-yellow"></span>
-        <span class="manager-dot manager-dot-green"></span>
-        <span class="manager-window-title">Força Aliada Manager</span>
-      </div>
-      <div class="manager-console">
-        <div class="manager-line"><span class="manager-ts">[10:42:01]</span> <span class="manager-ok">✔ Servidor iniciado na porta 25565</span></div>
-        <div class="manager-line"><span class="manager-ts">[10:42:05]</span> <span class="manager-info">Jogador <b>Steve</b> entrou no servidor</span></div>
-        <div class="manager-line"><span class="manager-ts">[10:42:11]</span> <span class="manager-info">Jogador <b>Alex</b> entrou no servidor</span></div>
-        <div class="manager-line"><span class="manager-ts">[10:43:00]</span> <span class="manager-warn">⚡ Backup automático iniciado…</span></div>
-        <div class="manager-line"><span class="manager-ts">[10:43:04]</span> <span class="manager-ok">✔ Backup salvo com sucesso</span></div>
-        <div class="manager-line manager-blink"><span class="manager-ts">[10:45:22]</span> <span class="manager-info">2 jogadores online ▮</span></div>
-      </div>
-    </div>
-  </div>
-</section>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-.manager-promo {
-  padding: 120px 5%;
-  background: #000;
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 80px;
-  align-items: center;
-  max-width: 100%;
-  overflow: hidden;
+/* ── Manager Promo: design system próprio ── */
+.mp-section {
+  background: #0A0A08;
   position: relative;
+  overflow: hidden;
+  padding: 0;
 }
-.manager-promo::before {
+
+/* Noise overlay */
+.mp-section::before {
   content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: .03;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Grid bg */
+.mp-section::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(201,168,76,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,76,.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Divider top */
+.mp-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,.25), transparent);
+}
+
+/* Hero strip */
+.mp-hero {
+  position: relative; z-index: 2;
+  display: grid;
+  grid-template-columns: 5fr 6fr;
+  gap: 64px;
+  align-items: center;
+  padding: 100px max(2rem, calc((100vw - 1280px)/2 + 2rem)) 80px;
+  max-width: 100%;
+}
+
+/* Left copy */
+.mp-label {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: #C9A84C;
+  margin-bottom: 22px;
+}
+.mp-label::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: #7A6230;
+}
+.mp-label-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #C9A84C;
+  animation: mp-pulse 2s infinite;
+}
+@keyframes mp-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+.mp-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(60px, 7vw, 96px);
+  line-height: .95;
+  letter-spacing: .02em;
+  color: #FDFCF8;
+  margin-bottom: 10px;
+}
+.mp-title .mp-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px #C9A84C;
+}
+
+.mp-subtitle {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(16px, 2vw, 20px);
+  color: #D4D0C8;
+  line-height: 1.6;
+  margin-bottom: 40px;
+  max-width: 440px;
+  letter-spacing: .01em;
+}
+
+/* Feature pills — pain → gain */
+.mp-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 44px;
+}
+.mp-pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px; font-weight: 500;
+  color: #D4D0C8;
+  letter-spacing: .01em;
+}
+.mp-pill-icon {
+  width: 28px; height: 28px;
+  border: 1px solid rgba(201,168,76,.25);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: #C9A84C;
+}
+.mp-pill-icon svg { width: 13px; height: 13px; }
+
+/* CTA group */
+.mp-cta-group {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  margin-bottom: 44px;
+}
+.mp-cta-primary {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 16px 36px;
+  background: #C9A84C;
+  color: #0A0A08;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  text-decoration: none;
+  position: relative; overflow: hidden;
+  transition: background .2s, transform .15s;
+}
+.mp-cta-primary::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,.1);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .3s ease;
+}
+.mp-cta-primary:hover { background: #E8C96A; transform: translateY(-1px); }
+.mp-cta-primary:hover::after { transform: scaleX(1); }
+.mp-cta-primary svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.mp-cta-ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 16px 28px;
+  border: 1px solid rgba(255,255,255,.15);
+  color: #9A9890;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color .2s, color .2s;
+}
+.mp-cta-ghost:hover { border-color: rgba(255,255,255,.4); color: #FDFCF8; }
+
+/* Meta row */
+.mp-meta {
+  display: flex; align-items: center; gap: 28px;
+  padding-top: 36px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.mp-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.mp-meta-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px; color: #C9A84C; line-height: 1;
+}
+.mp-meta-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: #7A7870; margin-top: 2px;
+}
+.mp-meta-sep { width: 1px; height: 36px; background: rgba(255,255,255,.1); }
+
+/* ── App window mockup (faithful to real Manager UI) ── */
+.mp-visual { position: relative; }
+.mp-visual-glow {
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 60% 70% at 80% 50%, rgba(0,113,227,0.08) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 50% at 10% 50%, rgba(0,113,227,0.04) 0%, transparent 70%);
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,.07) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
-.manager-promo-inner { position: relative; z-index: 2; }
-.manager-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(0,113,227,0.15); border: 1px solid rgba(0,113,227,0.35);
-  color: #60a5fa; font-size: 11px; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; padding: 5px 12px; border-radius: 980px;
-  margin-bottom: 24px;
+.mp-decor {
+  position: absolute; top: -30px; right: -50px;
+  width: 260px; height: 260px;
+  border: 1px solid rgba(201,168,76,.06);
+  border-radius: 50%; pointer-events: none;
 }
-.manager-promo-title {
-  font-size: clamp(2.8rem, 5vw, 4.5rem);
-  font-weight: 800; letter-spacing: -0.04em; line-height: 1;
-  color: #fff; margin-bottom: 20px;
-}
-.manager-promo-accent {
-  background: linear-gradient(135deg, #0071e3, #60a5fa);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.manager-promo-desc {
-  font-size: 18px; line-height: 1.65; color: rgba(255,255,255,0.65);
-  margin-bottom: 36px; max-width: 420px;
-}
-.manager-features-row {
-  display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px;
-}
-.manager-feat {
-  display: flex; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 980px; padding: 8px 16px;
-  font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.8);
-}
-.manager-promo-cta {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: #0071e3; color: #fff;
-  padding: 14px 28px; border-radius: 980px;
-  font-size: 16px; font-weight: 600;
-  text-decoration: none; transition: all 0.2s;
-  margin-right: 16px;
-}
-.manager-promo-cta:hover { background: #0077ed; transform: scale(1.03); }
-.manager-platform-tag {
-  font-size: 13px; color: rgba(255,255,255,0.35); font-weight: 500;
+.mp-decor::before {
+  content: ''; position: absolute; inset: 28px;
+  border: 1px solid rgba(201,168,76,.04);
+  border-radius: 50%;
 }
 
-/* App Window Mock */
-.manager-promo-visual { position: relative; z-index: 2; }
-.manager-window {
-  background: #111; border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px; overflow: hidden;
-  box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+.mp-app-window {
+  background: #202020;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 40px 120px rgba(0,0,0,.85),
+    0 0 0 1px rgba(255,255,255,.04),
+    inset 0 1px 0 rgba(255,255,255,.07);
+  transform: perspective(1200px) rotateY(-8deg) rotateX(3deg) translateY(-8px);
+  transition: transform .9s cubic-bezier(.4,0,.2,1), box-shadow .9s cubic-bezier(.4,0,.2,1);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  width: 100%;
+  max-width: 620px;
 }
-.manager-window-bar {
-  background: #1c1c1e; padding: 12px 16px;
-  display: flex; align-items: center; gap: 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+.mp-app-window:hover {
+  transform: perspective(1200px) rotateY(-1deg) rotateX(.5deg) translateY(-18px);
+  box-shadow:
+    0 64px 160px rgba(0,0,0,.9),
+    0 0 0 1px rgba(255,255,255,.06),
+    0 0 80px rgba(201,168,76,.06),
+    inset 0 1px 0 rgba(255,255,255,.1);
 }
-.manager-dot {
-  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
-}
-.manager-dot-red { background: #ff5f57; }
-.manager-dot-yellow { background: #febc2e; }
-.manager-dot-green { background: #28c840; }
-.manager-window-title {
-  margin-left: 8px; font-size: 13px; font-weight: 500;
-  color: rgba(255,255,255,0.5); letter-spacing: .01em;
-}
-.manager-console {
-  padding: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px; line-height: 2; min-height: 200px;
-  background: #0a0a0a;
-}
-.manager-line { display: flex; gap: 10px; }
-.manager-ts { color: rgba(255,255,255,0.25); flex-shrink: 0; }
-.manager-ok { color: #30d158; }
-.manager-info { color: rgba(255,255,255,0.65); }
-.manager-info b { color: #60a5fa; font-weight: 600; }
-.manager-warn { color: #ff9f0a; }
-.manager-blink { opacity: 1; animation: blink-line 1.2s step-end infinite; }
-@keyframes blink-line { 50% { opacity: 0.4; } }
 
+/* Titlebar */
+.mp-titlebar {
+  height: 32px; background: #2b2b2b;
+  display: flex; align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.mp-titlebar-icon {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 14px;
+}
+.mp-title-text {
+  flex: 1; font-size: 12px; font-weight: 400;
+  color: rgba(255,255,255,.55); letter-spacing: .1px;
+}
+.mp-titlebar-controls { display: flex; height: 100%; }
+.mp-tb-btn {
+  width: 46px; height: 32px; border: none; background: transparent;
+  color: rgba(255,255,255,.45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; transition: background .1s;
+}
+.mp-tb-btn:hover { background: rgba(255,255,255,.08); }
+.mp-tb-btn.close:hover { background: #c42b1c; color: #fff; }
+.mp-tb-btn svg { width: 10px; height: 10px; pointer-events: none; }
+
+/* App body */
+.mp-win-body { display: flex; height: 380px; overflow: hidden; min-width: 0; }
+
+/* Nav rail */
+.mp-rail {
+  width: 48px; background: #2b2b2b;
+  border-right: 1px solid rgba(255,255,255,.08);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0; gap: 4px; flex-shrink: 0;
+}
+.mp-rail-btn {
+  width: 36px; height: 36px; border: none; border-radius: 6px;
+  background: transparent; color: rgba(255,255,255,.45);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; flex-shrink: 0; transition: background .15s, color .15s;
+}
+.mp-rail-btn.active { background: rgba(61,186,95,.12); color: #3dba5f; }
+.mp-rail-btn.active::before {
+  content: ''; position: absolute; left: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 16px; background: #3dba5f;
+  border-radius: 0 2px 2px 0;
+}
+.mp-rail-btn svg { width: 17px; height: 17px; }
+.mp-rail-spacer { flex: 1; }
+
+/* Side panel */
+.mp-panel {
+  width: 190px; background: #2b2b2b;
+  border-right: 1px solid rgba(255,255,255,.08);
+  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.mp-panel-head {
+  padding: 14px 14px 10px;
+  font-size: 15px; font-weight: 600;
+  color: rgba(255,255,255,.92); letter-spacing: -.3px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.mp-panel-body { flex: 1; overflow: hidden; padding: 10px 10px 0; }
+.mp-sec-label {
+  font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: .8px;
+  padding: 0 4px 6px; margin-top: 8px; display: block;
+}
+.mp-card {
+  background: #313131; border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; overflow: hidden; margin-bottom: 4px;
+}
+.mp-card-row {
+  display: flex; align-items: center;
+  padding: 9px 10px; gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.06); min-height: 40px;
+}
+.mp-card-row:last-child { border-bottom: none; }
+.mp-card-ico {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: #383838;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: #3dba5f;
+}
+.mp-card-ico svg { width: 13px; height: 13px; }
+.mp-card-cnt { flex: 1; min-width: 0; }
+.mp-card-lbl { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-card-sub { font-size: 10px; color: rgba(255,255,255,.45); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 20px;
+  font-size: 10px; font-weight: 600;
+  background: rgba(61,186,95,.12); color: #3dba5f; flex-shrink: 0;
+}
+.mp-status-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #3dba5f; animation: mp-sdot 1.5s infinite;
+}
+@keyframes mp-sdot { 0%,100%{opacity:1} 50%{opacity:.35} }
+.mp-player-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  font-size: 10px; color: rgba(255,255,255,.65);
+}
+.mp-player-pill .cnt { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.9); }
+.mp-panel-foot {
+  padding: 8px 10px 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.mp-start-btn {
+  width: 100%; padding: 8px 14px;
+  background: #3dba5f; color: #000; border: none; border-radius: 6px;
+  font-family: 'Segoe UI', sans-serif; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.mp-start-btn svg { width: 13px; height: 13px; }
+
+/* Main area */
+.mp-main {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; background: #202020; min-width: 0;
+}
+.mp-hero-bar {
+  padding: 12px 14px 11px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0; background: #2b2b2b;
+}
+.mp-hero-info { flex: 1; min-width: 0; }
+.mp-hero-ttl { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); }
+.mp-hero-sub { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.mp-console-area {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 10px; gap: 6px; overflow: hidden;
+}
+.mp-console-wrap {
+  flex: 1; background: #141414;
+  border: 1px solid rgba(255,255,255,.08); border-radius: 8px;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.mp-console-tabs {
+  display: flex; background: #1a1a1a;
+  border-bottom: 1px solid rgba(255,255,255,.08); flex-shrink: 0;
+}
+.mp-con-tab {
+  padding: 5px 12px; font-size: 11px; color: rgba(255,255,255,.45);
+  border-right: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 4px; position: relative;
+}
+.mp-con-tab.active {
+  background: #141414; color: rgba(255,255,255,.9);
+  border-bottom: 1px solid #141414; margin-bottom: -1px;
+}
+.mp-con-tab.active::after {
+  content: ''; position: absolute; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 60%; height: 2px; background: #3dba5f; border-radius: 2px 2px 0 0;
+}
+.mp-tab-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.25); }
+.mp-tab-dot.g { background: #3dba5f; }
+.mp-tab-dot.y { background: #ffd166; }
+.mp-log-lines {
+  flex: 1; overflow: hidden;
+  padding: 8px 12px 4px;
+  font-family: 'Cascadia Code','Consolas','Courier New', monospace;
+  font-size: 11px; line-height: 1.7; color: #c8c8c8;
+}
+.mp-log-line { display: block; }
+.mp-log-t { color: rgba(255,255,255,.28); user-select: none; }
+.mp-log-ok { color: #3dba5f; }
+.mp-log-err { color: #ff6b6b; }
+.mp-log-warn { color: #ffd166; }
+.mp-log-info { color: #6bb5ff; }
+.mp-log-name { color: #C9A84C; font-weight: 600; }
+.mp-blink { animation: mp-blink .9s step-end infinite; }
+@keyframes mp-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.mp-input-row {
+  display: flex; align-items: center;
+  padding: 5px 10px; border-top: 1px solid rgba(255,255,255,.08);
+  background: #1a1a1a; flex-shrink: 0; gap: 6px;
+}
+.mp-input-prefix { color: #3dba5f; font-size: 12px; font-family: 'Cascadia Code','Consolas',monospace; flex-shrink: 0; }
+.mp-input-fake {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: rgba(255,255,255,.6);
+  font-family: 'Cascadia Code','Consolas',monospace; font-size: 11px;
+  pointer-events: none;
+}
+
+/* ── Features strip below ── */
+.mp-features {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(201,168,76,.1);
+  border-top: 1px solid rgba(201,168,76,.1);
+  border-bottom: 1px solid rgba(201,168,76,.1);
+  position: relative; z-index: 2;
+}
+.mp-feat-card {
+  background: #0A0A08;
+  padding: 44px 36px;
+  position: relative; overflow: hidden;
+  transition: background .2s;
+}
+.mp-feat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px; background: transparent; transition: background .3s;
+}
+.mp-feat-card:hover { background: #111110; }
+.mp-feat-card:hover::before { background: #C9A84C; }
+.mp-feat-num {
+  font-family: 'Bebas Neue', sans-serif; font-size: 56px;
+  color: rgba(201,168,76,.05); position: absolute; top: 16px; right: 20px;
+  line-height: 1; pointer-events: none; transition: color .2s;
+}
+.mp-feat-card:hover .mp-feat-num { color: rgba(201,168,76,.1); }
+.mp-feat-ico {
+  width: 44px; height: 44px;
+  border: 1px solid rgba(201,168,76,.2);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; color: #C9A84C;
+  transition: background .2s, border-color .2s;
+}
+.mp-feat-card:hover .mp-feat-ico { background: rgba(201,168,76,.08); border-color: #C9A84C; }
+.mp-feat-ico svg { width: 20px; height: 20px; }
+.mp-feat-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700;
+  color: #FDFCF8; margin-bottom: 10px; letter-spacing: .01em;
+}
+.mp-feat-desc { font-family: 'Syne', sans-serif; font-size: 13.5px; line-height: 1.75; color: #7A7870; }
+
+/* Bottom CTA banner */
+.mp-cta-bar {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 40px;
+  padding: 60px max(2rem, calc((100vw - 1280px)/2 + 2rem));
+  border-top: 1px solid rgba(201,168,76,.08);
+  flex-wrap: wrap;
+}
+.mp-cta-bar-text {}
+.mp-cta-bar-eyebrow {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+  color: #C9A84C; margin-bottom: 8px;
+}
+.mp-cta-bar-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(28px, 3vw, 42px);
+  color: #FDFCF8; line-height: 1; letter-spacing: .02em;
+}
+.mp-cta-bar-sub {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px; color: #7A7870; margin-top: 8px; letter-spacing: .01em;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .mp-features { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 860px) {
-  .manager-promo { grid-template-columns: 1fr; gap: 40px; }
-  .manager-promo-visual { display: none; }
-  .manager-promo-title { font-size: 2.5rem; }
+  .mp-hero { grid-template-columns: 1fr; gap: 48px; }
+  .mp-visual { display: none; }
+  .mp-features { grid-template-columns: 1fr 1fr; }
+  .mp-cta-bar { flex-direction: column; align-items: flex-start; }
+  .mp-feat-card { padding: 32px 24px; }
+}
+@media (max-width: 520px) {
+  .mp-features { grid-template-columns: 1fr; }
 }
 </style>
+
+<div class="mp-divider"></div>
+<div class="mp-section reveal" id="manager">
+
+  <!-- HERO: copy + app mockup -->
+  <div class="mp-hero">
+    <!-- Left: copy -->
+    <div>
+      <div class="mp-label"><span class="mp-label-dot"></span>Novo · Exclusivo FA</div>
+      <h2 class="mp-title">FORÇA ALIADA<br><span class="mp-outline">MANAGER</span></h2>
+      <p class="mp-subtitle">Gerencie seu servidor Minecraft sem abrir um único terminal. Console ao vivo, backup automático e controle total — tudo num app para Windows.</p>
+
+      <div class="mp-pills">
+        <div class="mp-pill">
+          <div class="mp-pill-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          Console ao vivo com filtros e histórico
+        </div>
+        <div class="mp-pill">
+          <div class="mp-pill-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          Backup automático programado
+        </div>
+        <div class="mp-pill">
+          <div class="mp-pill-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+          Controle de jogadores em tempo real
+        </div>
+        <div class="mp-pill">
+          <div class="mp-pill-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+          Alertas de crash e eventos críticos
+        </div>
+      </div>
+
+      <div class="mp-cta-group">
+        <a href="https://manager.forcaaliada.ogabriels.com" class="mp-cta-primary" target="_blank" rel="noopener">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Baixar Grátis
+        </a>
+        <a href="https://manager.forcaaliada.ogabriels.com" class="mp-cta-ghost" target="_blank" rel="noopener">
+          Ver funcionalidades →
+        </a>
+      </div>
+
+      <div class="mp-meta">
+        <div class="mp-meta-item">
+          <span class="mp-meta-num">100%</span>
+          <span class="mp-meta-label">Gratuito</span>
+        </div>
+        <div class="mp-meta-sep"></div>
+        <div class="mp-meta-item">
+          <span class="mp-meta-num">0</span>
+          <span class="mp-meta-label">Linhas de terminal</span>
+        </div>
+        <div class="mp-meta-sep"></div>
+        <div class="mp-meta-item">
+          <span class="mp-meta-num">Windows</span>
+          <span class="mp-meta-label">Plataforma</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: app window mockup -->
+    <div class="mp-visual">
+      <div class="mp-visual-glow"></div>
+      <div class="mp-decor"></div>
+      <div class="mp-app-window">
+        <!-- Windows titlebar -->
+        <div class="mp-titlebar">
+          <div class="mp-titlebar-icon">⚡</div>
+          <span class="mp-title-text">Força Aliada Manager</span>
+          <div class="mp-titlebar-controls">
+            <button class="mp-tb-btn" tabindex="-1">
+              <svg viewBox="0 0 10 10" fill="currentColor"><rect x="0" y="4.5" width="10" height="1"/></svg>
+            </button>
+            <button class="mp-tb-btn" tabindex="-1">
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1"><rect x="1" y="1" width="8" height="8"/></svg>
+            </button>
+            <button class="mp-tb-btn close" tabindex="-1">
+              <svg viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.2"><line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="mp-win-body">
+          <!-- Nav rail -->
+          <div class="mp-rail">
+            <button class="mp-rail-btn active" tabindex="-1">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="mp-rail-btn" tabindex="-1">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </button>
+            <button class="mp-rail-btn" tabindex="-1">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            </button>
+            <div class="mp-rail-spacer"></div>
+            <button class="mp-rail-btn" tabindex="-1">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </button>
+          </div>
+
+          <!-- Side panel -->
+          <div class="mp-panel">
+            <div class="mp-panel-head">Servidores</div>
+            <div class="mp-panel-body">
+              <span class="mp-sec-label">Ativos</span>
+              <div class="mp-card">
+                <div class="mp-card-row">
+                  <div class="mp-card-ico"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6" y2="6"/><line x1="6" y1="18" x2="6" y2="18"/></svg></div>
+                  <div class="mp-card-cnt">
+                    <div class="mp-card-lbl">Força Aliada</div>
+                    <div class="mp-card-sub">fa.ogabriels.com</div>
+                  </div>
+                  <div class="mp-status-badge"><div class="mp-status-dot"></div>On</div>
+                </div>
+                <div class="mp-card-row">
+                  <div class="mp-card-ico" style="color:#6bb5ff"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                  <div class="mp-card-cnt">
+                    <div class="mp-card-lbl">Jogadores</div>
+                  </div>
+                  <div class="mp-player-pill"><span class="cnt">3</span>&nbsp;online</div>
+                </div>
+              </div>
+            </div>
+            <div class="mp-panel-foot">
+              <button class="mp-start-btn" tabindex="-1">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Iniciar Servidor
+              </button>
+            </div>
+          </div>
+
+          <!-- Console main -->
+          <div class="mp-main">
+            <div class="mp-hero-bar">
+              <div class="mp-hero-info">
+                <div class="mp-hero-ttl">Console — Força Aliada</div>
+                <div class="mp-hero-sub">fa.ogabriels.com · Porta 25565 · 3 jogadores</div>
+              </div>
+            </div>
+            <div class="mp-console-area">
+              <div class="mp-console-wrap">
+                <div class="mp-console-tabs">
+                  <div class="mp-con-tab active"><div class="mp-tab-dot g"></div>Console</div>
+                  <div class="mp-con-tab"><div class="mp-tab-dot y"></div>Logs</div>
+                  <div class="mp-con-tab"><div class="mp-tab-dot"></div>Backups</div>
+                </div>
+                <div class="mp-log-lines">
+                  <span class="mp-log-line"><span class="mp-log-t">[10:41:58] </span><span class="mp-log-ok">Servidor iniciado na porta 25565</span></span>
+                  <span class="mp-log-line"><span class="mp-log-t">[10:42:03] </span><span class="mp-log-info">Jogador </span><span class="mp-log-name">GabrielS</span><span class="mp-log-info"> entrou</span></span>
+                  <span class="mp-log-line"><span class="mp-log-t">[10:42:11] </span><span class="mp-log-info">Jogador </span><span class="mp-log-name">Alex</span><span class="mp-log-info"> entrou</span></span>
+                  <span class="mp-log-line"><span class="mp-log-t">[10:43:00] </span><span class="mp-log-warn">Backup automático iniciado…</span></span>
+                  <span class="mp-log-line"><span class="mp-log-t">[10:43:04] </span><span class="mp-log-ok">Backup salvo: world_20250521.zip</span></span>
+                  <span class="mp-log-line"><span class="mp-log-t">[10:45:17] </span><span class="mp-log-info">Jogador </span><span class="mp-log-name">Steve</span><span class="mp-log-info"> entrou</span></span>
+                  <span class="mp-log-line"><span class="mp-log-t">[10:47:32] </span><span class="mp-log-ok">3 jogadores online ▮<span class="mp-blink">_</span></span></span>
+                </div>
+                <div class="mp-input-row">
+                  <span class="mp-input-prefix">❯</span>
+                  <input class="mp-input-fake" type="text" placeholder="Digite um comando..." readonly tabindex="-1">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature grid -->
+  <div class="mp-features">
+    <div class="mp-feat-card">
+      <div class="mp-feat-num">01</div>
+      <div class="mp-feat-ico">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <div class="mp-feat-title">Console ao Vivo</div>
+      <div class="mp-feat-desc">Veja cada log em tempo real. Filtre por tipo, pesquise no histórico e execute comandos sem sair da tela.</div>
+    </div>
+    <div class="mp-feat-card">
+      <div class="mp-feat-num">02</div>
+      <div class="mp-feat-ico">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="mp-feat-title">Backup Automático</div>
+      <div class="mp-feat-desc">Agende backups por intervalo de tempo. Nunca perca um mundo por acidente — a Força Aliada existe desde 2021 por isso.</div>
+    </div>
+    <div class="mp-feat-card">
+      <div class="mp-feat-num">03</div>
+      <div class="mp-feat-ico">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div class="mp-feat-title">Gestão de Jogadores</div>
+      <div class="mp-feat-desc">Veja quem está online, kick, ban e whitelist — tudo com um clique, sem decorar comandos.</div>
+    </div>
+    <div class="mp-feat-card">
+      <div class="mp-feat-num">04</div>
+      <div class="mp-feat-ico">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      </div>
+      <div class="mp-feat-title">Alertas Inteligentes</div>
+      <div class="mp-feat-desc">Receba notificações de crash, quedas de performance e entradas de jogadores. Fique no controle mesmo sem olhar a tela.</div>
+    </div>
+  </div>
+
+  <!-- Bottom CTA strip -->
+  <div class="mp-cta-bar">
+    <div class="mp-cta-bar-text">
+      <div class="mp-cta-bar-eyebrow">Feito para a comunidade FA</div>
+      <div class="mp-cta-bar-heading">PRONTO PARA INSTALAR</div>
+      <div class="mp-cta-bar-sub">Grátis. Para Windows. Sem cadastro.</div>
+    </div>
+    <a href="https://manager.forcaaliada.ogabriels.com" class="mp-cta-primary" target="_blank" rel="noopener" style="white-space:nowrap">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Baixar o Manager
+    </a>
+  </div>
+
+</div>
+<div class="mp-divider"></div>
 
 <section class="cross-platform reveal" id="plataformas">
     <h2>Jogue Onde Quiser</h2>
