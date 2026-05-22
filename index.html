@@ -150,6 +150,52 @@ header {
 .dropdown-item.danger svg { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(255,59,48,0.1); }
 
+/* --- MANAGER NAV CHIP --- */
+.mgr-nav-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid rgba(201,168,76,.4);
+  background: rgba(201,168,76,.06);
+  border-radius: 6px;
+  text-decoration: none;
+  color: #8a6f2e;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: -.01em;
+  transition: background .2s, border-color .2s, transform .15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.mgr-nav-chip svg { width: 13px; height: 13px; color: #B8913A; flex-shrink: 0; }
+.mgr-nav-chip:hover {
+  background: rgba(201,168,76,.14);
+  border-color: rgba(201,168,76,.7);
+  transform: translateY(-1px);
+  color: #7A6230;
+}
+.mgr-nav-chip-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #C9A84C; flex-shrink: 0;
+  animation: mgr-chip-pulse 2.2s infinite;
+}
+@keyframes mgr-chip-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.6)} }
+.mgr-nav-chip-label { color: #7A5C1E; }
+.mgr-nav-chip-badge {
+  font-size: 9px; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase;
+  background: #C9A84C; color: #0A0A08;
+  padding: 1px 5px; border-radius: 3px;
+  line-height: 1.6;
+}
+[data-theme="dark"] .mgr-nav-chip {
+  border-color: rgba(201,168,76,.35);
+  background: rgba(201,168,76,.08);
+  color: #C9A84C;
+}
+[data-theme="dark"] .mgr-nav-chip svg { color: #C9A84C; }
+[data-theme="dark"] .mgr-nav-chip:hover { background: rgba(201,168,76,.16); border-color: #C9A84C; color: #E8C96A; }
+[data-theme="dark"] .mgr-nav-chip-label { color: #C9A84C; }
+@media (max-width: 860px) { .mgr-nav-chip { display: none; } }
+
 /* --- MENU MOBILE SANDUÍCHE (Apenas Navegação) --- */
 .mobile-menu-btn { display: none; font-size: 24px; cursor: pointer; z-index: 1002; background: none; border: none; }
 .mobile-nav-overlay {
@@ -736,7 +782,6 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
-      <li><a href="https://manager.forcaaliada.ogabriels.com" style="color: var(--accent); font-weight: 600;">⚡ Manager</a></li>
     </ul>
   </nav>
 
@@ -745,6 +790,13 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <div class="dot" id="status-dot"></div>
       <span id="header-players">Verificando...</span>
     </div>
+
+    <a href="https://manager.forcaaliada.ogabriels.com" class="mgr-nav-chip" target="_blank" rel="noopener" aria-label="Força Aliada Manager">
+      <span class="mgr-nav-chip-dot"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <span class="mgr-nav-chip-label">Manager</span>
+      <span class="mgr-nav-chip-badge">Novo</span>
+    </a>
     
     <div id="auth-container"></div>
     
