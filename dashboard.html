@@ -1057,28 +1057,63 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
 
         <!-- direita: CTA -->
-        <span id="mgr-strip-cta" style="
-          display:inline-flex; align-items:center; gap:6px;
-          padding:7px 16px;
-          background:rgba(201,168,76,.1);
-          border:1px solid rgba(201,168,76,.5);
-          color:#E8C96A;
-          font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-          white-space:nowrap; flex-shrink:0;
-          position:relative; z-index:1;
-          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-          transition:background .2s, border-color .2s, color .2s;
-          border-radius:6px;
-        ">
+        <span id="mgr-strip-cta">
           Baixar grátis
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </span>
       </a>
       <style>
-        @keyframes mgrDotPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.7)} }
-        #mgr-strip:hover { border-color:rgba(201,168,76,.6); box-shadow:0 0 0 1px rgba(201,168,76,.1), 0 4px 24px rgba(201,168,76,.12); }
-        #mgr-strip:hover #mgr-strip-cta { background:rgba(201,168,76,.2); border-color:#C9A84C; color:#fff; }
-        @media(max-width:700px){ .mgr-strip-desc { display:none !important; } }
+        @keyframes mgrDotPulse {
+          0%,100% { opacity:1; transform:scale(1); }
+          50%      { opacity:.35; transform:scale(.7); }
+        }
+        /* Pulso do brilho — só roda depois que o preenchimento termina (delay 0.32s) */
+        @keyframes mgrCtaGlow {
+          0%   { box-shadow: 0 0 0px 0px rgba(201,168,76,0); }
+          40%  { box-shadow: 0 0 10px 3px rgba(201,168,76,.45); }
+          100% { box-shadow: 0 0 0px 0px rgba(201,168,76,0); }
+        }
+
+        #mgr-strip-cta {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 7px 16px;
+          background: rgba(201,168,76,.1);
+          border: 1px solid rgba(201,168,76,.5);
+          color: #E8C96A;
+          font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+          white-space: nowrap; flex-shrink: 0;
+          position: relative; z-index: 1; overflow: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          border-radius: 6px;
+          transition: border-color .28s, color .28s;
+        }
+        /* Camada de preenchimento diagonal */
+        #mgr-strip-cta::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          /* gradiente inclinado ~20° que simula o preenchimento em diagonal */
+          background: linear-gradient(108deg, #C9A84C 0%, #E8C96A 60%, #C9A84C 100%);
+          transform: scaleX(0);
+          transform-origin: left center;
+          /* skew cria a diagonal na borda direita do preenchimento */
+          skew: -8deg;
+          transition: transform .32s cubic-bezier(.4, 0, .2, 1);
+          z-index: -1;
+        }
+
+        #mgr-strip:hover #mgr-strip-cta {
+          border-color: #C9A84C;
+          color: #0A0A08;
+          /* brilho pulsa após 0.32s (quando o preenchimento termina) */
+          animation: mgrCtaGlow .55s ease-out .32s both;
+        }
+        #mgr-strip:hover #mgr-strip-cta::before {
+          transform: scaleX(1);
+        }
+
+        #mgr-strip:hover { border-color: rgba(201,168,76,.6); box-shadow: 0 0 0 1px rgba(201,168,76,.1), 0 4px 24px rgba(201,168,76,.12); }
+        @media(max-width:700px) { .mgr-strip-desc { display:none !important; } }
       </style>
 
       <div class="card" id="server-overview">
