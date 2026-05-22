@@ -71,35 +71,40 @@ const pool = new Pool({
   ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
-const DEPLOY_SCHEMA_VERSION = 'audit-schema-v3-statement-array';
+const DEPLOY_SCHEMA_VERSION = 'audit-schema-v4-full-fields';
 const AUDIT_SCHEMA_STATEMENTS = [
-  "CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, actor_id INTEGER, actor_name VARCHAR(255), type VARCHAR(50) DEFAULT 'system', target_id INTEGER, target_name VARCHAR(255), message TEXT, metadata JSONB, created_at TIMESTAMPTZ DEFAULT NOW())",
+  `CREATE TABLE IF NOT EXISTS audit_logs (
+    id           SERIAL PRIMARY KEY,
+    actor_id     INTEGER,
+    actor_name   VARCHAR(255),
+    type         VARCHAR(50)  DEFAULT 'system',
+    severity     VARCHAR(20)  DEFAULT 'info',
+    target_id    INTEGER,
+    target_name  VARCHAR(255),
+    message      TEXT,
+    metadata     JSONB,
+    ip           VARCHAR(64),
+    user_agent   TEXT,
+    session_id   INTEGER,
+    created_at   TIMESTAMPTZ  DEFAULT NOW()
+  )`,
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255)",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system'",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS severity VARCHAR(20) DEFAULT 'info'",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255)",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS message TEXT",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip VARCHAR(64)",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS session_id INTEGER",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()",
-  "CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)",
-  "CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_logs(type)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_created  ON audit_logs(created_at DESC)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_type     ON audit_logs(type)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_actor    ON audit_logs(actor_id)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_severity ON audit_logs(severity)",
 ];
-let auditSchemaReady = null;
-
-async function ensureAuditSchema() {
-  if (!auditSchemaReady) {
-    auditSchemaReady = (async () => {
-      for (const statement of AUDIT_SCHEMA_STATEMENTS) {
-        await pool.query(statement);
-      }
-    })().catch((error) => {
-      auditSchemaReady = null;
-      throw error;
-    });
-  }
-  return auditSchemaReady;
-}
 
 // ─────────────────────────────────────────────
 // Env guards
@@ -111,7 +116,19 @@ const INGEST_SECRET = process.env.INGEST_SECRET; // Usado agora apenas como Fall
 // ─────────────────────────────────────────────
 // Rate limiters
 // ─────────────────────────────────────────────
-const authLimiter  = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const authLimiter  = rateLimit({
+  windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false,
+  handler: (req, res) => {
+    audit({
+      type: 'security', severity: 'critical',
+      message: `Rate limit atingido em ${req.path}`,
+      ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress,
+      userAgent: req.headers['user-agent'],
+      metadata: { path: req.path, method: req.method },
+    }).catch(() => {});
+    res.status(429).json({ error: 'Muitas tentativas. Tente novamente mais tarde.' });
+  },
+});
 const emailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 3,  standardHeaders: true, legacyHeaders: false, message: { error: 'Muitas tentativas. Tente novamente mais tarde.' } });
 
 // ─────────────────────────────────────────────
@@ -326,6 +343,11 @@ CREATE TABLE IF NOT EXISTS server_status_checks (
 CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
 `;
 await pool.query(featureSchemaSql);
+
+  // Audit schema — executado no boot, não lazily
+  for (const statement of AUDIT_SCHEMA_STATEMENTS) {
+    await pool.query(statement);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -345,18 +367,69 @@ await pool.query(
 );
 }
 
-// ─────────────────────────────────────────────
-// Audit helper
-// ─────────────────────────────────────────────
-async function audit({ actorId, actorName, type, targetId, targetName, message, metadata }) {
-try {
-await ensureAuditSchema();
-await pool.query(
-'INSERT INTO audit_logs(actor_id,actor_name,type,target_id,target_name,message,metadata) VALUES($1,$2,$3,$4,$5,$6,$7)',
-[actorId || null, actorName || null, type, targetId || null, targetName || null,
-message || null, metadata ? JSON.stringify(metadata) : null],
-);
-} catch (e) { console.error('[audit]', e); }
+/**
+ * Registra um evento de auditoria no banco de dados.
+ */
+async function audit({
+  actorId = null, actorName = null,
+  type, severity = 'info',
+  targetId = null, targetName = null,
+  message, metadata = null,
+  ip = null, userAgent = null, sessionId = null,
+}) {
+  if (!message) { console.warn('[audit] chamado sem message, ignorando'); return; }
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs
+         (actor_id, actor_name, type, severity, target_id, target_name, message, metadata, ip, user_agent, session_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [
+        actorId    || null,
+        actorName  || null,
+        type,
+        severity,
+        targetId   || null,
+        targetName || null,
+        message,
+        metadata ? JSON.stringify(metadata) : null,
+        ip         || null,
+        userAgent  || null,
+        sessionId  || null,
+      ],
+    );
+  } catch (e) {
+    console.error('[audit FAILED]', { type, message, actorId, error: e.message });
+  }
+}
+
+/**
+ * Wrapper conveniente que extrai IP, User-Agent e sessionId do objeto `req`
+ * e repassa para `audit()`. Use este em todos os handlers de rota.
+ */
+async function auditFromReq(req, opts) {
+  const ip = (
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.headers['x-real-ip'] ||
+    req.socket?.remoteAddress ||
+    null
+  );
+  const userAgent = req.headers['user-agent'] || null;
+
+  let sessionId = null;
+  try {
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    if (rawToken) {
+      const { createHash } = await import('node:crypto');
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      const { rows } = await pool.query(
+        'SELECT id FROM user_sessions WHERE token_hash=$1 AND revoked=FALSE LIMIT 1',
+        [tokenHash],
+      );
+      sessionId = rows[0]?.id || null;
+    }
+  } catch { /* sessionId opcional */ }
+
+  return audit({ ...opts, ip, userAgent, sessionId });
 }
 
 async function createMinecraftNotification({ minecraftName, title, body, type = 'info', icon = '🔔', createdBy = null }) {
@@ -700,6 +773,16 @@ app.post('/api/app/sync', async (req, res) => {
         }
 
         res.json({ ok: true });
+
+        await audit({
+          type: 'system', severity: 'info',
+          message: `App Sync: ${online.length} jogador(es) online registrado(s)`,
+          metadata: {
+            onlinePlayers: online,
+            sessionsOpened: online.filter(p => !active.rows.some(r => r.player === p)).length,
+            sessionsClosed: active.rows.filter(r => !online.includes(r.player)).length,
+          },
+        });
     } catch (err) { res.status(500).json({ error: 'Falha na sincronização' }); }
 });
 
@@ -763,6 +846,13 @@ await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
 const user = updated[0];
 if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
+await audit({
+  actorId: user.id, actorName: user.username,
+  type: 'security', severity: 'info',
+  message: `E-mail verificado com sucesso: ${user.username}`,
+  metadata: { email: user.email },
+});
+
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
 });
@@ -776,8 +866,17 @@ const { rows } = await pool.query(
 'SELECT * FROM users WHERE username=$1 OR email=$1', [login],
 );
 const user = rows[0];
-if (!user || !(await bcrypt.compare(password, user.password_hash)))
-return res.status(401).json({ error: 'invalid credentials' });
+if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  // Login falho — registrar tentativa
+  await audit({
+    type: 'security', severity: 'warning',
+    message: `Tentativa de login falha para: ${login}`,
+    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress,
+    userAgent: req.headers['user-agent'],
+    metadata: { login },
+  });
+  return res.status(401).json({ error: 'invalid credentials' });
+}
 
 if (user.is_verified === false) {
 const code      = Math.floor(100000 + Math.random() * 900000).toString();
@@ -788,7 +887,12 @@ await sendSystemEmail(user.email, user.username, code, 'verify');
 return res.status(403).json({ error: 'unverified_email', email: user.email });
 }
 
-await audit({ actorId: user.id, actorName: user.username, type: 'login', message: `${user.username} fez login no painel` });
+await auditFromReq(req, {
+  actorId: user.id, actorName: user.username,
+  type: 'login', severity: 'info',
+  message: `Login bem-sucedido: ${user.username}`,
+  metadata: { email: user.email, role: user.role },
+});
 
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -840,6 +944,11 @@ const code      = Math.floor(100000 + Math.random() * 900000).toString();
 const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 await pool.query('INSERT INTO password_resets(email,code,expires_at) VALUES($1,$2,$3)', [email, code, expiresAt]);
 await sendSystemEmail(email, rows[0].username, code, 'reset');
+await audit({
+  type: 'security', severity: 'info',
+  message: `Código de recuperação de senha enviado para: ${email}`,
+  metadata: { email },
+});
 res.json({ ok: true });
 });
 
@@ -860,10 +969,40 @@ if (!rows.length) return res.status(400).json({ error: 'Código inválido ou exp
 const hash = await bcrypt.hash(newPassword, 12);
 await pool.query('UPDATE users SET password_hash=$1 WHERE email=$2', [hash, email]);
 await pool.query('DELETE FROM password_resets WHERE email=$1', [email]);
+
+const { rows: userRows } = await pool.query('SELECT id, username FROM users WHERE email=$1', [email]);
+await audit({
+  actorId: userRows[0]?.id || null,
+  actorName: userRows[0]?.username || email,
+  type: 'security', severity: 'warning',
+  message: `Senha redefinida via código de recuperação para: ${userRows[0]?.username || email}`,
+  metadata: { email },
+});
+
 res.json({ ok: true });
 });
 
-app.post('/api/auth/logout', (_req, res) => res.json({ ok: true }));
+app.post('/api/auth/logout', auth, async (req, res) => {
+  try {
+    const { createHash } = await import('node:crypto');
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    if (rawToken) {
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      await pool.query(
+        'UPDATE user_sessions SET revoked=TRUE WHERE token_hash=$1',
+        [tokenHash],
+      );
+    }
+    await auditFromReq(req, {
+      actorId:   req.user?.sub,
+      actorName: req.user?.username,
+      type:      'logout',
+      severity:  'info',
+      message:   `${req.user?.username || 'Usuário'} encerrou sessão`,
+    });
+  } catch { /* logout nunca falha */ }
+  res.json({ ok: true });
+});
 
 // ─────────────────────────────────────────────
 // ME – Perfil
@@ -1157,6 +1296,15 @@ app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) 
 const { rowCount } = await pool.query('DELETE FROM notifications WHERE id=$1', [id]);
 if (!rowCount) return res.status(404).json({ error: 'not found' });
 
+await auditFromReq(req, {
+  actorId:   req.user.sub,
+  actorName: req.user.username,
+  type:      'delete',
+  severity:  'info',
+  targetId:  id,
+  message:   `Notificação #${id} deletada por ${req.user.username}`,
+});
+
 res.json({ ok: true });
 });
 
@@ -1164,31 +1312,81 @@ res.json({ ok: true });
 // AUDIT LOGS
 // ─────────────────────────────────────────────
 app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
-    try {
-      const type  = req.query.type && req.query.type !== 'all' ? req.query.type : null;
-      const page  = Math.max(0, parseInt(req.query.page  || 0));
-      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || 50)));
+  try {
+    const type     = req.query.type && req.query.type !== 'all' ? req.query.type : null;
+    const severity = req.query.severity && req.query.severity !== 'all' ? req.query.severity : null;
+    const actor    = req.query.actor || null;
+    const page     = Math.max(0, parseInt(req.query.page  || 0));
+    const limit    = Math.min(100, Math.max(1, parseInt(req.query.limit || 50)));
 
-      const where  = type ? 'WHERE type=$1' : '';
-      const params = type ? [type, limit, page * limit] : [limit, page * limit];
-      const offset = type ? 3 : 2;
+    const conditions = [];
+    const params     = [];
+    let   p          = 1;
 
-      const { rows } = await pool.query(
-        `SELECT id, actor_id, actor_name, type, target_id, target_name, message, metadata, created_at FROM audit_logs ${where} ORDER BY created_at DESC LIMIT $${offset - 1} OFFSET $${offset}`,
-        params,
-      );
+    if (type)     { conditions.push(`type=$${p++}`);              params.push(type); }
+    if (severity) { conditions.push(`severity=$${p++}`);          params.push(severity); }
+    if (actor)    { conditions.push(`actor_name ILIKE $${p++}`);  params.push(`%${actor}%`); }
 
-      const { rows: total } = await pool.query(
-        `SELECT COUNT(*)::int AS count FROM audit_logs ${where}`,
-        type ? [type] : [],
-      );
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-      res.json({ logs: rows, total: total[0].count });
-    } catch (error) {
-      console.error('[GET /api/admin/audit error]', error);
-      res.status(500).json({ error: 'Erro interno ao procurar logs.' });
-    }
-  });
+    const dataParams  = [...params, limit, page * limit];
+    const countParams = [...params];
+
+    const { rows } = await pool.query(
+      `SELECT id, actor_id, actor_name, type, severity, target_id, target_name,
+              message, metadata, ip, user_agent, session_id, created_at
+       FROM audit_logs ${where}
+       ORDER BY created_at DESC
+       LIMIT $${p} OFFSET $${p + 1}`,
+      dataParams,
+    );
+
+    const { rows: total } = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM audit_logs ${where}`,
+      countParams,
+    );
+
+    res.json({
+      logs:       rows,
+      total:      total[0].count,
+      page,
+      limit,
+      totalPages: Math.ceil(total[0].count / limit),
+    });
+  } catch (error) {
+    console.error('[GET /api/admin/audit error]', error);
+    res.status(500).json({ error: 'Erro interno ao procurar logs.' });
+  }
+});
+
+app.get('/api/admin/audit/export', auth, requireOwner, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, actor_name, type, severity, target_name, message, ip, created_at
+       FROM audit_logs
+       ORDER BY created_at DESC
+       LIMIT 10000`,
+    );
+
+    const header = 'id,actor,tipo,severidade,alvo,mensagem,ip,data_hora\n';
+    const csv = rows.map(r => [
+      r.id,
+      `"${(r.actor_name || '').replace(/"/g, '""')}"`,
+      r.type,
+      r.severity,
+      `"${(r.target_name || '').replace(/"/g, '""')}"`,
+      `"${(r.message || '').replace(/"/g, '""')}"`,
+      r.ip || '',
+      new Date(r.created_at).toISOString(),
+    ].join(',')).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-${Date.now()}.csv"`);
+    res.send('\uFEFF' + header + csv); // BOM para Excel PT-BR
+  } catch (e) {
+    res.status(500).json({ error: 'Falha ao exportar' });
+  }
+});
 
 // ─────────────────────────────────────────────
 // NOTAS DE JOGADORES
@@ -1210,6 +1408,13 @@ app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
     'INSERT INTO player_notes(minecraft_name, author_id, author_name, text) VALUES($1, $2, $3, $4) RETURNING *',
     [sanitize(minecraft_name), req.user.sub, req.user.username, sanitize(text)],
   );
+  await auditFromReq(req, {
+    actorId:    req.user.sub,
+    actorName:  req.user.username,
+    type:       'create',
+    targetName: sanitize(minecraft_name),
+    message:    `Nota adicionada ao jogador ${sanitize(minecraft_name)} por ${req.user.username}`,
+  });
   res.json(rows[0]);
 });
 
@@ -1217,6 +1422,13 @@ app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.id);
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
   await pool.query('DELETE FROM player_notes WHERE id = $1', [noteId]);
+  await auditFromReq(req, {
+    actorId:   req.user.sub,
+    actorName: req.user.username,
+    type:      'delete',
+    targetId:  noteId,
+    message:   `Nota #${noteId} excluída por ${req.user.username}`,
+  });
   res.json({ ok: true });
 });
 
@@ -1430,16 +1642,28 @@ if (!validateUsername(username) || !validateEmail(email))
 return res.status(400).json({ error: 'invalid fields' });
 
 try {
+const { rows: before } = await pool.query(
+  'SELECT username, email, minecraft_name, role FROM users WHERE id=$1', [id]
+);
+
 const result = await pool.query(
 'UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5 WHERE id=$6',
 [username, email, minecraftName, photoUrl, role, id],
 );
 if (!result.rowCount) return res.status(404).json({ error: 'user not found' });
 
-await audit({
-  actorId: req.user.sub, actorName: req.user.username,
-  type: 'update', targetId: id, targetName: username,
-  message: `Conta editada por admin: ${username}`,
+await auditFromReq(req, {
+  actorId:    req.user.sub,
+  actorName:  req.user.username,
+  type:       'update',
+  severity:   before[0]?.role !== role ? 'warning' : 'info',
+  targetId:   id,
+  targetName: username,
+  message:    `Conta editada por admin: ${before[0]?.username || username} → ${username}${before[0]?.role !== role ? ` (cargo: ${before[0]?.role} → ${role})` : ''}`,
+  metadata: {
+    before: before[0] || null,
+    after:  { username, email, minecraftName, role },
+  },
 });
 
 res.json({ ok: true });
@@ -1462,10 +1686,14 @@ if (!target.length) return res.status(404).json({ error: 'user not found' });
 const hash = await bcrypt.hash(newPassword, 12);
 await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, id]);
 
-await audit({
-actorId: req.user.sub, actorName: req.user.username,
-type: 'update', targetId: id, targetName: target[0].username,
-message: `Senha redefinida por admin para: ${target[0].username}`,
+await auditFromReq(req, {
+  actorId:    req.user.sub,
+  actorName:  req.user.username,
+  type:       'security',
+  severity:   'warning',
+  targetId:   id,
+  targetName: target[0].username,
+  message:    `Senha redefinida por admin (${req.user.username}) para o usuário: ${target[0].username}`,
 });
 
 res.json({ ok: true });
@@ -1478,10 +1706,15 @@ if (!id) return res.status(400).json({ error: 'invalid id' });
 const { rows } = await pool.query('SELECT username FROM users WHERE id=$1', [id]);
 if (!rows.length) return res.status(404).json({ error: 'user not found' });
 
-await audit({
-actorId: req.user.sub, actorName: req.user.username,
-type: 'delete', targetId: id, targetName: rows[0].username,
-message: `Conta deletada por admin: ${rows[0].username}`,
+await auditFromReq(req, {
+  actorId:    req.user.sub,
+  actorName:  req.user.username,
+  type:       'delete',
+  severity:   'critical',
+  targetId:   id,
+  targetName: rows[0].username,
+  message:    `Conta DELETADA por admin (${req.user.username}): ${rows[0].username}`,
+  metadata:   { deletedUser: rows[0].username, deletedId: id },
 });
 
 await pool.query('DELETE FROM users WHERE id=$1', [id]);
@@ -1964,6 +2197,27 @@ app.delete('/api/me/sessions', auth, async (req, res) => {
     console.error('[DELETE /api/me/sessions]', e);
     res.status(500).json({ error: 'internal error' });
   }
+});
+
+// Middleware de captura de tentativas de acesso não autorizado
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = function(body) {
+    if ((res.statusCode === 401 || res.statusCode === 403) && req.user) {
+      audit({
+        actorId:   req.user?.sub   || null,
+        actorName: req.user?.username || null,
+        type:      'security',
+        severity:  'warning',
+        message:   `Acesso negado: ${req.method} ${req.path}`,
+        ip:        req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress,
+        userAgent: req.headers['user-agent'],
+        metadata:  { method: req.method, path: req.path, statusCode: res.statusCode },
+      }).catch(() => {});
+    }
+    return originalJson(body);
+  };
+  next();
 });
 
 // ─────────────────────────────────────────────
