@@ -707,6 +707,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
+    <li><a href="manager.html" style="color: var(--accent);" onclick="toggleMenu()">⚡ Manager</a></li>
     <li><a href="#status" onclick="toggleMenu()" style="color: var(--accent);">Jogar Agora</a></li>
   </ul>
   <div class="mobile-status-card" onclick="document.getElementById('status').scrollIntoView(); toggleMenu();">
@@ -735,6 +736,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
+      <li><a href="manager.html" style="color: var(--accent); font-weight: 600;">⚡ Manager</a></li>
     </ul>
   </nav>
 
@@ -895,6 +897,152 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     </blockquote>
   </div>
 </section>
+
+<!-- ── FORÇA ALIADA MANAGER PROMO ─────────────────────────── -->
+<section class="manager-promo reveal" id="manager">
+  <div class="manager-promo-inner">
+    <div class="manager-badge">⚡ Novo</div>
+    <h2 class="manager-promo-title">Força Aliada<br><span class="manager-promo-accent">Manager</span></h2>
+    <p class="manager-promo-desc">Gerencie o servidor diretamente do seu PC.<br>Sem terminal. Sem dor de cabeça.</p>
+    <div class="manager-features-row">
+      <div class="manager-feat"><span>🖥️</span><span>Console ao vivo</span></div>
+      <div class="manager-feat"><span>💾</span><span>Backup automático</span></div>
+      <div class="manager-feat"><span>👥</span><span>Controle de jogadores</span></div>
+      <div class="manager-feat"><span>🔔</span><span>Alertas em tempo real</span></div>
+    </div>
+    <a href="manager.html" class="manager-promo-cta">
+      Conhecer o Manager
+      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+    </a>
+    <span class="manager-platform-tag">Grátis · Windows</span>
+  </div>
+  <div class="manager-promo-visual" aria-hidden="true">
+    <div class="manager-window">
+      <div class="manager-window-bar">
+        <span class="manager-dot manager-dot-red"></span>
+        <span class="manager-dot manager-dot-yellow"></span>
+        <span class="manager-dot manager-dot-green"></span>
+        <span class="manager-window-title">Força Aliada Manager</span>
+      </div>
+      <div class="manager-console">
+        <div class="manager-line"><span class="manager-ts">[10:42:01]</span> <span class="manager-ok">✔ Servidor iniciado na porta 25565</span></div>
+        <div class="manager-line"><span class="manager-ts">[10:42:05]</span> <span class="manager-info">Jogador <b>Steve</b> entrou no servidor</span></div>
+        <div class="manager-line"><span class="manager-ts">[10:42:11]</span> <span class="manager-info">Jogador <b>Alex</b> entrou no servidor</span></div>
+        <div class="manager-line"><span class="manager-ts">[10:43:00]</span> <span class="manager-warn">⚡ Backup automático iniciado…</span></div>
+        <div class="manager-line"><span class="manager-ts">[10:43:04]</span> <span class="manager-ok">✔ Backup salvo com sucesso</span></div>
+        <div class="manager-line manager-blink"><span class="manager-ts">[10:45:22]</span> <span class="manager-info">2 jogadores online ▮</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.manager-promo {
+  padding: 120px 5%;
+  background: #000;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 80px;
+  align-items: center;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.manager-promo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 70% at 80% 50%, rgba(0,113,227,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 10% 50%, rgba(0,113,227,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+.manager-promo-inner { position: relative; z-index: 2; }
+.manager-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,113,227,0.15); border: 1px solid rgba(0,113,227,0.35);
+  color: #60a5fa; font-size: 11px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; padding: 5px 12px; border-radius: 980px;
+  margin-bottom: 24px;
+}
+.manager-promo-title {
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 800; letter-spacing: -0.04em; line-height: 1;
+  color: #fff; margin-bottom: 20px;
+}
+.manager-promo-accent {
+  background: linear-gradient(135deg, #0071e3, #60a5fa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.manager-promo-desc {
+  font-size: 18px; line-height: 1.65; color: rgba(255,255,255,0.65);
+  margin-bottom: 36px; max-width: 420px;
+}
+.manager-features-row {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 40px;
+}
+.manager-feat {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 980px; padding: 8px 16px;
+  font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.8);
+}
+.manager-promo-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #0071e3; color: #fff;
+  padding: 14px 28px; border-radius: 980px;
+  font-size: 16px; font-weight: 600;
+  text-decoration: none; transition: all 0.2s;
+  margin-right: 16px;
+}
+.manager-promo-cta:hover { background: #0077ed; transform: scale(1.03); }
+.manager-platform-tag {
+  font-size: 13px; color: rgba(255,255,255,0.35); font-weight: 500;
+}
+
+/* App Window Mock */
+.manager-promo-visual { position: relative; z-index: 2; }
+.manager-window {
+  background: #111; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+}
+.manager-window-bar {
+  background: #1c1c1e; padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.manager-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+}
+.manager-dot-red { background: #ff5f57; }
+.manager-dot-yellow { background: #febc2e; }
+.manager-dot-green { background: #28c840; }
+.manager-window-title {
+  margin-left: 8px; font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,0.5); letter-spacing: .01em;
+}
+.manager-console {
+  padding: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px; line-height: 2; min-height: 200px;
+  background: #0a0a0a;
+}
+.manager-line { display: flex; gap: 10px; }
+.manager-ts { color: rgba(255,255,255,0.25); flex-shrink: 0; }
+.manager-ok { color: #30d158; }
+.manager-info { color: rgba(255,255,255,0.65); }
+.manager-info b { color: #60a5fa; font-weight: 600; }
+.manager-warn { color: #ff9f0a; }
+.manager-blink { opacity: 1; animation: blink-line 1.2s step-end infinite; }
+@keyframes blink-line { 50% { opacity: 0.4; } }
+
+@media (max-width: 860px) {
+  .manager-promo { grid-template-columns: 1fr; gap: 40px; }
+  .manager-promo-visual { display: none; }
+  .manager-promo-title { font-size: 2.5rem; }
+}
+</style>
 
 <section class="cross-platform reveal" id="plataformas">
     <h2>Jogue Onde Quiser</h2>
