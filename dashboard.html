@@ -58,6 +58,7 @@ a { text-decoration: none; color: inherit; }
 .skeleton * { visibility: hidden !important; }
 .skeleton::after, .skeleton-line::after, .skeleton-circle::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .skeleton-line { height: 14px; border-radius: 6px; background: #e8e8ed; position: relative; overflow: hidden; margin: 6px 0; }
 .skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; } .skeleton-line.w80 { width: 80%; }
 .skeleton-circle { width: 40px; height: 40px; border-radius: 50%; background: #e8e8ed; position: relative; overflow: hidden; flex-shrink: 0; }
@@ -1418,6 +1419,68 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
       </div>
 
+      <!-- ── Card de Propaganda: Força Aliada Manager ── -->
+      <div id="manager-promo-card" style="display:none; margin-top:24px;">
+        <div style="
+          background: linear-gradient(135deg, #0a1628 0%, #0d2444 50%, #0a1e3d 100%);
+          border-radius: var(--radius-lg);
+          border: 1px solid rgba(255,255,255,0.08);
+          padding: 28px 32px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle, rgba(0,113,227,0.18) 0%, transparent 70%);pointer-events:none;"></div>
+          <div style="position:absolute;bottom:-60px;left:30%;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle, rgba(100,200,255,0.07) 0%, transparent 70%);pointer-events:none;"></div>
+
+          <div style="flex:1; min-width:220px; position:relative; z-index:1;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="background:rgba(0,113,227,0.25);border:1px solid rgba(0,113,227,0.4);border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;color:#60aaff;letter-spacing:0.8px;text-transform:uppercase;">Aplicativo Oficial</div>
+              <div style="background:rgba(48,209,88,0.2);border:1px solid rgba(48,209,88,0.35);border-radius:980px;padding:3px 10px;font-size:11px;font-weight:700;color:#30d158;display:flex;align-items:center;gap:4px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:#30d158;display:inline-block;animation:pulse-dot 2s infinite;"></span>Disponível
+              </div>
+            </div>
+
+            <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px;line-height:1.2;">Força Aliada Manager</h3>
+            <p style="margin:0 0 20px;font-size:14px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:420px;">
+              Monitore o servidor em tempo real, gerencie sessões de jogadores e sincronize dados diretamente do seu computador — sem abrir o navegador.
+            </p>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;">
+              <span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;">📡 Sync automático</span>
+              <span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;">📊 Logs em tempo real</span>
+              <span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;">🔑 Chave de integração</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <a
+                href="https://github.com/ogabrielsilva/fa-manager/releases/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;background:#0071e3;color:#fff;border-radius:980px;font-size:14px;font-weight:600;text-decoration:none;transition:all 0.2s;"
+                onmouseover="this.style.background='#0077ed';this.style.transform='scale(1.03)';"
+                onmouseout="this.style.background='#0071e3';this.style.transform='scale(1)';"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Baixar para Windows
+              </a>
+              <button
+                onclick="scrollToSection('app-keys-card')"
+                style="display:inline-flex;align-items:center;gap:6px;padding:12px 20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border-radius:980px;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,0.15);cursor:pointer;transition:all 0.2s;font-family:inherit;"
+                onmouseover="this.style.background='rgba(255,255,255,0.13)';this.style.color='#fff';"
+                onmouseout="this.style.background='rgba(255,255,255,0.08)';this.style.color='rgba(255,255,255,0.8)';"
+              >🔑 Gerenciar chaves</button>
+            </div>
+          </div>
+
+          <div style="flex-shrink:0;width:120px;height:120px;background:rgba(0,113,227,0.15);border:1px solid rgba(0,113,227,0.25);border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;z-index:1;">🖥️</div>
+        </div>
+      </div>
+
       <div class="card" id="app-keys-card" style="display:none; margin-top:24px;">
         <h3>🔌 Integração de Sistema <span>Gerencie os acessos do Força Aliada Manager (App PC)</span></h3>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
@@ -1800,6 +1863,7 @@ function initDashboard() {
     }, 60_000);
 
     // Inicia a aba do App Desktop
+    document.getElementById('manager-promo-card').style.display = 'block';
     document.getElementById('app-keys-card').style.display = 'block';
     document.getElementById('qa-appkeys').style.display = 'flex';
     fetchAppKeys();
