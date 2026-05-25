@@ -119,7 +119,7 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .success { color: var(--success); }
 
 /* Vistas ocultas por padrão */
-#view-loggedin, #view-verify { display: none; }
+#view-loggedin, #view-verify, #view-success { display: none; }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
@@ -392,6 +392,39 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
       <div id="msg-verify" class="msg" role="alert"></div>
     </div>
 
+    <div id="view-success" style="display:none;">
+      <div style="font-size: 52px; margin-bottom: 16px;">🎉</div>
+      <h1>Conta ativada!</h1>
+      <p class="subtitle">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist e pode entrar no servidor.</p>
+
+      <div style="margin: 24px 0 8px; text-align: left;">
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 8px;">IP do Servidor · Java Edition</p>
+        <div id="ip-box-java" onclick="copyIp('fa.ogabriels.com')" style="
+          background: rgba(0,113,227,0.07); border: 1.5px solid rgba(0,113,227,0.22);
+          border-radius: 14px; padding: 16px 18px; cursor: pointer;
+          display: flex; align-items: center; justify-content: space-between;
+          transition: background 0.18s, border-color 0.18s; margin-bottom: 10px;">
+          <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 600; color: var(--text-primary);">fa.ogabriels.com</span>
+          <span id="copy-icon-java" style="font-size: 18px; transition: transform 0.2s;">📋</span>
+        </div>
+        <p style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); margin: 14px 0 8px;">Bedrock / Mobile / Console · Porta 19132</p>
+        <div id="ip-box-bedrock" onclick="copyIp('fa.ogabriels.com', '19132')" style="
+          background: rgba(52,199,89,0.07); border: 1.5px solid rgba(52,199,89,0.22);
+          border-radius: 14px; padding: 16px 18px; cursor: pointer;
+          display: flex; align-items: center; justify-content: space-between;
+          transition: background 0.18s, border-color 0.18s; margin-bottom: 10px;">
+          <div>
+            <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 600; color: var(--text-primary);">fa.ogabriels.com</span>
+            <span style="font-size: 12px; color: var(--text-secondary); margin-left: 10px;">:19132</span>
+          </div>
+          <span id="copy-icon-bedrock" style="font-size: 18px; transition: transform 0.2s;">📋</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;">Clique para copiar o endereço</p>
+      </div>
+
+      <button class="main-btn" onclick="location.href='dashboard.html'" style="margin-top: 8px;">Ir para o Painel →</button>
+    </div>
+
   </div>
 </div>
 
@@ -558,14 +591,36 @@ async function handleVerify(event) {
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
-    showMessage('Conta ativada com sucesso! A entrar...', 'success', false, true);
-    setTimeout(() => { location.href = 'dashboard.html'; }, 1000);
+    // Show success screen with server IP instead of redirecting immediately
+    document.getElementById('view-verify').style.display = 'none';
+    document.getElementById('view-success').style.display = 'block';
 
   } catch (err) {
     showMessage(err.message, 'error', false, true);
     btn.disabled = false; 
     btn.textContent = 'Verificar Conta';
   }
+}
+
+// ── Copy server IP ─────────────────────────────────────────────
+function copyIp(ip, porta = null) {
+  const text  = porta ? `${ip}:${porta}` : ip;
+  const iconId = porta ? 'copy-icon-bedrock' : 'copy-icon-java';
+  const boxId  = porta ? 'ip-box-bedrock' : 'ip-box-java';
+  navigator.clipboard.writeText(text).then(() => {
+    const icon = document.getElementById(iconId);
+    const box  = document.getElementById(boxId);
+    icon.textContent = '✅';
+    icon.style.transform = 'scale(1.3)';
+    box.style.background = porta ? 'rgba(52,199,89,0.16)' : 'rgba(0,113,227,0.14)';
+    setTimeout(() => {
+      icon.textContent = '📋';
+      icon.style.transform = 'scale(1)';
+      box.style.background = '';
+    }, 2000);
+  }).catch(() => {
+    prompt('Copie o endereço:', text);
+  });
 }
 
 // ── Logout Manual ─────────────────────────────────────────────

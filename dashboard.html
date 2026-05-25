@@ -58,6 +58,7 @@ a { text-decoration: none; color: inherit; }
 .skeleton * { visibility: hidden !important; }
 .skeleton::after, .skeleton-line::after, .skeleton-circle::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation: shimmer 1.4s infinite; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .skeleton-line { height: 14px; border-radius: 6px; background: #e8e8ed; position: relative; overflow: hidden; margin: 6px 0; }
 .skeleton-line.w60 { width: 60%; } .skeleton-line.w40 { width: 40%; } .skeleton-line.w80 { width: 80%; }
 .skeleton-circle { width: 40px; height: 40px; border-radius: 50%; background: #e8e8ed; position: relative; overflow: hidden; flex-shrink: 0; }
@@ -335,11 +336,18 @@ ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: col
 .audit-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 10px; transition: background 0.2s; }
 .audit-item:hover { background: rgba(0,0,0,0.03); }
 .audit-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
-.audit-dot.create  { background: var(--success); }
-.audit-dot.update  { background: var(--accent); }
-.audit-dot.delete  { background: var(--danger); }
-.audit-dot.login   { background: var(--warning); }
-.audit-dot.system  { background: #af52de; }
+.audit-dot.create   { background: var(--success); }
+.audit-dot.update   { background: var(--accent); }
+.audit-dot.delete   { background: var(--danger); }
+.audit-dot.login    { background: var(--warning); }
+.audit-dot.logout   { background: var(--warning); }
+.audit-dot.security { background: var(--danger); }
+.audit-dot.system   { background: #af52de; }
+.audit-item--warning  { background: rgba(255,159,10,0.06); border-left: 3px solid var(--warning); padding-left: 9px; }
+.audit-item--critical { background: rgba(255,59,48,0.07);  border-left: 3px solid var(--danger);  padding-left: 9px; }
+.audit-item--warning:hover  { background: rgba(255,159,10,0.1); }
+.audit-item--critical:hover { background: rgba(255,59,48,0.11); }
+.audit-ip { font-size: 11px; color: var(--text-secondary); margin-left: 6px; }
 .audit-content { flex: 1; min-width: 0; }
 .audit-content strong { font-size: 13px; font-weight: 600; display: block; }
 .audit-content span { font-size: 12px; color: var(--text-secondary); }
@@ -869,6 +877,8 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .nav-item:hover,
 [data-theme="dark"] .audit-item:hover,
 [data-theme="dark"] .notif-item:hover { background: rgba(30, 41, 59, 0.72) !important; }
+[data-theme="dark"] .audit-item--warning  { background: rgba(255,159,10,0.1); }
+[data-theme="dark"] .audit-item--critical { background: rgba(255,59,48,0.12); }
 [data-theme="dark"] .pill.owner { background: rgba(192, 132, 252, 0.18) !important; color: #e9d5ff !important; }
 [data-theme="dark"] .pill.full { background: rgba(96, 165, 250, 0.18) !important; color: #bfdbfe !important; }
 [data-theme="dark"] .pill.limited { background: rgba(148, 163, 184, 0.16) !important; color: #e2e8f0 !important; }
@@ -978,12 +988,6 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <button class="quick-action-btn" id="qa-stats" onclick="scrollToSection('stats-card')">
             <span class="qa-icon">📊</span><span class="qa-label">Estatísticas</span><span class="qa-arrow">›</span>
           </button>
-        </div>
-
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-          <a href="https://manager.forcaaliada.ogabriels.com" target="_blank" class="quick-action-btn" style="text-decoration:none;color:var(--accent);border-color:rgba(0,113,227,0.2);background:rgba(0,113,227,0.04);">
-            <span class="qa-icon">⚡</span><span class="qa-label">Baixar o Manager</span><span class="qa-arrow" style="font-size:11px;">↗</span>
-          </a>
         </div>
 
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;">
@@ -1207,14 +1211,33 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       </div>
 
       <div class="card" id="audit-card" style="display:none;">
-        <h3>Logs de Auditoria <span>Ações recentes no painel</span></h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <h3 style="margin:0;font-size:17px;font-weight:600;">Logs de Auditoria</h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span id="audit-total-count" style="font-size:12px;color:var(--text-secondary);"></span>
+            <input type="text" id="audit-actor-filter" placeholder="Filtrar por ator…"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);font-family:inherit;width:150px;"
+              oninput="auditActorFilter=this.value.trim();auditPage=0;fetchAuditLogs()">
+            <select id="audit-severity-select" onchange="auditSeverityFilter=this.value;auditPage=0;fetchAuditLogs()"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);font-family:inherit;">
+              <option value="all">Todas severidades</option>
+              <option value="info">Info</option>
+              <option value="warning">Atenção</option>
+              <option value="critical">Crítico</option>
+            </select>
+            <button onclick="exportAuditCSV()"
+              style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);cursor:pointer;font-family:inherit;">⬇ Exportar CSV</button>
+          </div>
+        </div>
 
         <div class="audit-tabs">
-          <button class="audit-tab active" id="atab-all"    onclick="filterAuditLogs('all')">Todos</button>
-          <button class="audit-tab" id="atab-create" onclick="filterAuditLogs('create')">Criações</button>
-          <button class="audit-tab" id="atab-update" onclick="filterAuditLogs('update')">Edições</button>
-          <button class="audit-tab" id="atab-delete" onclick="filterAuditLogs('delete')">Exclusões</button>
-          <button class="audit-tab" id="atab-login"  onclick="filterAuditLogs('login')">Logins</button>
+          <button class="audit-tab active" id="atab-all"      onclick="filterAuditLogs('all')">Todos</button>
+          <button class="audit-tab"        id="atab-create"   onclick="filterAuditLogs('create')">Criações</button>
+          <button class="audit-tab"        id="atab-update"   onclick="filterAuditLogs('update')">Edições</button>
+          <button class="audit-tab"        id="atab-delete"   onclick="filterAuditLogs('delete')">Exclusões</button>
+          <button class="audit-tab"        id="atab-login"    onclick="filterAuditLogs('login')">Logins</button>
+          <button class="audit-tab"        id="atab-security" onclick="filterAuditLogs('security')">Segurança</button>
+          <button class="audit-tab"        id="atab-system"   onclick="filterAuditLogs('system')">Sistema</button>
         </div>
 
         <div class="audit-list" id="audit-log-list">
@@ -1226,8 +1249,17 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
         </div>
 
-        <div style="display:flex;justify-content:center;margin-top:8px;">
-          <button class="btn-secondary" id="audit-load-more" onclick="loadMoreAuditLogs()" style="padding:8px 20px;font-size:13px;border-radius:8px;border:none;">Carregar mais</button>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">
+          <button class="btn-secondary" id="audit-prev-btn"
+            onclick="auditPage=Math.max(0,auditPage-1);fetchAuditLogs()"
+            style="display:none;padding:8px 20px;font-size:13px;border-radius:8px;border:none;">
+            ← Anterior
+          </button>
+          <button class="btn-secondary" id="audit-load-more"
+            onclick="auditPage++;fetchAuditLogs()"
+            style="padding:8px 20px;font-size:13px;border-radius:8px;border:none;">
+            Próxima página →
+          </button>
         </div>
       </div>
 
@@ -1387,6 +1419,68 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
       </div>
 
+      <!-- ── Card de Propaganda: Força Aliada Manager ── -->
+      <div id="manager-promo-card" style="display:none; margin-top:24px;">
+        <div style="
+          background: linear-gradient(135deg, #0a1628 0%, #0d2444 50%, #0a1e3d 100%);
+          border-radius: var(--radius-lg);
+          border: 1px solid rgba(255,255,255,0.08);
+          padding: 28px 32px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+          position: relative;
+          overflow: hidden;
+        ">
+          <div style="position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle, rgba(0,113,227,0.18) 0%, transparent 70%);pointer-events:none;"></div>
+          <div style="position:absolute;bottom:-60px;left:30%;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle, rgba(100,200,255,0.07) 0%, transparent 70%);pointer-events:none;"></div>
+
+          <div style="flex:1; min-width:220px; position:relative; z-index:1;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="background:rgba(0,113,227,0.25);border:1px solid rgba(0,113,227,0.4);border-radius:10px;padding:6px 12px;font-size:11px;font-weight:700;color:#60aaff;letter-spacing:0.8px;text-transform:uppercase;">Aplicativo Oficial</div>
+              <div style="background:rgba(48,209,88,0.2);border:1px solid rgba(48,209,88,0.35);border-radius:980px;padding:3px 10px;font-size:11px;font-weight:700;color:#30d158;display:flex;align-items:center;gap:4px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:#30d158;display:inline-block;animation:pulse-dot 2s infinite;"></span>Disponível
+              </div>
+            </div>
+
+            <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px;line-height:1.2;">Força Aliada Manager</h3>
+            <p style="margin:0 0 20px;font-size:14px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:420px;">
+              Monitore o servidor em tempo real, gerencie sessões de jogadores e sincronize dados diretamente do seu computador — sem abrir o navegador.
+            </p>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;">
+              <span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;">📡 Sync automático</span>
+              <span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;">📊 Logs em tempo real</span>
+              <span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-weight:500;">🔑 Chave de integração</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <a
+                href="https://github.com/ogabrielsilva/fa-manager/releases/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;background:#0071e3;color:#fff;border-radius:980px;font-size:14px;font-weight:600;text-decoration:none;transition:all 0.2s;"
+                onmouseover="this.style.background='#0077ed';this.style.transform='scale(1.03)';"
+                onmouseout="this.style.background='#0071e3';this.style.transform='scale(1)';"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Baixar para Windows
+              </a>
+              <button
+                onclick="scrollToSection('app-keys-card')"
+                style="display:inline-flex;align-items:center;gap:6px;padding:12px 20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border-radius:980px;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,0.15);cursor:pointer;transition:all 0.2s;font-family:inherit;"
+                onmouseover="this.style.background='rgba(255,255,255,0.13)';this.style.color='#fff';"
+                onmouseout="this.style.background='rgba(255,255,255,0.08)';this.style.color='rgba(255,255,255,0.8)';"
+              >🔑 Gerenciar chaves</button>
+            </div>
+          </div>
+
+          <div style="flex-shrink:0;width:120px;height:120px;background:rgba(0,113,227,0.15);border:1px solid rgba(0,113,227,0.25);border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:52px;position:relative;z-index:1;">🖥️</div>
+        </div>
+      </div>
+
       <div class="card" id="app-keys-card" style="display:none; margin-top:24px;">
         <h3>🔌 Integração de Sistema <span>Gerencie os acessos do Força Aliada Manager (App PC)</span></h3>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
@@ -1413,11 +1507,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 <footer>
   <p>&copy; 2026 Força Aliada. Todos os direitos reservados.</p>
   <div class="footer-links">
-    <a href="https://manager.forcaaliada.ogabriels.com/politica-de-privacidade">Política de Privacidade</a>
+    <a href="#">Política de Privacidade</a>
     <span class="footer-dot">&bull;</span>
     <a href="#">Termos de Uso</a>
-    <span class="footer-dot">&bull;</span>
-    <a href="https://manager.forcaaliada.ogabriels.com" target="_blank">⚡ Força Aliada Manager</a>
     <span class="footer-dot">&bull;</span>
     <a href="mailto:forcaaliada@ogabriels.com">Contato</a>
   </div>
@@ -1659,7 +1751,11 @@ let liveInterval        = null;
 let auditLogs           = [];
 let auditFilterActive   = 'all';
 let auditPage           = 0;
-const AUDIT_PAGE_SIZE   = 15;
+let auditTotalPages     = 1;
+let auditTotalCount     = 0;
+let auditSeverityFilter = 'all';
+let auditActorFilter    = '';
+const AUDIT_PAGE_SIZE   = 50;
 
 let modalHistoryData    = [];
 let modalSortConfig     = { key: 'date', asc: false };
@@ -1684,12 +1780,19 @@ function escapeHTML(value) {
 }
 function normalizeAuditLog(log) {
   return {
-    id: log.id,
-    type: log.type || 'system',
-    actor: log.actor_name || log.actor || 'Sistema',
-    target: log.target_name || log.target || null,
-    message: log.message || '',
-    time: log.created_at || log.time || new Date().toISOString()
+    id:        log.id,
+    type:      log.type      || 'system',
+    severity:  log.severity  || 'info',
+    actor:     log.actor_name || log.actor || 'Sistema',
+    actorId:   log.actor_id  || null,
+    target:    log.target_name || log.target || null,
+    targetId:  log.target_id  || null,
+    message:   log.message   || '',
+    ip:        log.ip         || null,
+    userAgent: log.user_agent || null,
+    sessionId: log.session_id || null,
+    time:      log.created_at || log.time || new Date().toISOString(),
+    metadata:  log.metadata   || null,
   };
 }
 
@@ -1754,7 +1857,13 @@ function initDashboard() {
     document.getElementById('btn-export-staff').style.display = 'inline-flex';
     fetchAuditLogs();
     
+    // Recarrega logs de auditoria a cada 60 segundos automaticamente
+    setInterval(() => {
+      if (document.visibilityState === 'visible') fetchAuditLogs(0);
+    }, 60_000);
+
     // Inicia a aba do App Desktop
+    document.getElementById('manager-promo-card').style.display = 'block';
     document.getElementById('app-keys-card').style.display = 'block';
     document.getElementById('qa-appkeys').style.display = 'flex';
     fetchAppKeys();
@@ -2317,66 +2426,110 @@ function revokeAppKey(id, name) {
 }
 
 // ══ Logs de Auditoria (dados persistidos no backend) ══
-async function fetchAuditLogs() {
+async function fetchAuditLogs(pageOverride = null) {
+  const pageToLoad = pageOverride !== null ? pageOverride : auditPage;
   try {
-    const params = new URLSearchParams({ limit: '200', page: '0' });
-    if (auditFilterActive !== 'all') params.set('type', auditFilterActive);
+    const params = new URLSearchParams({
+      limit: String(AUDIT_PAGE_SIZE),
+      page:  String(pageToLoad),
+    });
+    if (auditFilterActive !== 'all')   params.set('type',     auditFilterActive);
+    if (auditSeverityFilter !== 'all') params.set('severity', auditSeverityFilter);
+    if (auditActorFilter)              params.set('actor',    auditActorFilter);
+
     const res = await apiFetch(`/api/admin/audit?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Falha ao buscar auditoria');
-    const payload = await res.json();
-    const logs = Array.isArray(payload) ? payload : (payload.logs || []);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const payload   = await res.json();
+    const logs      = Array.isArray(payload) ? payload : (payload.logs || []);
+    auditTotalCount = payload.total      || logs.length;
+    auditTotalPages = payload.totalPages || 1;
+    auditPage       = pageToLoad;
+
     auditLogs = logs.map(normalizeAuditLog);
-    auditPage = 0;
     renderAuditLogs();
   } catch (err) {
     console.error('[audit]', err);
     auditLogs = [];
     renderAuditLogs();
-    showToast('Não foi possível carregar os logs reais de auditoria.', 'error');
+    showToast(`Não foi possível carregar os logs: ${err.message}`, 'error');
   }
 }
 
 function filterAuditLogs(type) {
   auditFilterActive = type;
   auditPage = 0;
-  ['all', 'create', 'update', 'delete', 'login'].forEach(t => {
+  ['all', 'create', 'update', 'delete', 'login', 'security', 'system'].forEach(t => {
     document.getElementById(`atab-${t}`)?.classList.toggle('active', t === type);
   });
   fetchAuditLogs();
 }
 
-function loadMoreAuditLogs() { auditPage++; renderAuditLogs(true); }
+async function exportAuditCSV() {
+  try {
+    const res = await apiFetch('/api/admin/audit/export', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha na exportação');
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    showToast('Erro ao exportar: ' + e.message, 'error');
+  }
+}
 
-function renderAuditLogs(append = false) {
-  const filtered = auditFilterActive === 'all' ? auditLogs : auditLogs.filter(l => l.type === auditFilterActive);
-  const start = 0, end = (auditPage + 1) * AUDIT_PAGE_SIZE;
-  const slice = filtered.slice(start, end);
-  const list  = document.getElementById('audit-log-list');
-  const moreBtn = document.getElementById('audit-load-more');
+function renderAuditLogs() {
+  const list     = document.getElementById('audit-log-list');
+  const moreBtn  = document.getElementById('audit-load-more');
+  const prevBtn  = document.getElementById('audit-prev-btn');
+  const countEl  = document.getElementById('audit-total-count');
 
-  if (!slice.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log real encontrado</strong><span>O backend não retornou registros para este filtro.</span></div>';
-    moreBtn.style.display = 'none';
+  if (countEl) countEl.textContent = `${auditTotalCount} evento${auditTotalCount !== 1 ? 's' : ''}`;
+
+  if (!auditLogs.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🕵️</div><strong>Nenhum log encontrado</strong><span>Nenhum evento registrado para este filtro.</span></div>';
+    if (moreBtn) moreBtn.style.display = 'none';
+    if (prevBtn) prevBtn.style.display = 'none';
     return;
   }
 
-  const typeIcon  = { create: '✅', update: '✏️', delete: '🗑️', login: '🔑', notify: '🔔', system: '⚙️' };
-  const dotClass  = { notify: 'system' };
+  const typeIcon = {
+    create:              '✅',
+    update:              '✏️',
+    delete:              '🗑️',
+    login:               '🔑',
+    logout:              '🚪',
+    notify:              '🔔',
+    notification_create: '🔔',
+    security:            '🛡️',
+    system:              '⚙️',
+  };
 
-  list.innerHTML = slice.map(l => {
-    const d = new Date(l.time); const timeStr = d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-    const typeClass = dotClass[l.type] || l.type || 'system';
-    return `<div class="audit-item">
-      <div class="audit-dot ${escapeHTML(typeClass)}"></div>
+  const severityClass = { info: '', warning: 'audit-item--warning', critical: 'audit-item--critical' };
+
+  list.innerHTML = auditLogs.map(l => {
+    const d       = new Date(l.time);
+    const timeStr = d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const dotType = (l.type === 'notification_create') ? 'system' : (l.type || 'system');
+    const sevCls  = severityClass[l.severity] || '';
+    const ipHint  = l.ip ? `<span class="audit-ip" title="IP: ${escapeHTML(l.ip)}">🌐 ${escapeHTML(l.ip)}</span>` : '';
+    return `<div class="audit-item ${sevCls}" title="ID: ${l.id}${l.userAgent ? '\nUA: ' + escapeHTML(l.userAgent) : ''}">
+      <div class="audit-dot ${escapeHTML(dotType)}"></div>
       <div class="audit-content">
-        <strong>${typeIcon[l.type] || '•'} ${escapeHTML(l.message || 'Registro de auditoria')}</strong>
-        <span>Por: ${escapeHTML(l.actor)}${l.target ? ` · Alvo: ${escapeHTML(l.target)}` : ''}</span>
+        <strong>${typeIcon[l.type] || '•'} ${escapeHTML(l.message || 'Evento de auditoria')}</strong>
+        <span>Por: <b>${escapeHTML(l.actor)}</b>${l.target ? ` · Alvo: <b>${escapeHTML(l.target)}</b>` : ''}${ipHint}</span>
       </div>
       <div class="audit-time">${escapeHTML(timeStr)}</div>
     </div>`;
   }).join('');
 
-  moreBtn.style.display = filtered.length > end ? 'inline-flex' : 'none';
+  const hasPrev = auditPage > 0;
+  const hasNext = auditPage < auditTotalPages - 1;
+  if (moreBtn) moreBtn.style.display = hasNext ? 'inline-flex' : 'none';
+  if (prevBtn) prevBtn.style.display = hasPrev ? 'inline-flex' : 'none';
 }
 
 // ══ Notas de jogador no modal (compartilhadas via backend) ══

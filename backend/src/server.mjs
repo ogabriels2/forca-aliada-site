@@ -267,6 +267,16 @@ CREATE TABLE IF NOT EXISTS app_integration_keys (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_used_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS whitelist_queue (
+  id             SERIAL PRIMARY KEY,
+  minecraft_name VARCHAR(255) NOT NULL,
+  user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  queued_at      TIMESTAMPTZ DEFAULT NOW(),
+  delivered_at   TIMESTAMPTZ,
+  delivered_by   INTEGER REFERENCES app_integration_keys(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_whitelist_queue_delivered ON whitelist_queue(delivered_at);
 `;
 
 await pool.query(baseSchemaSql);
@@ -752,6 +762,14 @@ app.post('/api/app/sync', async (req, res) => {
 
     if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
+    // Resolve the app key id for queue delivery tracking
+    let appKeyId = null;
+    try {
+        const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+        const { rows: kr } = await pool.query('SELECT id FROM app_integration_keys WHERE key_hash=$1', [keyHash]);
+        appKeyId = kr[0]?.id || null;
+    } catch { /* fallback key has no id */ }
+
     try {
         const payload  = req.body?.payload || req.body;
         const online   = (payload?.onlinePlayers || []).filter(Boolean);
@@ -772,15 +790,33 @@ app.post('/api/app/sync', async (req, res) => {
             if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'app')", [p, now]);
         }
 
-        res.json({ ok: true });
+        // ── Whitelist queue: fetch pending items not yet delivered ──
+        const { rows: pending } = await pool.query(
+          'SELECT id, minecraft_name FROM whitelist_queue WHERE delivered_at IS NULL ORDER BY queued_at ASC LIMIT 50'
+        );
+
+        // Mark them delivered atomically
+        if (pending.length > 0) {
+          const ids = pending.map(r => r.id);
+          await pool.query(
+            `UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2)`,
+            [appKeyId, ids]
+          );
+        }
+
+        res.json({
+          ok: true,
+          whitelist_add: pending.map(r => ({ id: r.id, username: r.minecraft_name })),
+        });
 
         await audit({
           type: 'system', severity: 'info',
-          message: `App Sync: ${online.length} jogador(es) online registrado(s)`,
+          message: `App Sync: ${online.length} jogador(es) online registrado(s)${pending.length ? `, ${pending.length} whitelist(s) entregue(s)` : ''}`,
           metadata: {
             onlinePlayers: online,
             sessionsOpened: online.filter(p => !active.rows.some(r => r.player === p)).length,
             sessionsClosed: active.rows.filter(r => !online.includes(r.player)).length,
+            whitelistDelivered: pending.map(r => r.minecraft_name),
           },
         });
     } catch (err) { res.status(500).json({ error: 'Falha na sincronização' }); }
@@ -852,6 +888,18 @@ await audit({
   message: `E-mail verificado com sucesso: ${user.username}`,
   metadata: { email: user.email },
 });
+
+// ── Enqueue whitelist addition for the desktop app ──
+if (user.minecraft_name) {
+  try {
+    await pool.query(
+      'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
+      [user.minecraft_name, user.id]
+    );
+  } catch (e) {
+    console.error('[whitelist_queue insert]', e);
+  }
+}
 
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
