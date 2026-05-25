@@ -7,7 +7,7 @@
 **Site institucional e painel de gestão do servidor Minecraft Survival Vanilla Força Aliada.**  
 Ativo e estável desde 2021. Sem resets. Sem pay-to-win.
 
-[![Keep Backend Alive](https://github.com/ogabriels2/forca-aliada-site/actions/workflows/keep-alive.yml/badge.svg)](https://github.com/ogabriels2/forca-aliada-site/actions/workflows/keep-alive.yml)
+[🟢 Keep Backend Alive](https://github.com/ogabriels2/forca-aliada-site/actions/workflows/keep-alive.yml)
 [![Direitos Reservados](https://img.shields.io/badge/copyright-todos%20os%20direitos%20reservados-red.svg)](#direitos-autorais)
 
 [**Site ao vivo**](https://forcaaliada.ogabriels.com) · [**API Backend**](https://forca-aliada-site.onrender.com/healthz) · [**Discord**](https://discord.gg/xZmRkB7PWd)
@@ -317,7 +317,7 @@ A Força Aliada opera com dois sistemas paralelos e independentes:
 
 ## Direitos Autorais
 
-© 2021–2026 Força Aliada. Todos os direitos reservados.
+© 2021–2026 Gabriel Silva Dias Moreira (Força Aliada). Todos os direitos reservados.
 
 O código-fonte deste repositório é disponibilizado publicamente para fins de **referência e transparência** com a comunidade. Não é permitido reutilizar, copiar, modificar, redistribuir ou criar projetos derivados — parcial ou integralmente — sem autorização expressa e por escrito dos autores.
 
