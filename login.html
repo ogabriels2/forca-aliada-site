@@ -12,7 +12,7 @@
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
   function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
   apply();
-  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
+  if(token){const syncTheme=()=>{fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
 })();
 </script>
@@ -107,6 +107,9 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .footer-text a { color: var(--text-primary); font-weight: 600; }
 .footer-text a:hover { color: var(--accent); text-decoration: underline; }
 .msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
+.msg.error   { color: var(--danger); }
+.msg.success { color: var(--success); }
+.msg.info    { color: var(--accent); }
 .error { color: var(--danger); }
 .success { color: var(--success); }
 #view-loggedin { display: none; }
@@ -320,6 +323,9 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 [data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
 
 </style>
+<!-- Preconnect hints: reduz latência de primeira conexão -->
+<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://minotar.net" crossorigin>
 </head>
 <body>
 
@@ -456,12 +462,17 @@ async function handleLogin(event) {
   btn.disabled = true;
   btn.textContent = 'Aguarde...';
 
+  const slowTimer = setTimeout(() => {
+    showMessage('O servidor está acordando (pode levar até 30 s)…', 'info');
+  }, 4000);
+
   try {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ login: loginVal, password: passVal }),
     });
+    clearTimeout(slowTimer);
     
     const data = await res.json();
 
@@ -482,6 +493,7 @@ async function handleLogin(event) {
     setTimeout(() => { location.href = 'dashboard.html'; }, 600);
 
   } catch (err) {
+    clearTimeout(slowTimer);
     const errorMsg = err.message === 'invalid credentials' ? 'Usuário ou senha incorretos.' : err.message;
     showMessage(errorMsg, 'error');
     document.getElementById('pass-input').value = '';

@@ -22,6 +22,10 @@ import crypto from 'crypto';
 
 const PROCESS_STARTED_AT = new Date();
 
+// ── Cache em memória para status do Minecraft (evita bater na API externa a cada request) ──
+const _mcStatusCache = { data: null, expiresAt: 0 };
+const MC_STATUS_TTL_MS = 30_000; // 30 segundos
+
 // ─────────────────────────────────────────────
 // App
 // ─────────────────────────────────────────────
@@ -370,7 +374,7 @@ const p = process.env.BOOTSTRAP_ADMIN_PASSWORD || '';
 if (!u || !e || !p) return;
 const { rows } = await pool.query('SELECT id FROM users WHERE username=$1', [u.toLowerCase()]);
 if (rows.length) return;
-const hash = await bcrypt.hash(p, 12);
+const hash = await bcrypt.hash(p, 10);
 await pool.query(
 'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,TRUE)',
 [u.toLowerCase(), e, u, hash, 'owner'],
@@ -489,6 +493,12 @@ next();
 // ─────────────────────────────────────────────
 app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) }));
 
+// ── Keep-alive público (usado pelo GitHub Actions para evitar cold start) ──
+app.get('/ping', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ pong: true, ts: Date.now() });
+});
+
 // ─────────────────────────────────────────────
 // Minecraft Status (Híbrido) - ANTI BLOQUEIO TCPSHIELD
 // ─────────────────────────────────────────────
@@ -540,6 +550,17 @@ async function fetchMinecraftStatus() {
   };
 }
 
+async function fetchMinecraftStatusCached() {
+  const now = Date.now();
+  if (_mcStatusCache.data && now < _mcStatusCache.expiresAt) {
+    return _mcStatusCache.data;
+  }
+  const fresh = await fetchMinecraftStatus();
+  _mcStatusCache.data = fresh;
+  _mcStatusCache.expiresAt = now + MC_STATUS_TTL_MS;
+  return fresh;
+}
+
 async function recordServerStatus(status) {
   await pool.query(
     'INSERT INTO server_status_checks(host, online, players_online, players_max, latency_ms, version, checked_at) VALUES($1,$2,$3,$4,$5,$6,$7)',
@@ -577,7 +598,7 @@ async function getServerStatusStats(host, currentOnline) {
 app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
   try {
-    const status = await fetchMinecraftStatus();
+    const status = await fetchMinecraftStatusCached();
     await recordServerStatus(status);
 
     // --- SISTEMA DE AUTO-CURA (MASTER/SLAVE) ---
@@ -655,7 +676,7 @@ const key = req.query.key || req.headers['x-ingest-secret'];
 if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
 
 try {
-  const status = await fetchMinecraftStatus();
+  const status = await fetchMinecraftStatusCached();
   await recordServerStatus(status);
   
   const { rows: activeApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
@@ -836,7 +857,7 @@ if (!validateUsername(username) || !validateEmail(email) || !validatePassword(pa
 return res.status(400).json({ error: 'Dados inválidos.' });
 
 try {
-const hash = await bcrypt.hash(password, 12);
+const hash = await bcrypt.hash(password, 10);
 const { rows } = await pool.query(
 'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,FALSE) RETURNING username,id',
 [username, email, minecraftName, hash, 'limited'],
@@ -1014,7 +1035,7 @@ const { rows } = await pool.query(
 );
 if (!rows.length) return res.status(400).json({ error: 'Código inválido ou expirado' });
 
-const hash = await bcrypt.hash(newPassword, 12);
+const hash = await bcrypt.hash(newPassword, 10);
 await pool.query('UPDATE users SET password_hash=$1 WHERE email=$2', [hash, email]);
 await pool.query('DELETE FROM password_resets WHERE email=$1', [email]);
 
@@ -1111,7 +1132,7 @@ const { rows } = await pool.query('SELECT password_hash FROM users WHERE id=$1',
 if (!rows[0] || !(await bcrypt.compare(currentPassword, rows[0].password_hash)))
 return res.status(401).json({ error: 'invalid current password' });
 
-const hash = await bcrypt.hash(newPassword, 12);
+const hash = await bcrypt.hash(newPassword, 10);
 await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, req.user.sub]);
 
 await audit({
@@ -1656,7 +1677,7 @@ if (!validateUsername(username) || !validateEmail(email) || !validatePassword(pa
 return res.status(400).json({ error: 'invalid fields' });
 
 try {
-const hash = await bcrypt.hash(password, 12);
+const hash = await bcrypt.hash(password, 10);
 const { rows } = await pool.query(
 'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,TRUE) RETURNING id',
 [username, email, minecraftName, hash, role],
@@ -1731,7 +1752,7 @@ return res.status(400).json({ error: 'invalid new password' });
 const { rows: target } = await pool.query('SELECT username FROM users WHERE id=$1', [id]);
 if (!target.length) return res.status(404).json({ error: 'user not found' });
 
-const hash = await bcrypt.hash(newPassword, 12);
+const hash = await bcrypt.hash(newPassword, 10);
 await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, id]);
 
 await auditFromReq(req, {
@@ -1875,13 +1896,16 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
   let capitalRecords = [];
 
   if (mc) {
-    const balance = await ensureBalance(mc);
-    merit = balance.merit_total;
-    capital = balance.capital_balance;
-    const [meritRows, capitalRows] = await Promise.all([
+    // Garante que o registro existe antes de ler (insert-on-conflict é idempotente)
+    await ensureBalance(mc);
+    // Lê balance + histórico em paralelo (3 queries simultâneas)
+    const [balanceRes, meritRows, capitalRows] = await Promise.all([
+      pool.query('SELECT * FROM player_balances WHERE minecraft_name=$1', [mc]),
       pool.query('SELECT id, amount, reason, category, awarded_by_name, created_at FROM merit_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 100', [mc]),
       pool.query('SELECT id, amount, type, description, created_by_name, created_at FROM capital_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 100', [mc]),
     ]);
+    merit = balanceRes.rows[0]?.merit_total || 0;
+    capital = balanceRes.rows[0]?.capital_balance || 0;
     records = meritRows.rows;
     capitalRecords = capitalRows.rows;
   }

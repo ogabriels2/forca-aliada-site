@@ -21,7 +21,7 @@
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
   function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
   apply();
-  if(token){fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});}
+  if(token){const syncTheme=()=>{fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
 })();
 </script>
@@ -736,6 +736,11 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 [data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
 
 </style>
+<!-- Preconnect hints: reduz latência de primeira conexão -->
+<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://minotar.net" crossorigin>
+<link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
+<link rel="preload" as="image" href="assets/images/hero.png" fetchpriority="high">
 </head>
 <body>
 
@@ -764,7 +769,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <header>
   <a href="#inicio" class="brand-link" aria-label="Início - Força Aliada">
-    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
     <span class="logo-text">Força Aliada</span>
   </a>
   
@@ -1239,12 +1244,16 @@ async function getSession() {
   }
   
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { 
-      headers: { 'Authorization': `Bearer ${token}` } 
-    });
-    if (!res.ok) throw new Error('Sessão expirada');
-    
-    const me = await res.json();
+    // Dispara ambas as requisições simultaneamente
+    const [meRes, rankRes] = await Promise.all([
+      fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetch(`${API_BASE}/api/me/rank-info`, { headers: { 'Authorization': `Bearer ${token}` } })
+        .catch(() => null), // rank é opcional; falha silenciosa
+    ]);
+
+    if (!meRes.ok) throw new Error('Sessão expirada');
+    const me = await meRes.json();
+
     const session = {
       username:      me.username,
       email:         me.email,
@@ -1252,19 +1261,15 @@ async function getSession() {
       role:          me.role,
     };
 
-    // Busca rank em paralelo (não bloqueia se falhar)
-    try {
-      const rankRes = await fetch(`${API_BASE}/api/me/rank-info`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (rankRes.ok) {
+    if (rankRes && rankRes.ok) {
+      try {
         const rankData = await rankRes.json();
         session.rank = rankData.rank;
         session.merit = rankData.merit;
         session.rankProgress = rankData.progress;
         session.nextRank = rankData.nextRank;
-      }
-    } catch { /* rank opcional */ }
+      } catch { /* rank opcional */ }
+    }
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;

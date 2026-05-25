@@ -19,14 +19,17 @@
   apply();
 
   if (token) {
-    fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
-      .then(r => r.ok ? r.json() : null)
-      .then(p => {
-        if (p && p.theme) {
-          localStorage.setItem(key, p.theme);
-          apply(p.theme);
-        }
-      }).catch(console.error);
+    const syncTheme = () => {
+      fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
+        .then(r => r.ok ? r.json() : null)
+        .then(p => {
+          if (p && p.theme) {
+            localStorage.setItem(key, p.theme);
+            apply(p.theme);
+          }
+        }).catch(console.error);
+    };
+    (typeof requestIdleCallback === 'function') ? requestIdleCallback(syncTheme, { timeout: 3000 }) : setTimeout(syncTheme, 800);
   }
 
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'auto'));
@@ -892,12 +895,16 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
 
 </style>
+<!-- Preconnect hints: reduz latência de primeira conexão -->
+<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://minotar.net" crossorigin>
+<link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
 </head>
 <body>
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img">
+    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
     <div class="logo-text">Força Aliada</div>
   </a>
 
@@ -920,13 +927,13 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
     <div class="user-menu-wrapper">
       <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
-        <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+        <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
         <span id="nav-name">...</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </div>
       <div class="user-dropdown" id="user-dropdown-menu">
         <div class="dropdown-header">
-          <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+          <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
           <div class="dropdown-header-info">
             <strong id="drop-name">Usuário</strong>
             <span id="drop-email">email@exemplo.com</span>
@@ -951,7 +958,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
     <aside class="sidebar-profile">
       <div class="card account-summary-card">
         <div class="summary-header">
-          <img id="sidebar-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+          <img id="sidebar-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
           <div>
             <h2 id="sidebar-name">...</h2>
             <span id="sidebar-role" class="pill limited">Staff</span>
@@ -1324,7 +1331,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <div class="merit-preview" id="mg-preview">
             <div class="merit-preview-row">
               <div class="merit-preview-player">
-                <img id="mg-preview-skin" src="https://minotar.net/helm/Steve/40.png" alt="">
+                <img id="mg-preview-skin" src="https://minotar.net/helm/Steve/40.png" alt="" width="40" height="40">
                 <div>
                   <div class="mpname" id="mg-preview-name">—</div>
                   <div class="mprank" id="mg-preview-rank">—</div>
@@ -1519,7 +1526,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   <div class="modal-content">
     <div class="modal-header">
       <div class="modal-user-info">
-        <img id="modal-img" src="https://minotar.net/helm/Steve/100.png" alt="Skin do jogador">
+        <img id="modal-img" src="https://minotar.net/helm/Steve/100.png" alt="Skin do jogador" width="100" height="100">
         <div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><h2 id="modal-name" style="margin:0;">-</h2><span id="modal-rank-badge" class="li-merit-badge ferro">🪨 Ferro</span></div>
           <span id="modal-status" class="pill">-</span>
