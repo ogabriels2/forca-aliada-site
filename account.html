@@ -2515,15 +2515,23 @@ function initAccount() {
   renderRanksRoadmap(0);
 }
 
-// BOOTSTRAP
+// BOOTSTRAP — cache-first: renderiza imediatamente com localStorage, revalida em background
 (async () => {
+  if (!token) { logout(); return; }
+
+  // Se há sessão em cache, mostra a página imediatamente
+  const cached = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } })();
+  if (cached && cached.username) {
+    session = cached;
+    document.body.style.visibility = 'visible';
+    initAccount();
+  }
+
+  // Revalida em background (ou faz o bootstrap completo se não havia cache)
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
 
-    if (res.status === 401 || res.status === 403) {
-      logout();
-      return;
-    }
+    if (res.status === 401 || res.status === 403) { logout(); return; }
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
 
     const me = await res.json();
@@ -2531,17 +2539,21 @@ function initAccount() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     await syncThemePreference();
 
-    // Admins também precisam conseguir gerenciar a própria conta.
-    // O acesso ao dashboard é exposto como ação explícita no menu, nunca como redirecionamento automático.
+    // Se ainda não estava visível (sem cache), inicializa agora
+    if (document.body.style.visibility !== 'visible') {
+      document.body.style.visibility = 'visible';
+      initAccount();
+    } else {
+      // Atualiza silenciosamente os dados que podem ter mudado
+      renderData();
+    }
   } catch (err) {
-    console.error('Erro crítico no Bootstrap:', err);
-    document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar a conta. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
-    document.body.style.visibility = 'visible';
-    return;
+    console.error('Erro no Bootstrap:', err);
+    if (document.body.style.visibility !== 'visible') {
+      document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar a conta. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
+      document.body.style.visibility = 'visible';
+    }
   }
-
-  document.body.style.visibility = 'visible';
-  initAccount();
 })();
 
 function renderData() {

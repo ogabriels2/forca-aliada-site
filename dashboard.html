@@ -1817,16 +1817,25 @@ async function syncThemePreference() {
   } catch (err) { console.error('[theme preferences]', err); }
 }
 
-// BOOTSTRAP
+// BOOTSTRAP — cache-first: renderiza imediatamente com localStorage, revalida em background
 (async () => {
+  if (!token) { logout(); return; }
+
+  // Se há sessão em cache, mostra a página imediatamente
+  const cached = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } })();
+  if (cached && cached.username && cached.role !== 'limited') {
+    session = cached;
+    document.body.style.visibility = 'visible';
+    initDashboard();
+  } else if (cached && cached.role === 'limited') {
+    window.location.replace('account.html'); return;
+  }
+
+  // Revalida em background (ou bootstrap completo se sem cache)
   try {
     const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
 
-    // Só desloga se o token for realmente rejeitado (inválido/expirado)
-    if (res.status === 401 || res.status === 403) {
-      logout();
-      return;
-    }
+    if (res.status === 401 || res.status === 403) { logout(); return; }
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
 
     const me = await res.json();
@@ -1835,15 +1844,21 @@ async function syncThemePreference() {
     await syncThemePreference();
 
     if (session.role === 'limited') { window.location.replace('account.html'); return; }
+
+    if (document.body.style.visibility !== 'visible') {
+      document.body.style.visibility = 'visible';
+      initDashboard();
+    } else {
+      // Atualiza silenciosamente foto/nome no nav
+      renderProfile();
+    }
   } catch (err) {
     console.error('Erro crítico no Bootstrap:', err);
-    // Em vez de um loop invisível, mostra a você o exato erro na tela
-    document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar o painel. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
-    document.body.style.visibility = 'visible';
-    return;
+    if (document.body.style.visibility !== 'visible') {
+      document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar o painel. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
+      document.body.style.visibility = 'visible';
+    }
   }
-  document.body.style.visibility = 'visible';
-  initDashboard();
 })();
 
 function initDashboard() {

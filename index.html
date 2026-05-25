@@ -1505,12 +1505,21 @@ document.addEventListener('keydown', e => {
 
 // ── Init ─────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
-  const session = await getSession();
-  renderAuthMenu(session);
+  // Renderiza imediatamente com cache do localStorage (sem esperar a API)
+  const cachedSession = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } })();
+  renderAuthMenu(cachedSession);
   showFlashMessage();
   reveal();
   fetchStatus();
   setInterval(fetchStatus, 30000);
+
+  // Revalida em background e atualiza o menu se necessário
+  if (localStorage.getItem(TOKEN_KEY)) {
+    const freshSession = await getSession();
+    if (JSON.stringify(freshSession) !== JSON.stringify(cachedSession)) {
+      renderAuthMenu(freshSession);
+    }
+  }
 });
 </script>
 </body>
