@@ -971,14 +971,16 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
       userRow = u[0];
       await pool.query('UPDATE user_integrations SET ms_refresh_token = $1, updated_at = NOW() WHERE user_id = $2', [msTokens.refresh_token, userRow.id]);
     } else {
+      // 1. Verifica se já existe conta com esse nick (cadastro manual que ainda não vinculou)
       const { rows: matchNick } = await pool.query('SELECT * FROM users WHERE LOWER(minecraft_name) = $1', [nick.toLowerCase()]);
-      
+
       if (matchNick.length > 0) {
+        // Conta manual existente com esse nick → vincula a integração a ela
         userRow = matchNick[0];
       } else {
-        const fakeEmail = `${uuid}@xbox.forcaaliada.local`; 
-        const randomPass = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
-        
+        // 2. Cria conta nova via Xbox (sem cadastro manual prévio)
+        const fakeEmail   = `${uuid}@xbox.forcaaliada.local`;
+        const randomPass  = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
         const { rows: newUser } = await pool.query(
           'INSERT INTO users(username, email, minecraft_name, password_hash, role, is_verified) VALUES($1, $2, $3, $4, $5, TRUE) RETURNING *',
           [nick.toLowerCase(), fakeEmail, nick, randomPass, 'limited']
@@ -986,7 +988,12 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         userRow = newUser[0];
         await pool.query('INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)', [nick, userRow.id]);
       }
-      
+
+      // Salva integração e atualiza minecraft_name caso conta manual não tivesse nick ainda
+      await pool.query(
+        `UPDATE users SET minecraft_name = $1 WHERE id = $2 AND (minecraft_name IS NULL OR minecraft_name = '')`,
+        [nick, userRow.id]
+      );
       await pool.query(
         'INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid) VALUES($1, $2, $3, $4)',
         [userRow.id, msTokens.refresh_token, xuid, uuid]
@@ -1014,84 +1021,28 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 // ─────────────────────────────────────────────
 // AUTH – Signup (ESSE É O SEU CÓDIGO ORIGINAL QUE CONTINUA INTACTO!)
 // ─────────────────────────────────────────────
-// ── Helper: verifica nick no Mojang e retorna { uuid, name } ou lança erro ──
-async function verifyMinecraftNick(nick) {
-  // Regex Java Edition: 3-16 chars, alfanumérico + underscore
-  if (!/^[a-zA-Z0-9_]{3,16}$/.test(nick)) {
-    throw Object.assign(new Error('Nick de Minecraft inválido.'), { code: 'MC_INVALID_FORMAT' });
-  }
-  const mojangRes = await fetch(
-    `https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(nick)}`,
-    { signal: AbortSignal.timeout(5000) }
-  );
-  // 404 = nick não existe
-  if (mojangRes.status === 404) {
-    throw Object.assign(
-      new Error(`O nick "${nick}" não existe no Minecraft Java Edition. Verifique se digitou corretamente (maiúsculas importam).`),
-      { code: 'MC_NOT_FOUND' }
-    );
-  }
-  // Rate-limit da Mojang
-  if (mojangRes.status === 429) {
-    throw Object.assign(
-      new Error('Serviço da Mojang temporariamente indisponível. Tente novamente em instantes.'),
-      { code: 'MC_RATE_LIMIT' }
-    );
-  }
-  if (!mojangRes.ok) {
-    throw Object.assign(
-      new Error('Não foi possível verificar o nick no Minecraft agora. Tente novamente.'),
-      { code: 'MC_API_ERROR' }
-    );
-  }
-  const profile = await mojangRes.json();
-  // Retorna o nome exatamente como a Mojang guarda (capitalização correta)
-  return { uuid: profile.id, name: profile.name };
-}
-
 app.post('/api/auth/signup', authLimiter, async (req, res) => {
-  const username      = sanitize(req.body?.username).toLowerCase();
-  const email         = sanitize(req.body?.email).toLowerCase();
-  const minecraftName = sanitize(req.body?.minecraftName || '');
-  const password      = req.body?.password || '';
+  const username = sanitize(req.body?.username).toLowerCase();
+  const email    = sanitize(req.body?.email).toLowerCase();
+  const password = req.body?.password || '';
+
+  // minecraft_name não é aceito no cadastro manual —
+  // o nick só é definido ao vincular conta Microsoft/Xbox após o login.
+  if (req.body?.minecraftName !== undefined) {
+    return res.status(400).json({
+      error: 'O nick de Minecraft não pode ser definido no cadastro. Vincule sua conta Xbox após criar a conta.',
+    });
+  }
 
   if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password))
     return res.status(400).json({ error: 'Dados inválidos.' });
 
-  // Nick de Minecraft é obrigatório no cadastro manual
-  if (!minecraftName) {
-    return res.status(400).json({ error: 'O nick de Minecraft é obrigatório.', field: 'minecraftName' });
-  }
-
-  // ── Verificação obrigatória na API da Mojang ──────────────────────────────
-  let verifiedNick;
-  try {
-    const mojangProfile = await verifyMinecraftNick(minecraftName);
-    verifiedNick = mojangProfile.name; // usa o nome exato da Mojang
-  } catch (mcErr) {
-    const isUserError = ['MC_INVALID_FORMAT', 'MC_NOT_FOUND'].includes(mcErr.code);
-    const status = isUserError ? 400 : (mcErr.code === 'MC_RATE_LIMIT' ? 503 : 502);
-    return res.status(status).json({ error: mcErr.message, field: 'minecraftName', code: mcErr.code });
-  }
-
-  // ── Verifica se o nick já está vinculado a outra conta ───────────────────
-  const { rows: nickTaken } = await pool.query(
-    'SELECT id FROM users WHERE LOWER(minecraft_name) = $1',
-    [verifiedNick.toLowerCase()]
-  );
-  if (nickTaken.length > 0) {
-    return res.status(409).json({
-      error: `O nick "${verifiedNick}" já está vinculado a outra conta. Se é o seu nick, use "Entrar com Xbox / Minecraft".`,
-      field: 'minecraftName',
-      code: 'MC_ALREADY_TAKEN',
-    });
-  }
-
   try {
     const hash = await bcrypt.hash(password, 10);
+    // minecraft_name fica NULL até a vinculação com Xbox
     const { rows } = await pool.query(
-      'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,FALSE) RETURNING username,id',
-      [username, email, verifiedNick, hash, 'limited'],
+      'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,NULL,$3,$4,FALSE) RETURNING username,id',
+      [username, email, hash, 'limited'],
     );
 
     const code      = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1103,9 +1054,9 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
     );
     await sendSystemEmail(email, rows[0].username, code, 'verify');
 
-    await audit({ type: 'create', targetId: rows[0].id, targetName: username, message: `Conta criada: ${username} (MC: ${verifiedNick})` });
+    await audit({ type: 'create', targetId: rows[0].id, targetName: username, message: `Conta criada: ${username} (sem MC — aguarda vinculação Xbox)` });
 
-    res.json({ ok: true, requireVerification: true, email, minecraftName: verifiedNick });
+    res.json({ ok: true, requireVerification: true, email });
 
   } catch {
     res.status(409).json({ error: 'username/email already exists' });
