@@ -12,12 +12,16 @@
 - `JWT_SECRET` (mínimo 32 caracteres)
 - `INGEST_SECRET` (mínimo 16 caracteres)
 - `CORS_ORIGINS` (CSV com origens permitidas, ex.: `https://forcaaliada.ogabriels.com,https://admin.forcaaliada.com`)
+- `MS_CLIENT_ID` (OAuth app da Microsoft/Xbox)
+- `MS_CLIENT_SECRET` (OAuth app da Microsoft/Xbox)
+- `MS_REDIRECT_URI` (precisa bater 1:1 com o callback cadastrado na Microsoft)
 
 ## Variáveis opcionais
 - `PORT` (default `8787`)
 - `MC_HOST` (default `fa.ogabriels.com`)
 - `PG_SSL_NO_VERIFY=true` (somente se seu provedor exigir)
 - `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`
+- `FRONTEND_BASE_URL` (default `https://forcaaliada.ogabriels.com`; usado no redirect final do login Microsoft)
 
 ## Rodar
 ```bash

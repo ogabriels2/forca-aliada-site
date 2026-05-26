@@ -116,6 +116,13 @@ const AUDIT_SCHEMA_STATEMENTS = [
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 chars');
 const INGEST_SECRET = process.env.INGEST_SECRET; // Usado agora apenas como Fallback de emergência
+const FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || 'https://forcaaliada.ogabriels.com').replace(/\/+$/, '');
+
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Configuração ausente: ${name}`);
+  return value;
+}
 
 // ─────────────────────────────────────────────
 // Rate limiters
@@ -862,11 +869,11 @@ app.post('/api/app/sync', async (req, res) => {
 
 async function exchangeMsCodeForToken(code) {
   const params = new URLSearchParams({
-    client_id: process.env.MS_CLIENT_ID,
-    client_secret: process.env.MS_CLIENT_SECRET,
+    client_id: requireEnv('MS_CLIENT_ID'),
+    client_secret: requireEnv('MS_CLIENT_SECRET'),
     code,
     grant_type: 'authorization_code',
-    redirect_uri: process.env.MS_REDIRECT_URI,
+    redirect_uri: requireEnv('MS_REDIRECT_URI'),
   });
   const res = await fetch('https://login.live.com/oauth20_token.srf', {
     method: 'POST',
@@ -937,9 +944,9 @@ app.get('/api/auth/microsoft/login', (req, res) => {
   //     para garantir que a Microsoft devolva o refresh_token.
   //     O scope NÃO deve ser duplamente encodado — deixe o URLSearchParams cuidar disso.
   const params = new URLSearchParams({
-    client_id:     process.env.MS_CLIENT_ID,
+    client_id:     requireEnv('MS_CLIENT_ID'),
     response_type: 'code',
-    redirect_uri:  process.env.MS_REDIRECT_URI,
+    redirect_uri:  requireEnv('MS_REDIRECT_URI'),
     scope:         'XboxLive.signin XboxLive.offline_access offline_access openid email profile',
     response_mode: 'query',
   });
@@ -948,7 +955,7 @@ app.get('/api/auth/microsoft/login', (req, res) => {
 
 app.get('/api/auth/microsoft/callback', async (req, res) => {
   const { code } = req.query;
-  if (!code) return res.redirect('https://forcaaliada.ogabriels.com/login.html?ms_err=Acesso negado');
+  if (!code) return res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_err=Acesso negado`);
 
   try {
     const msTokens = await exchangeMsCodeForToken(code);
@@ -1011,10 +1018,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
     await audit({ actorId: userRow.id, actorName: userRow.username, type: 'login', message: `Login Xbox/Minecraft: ${nick}` });
 
-    res.redirect(`https://forcaaliada.ogabriels.com/login.html?ms_token=${token}`);
+    res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_token=${token}`);
 
   } catch (err) {
-    res.redirect(`https://forcaaliada.ogabriels.com/login.html?ms_err=${encodeURIComponent(err.message)}`);
+    res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_err=${encodeURIComponent(err.message)}`);
   }
 });
 
