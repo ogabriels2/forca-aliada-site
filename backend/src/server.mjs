@@ -1020,6 +1020,8 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
   const providerId = sanitize(providerUserId);
   if (!providerId) throw new Error('Perfil social inválido');
 
+  // 1. Já existe um social_account com esse provider + provider_user_id?
+  //    → Usuário já vinculado: apenas atualiza token e faz login direto.
   const { rows: linked } = await pool.query(
     `SELECT u.* FROM social_accounts sa JOIN users u ON u.id=sa.user_id WHERE sa.provider=$1 AND sa.provider_user_id=$2 LIMIT 1`,
     [provider, providerId]
@@ -1032,9 +1034,29 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
     return { status: 'ok', user: linked[0] };
   }
 
+  // 2. Existe uma conta com esse e-mail?
   if (normalizedEmail) {
     const { rows: existingByEmail } = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [normalizedEmail]);
     if (existingByEmail[0]) {
+      const existingUser = existingByEmail[0];
+
+      // 2a. Esse usuário JÁ tem esse provider vinculado (mas com provider_user_id diferente)?
+      //     → Pode acontecer se o usuário mudou o ID no provedor (raro) ou duplicidade de e-mail.
+      //     → Sobrescreve silenciosamente o provider_user_id e faz login direto.
+      const { rows: existingLink } = await pool.query(
+        `SELECT id FROM social_accounts WHERE user_id=$1 AND provider=$2 LIMIT 1`,
+        [existingUser.id, provider]
+      );
+      if (existingLink[0]) {
+        await pool.query(
+          `UPDATE social_accounts SET provider_user_id=$1, provider_email=$2, refresh_token=COALESCE($3, refresh_token), updated_at=NOW() WHERE user_id=$4 AND provider=$5`,
+          [providerId, normalizedEmail, refreshToken || null, existingUser.id, provider]
+        );
+        return { status: 'ok', user: existingUser };
+      }
+
+      // 2b. O usuário tem conta mas esse provider nunca foi vinculado.
+      //     → Precisa de confirmação explícita do usuário (nova vinculação).
       const linkToken = jwt.sign(
         { provider, providerUserId: providerId, providerEmail: normalizedEmail, profileName: sanitize(profileName), refreshToken: refreshToken || null },
         JWT_SECRET,
@@ -1044,6 +1066,7 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
     }
   }
 
+  // 3. Nenhuma conta existente → cria nova conta via OAuth.
   const baseName = sanitize(profileName).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20) || `${provider}_user`;
   const username = `${baseName}_${randomBase64Url(4).toLowerCase()}`;
   const fallbackEmail = normalizedEmail || `${provider}_${providerId}@oauth.forcaaliada.local`;
