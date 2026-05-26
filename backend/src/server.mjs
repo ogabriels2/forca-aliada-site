@@ -124,20 +124,6 @@ function requireEnv(name) {
   return value;
 }
 
-function randomBase64Url(size = 32) {
-  return crypto.randomBytes(size).toString('base64url');
-}
-
-function buildOAuthState(provider) {
-  return jwt.sign({ provider, nonce: randomBase64Url(12) }, JWT_SECRET, { expiresIn: '10m' });
-}
-
-function readOAuthState(state, provider) {
-  const payload = jwt.verify(String(state || ''), JWT_SECRET);
-  if (!payload || payload.provider !== provider) throw new Error('Estado OAuth inválido');
-  return payload;
-}
-
 // ─────────────────────────────────────────────
 // Rate limiters
 // ─────────────────────────────────────────────
