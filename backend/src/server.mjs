@@ -355,6 +355,18 @@ CREATE TABLE IF NOT EXISTS server_status_checks (
   version        VARCHAR(255)
 );
 CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(checked_at DESC);
+
+-- ─────────────────────────────────────────────
+-- NOVA TABELA: INTEGRAÇÕES (MICROSOFT / XBOX)
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_integrations (
+  user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  ms_refresh_token TEXT,
+  xbox_xuid        VARCHAR(255),
+  mc_uuid          VARCHAR(36) UNIQUE,
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_integrations_xuid ON user_integrations(xbox_xuid);
 `;
 await pool.query(featureSchemaSql);
 
@@ -845,86 +857,229 @@ app.post('/api/app/sync', async (req, res) => {
 
 
 // ─────────────────────────────────────────────
-// AUTH – Signup
+// AUTH – Microsoft / Xbox / Minecraft
+// ─────────────────────────────────────────────
+
+async function exchangeMsCodeForToken(code) {
+  const params = new URLSearchParams({
+    client_id: process.env.MS_CLIENT_ID,
+    client_secret: process.env.MS_CLIENT_SECRET,
+    code,
+    grant_type: 'authorization_code',
+    redirect_uri: process.env.MS_REDIRECT_URI,
+  });
+  const res = await fetch('https://login.live.com/oauth20_token.srf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString()
+  });
+  if (!res.ok) throw new Error('Falha ao obter token da Microsoft');
+  return res.json();
+}
+
+async function getXboxLiveToken(msAccessToken) {
+  const res = await fetch('https://user.auth.xboxlive.com/user/authenticate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      Properties: { AuthMethod: "RPS", SiteName: "user.auth.xboxlive.com", RpsTicket: `d=${msAccessToken}` },
+      RelyingParty: "http://auth.xboxlive.com", TokenType: "JWT"
+    })
+  });
+  if (!res.ok) throw new Error('Falha na autenticação do Xbox Live');
+  return res.json();
+}
+
+async function getXSTSToken(xblToken, relyingParty) {
+  const res = await fetch('https://xsts.auth.xboxlive.com/xsts/authorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      Properties: { SandboxId: "RETAIL", UserTokens: [xblToken] },
+      RelyingParty: relyingParty, TokenType: "JWT"
+    })
+  });
+  const data = await res.json();
+  if (data.XErr === 2148916233) throw new Error('A conta Xbox não foi configurada.');
+  if (data.XErr === 2148916238) throw new Error('Conta de criança. Requer aprovação de adulto.');
+  if (!res.ok) throw new Error('Falha no XSTS Token');
+  return data;
+}
+
+async function getMinecraftAccessToken(uhs, xstsToken) {
+  const res = await fetch('https://api.minecraftservices.com/authentication/login_with_xbox', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identityToken: `XBL3.0 x=${uhs};${xstsToken}` })
+  });
+  if (!res.ok) throw new Error('Falha na autenticação da Mojang (Você tem Minecraft Original?)');
+  return res.json();
+}
+
+async function getMinecraftProfile(mcAccessToken) {
+  const res = await fetch('https://api.minecraftservices.com/minecraft/profile', {
+    headers: { 'Authorization': `Bearer ${mcAccessToken}` }
+  });
+  if (res.status === 404) throw new Error('Esta conta não possui o Minecraft Java Edition comprado.');
+  if (!res.ok) throw new Error('Falha ao obter perfil do Minecraft');
+  return res.json();
+}
+
+app.get('/api/auth/microsoft/login', (req, res) => {
+  const scope = encodeURIComponent("XboxLive.signin XboxLive.offline_access openid email profile");
+  const url = `https://login.live.com/oauth20_authorize.srf?client_id=${process.env.MS_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.MS_REDIRECT_URI)}&scope=${scope}`;
+  res.redirect(url);
+});
+
+app.get('/api/auth/microsoft/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.redirect('https://forcaaliada.ogabriels.com/login.html?ms_err=Acesso negado');
+
+  try {
+    const msTokens = await exchangeMsCodeForToken(code);
+    const xblData = await getXboxLiveToken(msTokens.access_token);
+    const uhs = xblData.DisplayClaims.xui[0].uhs;
+    const xstsMC = await getXSTSToken(xblData.Token, "rp://api.minecraftservices.com/");
+    const xuid = xstsMC.DisplayClaims.xui[0].xid;
+    
+    const mcTokenData = await getMinecraftAccessToken(uhs, xstsMC.Token);
+    const mcProfile = await getMinecraftProfile(mcTokenData.access_token);
+    
+    const nick = mcProfile.name;
+    const uuid = mcProfile.id;
+
+    let userRow;
+    const { rows: existingInt } = await pool.query('SELECT user_id FROM user_integrations WHERE mc_uuid = $1', [uuid]);
+    
+    if (existingInt.length > 0) {
+      const { rows: u } = await pool.query('SELECT * FROM users WHERE id = $1', [existingInt[0].user_id]);
+      userRow = u[0];
+      await pool.query('UPDATE user_integrations SET ms_refresh_token = $1, updated_at = NOW() WHERE user_id = $2', [msTokens.refresh_token, userRow.id]);
+    } else {
+      const { rows: matchNick } = await pool.query('SELECT * FROM users WHERE LOWER(minecraft_name) = $1', [nick.toLowerCase()]);
+      
+      if (matchNick.length > 0) {
+        userRow = matchNick[0];
+      } else {
+        const fakeEmail = `${uuid}@xbox.forcaaliada.local`; 
+        const randomPass = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+        
+        const { rows: newUser } = await pool.query(
+          'INSERT INTO users(username, email, minecraft_name, password_hash, role, is_verified) VALUES($1, $2, $3, $4, $5, TRUE) RETURNING *',
+          [nick.toLowerCase(), fakeEmail, nick, randomPass, 'limited']
+        );
+        userRow = newUser[0];
+        await pool.query('INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)', [nick, userRow.id]);
+      }
+      
+      await pool.query(
+        'INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid) VALUES($1, $2, $3, $4)',
+        [userRow.id, msTokens.refresh_token, xuid, uuid]
+      );
+    }
+
+    const token = jwt.sign({ sub: userRow.id, role: userRow.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+    
+    await pool.query(
+      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
+      [userRow.id, tokenHash, req.headers['user-agent'], ip]
+    );
+
+    await audit({ actorId: userRow.id, actorName: userRow.username, type: 'login', message: `Login Xbox/Minecraft: ${nick}` });
+
+    res.redirect(`https://forcaaliada.ogabriels.com/login.html?ms_token=${token}`);
+
+  } catch (err) {
+    res.redirect(`https://forcaaliada.ogabriels.com/login.html?ms_err=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// ─────────────────────────────────────────────
+// AUTH – Signup (ESSE É O SEU CÓDIGO ORIGINAL QUE CONTINUA INTACTO!)
 // ─────────────────────────────────────────────
 app.post('/api/auth/signup', authLimiter, async (req, res) => {
-const username      = sanitize(req.body?.username).toLowerCase();
-const email         = sanitize(req.body?.email).toLowerCase();
-const minecraftName = sanitize(req.body?.minecraftName || username);
-const password      = req.body?.password || '';
+  const username      = sanitize(req.body?.username).toLowerCase();
+  const email         = sanitize(req.body?.email).toLowerCase();
+  const minecraftName = sanitize(req.body?.minecraftName || username);
+  const password      = req.body?.password || '';
 
-if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password))
-return res.status(400).json({ error: 'Dados inválidos.' });
+  if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password))
+    return res.status(400).json({ error: 'Dados inválidos.' });
 
-try {
-const hash = await bcrypt.hash(password, 10);
-const { rows } = await pool.query(
-'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,FALSE) RETURNING username,id',
-[username, email, minecraftName, hash, 'limited'],
-);
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,FALSE) RETURNING username,id',
+      [username, email, minecraftName, hash, 'limited'],
+    );
 
-const code      = Math.floor(100000 + Math.random() * 900000).toString();
-const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
-await pool.query(
-  'INSERT INTO email_verifications(email,code,expires_at) VALUES($1,$2,$3)',
-  [email, code, expiresAt],
-);
-await sendSystemEmail(email, rows[0].username, code, 'verify');
+    const code      = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
+    await pool.query(
+      'INSERT INTO email_verifications(email,code,expires_at) VALUES($1,$2,$3)',
+      [email, code, expiresAt],
+    );
+    await sendSystemEmail(email, rows[0].username, code, 'verify');
 
-await audit({ type: 'create', targetId: rows[0].id, targetName: username, message: `Conta criada: ${username}` });
+    await audit({ type: 'create', targetId: rows[0].id, targetName: username, message: `Conta criada: ${username}` });
 
-res.json({ ok: true, requireVerification: true, email });
+    res.json({ ok: true, requireVerification: true, email });
 
-} catch {
-res.status(409).json({ error: 'username/email already exists' });
-}
+  } catch {
+    res.status(409).json({ error: 'username/email already exists' });
+  }
 });
 
 app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
-const email = sanitize(req.body?.email).toLowerCase();
-const code  = sanitize(req.body?.code);
+  const email = sanitize(req.body?.email).toLowerCase();
+  const code  = sanitize(req.body?.code);
 
-if (!validateEmail(email) || !code)
-return res.status(400).json({ error: 'Dados inválidos' });
+  if (!validateEmail(email) || !code)
+    return res.status(400).json({ error: 'Dados inválidos' });
 
-const { rows: ver } = await pool.query(
-'SELECT * FROM email_verifications WHERE email=$1 AND code=$2 AND expires_at>NOW()',
-[email, code],
-);
-if (!ver.length) return res.status(400).json({ error: 'Código inválido ou expirado.' });
+  const { rows: ver } = await pool.query(
+    'SELECT * FROM email_verifications WHERE email=$1 AND code=$2 AND expires_at>NOW()',
+    [email, code],
+  );
+  if (!ver.length) return res.status(400).json({ error: 'Código inválido ou expirado.' });
 
-const { rows: updated } = await pool.query(
-'UPDATE users SET is_verified=TRUE WHERE email=$1 RETURNING *',
-[email],
-);
-await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
+  const { rows: updated } = await pool.query(
+    'UPDATE users SET is_verified=TRUE WHERE email=$1 RETURNING *',
+    [email],
+  );
+  await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
 
-const user = updated[0];
-if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+  const user = updated[0];
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
-await audit({
-  actorId: user.id, actorName: user.username,
-  type: 'security', severity: 'info',
-  message: `E-mail verificado com sucesso: ${user.username}`,
-  metadata: { email: user.email },
-});
+  await audit({
+    actorId: user.id, actorName: user.username,
+    type: 'security', severity: 'info',
+    message: `E-mail verificado com sucesso: ${user.username}`,
+    metadata: { email: user.email },
+  });
 
-// ── Enqueue whitelist addition for the desktop app ──
-if (user.minecraft_name) {
-  try {
-    await pool.query(
-      'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
-      [user.minecraft_name, user.id]
-    );
-  } catch (e) {
-    console.error('[whitelist_queue insert]', e);
+  // ── Enqueue whitelist addition for the desktop app ──
+  if (user.minecraft_name) {
+    try {
+      await pool.query(
+        'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
+        [user.minecraft_name, user.id]
+      );
+    } catch (e) {
+      console.error('[whitelist_queue insert]', e);
+    }
   }
-}
 
-const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
+  const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
 });
+
+// A próxima rota já é a de login normal que você tem aí
+// app.post('/api/auth/login', authLimiter, async (req, res) => { ...
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
 const login    = sanitize(req.body?.login).toLowerCase();
@@ -1184,6 +1339,87 @@ res.json({
 history:       hist.rows,
 activeSession: active.rows[0]?.entered_at || null,
 });
+});
+
+// ── Integrações Xbox e Mojang (Área Logada) ─────────────────
+app.get('/api/me/xbox/friends', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT ms_refresh_token FROM user_integrations WHERE user_id = $1', [req.user.sub]);
+    if (!rows.length || !rows[0].ms_refresh_token) throw new Error('Conta não vinculada ao Xbox.');
+
+    // 1. Renova o token da MS
+    const params = new URLSearchParams({
+      client_id: process.env.MS_CLIENT_ID, client_secret: process.env.MS_CLIENT_SECRET,
+      refresh_token: rows[0].ms_refresh_token, grant_type: 'refresh_token',
+    });
+    const msRes = await fetch('https://login.live.com/oauth20_token.srf', { method: 'POST', body: params.toString() });
+    const msData = await msRes.json();
+    await pool.query('UPDATE user_integrations SET ms_refresh_token = $1 WHERE user_id = $2', [msData.refresh_token, req.user.sub]);
+
+    // 2. Busca lista no Xbox Live
+    const xblData = await getXboxLiveToken(msData.access_token);
+    const uhs = xblData.DisplayClaims.xui[0].uhs;
+    const xstsXbox = await getXSTSToken(xblData.Token, "http://xboxlive.com");
+
+    const friendsRes = await fetch('https://peoplehub.xboxlive.com/users/me/people/social/decoration/detail', {
+      headers: { 'Authorization': `XBL3.0 x=${uhs};${xstsXbox.Token}`, 'x-xbl-contract-version': '2', 'Accept-Language': 'pt-BR' }
+    });
+    const friendsData = await friendsRes.json();
+    
+    // 3. Cruza com o banco do Servidor
+    const xuids = (friendsData.people || []).map(p => p.xuid);
+    let commonFriends = [];
+    if (xuids.length > 0) {
+        const { rows: matched } = await pool.query(`
+          SELECT u.username, u.minecraft_name 
+          FROM user_integrations ui JOIN users u ON ui.user_id = u.id 
+          WHERE ui.xbox_xuid = ANY($1)
+        `, [xuids]);
+        commonFriends = matched;
+    }
+    res.json({ xboxFriendsTotal: (friendsData.people || []).length, serverFriends: commonFriends });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/me/minecraft/skin', auth, async (req, res) => {
+  const { skinUrl } = req.body;
+  if (!skinUrl) return res.status(400).json({ error: 'URL da skin obrigatória' });
+
+  try {
+    const { rows } = await pool.query('SELECT ms_refresh_token FROM user_integrations WHERE user_id = $1', [req.user.sub]);
+    if (!rows.length || !rows[0].ms_refresh_token) throw new Error('Conta não vinculada à Microsoft.');
+
+    const params = new URLSearchParams({
+      client_id: process.env.MS_CLIENT_ID, client_secret: process.env.MS_CLIENT_SECRET,
+      refresh_token: rows[0].ms_refresh_token, grant_type: 'refresh_token',
+    });
+    const msRes = await fetch('https://login.live.com/oauth20_token.srf', { method: 'POST', body: params.toString() });
+    const msData = await msRes.json();
+    await pool.query('UPDATE user_integrations SET ms_refresh_token = $1 WHERE user_id = $2', [msData.refresh_token, req.user.sub]);
+
+    const xblData = await getXboxLiveToken(msData.access_token);
+    const xstsMC = await getXSTSToken(xblData.Token, "rp://api.minecraftservices.com/");
+    const mcToken = await getMinecraftAccessToken(xblData.DisplayClaims.xui[0].uhs, xstsMC.Token);
+
+    const skinPost = await fetch('https://api.minecraftservices.com/minecraft/profile/skins', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${mcToken.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variant: "classic", url: skinUrl })
+    });
+
+    if (!skinPost.ok) throw new Error('Mojang rejeitou a troca (Verifique URL ou Rate Limit)');
+    
+    await audit({
+      actorId: req.user.sub, actorName: req.user.username, type: 'update',
+      message: `${req.user.username} alterou a skin oficial via Painel.`
+    });
+    
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─────────────────────────────────────────────
