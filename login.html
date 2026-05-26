@@ -420,6 +420,12 @@ header {
         Entrar com Xbox / Minecraft
       </button>
 
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;">
+        <button type="button" onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/google/login'" style="padding:10px;border:1.2px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text-primary);font-weight:600;cursor:pointer;">Google</button>
+        <button type="button" onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/facebook/login'" style="padding:10px;border:1.2px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text-primary);font-weight:600;cursor:pointer;">Facebook</button>
+        <button type="button" onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/discord/login'" style="padding:10px;border:1.2px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text-primary);font-weight:600;cursor:pointer;">Discord</button>
+      </div>
+
       <div class="card-footer">
         Não possui acesso? <a href="signup.html">Criar conta</a>
       </div>
@@ -433,6 +439,7 @@ header {
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
+const OAUTH_LINK_TOKEN_KEY = 'fa_oauth_link_token';
 
 let failedAttempts = 0;
 const MAX_ATTEMPTS = 5;
@@ -665,30 +672,58 @@ function forceLogout() {
 window.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
 
-  // Tratamento de Erros da Microsoft
-  if (urlParams.has('ms_err')) {
-    const errorMsg = urlParams.get('ms_err');
+  const oauthErr = urlParams.get('oauth_err') || urlParams.get('ms_err');
+  const oauthProvider = urlParams.get('oauth_provider') || 'xbox';
+  const oauthToken = urlParams.get('oauth_token') || urlParams.get('ms_token');
+  const linkToken = urlParams.get('oauth_link_token');
+  const linkEmail = urlParams.get('oauth_email');
+
+  if (oauthErr) {
     window.history.replaceState({}, document.title, window.location.pathname);
-    showAlert('Falha no Xbox: ' + decodeURIComponent(errorMsg), 'error');
+    showAlert(`Falha no login ${oauthProvider}: ` + decodeURIComponent(oauthErr), 'error');
   }
 
-  // Tratamento de Sucesso (Token JWT)
-  if (urlParams.has('ms_token')) {
-    const msToken = urlParams.get('ms_token');
+  if (linkToken) {
+    localStorage.setItem(OAUTH_LINK_TOKEN_KEY, linkToken);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    const confirmed = window.confirm(`Já existe uma conta com o e-mail ${linkEmail || 'informado'}. Deseja vincular e entrar nessa conta?`);
+    if (!confirmed) {
+      showAlert('Vinculação cancelada. Faça login manual e tente novamente se desejar vincular.', 'error');
+      return;
+    }
+    try {
+      const rr = await fetch(`${API_BASE}/api/auth/oauth/confirm-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkToken, confirm: true }),
+      });
+      const data = await rr.json();
+      if (!rr.ok || !data.token) throw new Error(data.error || 'Falha ao vincular conta');
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+      window.location.href = 'dashboard.html';
+      return;
+    } catch (e) {
+      showAlert(e.message || 'Falha ao vincular conta social.', 'error');
+      return;
+    }
+  }
+
+  if (oauthToken) {
 
     // Esconde a interface para não piscar
     document.body.style.opacity = '0.5';
     document.body.style.pointerEvents = 'none';
 
     // Salva o token e limpa a URL por segurança
-    localStorage.setItem(TOKEN_KEY, msToken);
+    localStorage.setItem(TOKEN_KEY, oauthToken);
     window.history.replaceState({}, document.title, window.location.pathname);
 
     try {
       const res = await fetch(`${API_BASE}/api/me`, {
-        headers: { Authorization: `Bearer ${msToken}` }
+        headers: { Authorization: `Bearer ${oauthToken}` }
       });
-      if (!res.ok) throw new Error('Falha ao validar sessão Microsoft');
+      if (!res.ok) throw new Error('Falha ao validar sessão social');
 
       const me = await res.json();
 
@@ -704,7 +739,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       document.body.style.opacity = '1';
       document.body.style.pointerEvents = 'auto';
       localStorage.removeItem(TOKEN_KEY);
-      showAlert('A sessão expirou ou houve uma falha de conexão.', 'error');
+      showAlert('A sessão social expirou ou houve uma falha de conexão.', 'error');
     }
   }
 });
