@@ -16,314 +16,294 @@
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
 })();
 </script>
+
 <style>
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg-color: #f5f5f7;
-  --card-bg: rgba(255,255,255,0.85);
-  --text-primary: #1d1d1f;
-  --text-secondary: #86868b;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --danger: #ff3b30;
-  --success: #34c759;
-  --border: #d2d2d7;
-  --radius-lg: 24px;
-  --radius-md: 12px;
-  --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+  --bg:            #f0f2f8;
+  --card-bg:       rgba(255,255,255,0.92);
+  --text-primary:  #111827;
+  --text-secondary:#6b7280;
+  --text-muted:    #9ca3af;
+  --accent:        #0071e3;
+  --accent-hover:  #005bbf;
+  --accent-light:  rgba(0,113,227,0.10);
+  --danger:        #dc2626;
+  --danger-bg:     rgba(220,38,38,0.08);
+  --success:       #16a34a;
+  --success-bg:    rgba(22,163,74,0.08);
+  --border:        #e5e7eb;
+  --border-focus:  #0071e3;
+  --input-bg:      #ffffff;
+  --radius-card:   20px;
+  --radius-input:  10px;
+  --radius-btn:    980px;
+  --shadow-card:   0 4px 6px -1px rgba(0,0,0,0.07), 0 20px 40px -8px rgba(0,0,0,0.10);
+  --font:          -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --transition:    0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
-* { box-sizing: border-box; }
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:            #080d14;
+  --card-bg:       rgba(17,24,39,0.90);
+  --text-primary:  #f8fafc;
+  --text-secondary:#94a3b8;
+  --text-muted:    #64748b;
+  --accent:        #60a5fa;
+  --accent-hover:  #93c5fd;
+  --accent-light:  rgba(96,165,250,0.14);
+  --danger:        #f87171;
+  --danger-bg:     rgba(248,113,113,0.10);
+  --success:       #4ade80;
+  --success-bg:    rgba(74,222,128,0.10);
+  --border:        rgba(148,163,184,0.18);
+  --border-focus:  #60a5fa;
+  --input-bg:      rgba(15,23,42,0.80);
+  --shadow-card:   0 4px 6px -1px rgba(0,0,0,0.3), 0 20px 60px -8px rgba(0,0,0,0.5);
+}
+
+html { font-size: 16px; }
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
+  font-family: var(--font);
+  background-color: var(--bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-a { text-decoration: none; color: inherit; }
-
-header {
-  position: fixed; top: 0; width: 100%; padding: 12px 5%;
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-.brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
-.brand-link:hover { opacity: 0.8; }
-.logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
-.logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
-.nav-cta {
-  color: var(--accent) !important; font-weight: 600 !important;
-  background: rgba(0,113,227,0.08); padding: 8px 16px;
-  border-radius: 980px; transition: background 0.2s; font-size: 14px;
-}
-.nav-cta:hover { background: rgba(0,113,227,0.15); }
-
-.login-wrapper {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 100px 20px 40px;
-}
-.card {
-  width: 100%; max-width: 400px;
-  background: var(--card-bg);
-  backdrop-filter: saturate(180%) blur(20px);
-  border-radius: var(--radius-lg); padding: 40px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-  border: 1px solid rgba(255,255,255,0.4);
-  text-align: center; animation: fadeIn 0.4s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.avatar-preview {
-  width: 80px; height: 80px; border-radius: 20px; background: #e5e5ea;
-  margin: 0 auto 20px; object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;
-}
-h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; }
-p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
-.form-group { margin-bottom: 16px; text-align: left; }
-input[type="text"], input[type="password"] {
-  width: 100%; padding: 14px 16px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: rgba(255,255,255,0.9);
-  font-size: 15px; transition: all 0.2s; outline: none; color: var(--text-primary);
-  font-family: inherit;
-}
-input::placeholder { color: #a1a1a6; }
-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
-button.main-btn {
-  width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
-  background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
-  cursor: pointer; transition: all 0.2s; font-family: inherit;
-}
-button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
-button.main-btn:active { transform: scale(0.98); }
-button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-.footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
-.footer-text a { color: var(--text-primary); font-weight: 600; }
-.footer-text a:hover { color: var(--accent); text-decoration: underline; }
-.msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; }
-.msg.error   { color: var(--danger); }
-.msg.success { color: var(--success); }
-.msg.info    { color: var(--accent); }
-.error { color: var(--danger); }
-.success { color: var(--success); }
-#view-loggedin { display: none; }
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60%  { transform: translateX(-5px); }
-  40%, 80%  { transform: translateX(5px); }
-}
-.shake-animation { animation: shake 0.4s ease; }
-
-/* Preferência de tema sincronizada com a conta */
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg-color: #0b0f17;
-  --card-bg: rgba(28,28,30,0.88);
-  --text-primary: #f5f5f7;
-  --text-secondary: #a1a1aa;
-  --border: rgba(255,255,255,0.12);
-  --shadow-soft: 0 10px 40px rgba(0,0,0,0.28);
-  --shadow-float: 0 20px 50px rgba(0,0,0,0.38);
-}
-[data-theme="dark"] body { background: var(--bg-color); color: var(--text-primary); }
-[data-theme="dark"] header, [data-theme="dark"] footer { background: rgba(17,24,39,0.78); border-color: var(--border); }
-[data-theme="dark"] .card, [data-theme="dark"] .login-card, [data-theme="dark"] .signup-card { background: var(--card-bg); border-color: var(--border); box-shadow: var(--shadow-float); }
-[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border); }
-[data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
-[data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
-
-
-
-/* ───────────────────────────────────────────────
-   DARK MODE 2.0 — accessible semantic palette
-   Deep navy surfaces, soft glass elevation and explicit text contrast.
-   ─────────────────────────────────────────────── */
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg-color: #080d14;
-  --card-bg: rgba(17, 24, 39, 0.88);
-  --surface-1: #0f172a;
-  --surface-2: #111c2e;
-  --surface-3: #1b2a41;
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --accent: #60a5fa;
-  --accent-hover: #93c5fd;
-  --accent-light: rgba(96, 165, 250, 0.18);
-  --danger: #fb7185;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --purple: #c084fc;
-  --border: rgba(148, 163, 184, 0.22);
-  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.42);
-  --shadow-float: 0 28px 80px rgba(0, 0, 0, 0.55);
-  --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.30);
-  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.38);
-  --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.52);
+  transition: background-color 0.3s, color 0.3s;
 }
 [data-theme="dark"] body {
   background:
-    radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 34rem),
-    radial-gradient(circle at top right, rgba(192, 132, 252, 0.12), transparent 30rem),
-    var(--bg-color) !important;
-  color: var(--text-primary);
+    radial-gradient(ellipse at 20% 0%, rgba(96,165,250,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 0%, rgba(139,92,246,0.08) 0%, transparent 50%),
+    #080d14;
 }
-[data-theme="dark"] header,
-[data-theme="dark"] footer {
-  background: rgba(8, 13, 20, 0.82) !important;
-  border-color: var(--border) !important;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04);
-}
-[data-theme="dark"] .card,
-[data-theme="dark"] .login-card,
-[data-theme="dark"] .signup-card,
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .info-box,
-[data-theme="dark"] .bento-item,
-[data-theme="dark"] .user-dropdown,
-[data-theme="dark"] .sidebar,
-[data-theme="dark"] .modal-content,
-[data-theme="dark"] .confirm-pw-modal,
-[data-theme="dark"] .dashboard-card,
-[data-theme="dark"] .panel,
-[data-theme="dark"] .table-wrapper,
-[data-theme="dark"] .community-card,
-[data-theme="dark"] .connection-card,
-[data-theme="dark"] .achievement-badge,
-[data-theme="dark"] .rank-roadmap-item,
-[data-theme="dark"] .capital-card-small,
-[data-theme="dark"] .merit-rank-card {
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 42, 0.90)) !important;
-  border-color: var(--border) !important;
-  color: var(--text-primary) !important;
-  box-shadow: var(--shadow-md);
-}
-[data-theme="dark"] input,
-[data-theme="dark"] select,
-[data-theme="dark"] textarea,
-[data-theme="dark"] .data-input,
-[data-theme="dark"] .search-input {
-  background: rgba(15, 23, 42, 0.92) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border) !important;
-  caret-color: var(--accent);
-}
-[data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder { color: var(--text-muted) !important; }
-[data-theme="dark"] input:focus,
-[data-theme="dark"] select:focus,
-[data-theme="dark"] textarea:focus,
-[data-theme="dark"] .data-input:focus {
-  background: rgba(17, 24, 39, 0.98) !important;
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18) !important;
-}
-[data-theme="dark"] p,
-[data-theme="dark"] .subtitle,
-[data-theme="dark"] .section-header p,
-[data-theme="dark"] .page-header p,
-[data-theme="dark"] .data-label,
-[data-theme="dark"] .data-hint,
-[data-theme="dark"] .dropdown-email,
-[data-theme="dark"] .sub-info,
-[data-theme="dark"] .pref-info p,
-[data-theme="dark"] .notif-meta,
-[data-theme="dark"] .merit-timeline-meta,
-[data-theme="dark"] .rank-roadmap-info p,
-[data-theme="dark"] .footer-text,
-[data-theme="dark"] .footer-links a,
-[data-theme="dark"] .muted { color: var(--text-secondary) !important; }
-[data-theme="dark"] h1,
-[data-theme="dark"] h2,
-[data-theme="dark"] h3,
-[data-theme="dark"] h4,
-[data-theme="dark"] strong,
-[data-theme="dark"] .logo-text,
-[data-theme="dark"] .data-value,
-[data-theme="dark"] .dropdown-name,
-[data-theme="dark"] .card-title,
-[data-theme="dark"] .nav-item,
-[data-theme="dark"] .dropdown-item,
-[data-theme="dark"] .table-title { color: var(--text-primary) !important; }
-[data-theme="dark"] a:hover,
-[data-theme="dark"] .desktop-nav a:hover,
-[data-theme="dark"] .footer-text a:hover { color: var(--accent-hover) !important; }
-[data-theme="dark"] .btn-primary,
-[data-theme="dark"] .btn-login,
-[data-theme="dark"] button.main-btn {
-  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-  color: #ffffff !important;
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
-}
-[data-theme="dark"] .btn-primary:hover,
-[data-theme="dark"] .btn-login:hover,
-[data-theme="dark"] button.main-btn:hover { background: linear-gradient(135deg, #60a5fa, #3b82f6) !important; }
-[data-theme="dark"] .btn-secondary,
-[data-theme="dark"] .btn-outline,
-[data-theme="dark"] .nav-cta,
-[data-theme="dark"] .status-pill,
-[data-theme="dark"] .theme-option,
-[data-theme="dark"] .filter-pill,
-[data-theme="dark"] .sort-chip,
-[data-theme="dark"] .merit-filter-pill,
-[data-theme="dark"] .user-btn {
-  background: rgba(30, 41, 59, 0.78) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border) !important;
-}
-[data-theme="dark"] .btn-secondary:hover,
-[data-theme="dark"] .btn-outline:hover,
-[data-theme="dark"] .nav-cta:hover,
-[data-theme="dark"] .theme-option:hover,
-[data-theme="dark"] .filter-pill:hover,
-[data-theme="dark"] .sort-chip:hover,
-[data-theme="dark"] .merit-filter-pill:hover,
-[data-theme="dark"] .user-btn:hover { background: rgba(51, 65, 85, 0.86) !important; }
-[data-theme="dark"] .nav-item.active,
-[data-theme="dark"] .theme-option.active,
-[data-theme="dark"] .filter-pill.active,
-[data-theme="dark"] .sort-chip.active,
-[data-theme="dark"] .admin-tab.active,
-[data-theme="dark"] .audit-tab.active,
-[data-theme="dark"] .merit-tab.active,
-[data-theme="dark"] .rank-chip.active,
-[data-theme="dark"] .notif-filter-btn.active,
-[data-theme="dark"] .merit-filter-pill.active {
-  background: rgba(96, 165, 250, 0.20) !important;
-  color: #dbeafe !important;
-  border-color: rgba(147, 197, 253, 0.42) !important;
-}
-[data-theme="dark"] table,
-[data-theme="dark"] th,
-[data-theme="dark"] td { color: var(--text-primary); border-color: var(--border) !important; }
-[data-theme="dark"] th { background: rgba(15, 23, 42, 0.96) !important; color: var(--text-secondary) !important; }
-[data-theme="dark"] tr:hover,
-[data-theme="dark"] .dropdown-item:hover,
-[data-theme="dark"] .nav-item:hover,
-[data-theme="dark"] .audit-item:hover,
-[data-theme="dark"] .notif-item:hover { background: rgba(30, 41, 59, 0.72) !important; }
-[data-theme="dark"] .pill.owner { background: rgba(192, 132, 252, 0.18) !important; color: #e9d5ff !important; }
-[data-theme="dark"] .pill.full { background: rgba(96, 165, 250, 0.18) !important; color: #bfdbfe !important; }
-[data-theme="dark"] .pill.limited { background: rgba(148, 163, 184, 0.16) !important; color: #e2e8f0 !important; }
-[data-theme="dark"] .pill.success,
-[data-theme="dark"] .pill.verified { background: rgba(74, 222, 128, 0.15) !important; color: #bbf7d0 !important; }
-[data-theme="dark"] .achievement-badge.gold { background: linear-gradient(135deg, rgba(251,191,36,0.20), rgba(120,83,20,0.28)) !important; color: #fde68a !important; }
-[data-theme="dark"] .achievement-badge.blue { background: linear-gradient(135deg, rgba(96,165,250,0.20), rgba(30,58,138,0.28)) !important; color: #bfdbfe !important; }
-[data-theme="dark"] .achievement-badge.green { background: linear-gradient(135deg, rgba(74,222,128,0.18), rgba(20,83,45,0.28)) !important; color: #bbf7d0 !important; }
-[data-theme="dark"] .achievement-badge.purple { background: linear-gradient(135deg, rgba(192,132,252,0.20), rgba(88,28,135,0.28)) !important; color: #e9d5ff !important; }
-[data-theme="dark"] .achievement-badge.orange { background: linear-gradient(135deg, rgba(251,146,60,0.20), rgba(124,45,18,0.28)) !important; color: #fed7aa !important; }
-[data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
+a { text-decoration: none; color: inherit; }
 
+/* ── Header ──────────────────────────────────── */
+header {
+  position: fixed; top: 0; left: 0; right: 0; height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  z-index: 100;
+}
+[data-theme="dark"] header {
+  background: rgba(8,13,20,0.82);
+  border-color: rgba(255,255,255,0.06);
+}
+.brand-link {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 600; font-size: 17px; letter-spacing: -0.02em;
+  transition: opacity var(--transition);
+}
+.brand-link:hover { opacity: 0.75; }
+.logo-img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+.nav-link {
+  font-size: 14px; font-weight: 500; color: var(--accent);
+  padding: 7px 14px; border-radius: 8px;
+  background: var(--accent-light);
+  transition: background var(--transition);
+}
+.nav-link:hover { background: rgba(0,113,227,0.16); }
+[data-theme="dark"] .nav-link:hover { background: rgba(96,165,250,0.20); }
+
+/* ── Layout ──────────────────────────────────── */
+.page-wrapper {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 80px 20px 40px; min-height: 100vh;
+}
+
+/* ── Card ─────────────────────────────────────── */
+.card {
+  width: 100%; max-width: 400px;
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  padding: 36px;
+  animation: cardIn 0.35s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 480px) {
+  .card { padding: 28px 20px 24px; border-radius: 16px; }
+}
+
+/* ── Avatar ───────────────────────────────────── */
+.avatar-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+.avatar-img {
+  width: 72px; height: 72px; border-radius: 18px; object-fit: cover;
+  background: var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transition: opacity 0.3s, transform 0.3s;
+}
+.avatar-img.loading { opacity: 0.5; transform: scale(0.95); }
+
+/* ── Card Header ──────────────────────────────── */
+.card-title { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; text-align: center; margin-bottom: 4px; }
+.card-subtitle { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 28px; line-height: 1.5; }
+
+/* ── Field ────────────────────────────────────── */
+.field { margin-bottom: 14px; position: relative; }
+.field label {
+  display: block; font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--text-secondary); margin-bottom: 6px;
+  transition: color var(--transition);
+}
+.field.has-error label { color: var(--danger); }
+
+.input-wrap { position: relative; display: flex; align-items: center; }
+.input-wrap input {
+  width: 100%; padding: 12px 42px 12px 14px;
+  font-family: var(--font); font-size: 15px;
+  color: var(--text-primary); background: var(--input-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-input); outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  line-height: 1.4;
+}
+.input-wrap input::placeholder { color: var(--text-muted); }
+.input-wrap input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.field.has-error .input-wrap input {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px var(--danger-bg) !important;
+}
+
+/* Botão de olho */
+.toggle-pass {
+  position: absolute; right: 13px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 0;
+  display: flex; align-items: center;
+  transition: color var(--transition); z-index: 1;
+}
+.toggle-pass:hover { color: var(--text-secondary); }
+
+/* ── Field hint / error ───────────────────────── */
+.field-hint {
+  font-size: 12px; margin-top: 5px; line-height: 1.5;
+  color: var(--danger); display: none;
+}
+.field-hint.visible { display: block; }
+
+/* ── Esqueci a senha ──────────────────────────── */
+.forgot-link {
+  display: block; text-align: right;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-muted);
+  margin-top: -8px; margin-bottom: 18px;
+  transition: color var(--transition);
+}
+.forgot-link:hover { color: var(--accent); }
+
+/* ── Submit Button ────────────────────────────── */
+.btn-submit {
+  width: 100%; padding: 14px; margin-top: 4px;
+  font-family: var(--font); font-size: 15px; font-weight: 600;
+  color: #fff; background: var(--accent);
+  border: none; border-radius: var(--radius-btn);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+}
+.btn-submit:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,113,227,0.30);
+}
+.btn-submit:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+[data-theme="dark"] .btn-submit {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+}
+[data-theme="dark"] .btn-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 8px 24px rgba(37,99,235,0.35);
+}
+
+/* Spinner */
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite; display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Alert global ─────────────────────────────── */
+.alert {
+  border-radius: 10px; padding: 12px 14px;
+  font-size: 13.5px; font-weight: 500; line-height: 1.5;
+  margin-top: 14px; display: none;
+}
+.alert.visible { display: block; }
+.alert-error   { background: var(--danger-bg); color: var(--danger);  border: 1px solid rgba(220,38,38,0.18); }
+.alert-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(22,163,74,0.18); }
+.alert-info    { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(0,113,227,0.18); }
+
+/* ── Divisor ──────────────────────────────────── */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0; color: var(--text-muted); font-size: 12px;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Footer ───────────────────────────────────── */
+.card-footer {
+  margin-top: 22px; text-align: center;
+  font-size: 13.5px; color: var(--text-secondary);
+}
+.card-footer a { color: var(--text-primary); font-weight: 600; transition: color var(--transition); }
+.card-footer a:hover { color: var(--accent); }
+
+/* ── Logged-in view ───────────────────────────── */
+#view-loggedin { display: none; text-align: center; }
+.loggedin-avatar {
+  width: 80px; height: 80px; border-radius: 20px; object-fit: cover;
+  margin: 0 auto 16px; display: block;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.loggedin-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.loggedin-sub  { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+
+/* ── Shake ────────────────────────────────────── */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  16%,50%  { transform: translateX(-6px); }
+  33%,66%  { transform: translateX(6px); }
+}
+.shake { animation: shake 0.38s ease; }
+
+/* ── Attempts warning ─────────────────────────── */
+.attempts-bar {
+  height: 2px; border-radius: 1px;
+  background: var(--border); margin-top: 8px; overflow: hidden;
+  display: none;
+}
+.attempts-bar.visible { display: block; }
+.attempts-fill {
+  height: 100%; border-radius: 1px;
+  background: var(--danger);
+  transition: width 0.3s ease;
+}
 </style>
-<!-- Preconnect hints: reduz latência de primeira conexão -->
+
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 </head>
@@ -333,197 +313,345 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   <a href="index.html" class="brand-link">
     <img src="assets/images/logo.JPG"
          onerror="this.src='https://minotar.net/helm/Steve/100.png'"
-         alt="FA Logo" class="logo-img">
-    <div class="logo-text">Força Aliada</div>
+         alt="FA Logo" class="logo-img" width="32" height="32">
+    <span>Força Aliada</span>
   </a>
-  <div id="header-right">
-    <a href="signup.html" class="nav-cta">Criar conta</a>
-  </div>
+  <a href="signup.html" class="nav-link">Criar conta</a>
 </header>
 
-<div class="login-wrapper">
-  <div class="card" id="loginCard">
+<div class="page-wrapper">
+  <div class="card" id="mainCard">
 
+    <!-- ── View: Já autenticado ─────────────────── -->
     <div id="view-loggedin">
-      <img id="avatar-loggedin" class="avatar-preview"
+      <img id="avatar-loggedin" class="loggedin-avatar"
            src="assets/images/logo.JPG"
-           onerror="this.src='https://minotar.net/helm/Steve/100.png'"
-           alt="Seu avatar">
-      <h1 id="loggedin-username"></h1>
-      <p class="subtitle">Você já está conectado.</p>
-      <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
-      <div class="footer-text">
+           onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
+      <div id="loggedin-username" class="loggedin-name"></div>
+      <div class="loggedin-sub">Você já está conectado.</div>
+      <button class="btn-submit" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+      <div class="card-footer" style="margin-top:16px;">
         <a onclick="forceLogout()" style="color:var(--danger);cursor:pointer;">Entrar com outra conta</a>
       </div>
     </div>
 
+    <!-- ── View: Login ──────────────────────────── -->
     <div id="view-login">
-      <img id="avatar-login" class="avatar-preview"
-           src="assets/images/logo.JPG"
-           onerror="this.src='https://minotar.net/helm/Steve/100.png'"
-           alt="Logotipo">
-      <h1>Entrar</h1>
-      <p class="subtitle">Acesse o painel administrativo.</p>
+      <div class="avatar-wrap">
+        <img id="avatar-login" class="avatar-img"
+             src="assets/images/logo.JPG"
+             onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logotipo">
+      </div>
 
-      <form id="login-form" autocomplete="on" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <input
-            id="login-input"
-            name="username"
-            type="text"
-            placeholder="Usuário ou e-mail"
-            autocomplete="username"
-            required
-          >
+      <h1 class="card-title">Entrar</h1>
+      <p class="card-subtitle">Acesse o painel administrativo da Força Aliada.</p>
+
+      <form id="login-form" autocomplete="on" novalidate>
+
+        <!-- Usuário ou e-mail -->
+        <div class="field" id="field-login">
+          <label for="login-input">Usuário ou e-mail</label>
+          <div class="input-wrap">
+            <input id="login-input" name="username" type="text"
+                   placeholder="nome_de_usuario ou email@..."
+                   autocomplete="username"
+                   autocapitalize="none" autocorrect="off" spellcheck="false"
+                   aria-describedby="hint-login" required>
+          </div>
+          <div class="field-hint" id="hint-login"></div>
         </div>
-        <div class="form-group">
-          <input
-            id="pass-input"
-            name="password"
-            type="password"
-            placeholder="Senha"
-            autocomplete="current-password"
-            required
-          >
+
+        <!-- Senha -->
+        <div class="field" id="field-password" style="margin-bottom:8px;">
+          <label for="pass-input">Senha</label>
+          <div class="input-wrap">
+            <input id="pass-input" name="password" type="password"
+                   placeholder="Sua senha"
+                   autocomplete="current-password"
+                   aria-describedby="hint-password" required>
+            <button type="button" class="toggle-pass" id="toggle-pw"
+                    aria-label="Mostrar/ocultar senha" tabindex="-1">
+              <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="field-hint" id="hint-password"></div>
         </div>
-        <button type="submit" id="btn-login" class="main-btn">Iniciar Sessão</button>
+
+        <!-- Esqueci a senha -->
+        <a href="recuperar.html" class="forgot-link">Esqueci minha senha</a>
+
+        <!-- Alerta global -->
+        <div class="alert" id="login-alert" role="alert" aria-live="assertive"></div>
+
+        <!-- Barra de tentativas -->
+        <div class="attempts-bar" id="attempts-bar">
+          <div class="attempts-fill" id="attempts-fill" style="width:0%"></div>
+        </div>
+
+        <button type="submit" id="btn-login" class="btn-submit">
+          <div class="spinner" id="spinner-login"></div>
+          <span id="btn-login-text">Iniciar Sessão</span>
+        </button>
       </form>
 
-      <div id="msg" class="msg" role="alert" aria-live="assertive"></div>
-
-      <div class="footer-text">
-        <a href="recuperar.html" style="font-weight: 500; margin-bottom: 12px; display: inline-block;">Esqueci-me da palavra-passe</a><br>
+      <div class="card-footer">
         Não possui acesso? <a href="signup.html">Criar conta</a>
       </div>
-    </div>
+    </div><!-- /view-login -->
 
-  </div>
-</div>
+  </div><!-- /card -->
+</div><!-- /page-wrapper -->
 
 <script>
+'use strict';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
-function showView(isLoggedIn, sessionData) {
-  const viewLoggedin = document.getElementById('view-loggedin');
-  const viewLogin    = document.getElementById('view-login');
-  const headerRight  = document.getElementById('header-right');
+let failedAttempts = 0;
+const MAX_ATTEMPTS = 5;
 
-  if (isLoggedIn && sessionData) {
-    const skinUrl = sessionData.minecraftName
-      ? `https://minotar.net/helm/${encodeURIComponent(sessionData.minecraftName)}/100.png`
-      : 'assets/images/logo.JPG';
-
-    document.getElementById('avatar-loggedin').src = skinUrl;
-    document.getElementById('loggedin-username').textContent = sessionData.username;
-    viewLoggedin.style.display = 'block';
-    viewLogin.style.display    = 'none';
-    
-    headerRight.replaceChildren();
-    const hello = document.createElement('span');
-    hello.style.fontSize = '14px';
-    hello.style.color = 'var(--text-secondary)';
-    hello.append('Olá, ');
-    const strong = document.createElement('strong');
-    strong.textContent = sessionData.username;
-    hello.appendChild(strong);
-    headerRight.appendChild(hello);
-  } else {
-    viewLoggedin.style.display = 'none';
-    viewLogin.style.display    = 'block';
-  }
+// ── Show/hide views ───────────────────────────────
+function showView(name) {
+  document.getElementById('view-loggedin').style.display = name === 'loggedin' ? '' : 'none';
+  document.getElementById('view-login').style.display    = name === 'login'    ? '' : 'none';
 }
 
-function showMessage(text, type) {
-  const msgEl = document.getElementById('msg');
-  const card  = document.getElementById('loginCard');
-  msgEl.textContent = text;
-  msgEl.className   = `msg ${type}`;
-  if (type === 'error') {
-    card.classList.remove('shake-animation');
-    void card.offsetWidth; // Reflow para reiniciar a animação
-    card.classList.add('shake-animation');
-  }
+// ── Alert helpers ─────────────────────────────────
+function showAlert(text, type, isHtml = false) {
+  const el = document.getElementById('login-alert');
+  el.className = 'alert visible alert-' + type;
+  if (isHtml) el.innerHTML = text;
+  else el.textContent = text;
+}
+function clearAlert() {
+  const el = document.getElementById('login-alert');
+  el.className = 'alert'; el.textContent = '';
 }
 
-async function handleLogin(event) {
-  event.preventDefault(); 
-  
+function setFieldError(fieldId, hintText) {
+  const field = document.getElementById('field-' + fieldId);
+  const hint  = document.getElementById('hint-'  + fieldId);
+  field.classList.add('has-error');
+  hint.textContent = hintText;
+  hint.classList.add('visible');
+}
+function clearFieldError(fieldId) {
+  const field = document.getElementById('field-' + fieldId);
+  const hint  = document.getElementById('hint-'  + fieldId);
+  field.classList.remove('has-error');
+  hint.textContent = '';
+  hint.classList.remove('visible');
+}
+
+// ── Shake card ─────────────────────────────────────
+function shakeCard() {
+  const c = document.getElementById('mainCard');
+  c.classList.remove('shake');
+  void c.offsetWidth;
+  c.classList.add('shake');
+}
+
+// ── Attempts visual feedback ──────────────────────
+function updateAttemptsBar(attempts) {
+  const bar  = document.getElementById('attempts-bar');
+  const fill = document.getElementById('attempts-fill');
+  if (attempts === 0) { bar.classList.remove('visible'); return; }
+  bar.classList.add('visible');
+  fill.style.width = Math.min((attempts / MAX_ATTEMPTS) * 100, 100) + '%';
+}
+
+// ── Toggle senha ───────────────────────────────────
+document.getElementById('toggle-pw').addEventListener('click', () => {
+  const input  = document.getElementById('pass-input');
+  const isPass = input.type === 'password';
+  input.type   = isPass ? 'text' : 'password';
+  document.getElementById('eye-icon').innerHTML = isPass
+    ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+       <line x1="1" y1="1" x2="23" y2="23"/>`
+    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+       <circle cx="12" cy="12" r="3"/>`;
+});
+
+// ── Clear erros ao digitar ─────────────────────────
+document.getElementById('login-input').addEventListener('input', () => {
+  clearFieldError('login');
+  clearAlert();
+});
+document.getElementById('pass-input').addEventListener('input', () => {
+  clearFieldError('password');
+  clearAlert();
+});
+
+// ── Traduções de erros do servidor ────────────────
+const SERVER_ERRORS = {
+  'invalid credentials':    'Usuário ou senha incorretos. Verifique e tente novamente.',
+  'invalid_credentials':    'Usuário ou senha incorretos. Verifique e tente novamente.',
+  'user not found':         'Nenhuma conta encontrada com este usuário ou e-mail.',
+  'wrong password':         'Senha incorreta. Esqueceu a senha? Use o link abaixo.',
+  'unverified_email':       'E-mail ainda não verificado.',
+  'account disabled':       'Esta conta foi desativada. Entre em contato com um admin.',
+  'account suspended':      'Esta conta está suspensa. Entre em contato com um admin.',
+  'too many attempts':      'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.',
+  'rate limit':             'Muitas tentativas. Aguarde alguns minutos.',
+  'server error':           'Erro interno no servidor. Tente novamente em instantes.',
+};
+
+function translateError(err, status) {
+  if (SERVER_ERRORS[err]) return SERVER_ERRORS[err];
+  if (status === 401) return 'Usuário ou senha incorretos.';
+  if (status === 429) return 'Muitas tentativas seguidas. Aguarde alguns minutos.';
+  if (status >= 500)  return 'Erro no servidor. Tente novamente em instantes.';
+  return err || 'Falha no login. Verifique suas credenciais.';
+}
+
+// ── Handle login ───────────────────────────────────
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearAlert();
+  clearFieldError('login');
+  clearFieldError('password');
+
   const loginVal = document.getElementById('login-input').value.trim();
   const passVal  = document.getElementById('pass-input').value;
   const btn      = document.getElementById('btn-login');
+  const spinner  = document.getElementById('spinner-login');
+  const btnText  = document.getElementById('btn-login-text');
 
-  if (!loginVal || !passVal) {
-    showMessage('Por favor, preencha todos os campos.', 'error');
-    return;
+  // ── Validação client-side ─────────────────────
+  let hasError = false;
+  if (!loginVal) {
+    setFieldError('login', 'Informe seu nome de usuário ou e-mail.');
+    hasError = true;
   }
+  if (!passVal) {
+    setFieldError('password', 'Informe sua senha.');
+    hasError = true;
+  }
+  if (hasError) { shakeCard(); return; }
 
+  // ── Envia ─────────────────────────────────────
   btn.disabled = true;
-  btn.textContent = 'Aguarde...';
+  spinner.style.display = 'block';
+  btnText.textContent   = 'Aguarde…';
 
   const slowTimer = setTimeout(() => {
-    showMessage('O servidor está acordando (pode levar até 30 s)…', 'info');
+    showAlert('O servidor está acordando — pode levar até 30 segundos na primeira vez…', 'info');
   }, 4000);
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    const res  = await fetch(`${API_BASE}/api/auth/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ login: loginVal, password: passVal }),
     });
     clearTimeout(slowTimer);
-    
+    clearAlert();
+
     const data = await res.json();
 
-    // Lógica para interceptar contas não verificadas
+    // Conta não verificada → redireciona para verificação
     if (res.status === 403 && data.error === 'unverified_email') {
-      showMessage('Conta não verificada. A redirecionar...', 'error');
-      setTimeout(() => { location.href = `signup.html?verify=${encodeURIComponent(data.email)}`; }, 1500);
+      showAlert('Sua conta ainda não foi verificada. Redirecionando…', 'info');
+      setTimeout(() => {
+        location.href = `signup.html?verify=${encodeURIComponent(data.email || loginVal)}`;
+      }, 1400);
       return;
     }
 
-    if (!res.ok) throw new Error(data.error || 'Falha no login. Verifique suas credenciais.');
+    if (!res.ok) {
+      failedAttempts++;
+      updateAttemptsBar(failedAttempts);
+
+      const msg = translateError(data.error, res.status);
+
+      // Dicas contextuais após erros repetidos
+      if (failedAttempts >= 2 && failedAttempts < MAX_ATTEMPTS) {
+        const remaining = MAX_ATTEMPTS - failedAttempts;
+        showAlert(
+          msg + `<br><small style="opacity:.8;display:block;margin-top:6px;">` +
+          (failedAttempts >= 3
+            ? `<a href="recuperar.html" style="color:inherit;text-decoration:underline;font-weight:600;">Recuperar senha →</a>`
+            : `Tentativa ${failedAttempts}. Verifique Caps Lock e tente novamente.`) +
+          `</small>`,
+          'error', true
+        );
+      } else if (failedAttempts >= MAX_ATTEMPTS) {
+        showAlert(
+          'Muitas tentativas incorretas. ' +
+          '<a href="recuperar.html" style="color:inherit;text-decoration:underline;font-weight:600;">Recuperar sua senha →</a>',
+          'error', true
+        );
+        btn.disabled = true;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Iniciar Sessão';
+        shakeCard();
+        return;
+      } else {
+        showAlert(msg, 'error');
+      }
+
+      // Destaca o campo de senha em caso de credencial errada
+      if (res.status === 401) {
+        document.getElementById('pass-input').value = '';
+        document.getElementById('pass-input').focus();
+      }
+
+      shakeCard();
+      throw new Error('handled');
+    }
+
+    // ── Sucesso ────────────────────────────────
+    failedAttempts = 0;
+    updateAttemptsBar(0);
 
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
 
-    showMessage('Autenticado com sucesso! Redirecionando...', 'success');
-    
-    setTimeout(() => { location.href = 'dashboard.html'; }, 600);
+    showAlert('Autenticado! Redirecionando…', 'success');
+    btnText.textContent = 'Entrando…';
+
+    setTimeout(() => { location.href = 'dashboard.html'; }, 550);
 
   } catch (err) {
-    clearTimeout(slowTimer);
-    const errorMsg = err.message === 'invalid credentials' ? 'Usuário ou senha incorretos.' : err.message;
-    showMessage(errorMsg, 'error');
-    document.getElementById('pass-input').value = '';
-    btn.disabled    = false;
-    btn.textContent = 'Iniciar Sessão';
+    if (err.message !== 'handled') {
+      clearTimeout(slowTimer);
+      clearAlert();
+      showAlert('Falha na conexão. Verifique sua internet e tente novamente.', 'error');
+      shakeCard();
+    }
+    if (!document.getElementById('btn-login').style.pointerEvents) {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent   = 'Iniciar Sessão';
+    }
   }
-}
+});
 
+// ── Logout ────────────────────────────────────────
 function forceLogout() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
-  showView(false, null);
+  showView('login');
 }
 
-// ── Verificação Automática ao Carregar a Página ──
+// ── Auto-verificação de sessão ─────────────────────
 (async () => {
   const token = localStorage.getItem(TOKEN_KEY);
-  
-  if (!token) {
-    showView(false, null);
-    return;
-  }
+
+  if (!token) { showView('login'); return; }
 
   try {
     const res = await fetch(`${API_BASE}/api/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
-    
+
     if (!res.ok) throw new Error('Sessão expirada');
-    
+
     const me = await res.json();
     const sessionData = {
       username:      me.username,
@@ -531,14 +659,28 @@ function forceLogout() {
       minecraftName: me.minecraft_name,
       role:          me.role,
     };
-    
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
-    showView(true, sessionData);
-    
+
+    // Skin do jogador
+    const skinUrl = me.minecraft_name
+      ? `https://minotar.net/helm/${encodeURIComponent(me.minecraft_name)}/100.png`
+      : 'assets/images/logo.JPG';
+
+    const img = document.getElementById('avatar-loggedin');
+    img.src = skinUrl;
+    img.onerror = () => { img.src = 'assets/images/logo.JPG'; };
+    document.getElementById('loggedin-username').textContent = me.username;
+
+    // Atualiza header
+    const headerRight = document.getElementById('header-right');
+    if (headerRight) headerRight.style.display = 'none';
+
+    showView('loggedin');
+
   } catch {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
-    showView(false, null);
+    showView('login');
   }
 })();
 </script>

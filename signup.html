@@ -16,324 +16,461 @@
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
 })();
 </script>
+
 <style>
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg-color: #f5f5f7;
-  --card-bg: rgba(255,255,255,0.85);
-  --text-primary: #1d1d1f;
-  --text-secondary: #86868b;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --danger: #ff3b30;
-  --success: #34c759;
-  --border: #d2d2d7;
-  --radius-lg: 24px;
-  --radius-md: 12px;
-  --transicao: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+  --bg:            #f0f2f8;
+  --card-bg:       rgba(255,255,255,0.92);
+  --text-primary:  #111827;
+  --text-secondary:#6b7280;
+  --text-muted:    #9ca3af;
+  --accent:        #0071e3;
+  --accent-hover:  #005bbf;
+  --accent-light:  rgba(0,113,227,0.10);
+  --danger:        #dc2626;
+  --danger-bg:     rgba(220,38,38,0.08);
+  --success:       #16a34a;
+  --success-bg:    rgba(22,163,74,0.08);
+  --warning:       #d97706;
+  --border:        #e5e7eb;
+  --border-focus:  #0071e3;
+  --input-bg:      #ffffff;
+  --radius-card:   20px;
+  --radius-input:  10px;
+  --radius-btn:    980px;
+  --shadow-card:   0 4px 6px -1px rgba(0,0,0,0.07), 0 20px 40px -8px rgba(0,0,0,0.10);
+  --font:          -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --transition:    0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
-* { box-sizing: border-box; }
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:            #080d14;
+  --card-bg:       rgba(17,24,39,0.90);
+  --text-primary:  #f8fafc;
+  --text-secondary:#94a3b8;
+  --text-muted:    #64748b;
+  --accent:        #60a5fa;
+  --accent-hover:  #93c5fd;
+  --accent-light:  rgba(96,165,250,0.14);
+  --danger:        #f87171;
+  --danger-bg:     rgba(248,113,113,0.10);
+  --success:       #4ade80;
+  --success-bg:    rgba(74,222,128,0.10);
+  --warning:       #fbbf24;
+  --border:        rgba(148,163,184,0.18);
+  --border-focus:  #60a5fa;
+  --input-bg:      rgba(15,23,42,0.80);
+  --shadow-card:   0 4px 6px -1px rgba(0,0,0,0.3), 0 20px 60px -8px rgba(0,0,0,0.5);
+}
+
+html { font-size: 16px; }
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: linear-gradient(135deg, #eef3ff 0%, #f5f5f7 100%);
+  font-family: var(--font);
+  background-color: var(--bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-a { text-decoration: none; color: inherit; }
-
-header {
-  position: fixed; top: 0; width: 100%; padding: 12px 5%;
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-.brand-link { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity 0.2s; }
-.brand-link:hover { opacity: 0.8; }
-.logo-img { height: 36px; width: 36px; border-radius: 10px; object-fit: cover; }
-.logo-text { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
-.nav-cta {
-  color: var(--accent) !important; font-weight: 600 !important;
-  background: rgba(0,113,227,0.08); padding: 8px 16px;
-  border-radius: 980px; transition: background 0.2s; font-size: 14px;
-}
-.nav-cta:hover { background: rgba(0,113,227,0.15); }
-
-.login-wrapper {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 100px 20px 40px;
-}
-.card {
-  width: 100%; max-width: 420px;
-  background: var(--card-bg);
-  backdrop-filter: saturate(180%) blur(20px);
-  border-radius: var(--radius-lg); padding: 40px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-  border: 1px solid rgba(255,255,255,0.4);
-  text-align: center; animation: fadeIn 0.4s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  transition: background-color 0.3s, color 0.3s;
 }
 
-.avatar-preview {
-  width: 80px; height: 80px; border-radius: 20px; background: #e5e5ea;
-  margin: 0 auto 20px; object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.avatar-preview.inactive { transform: scale(0.9); opacity: 0.5; }
-
-h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; }
-p.subtitle { margin: 0 0 28px; color: var(--text-secondary); font-size: 15px; }
-.form-group { margin-bottom: 16px; text-align: left; }
-input {
-  width: 100%; padding: 14px 16px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: rgba(255,255,255,0.9);
-  font-size: 15px; transition: all 0.2s; outline: none; color: var(--text-primary);
-  font-family: inherit;
-}
-input::placeholder { color: #a1a1a6; }
-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.15); background: #fff; }
-
-.pin-input { font-size: 24px; font-weight: 600; letter-spacing: 6px; text-align: center; text-transform: uppercase; }
-
-button.main-btn {
-  width: 100%; padding: 16px; border: none; border-radius: 980px; margin-top: 12px;
-  background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
-  cursor: pointer; transition: all 0.2s; font-family: inherit;
-}
-button.main-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
-button.main-btn:active { transform: scale(0.98); }
-button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-.footer-text { margin-top: 24px; font-size: 14px; color: var(--text-secondary); }
-.footer-text a { color: var(--text-primary); font-weight: 600; }
-.footer-text a:hover { color: var(--accent); text-decoration: underline; }
-.msg { margin-top: 16px; font-size: 14px; font-weight: 500; min-height: 20px; line-height: 1.4; }
-.msg.error   { color: var(--danger); }
-.msg.success { color: var(--success); }
-.msg.info    { color: var(--accent); }
-.error   { color: var(--danger); }
-.success { color: var(--success); }
-
-/* Vistas ocultas por padrão */
-#view-loggedin, #view-verify, #view-success { display: none; }
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60%  { transform: translateX(-5px); }
-  40%, 80%  { transform: translateX(5px); }
-}
-.shake-animation { animation: shake 0.4s ease; }
-
-/* Preferência de tema sincronizada com a conta */
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg-color: #0b0f17;
-  --card-bg: rgba(28,28,30,0.88);
-  --text-primary: #f5f5f7;
-  --text-secondary: #a1a1aa;
-  --border: rgba(255,255,255,0.12);
-  --shadow-soft: 0 10px 40px rgba(0,0,0,0.28);
-  --shadow-float: 0 20px 50px rgba(0,0,0,0.38);
-}
-[data-theme="dark"] body { background: var(--bg-color); color: var(--text-primary); }
-[data-theme="dark"] header, [data-theme="dark"] footer { background: rgba(17,24,39,0.78); border-color: var(--border); }
-[data-theme="dark"] .card, [data-theme="dark"] .login-card, [data-theme="dark"] .signup-card { background: var(--card-bg); border-color: var(--border); box-shadow: var(--shadow-float); }
-[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border); }
-[data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
-[data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
-
-
-
-/* ───────────────────────────────────────────────
-   DARK MODE 2.0 — accessible semantic palette
-   Deep navy surfaces, soft glass elevation and explicit text contrast.
-   ─────────────────────────────────────────────── */
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg-color: #080d14;
-  --card-bg: rgba(17, 24, 39, 0.88);
-  --surface-1: #0f172a;
-  --surface-2: #111c2e;
-  --surface-3: #1b2a41;
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --accent: #60a5fa;
-  --accent-hover: #93c5fd;
-  --accent-light: rgba(96, 165, 250, 0.18);
-  --danger: #fb7185;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --purple: #c084fc;
-  --border: rgba(148, 163, 184, 0.22);
-  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.42);
-  --shadow-float: 0 28px 80px rgba(0, 0, 0, 0.55);
-  --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.30);
-  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.38);
-  --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.52);
-}
 [data-theme="dark"] body {
   background:
-    radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 34rem),
-    radial-gradient(circle at top right, rgba(192, 132, 252, 0.12), transparent 30rem),
-    var(--bg-color) !important;
+    radial-gradient(ellipse at 20% 0%, rgba(96,165,250,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 0%, rgba(139,92,246,0.08) 0%, transparent 50%),
+    #080d14;
+}
+
+a { text-decoration: none; color: inherit; }
+
+/* ── Header ──────────────────────────────────── */
+header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  z-index: 100;
+}
+[data-theme="dark"] header {
+  background: rgba(8,13,20,0.82);
+  border-color: rgba(255,255,255,0.06);
+}
+.brand-link {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 600; font-size: 17px; letter-spacing: -0.02em;
+  opacity: 1; transition: opacity var(--transition);
+}
+.brand-link:hover { opacity: 0.75; }
+.logo-img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+.nav-link {
+  font-size: 14px; font-weight: 500;
+  color: var(--accent);
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--accent-light);
+  transition: background var(--transition);
+}
+.nav-link:hover { background: rgba(0,113,227,0.16); }
+[data-theme="dark"] .nav-link:hover { background: rgba(96,165,250,0.20); }
+
+/* ── Layout ──────────────────────────────────── */
+.page-wrapper {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px 20px 40px;
+  min-height: 100vh;
+}
+
+/* ── Card ─────────────────────────────────────── */
+.card {
+  width: 100%; max-width: 440px;
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  padding: 36px 36px 32px;
+  animation: cardIn 0.35s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 480px) {
+  .card { padding: 28px 20px 24px; border-radius: 16px; }
+}
+
+/* ── Avatar ───────────────────────────────────── */
+.avatar-wrap {
+  display: flex; justify-content: center; margin-bottom: 20px;
+  position: relative;
+}
+.avatar-img {
+  width: 72px; height: 72px;
+  border-radius: 18px;
+  object-fit: cover;
+  background: var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transition: opacity 0.25s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
+}
+.avatar-img.dimmed { opacity: 0.35; transform: scale(0.92); }
+.avatar-img.loaded { transform: scale(1.04); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+
+/* ── Card Header ──────────────────────────────── */
+.card-title {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
+  text-align: center; margin-bottom: 4px;
+}
+.card-subtitle {
+  font-size: 14px; color: var(--text-secondary);
+  text-align: center; margin-bottom: 28px; line-height: 1.5;
+}
+
+/* ── Step indicator ───────────────────────────── */
+.steps {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; margin-bottom: 28px;
+}
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border);
+  transition: background var(--transition), width var(--transition);
+}
+.step-dot.active {
+  background: var(--accent);
+  width: 24px; border-radius: 4px;
+}
+.step-dot.done { background: var(--success); }
+
+/* ── Form Fields ──────────────────────────────── */
+.field {
+  margin-bottom: 14px;
+  position: relative;
+}
+.field label {
+  display: block;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  transition: color var(--transition);
+}
+.field.has-error label { color: var(--danger); }
+.field.has-success label { color: var(--success); }
+
+.input-wrap {
+  position: relative;
+  display: flex; align-items: center;
+}
+.input-wrap input {
+  width: 100%;
+  padding: 12px 42px 12px 14px;
+  font-family: var(--font); font-size: 15px;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-input);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  line-height: 1.4;
+}
+.input-wrap input::placeholder { color: var(--text-muted); }
+.input-wrap input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+  background: var(--input-bg);
+}
+.field.has-error .input-wrap input {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px var(--danger-bg) !important;
+}
+.field.has-success .input-wrap input {
+  border-color: var(--success) !important;
+}
+
+/* Ícone de status no input */
+.input-status {
+  position: absolute; right: 13px;
+  font-size: 16px; line-height: 1;
+  pointer-events: none;
+  opacity: 0; transform: scale(0.6);
+  transition: opacity 0.2s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.field.has-error  .input-status,
+.field.has-success .input-status {
+  opacity: 1; transform: scale(1);
+}
+
+/* Botão toggle senha */
+.toggle-pass {
+  position: absolute; right: 13px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 0;
+  display: flex; align-items: center;
+  transition: color var(--transition);
+  z-index: 1;
+}
+.toggle-pass:hover { color: var(--text-secondary); }
+
+/* ── Hint / Error text ────────────────────────── */
+.field-hint {
+  font-size: 12px; margin-top: 5px; line-height: 1.5;
+  display: none;
+}
+.field-hint.visible { display: block; }
+.field-hint.hint-error  { color: var(--danger); }
+.field-hint.hint-ok     { color: var(--success); }
+.field-hint.hint-info   { color: var(--text-muted); }
+
+/* ── Password strength ────────────────────────── */
+.pw-strength {
+  margin-top: 8px; display: none;
+}
+.pw-strength.visible { display: block; }
+.pw-bars {
+  display: flex; gap: 4px; margin-bottom: 5px;
+}
+.pw-bar {
+  flex: 1; height: 3px; border-radius: 2px;
+  background: var(--border);
+  transition: background 0.25s;
+}
+.pw-bar.filled-weak   { background: var(--danger); }
+.pw-bar.filled-fair   { background: var(--warning); }
+.pw-bar.filled-good   { background: #3b82f6; }
+.pw-bar.filled-strong { background: var(--success); }
+.pw-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted);
+  transition: color 0.25s;
+}
+.pw-label.weak   { color: var(--danger); }
+.pw-label.fair   { color: var(--warning); }
+.pw-label.good   { color: #3b82f6; }
+.pw-label.strong { color: var(--success); }
+
+/* ── Regras de senha ──────────────────────────── */
+.pw-rules {
+  list-style: none; margin-top: 8px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px;
+}
+.pw-rules li {
+  font-size: 12px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 5px;
+  transition: color 0.2s;
+}
+.pw-rules li::before {
+  content: '○';
+  font-size: 10px;
+  transition: content 0.2s;
+}
+.pw-rules li.met { color: var(--success); }
+.pw-rules li.met::before { content: '●'; }
+
+/* ── Submit Button ────────────────────────────── */
+.btn-submit {
+  width: 100%; padding: 14px;
+  margin-top: 4px;
+  font-family: var(--font); font-size: 15px; font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none; border-radius: var(--radius-btn);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+  position: relative; overflow: hidden;
+}
+.btn-submit:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,113,227,0.30);
+}
+.btn-submit:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+[data-theme="dark"] .btn-submit {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+}
+[data-theme="dark"] .btn-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 8px 24px rgba(37,99,235,0.35);
+}
+
+/* Spinner */
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Alert global ─────────────────────────────── */
+.alert {
+  border-radius: 10px; padding: 12px 14px;
+  font-size: 13.5px; font-weight: 500; line-height: 1.5;
+  margin-top: 14px; display: none;
+}
+.alert.visible { display: block; }
+.alert-error   { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(220,38,38,0.20); }
+.alert-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(22,163,74,0.20); }
+.alert-info    { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(0,113,227,0.20); }
+
+/* ── Footer ───────────────────────────────────── */
+.card-footer {
+  margin-top: 22px; text-align: center;
+  font-size: 13.5px; color: var(--text-secondary);
+}
+.card-footer a {
+  color: var(--text-primary); font-weight: 600;
+  transition: color var(--transition);
+}
+.card-footer a:hover { color: var(--accent); }
+
+/* ── PIN Input ────────────────────────────────── */
+.pin-grid {
+  display: flex; gap: 8px; justify-content: center;
+  margin-bottom: 8px;
+}
+.pin-digit {
+  width: 48px; height: 56px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 22px; font-weight: 700; letter-spacing: 0;
+  text-align: center;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  caret-color: transparent;
+}
+.pin-digit:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.pin-digit.filled { border-color: var(--accent); }
+
+/* ── Resend timer ─────────────────────────────── */
+.resend-wrap {
+  margin-top: 16px; text-align: center;
+  font-size: 13px; color: var(--text-secondary);
+}
+.resend-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); font-weight: 600; font-size: 13px;
+  padding: 0; font-family: var(--font);
+  transition: opacity var(--transition);
+}
+.resend-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Success / Server IPs ─────────────────────── */
+.server-ips { margin: 20px 0 8px; }
+.ip-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 7px;
+}
+.ip-box {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px; border-radius: 12px;
+  cursor: pointer; margin-bottom: 8px;
+  border: 1.5px solid;
+  transition: background 0.15s;
+}
+.ip-box.java   { background: rgba(0,113,227,0.06); border-color: rgba(0,113,227,0.20); }
+.ip-box.bedrock{ background: rgba(22,163,74,0.06);  border-color: rgba(22,163,74,0.20); }
+.ip-box:hover.java    { background: rgba(0,113,227,0.12); }
+.ip-box:hover.bedrock { background: rgba(22,163,74,0.12); }
+.ip-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px; font-weight: 700;
   color: var(--text-primary);
 }
-[data-theme="dark"] header,
-[data-theme="dark"] footer {
-  background: rgba(8, 13, 20, 0.82) !important;
-  border-color: var(--border) !important;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+.ip-port { font-size: 12px; color: var(--text-muted); margin-left: 6px; }
+.ip-copy { font-size: 18px; transition: transform 0.2s; }
+.ip-hint {
+  font-size: 12px; color: var(--text-muted); text-align: center;
+  margin-bottom: 4px;
 }
-[data-theme="dark"] .card,
-[data-theme="dark"] .login-card,
-[data-theme="dark"] .signup-card,
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .info-box,
-[data-theme="dark"] .bento-item,
-[data-theme="dark"] .user-dropdown,
-[data-theme="dark"] .sidebar,
-[data-theme="dark"] .modal-content,
-[data-theme="dark"] .confirm-pw-modal,
-[data-theme="dark"] .dashboard-card,
-[data-theme="dark"] .panel,
-[data-theme="dark"] .table-wrapper,
-[data-theme="dark"] .community-card,
-[data-theme="dark"] .connection-card,
-[data-theme="dark"] .achievement-badge,
-[data-theme="dark"] .rank-roadmap-item,
-[data-theme="dark"] .capital-card-small,
-[data-theme="dark"] .merit-rank-card {
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 42, 0.90)) !important;
-  border-color: var(--border) !important;
-  color: var(--text-primary) !important;
-  box-shadow: var(--shadow-md);
-}
-[data-theme="dark"] input,
-[data-theme="dark"] select,
-[data-theme="dark"] textarea,
-[data-theme="dark"] .data-input,
-[data-theme="dark"] .search-input {
-  background: rgba(15, 23, 42, 0.92) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border) !important;
-  caret-color: var(--accent);
-}
-[data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder { color: var(--text-muted) !important; }
-[data-theme="dark"] input:focus,
-[data-theme="dark"] select:focus,
-[data-theme="dark"] textarea:focus,
-[data-theme="dark"] .data-input:focus {
-  background: rgba(17, 24, 39, 0.98) !important;
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18) !important;
-}
-[data-theme="dark"] p,
-[data-theme="dark"] .subtitle,
-[data-theme="dark"] .section-header p,
-[data-theme="dark"] .page-header p,
-[data-theme="dark"] .data-label,
-[data-theme="dark"] .data-hint,
-[data-theme="dark"] .dropdown-email,
-[data-theme="dark"] .sub-info,
-[data-theme="dark"] .pref-info p,
-[data-theme="dark"] .notif-meta,
-[data-theme="dark"] .merit-timeline-meta,
-[data-theme="dark"] .rank-roadmap-info p,
-[data-theme="dark"] .footer-text,
-[data-theme="dark"] .footer-links a,
-[data-theme="dark"] .muted { color: var(--text-secondary) !important; }
-[data-theme="dark"] h1,
-[data-theme="dark"] h2,
-[data-theme="dark"] h3,
-[data-theme="dark"] h4,
-[data-theme="dark"] strong,
-[data-theme="dark"] .logo-text,
-[data-theme="dark"] .data-value,
-[data-theme="dark"] .dropdown-name,
-[data-theme="dark"] .card-title,
-[data-theme="dark"] .nav-item,
-[data-theme="dark"] .dropdown-item,
-[data-theme="dark"] .table-title { color: var(--text-primary) !important; }
-[data-theme="dark"] a:hover,
-[data-theme="dark"] .desktop-nav a:hover,
-[data-theme="dark"] .footer-text a:hover { color: var(--accent-hover) !important; }
-[data-theme="dark"] .btn-primary,
-[data-theme="dark"] .btn-login,
-[data-theme="dark"] button.main-btn {
-  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-  color: #ffffff !important;
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
-}
-[data-theme="dark"] .btn-primary:hover,
-[data-theme="dark"] .btn-login:hover,
-[data-theme="dark"] button.main-btn:hover { background: linear-gradient(135deg, #60a5fa, #3b82f6) !important; }
-[data-theme="dark"] .btn-secondary,
-[data-theme="dark"] .btn-outline,
-[data-theme="dark"] .nav-cta,
-[data-theme="dark"] .status-pill,
-[data-theme="dark"] .theme-option,
-[data-theme="dark"] .filter-pill,
-[data-theme="dark"] .sort-chip,
-[data-theme="dark"] .merit-filter-pill,
-[data-theme="dark"] .user-btn {
-  background: rgba(30, 41, 59, 0.78) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border) !important;
-}
-[data-theme="dark"] .btn-secondary:hover,
-[data-theme="dark"] .btn-outline:hover,
-[data-theme="dark"] .nav-cta:hover,
-[data-theme="dark"] .theme-option:hover,
-[data-theme="dark"] .filter-pill:hover,
-[data-theme="dark"] .sort-chip:hover,
-[data-theme="dark"] .merit-filter-pill:hover,
-[data-theme="dark"] .user-btn:hover { background: rgba(51, 65, 85, 0.86) !important; }
-[data-theme="dark"] .nav-item.active,
-[data-theme="dark"] .theme-option.active,
-[data-theme="dark"] .filter-pill.active,
-[data-theme="dark"] .sort-chip.active,
-[data-theme="dark"] .admin-tab.active,
-[data-theme="dark"] .audit-tab.active,
-[data-theme="dark"] .merit-tab.active,
-[data-theme="dark"] .rank-chip.active,
-[data-theme="dark"] .notif-filter-btn.active,
-[data-theme="dark"] .merit-filter-pill.active {
-  background: rgba(96, 165, 250, 0.20) !important;
-  color: #dbeafe !important;
-  border-color: rgba(147, 197, 253, 0.42) !important;
-}
-[data-theme="dark"] table,
-[data-theme="dark"] th,
-[data-theme="dark"] td { color: var(--text-primary); border-color: var(--border) !important; }
-[data-theme="dark"] th { background: rgba(15, 23, 42, 0.96) !important; color: var(--text-secondary) !important; }
-[data-theme="dark"] tr:hover,
-[data-theme="dark"] .dropdown-item:hover,
-[data-theme="dark"] .nav-item:hover,
-[data-theme="dark"] .audit-item:hover,
-[data-theme="dark"] .notif-item:hover { background: rgba(30, 41, 59, 0.72) !important; }
-[data-theme="dark"] .pill.owner { background: rgba(192, 132, 252, 0.18) !important; color: #e9d5ff !important; }
-[data-theme="dark"] .pill.full { background: rgba(96, 165, 250, 0.18) !important; color: #bfdbfe !important; }
-[data-theme="dark"] .pill.limited { background: rgba(148, 163, 184, 0.16) !important; color: #e2e8f0 !important; }
-[data-theme="dark"] .pill.success,
-[data-theme="dark"] .pill.verified { background: rgba(74, 222, 128, 0.15) !important; color: #bbf7d0 !important; }
-[data-theme="dark"] .achievement-badge.gold { background: linear-gradient(135deg, rgba(251,191,36,0.20), rgba(120,83,20,0.28)) !important; color: #fde68a !important; }
-[data-theme="dark"] .achievement-badge.blue { background: linear-gradient(135deg, rgba(96,165,250,0.20), rgba(30,58,138,0.28)) !important; color: #bfdbfe !important; }
-[data-theme="dark"] .achievement-badge.green { background: linear-gradient(135deg, rgba(74,222,128,0.18), rgba(20,83,45,0.28)) !important; color: #bbf7d0 !important; }
-[data-theme="dark"] .achievement-badge.purple { background: linear-gradient(135deg, rgba(192,132,252,0.20), rgba(88,28,135,0.28)) !important; color: #e9d5ff !important; }
-[data-theme="dark"] .achievement-badge.orange { background: linear-gradient(135deg, rgba(251,146,60,0.20), rgba(124,45,18,0.28)) !important; color: #fed7aa !important; }
-[data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
 
+/* ── Shake ────────────────────────────────────── */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  16%,50%  { transform: translateX(-6px); }
+  33%,66%  { transform: translateX(6px); }
+}
+.shake { animation: shake 0.38s ease; }
+
+/* ── Emoji header ─────────────────────────────── */
+.view-icon { font-size: 44px; text-align: center; margin-bottom: 12px; }
+
+/* ── Logged-in view ───────────────────────────── */
+#view-loggedin { display: none; text-align: center; }
+.loggedin-avatar {
+  width: 80px; height: 80px; border-radius: 20px;
+  object-fit: cover; margin: 0 auto 16px;
+  display: block; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.loggedin-name {
+  font-size: 20px; font-weight: 700; margin-bottom: 4px;
+}
+.loggedin-sub {
+  font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;
+}
+
+/* ── Hidden views ─────────────────────────────── */
+#view-verify, #view-success { display: none; }
 </style>
-<!-- Preconnect hints: reduz latência de primeira conexão -->
+
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 </head>
@@ -341,173 +478,558 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
-    <div class="logo-text">Força Aliada</div>
+    <img src="assets/images/logo.JPG"
+         onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+         alt="FA Logo" class="logo-img" width="32" height="32">
+    <span>Força Aliada</span>
   </a>
-  <a href="login.html" class="nav-cta">Fazer login</a>
+  <a href="login.html" class="nav-link">Fazer login</a>
 </header>
 
-<div class="login-wrapper">
-  <div class="card" id="signupCard">
+<div class="page-wrapper">
+  <div class="card" id="mainCard">
 
+    <!-- ── View: Já está logado ──────────────────── -->
     <div id="view-loggedin">
-      <img id="avatar-loggedin" class="avatar-preview" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
-      <h1 id="loggedin-name"></h1>
-      <p class="subtitle">Você já possui uma conta ativa.</p>
-      <button class="main-btn" onclick="location.href='dashboard.html'">Acessar o Painel</button>
-      <div class="footer-text">
-        <a onclick="forceLogout()" style="color:var(--danger);cursor:pointer;">Criar uma nova conta</a>
+      <img id="avatar-loggedin" class="loggedin-avatar"
+           src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
+      <div id="loggedin-name" class="loggedin-name"></div>
+      <div class="loggedin-sub">Você já possui uma conta ativa.</div>
+      <button class="btn-submit" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+      <div class="card-footer" style="margin-top:16px;">
+        <a onclick="forceLogout()" style="color:var(--danger);cursor:pointer;">Entrar com outra conta</a>
       </div>
     </div>
 
+    <!-- ── View: Cadastro ───────────────────────── -->
     <div id="view-signup">
-      <img id="avatar" class="avatar-preview inactive" src="https://minotar.net/helm/Steve/100.png" alt="Prévia da skin" width="100" height="100">
-      <h1>Criar sua conta</h1>
-      <p class="subtitle">Acesso ao painel da Staff Força Aliada</p>
-
-      <form id="signup-form" autocomplete="on" onsubmit="handleSignup(event)" novalidate>
-        <div class="form-group">
-          <input id="f-username" name="username" type="text" placeholder="Nome de usuário" autocomplete="username" minlength="3" maxlength="32" required>
-        </div>
-        <div class="form-group">
-          <input id="f-email" name="email" type="email" placeholder="E-mail de contato" autocomplete="email" required>
-        </div>
-        <div class="form-group">
-          <input id="f-minecraft" name="minecraft" type="text" placeholder="Nome exato no Minecraft" autocomplete="off" required>
-        </div>
-        <div class="form-group">
-          <input id="f-password" name="password" type="password" placeholder="Crie uma senha (mín. 8 caracteres)" autocomplete="new-password" minlength="8" required>
-        </div>
-        <button type="submit" id="btn-signup" class="main-btn">Criar Conta</button>
-      </form>
-      <div id="msg" class="msg" role="alert" aria-live="assertive"></div>
-      <div class="footer-text">Já faz parte da equipe? <a href="login.html">Faça login aqui</a></div>
-    </div>
-
-    <div id="view-verify">
-      <div style="font-size: 48px; margin-bottom: 12px;">✉️</div>
-      <h1>Verifique seu e-mail</h1>
-      <p class="subtitle">Enviamos um código de 6 dígitos para <strong id="verify-email-display"></strong>. Insira-o abaixo para ativar sua conta.</p>
-
-      <form id="verify-form" autocomplete="off" onsubmit="handleVerify(event)">
-        <div class="form-group">
-          <input id="v-code" class="pin-input" type="text" placeholder="000000" maxlength="6" required>
-        </div>
-        <button type="submit" id="btn-verify" class="main-btn">Verificar Conta</button>
-      </form>
-      <div id="msg-verify" class="msg" role="alert"></div>
-    </div>
-
-    <div id="view-success" style="display:none;">
-      <div style="font-size: 52px; margin-bottom: 16px;">🎉</div>
-      <h1>Conta ativada!</h1>
-      <p class="subtitle">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist e pode entrar no servidor.</p>
-
-      <div style="margin: 24px 0 8px; text-align: left;">
-        <p style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 8px;">IP do Servidor · Java Edition</p>
-        <div id="ip-box-java" onclick="copyIp('fa.ogabriels.com')" style="
-          background: rgba(0,113,227,0.07); border: 1.5px solid rgba(0,113,227,0.22);
-          border-radius: 14px; padding: 16px 18px; cursor: pointer;
-          display: flex; align-items: center; justify-content: space-between;
-          transition: background 0.18s, border-color 0.18s; margin-bottom: 10px;">
-          <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 600; color: var(--text-primary);">fa.ogabriels.com</span>
-          <span id="copy-icon-java" style="font-size: 18px; transition: transform 0.2s;">📋</span>
-        </div>
-        <p style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); margin: 14px 0 8px;">Bedrock / Mobile / Console · Porta 19132</p>
-        <div id="ip-box-bedrock" onclick="copyIp('fa.ogabriels.com', '19132')" style="
-          background: rgba(52,199,89,0.07); border: 1.5px solid rgba(52,199,89,0.22);
-          border-radius: 14px; padding: 16px 18px; cursor: pointer;
-          display: flex; align-items: center; justify-content: space-between;
-          transition: background 0.18s, border-color 0.18s; margin-bottom: 10px;">
-          <div>
-            <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 600; color: var(--text-primary);">fa.ogabriels.com</span>
-            <span style="font-size: 12px; color: var(--text-secondary); margin-left: 10px;">:19132</span>
-          </div>
-          <span id="copy-icon-bedrock" style="font-size: 18px; transition: transform 0.2s;">📋</span>
-        </div>
-        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;">Clique para copiar o endereço</p>
+      <!-- Prévia da skin -->
+      <div class="avatar-wrap">
+        <img id="avatar-preview" class="avatar-img dimmed"
+             src="https://minotar.net/helm/Steve/100.png" alt="Prévia da skin" width="72" height="72">
       </div>
 
-      <button class="main-btn" onclick="location.href='dashboard.html'" style="margin-top: 8px;">Ir para o Painel →</button>
+      <h1 class="card-title">Criar sua conta</h1>
+      <p class="card-subtitle">Acesso ao painel da Staff Força Aliada</p>
+
+      <div class="steps" aria-hidden="true">
+        <div class="step-dot active" id="dot-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+        <div class="step-dot" id="dot-3"></div>
+      </div>
+
+      <form id="signup-form" autocomplete="on" novalidate>
+
+        <!-- Nome de usuário -->
+        <div class="field" id="field-username">
+          <label for="f-username">Nome de usuário</label>
+          <div class="input-wrap">
+            <input id="f-username" name="username" type="text"
+                   placeholder="ex: aliado_123"
+                   autocomplete="username"
+                   minlength="3" maxlength="32"
+                   autocapitalize="none" autocorrect="off" spellcheck="false"
+                   aria-describedby="hint-username" required>
+            <span class="input-status" id="status-username" aria-hidden="true"></span>
+          </div>
+          <div class="field-hint hint-info visible" id="hint-username">
+            3–32 caracteres. Letras, números e _ (underline) apenas.
+          </div>
+        </div>
+
+        <!-- E-mail -->
+        <div class="field" id="field-email">
+          <label for="f-email">E-mail de contato</label>
+          <div class="input-wrap">
+            <input id="f-email" name="email" type="email"
+                   placeholder="seu@email.com"
+                   autocomplete="email"
+                   aria-describedby="hint-email" required>
+            <span class="input-status" id="status-email" aria-hidden="true"></span>
+          </div>
+          <div class="field-hint" id="hint-email"></div>
+        </div>
+
+        <!-- Nick Minecraft -->
+        <div class="field" id="field-minecraft">
+          <label for="f-minecraft">Nick no Minecraft</label>
+          <div class="input-wrap">
+            <input id="f-minecraft" name="minecraft" type="text"
+                   placeholder="SeuNickExato"
+                   autocomplete="off" autocapitalize="none"
+                   autocorrect="off" spellcheck="false"
+                   aria-describedby="hint-minecraft" required>
+            <span class="input-status" id="status-minecraft" aria-hidden="true"></span>
+          </div>
+          <div class="field-hint hint-info visible" id="hint-minecraft">
+            Digite exatamente como aparece no jogo (maiúsculas importam).
+          </div>
+        </div>
+
+        <!-- Senha -->
+        <div class="field" id="field-password">
+          <label for="f-password">Senha</label>
+          <div class="input-wrap">
+            <input id="f-password" name="password" type="password"
+                   placeholder="Mínimo 8 caracteres"
+                   autocomplete="new-password"
+                   minlength="8" maxlength="128"
+                   aria-describedby="hint-password" required>
+            <button type="button" class="toggle-pass" id="toggle-pw"
+                    aria-label="Mostrar/ocultar senha" tabindex="-1">
+              <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Barra de força -->
+          <div class="pw-strength" id="pw-strength">
+            <div class="pw-bars">
+              <div class="pw-bar" id="bar-1"></div>
+              <div class="pw-bar" id="bar-2"></div>
+              <div class="pw-bar" id="bar-3"></div>
+              <div class="pw-bar" id="bar-4"></div>
+            </div>
+            <span class="pw-label" id="pw-label"></span>
+          </div>
+          <!-- Checklist de requisitos -->
+          <ul class="pw-rules" id="pw-rules" style="display:none;">
+            <li id="rule-len">8+ caracteres</li>
+            <li id="rule-upper">Letra maiúscula</li>
+            <li id="rule-lower">Letra minúscula</li>
+            <li id="rule-num">Número</li>
+          </ul>
+          <div class="field-hint" id="hint-password"></div>
+        </div>
+
+        <!-- Alerta global -->
+        <div class="alert" id="signup-alert" role="alert" aria-live="assertive"></div>
+
+        <button type="submit" id="btn-signup" class="btn-submit">
+          <div class="spinner" id="spinner-signup"></div>
+          <span id="btn-signup-text">Criar Conta</span>
+        </button>
+      </form>
+
+      <div class="card-footer">
+        Já faz parte da equipe? <a href="login.html">Faça login aqui</a>
+      </div>
     </div>
 
-  </div>
-</div>
+    <!-- ── View: Verificação de e-mail ─────────── -->
+    <div id="view-verify">
+      <div class="view-icon">✉️</div>
+      <h1 class="card-title">Confirme seu e-mail</h1>
+      <p class="card-subtitle">
+        Enviamos um código de 6 dígitos para<br>
+        <strong id="verify-email-display" style="color:var(--text-primary);"></strong>
+      </p>
+
+      <div class="steps" aria-hidden="true">
+        <div class="step-dot done"></div>
+        <div class="step-dot active" style="width:24px;border-radius:4px;background:var(--accent);"></div>
+        <div class="step-dot"></div>
+      </div>
+
+      <form id="verify-form" autocomplete="off" novalidate>
+        <!-- PIN com 6 campos separados para UX mobile excelente -->
+        <div class="pin-grid" role="group" aria-label="Código de verificação de 6 dígitos">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
+                 maxlength="1" aria-label="Dígito 1" data-pos="0">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
+                 maxlength="1" aria-label="Dígito 2" data-pos="1">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
+                 maxlength="1" aria-label="Dígito 3" data-pos="2">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
+                 maxlength="1" aria-label="Dígito 4" data-pos="3">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
+                 maxlength="1" aria-label="Dígito 5" data-pos="4">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
+                 maxlength="1" aria-label="Dígito 6" data-pos="5">
+        </div>
+
+        <div class="alert" id="verify-alert" role="alert" aria-live="assertive"></div>
+
+        <button type="submit" id="btn-verify" class="btn-submit" style="margin-top:16px;">
+          <div class="spinner" id="spinner-verify"></div>
+          <span id="btn-verify-text">Verificar Conta</span>
+        </button>
+      </form>
+
+      <div class="resend-wrap">
+        <button class="resend-btn" id="resend-btn" disabled>
+          Reenviar código <span id="resend-timer"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── View: Sucesso ────────────────────────── -->
+    <div id="view-success">
+      <div class="view-icon">🎉</div>
+      <h1 class="card-title">Conta ativada!</h1>
+      <p class="card-subtitle">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist.</p>
+
+      <div class="steps" aria-hidden="true">
+        <div class="step-dot done"></div>
+        <div class="step-dot done"></div>
+        <div class="step-dot active" style="width:24px;border-radius:4px;background:var(--accent);"></div>
+      </div>
+
+      <div class="server-ips">
+        <div class="ip-label">Java Edition</div>
+        <div class="ip-box java" onclick="copyIp('fa.ogabriels.com')" id="ip-box-java" role="button" tabindex="0">
+          <span class="ip-mono">fa.ogabriels.com</span>
+          <span class="ip-copy" id="copy-icon-java">📋</span>
+        </div>
+
+        <div class="ip-label" style="margin-top:12px;">Bedrock / Mobile / Console</div>
+        <div class="ip-box bedrock" onclick="copyIp('fa.ogabriels.com','19132')" id="ip-box-bedrock" role="button" tabindex="0">
+          <div>
+            <span class="ip-mono">fa.ogabriels.com</span>
+            <span class="ip-port">:19132</span>
+          </div>
+          <span class="ip-copy" id="copy-icon-bedrock">📋</span>
+        </div>
+        <div class="ip-hint">Clique para copiar o endereço</div>
+      </div>
+
+      <button class="btn-submit" onclick="location.href='dashboard.html'">
+        Acessar o Painel →
+      </button>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /page-wrapper -->
 
 <script>
+'use strict';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
-let pendingEmail = '';
+let pendingEmail    = '';
+let resendCountdown = null;
 
-// Se a pessoa for redirecionada do login para cá com um e-mail pendente
+// ── Redirect if already verified ────────────────
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.has('verify')) {
   pendingEmail = urlParams.get('verify');
-  document.getElementById('view-signup').style.display = 'none';
+  showView('verify');
   document.getElementById('verify-email-display').textContent = pendingEmail;
-  document.getElementById('view-verify').style.display = 'block';
+  startResendTimer();
 }
 
-// ── Preview dinâmica da skin (padrão absoluto: Steve) ─────────
-let skinTimer;
-document.getElementById('f-minecraft').addEventListener('input', () => {
-  const name = document.getElementById('f-minecraft').value.trim();
-  const av   = document.getElementById('avatar');
-  clearTimeout(skinTimer);
-  
-  if (name.length >= 3) {
-    av.classList.remove('inactive');
-    skinTimer = setTimeout(() => { 
-      av.src = `https://minotar.net/helm/${encodeURIComponent(name)}/100.png`; 
-    }, 400);
+// ── View manager ────────────────────────────────
+function showView(name) {
+  ['loggedin','signup','verify','success'].forEach(v => {
+    document.getElementById('view-' + v).style.display = v === name ? '' : 'none';
+  });
+}
+
+// ── Validation helpers ───────────────────────────
+const RE_USERNAME  = /^[a-z0-9_]{3,32}$/i;
+const RE_EMAIL     = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Minecraft Java: 3-16, alfanumérico + _
+const RE_MINECRAFT = /^[a-zA-Z0-9_]{3,16}$/;
+
+function setFieldState(fieldId, state, hintText, hintType) {
+  const field  = document.getElementById('field-' + fieldId);
+  const hint   = document.getElementById('hint-' + fieldId);
+  const status = document.getElementById('status-' + fieldId);
+
+  field.classList.remove('has-error', 'has-success');
+  if (state === 'error')   { field.classList.add('has-error');   status.textContent = '✕'; }
+  if (state === 'success') { field.classList.add('has-success'); status.textContent = '✓'; }
+  if (state === 'idle')    { status.textContent = ''; }
+
+  if (hintText !== undefined) {
+    hint.textContent = hintText;
+    hint.className = 'field-hint';
+    if (hintText) {
+      hint.classList.add('visible');
+      if (hintType) hint.classList.add('hint-' + hintType);
+    }
+  }
+}
+
+// ── Username validation ──────────────────────────
+const usernameInput = document.getElementById('f-username');
+usernameInput.addEventListener('input', () => {
+  const v = usernameInput.value;
+  if (!v) { setFieldState('username','idle','3–32 caracteres. Letras, números e _ (underline) apenas.','info'); return; }
+
+  if (v.length < 3) {
+    setFieldState('username','error','Muito curto — mínimo 3 caracteres.','error');
+  } else if (v.length > 32) {
+    setFieldState('username','error','Muito longo — máximo 32 caracteres.','error');
+  } else if (/\s/.test(v)) {
+    setFieldState('username','error','Espaços não são permitidos. Use _ (underline) se quiser separar palavras.','error');
+  } else if (/[^a-zA-Z0-9_]/.test(v)) {
+    const bad = [...new Set(v.replace(/[a-zA-Z0-9_]/g,'').split(''))].join(' ');
+    setFieldState('username','error',`Caractere inválido: "${bad.trim()}". Use apenas letras, números e _.`,'error');
   } else {
-    av.src = 'https://minotar.net/helm/Steve/100.png';
-    av.classList.add('inactive');
+    setFieldState('username','success','','ok');
   }
 });
-// Evitar imagens quebradas
-document.getElementById('avatar').addEventListener('error', function() {
-  this.src = 'https://minotar.net/helm/Steve/100.png';
+usernameInput.addEventListener('blur', () => {
+  if (!usernameInput.value) setFieldState('username','idle','3–32 caracteres. Letras, números e _ (underline) apenas.','info');
 });
 
-// ── Mostrar Mensagens ─────────────────────────────────────────
-function showMessage(text, type, isHtml = false, isVerify = false) {
-  const msgEl = document.getElementById(isVerify ? 'msg-verify' : 'msg');
-  const card  = document.getElementById('signupCard');
-  
-  if (isHtml) msgEl.innerHTML = text; 
-  else msgEl.textContent = text;
-  
-  msgEl.className = `msg ${type}`;
-  
-  if (type === 'error') {
-    card.classList.remove('shake-animation');
-    void card.offsetWidth; // Reflow
-    card.classList.add('shake-animation');
+// ── E-mail validation ────────────────────────────
+const emailInput = document.getElementById('f-email');
+emailInput.addEventListener('input', () => {
+  const v = emailInput.value.trim();
+  if (!v) { setFieldState('email','idle'); document.getElementById('hint-email').textContent=''; return; }
+  if (!RE_EMAIL.test(v)) {
+    if (!v.includes('@')) setFieldState('email','error','Faltou o "@" no e-mail.','error');
+    else if (v.endsWith('@'))   setFieldState('email','error','Informe o domínio após o "@" (ex: gmail.com).','error');
+    else setFieldState('email','error','Formato de e-mail inválido.','error');
+  } else {
+    setFieldState('email','success','','ok');
   }
+});
+emailInput.addEventListener('blur', () => {
+  const v = emailInput.value.trim();
+  if (!v) { setFieldState('email','idle'); document.getElementById('hint-email').textContent=''; }
+});
+
+// ── Minecraft nick validation + skin preview ─────
+const mcInput  = document.getElementById('f-minecraft');
+const avatarEl = document.getElementById('avatar-preview');
+let skinTimer;
+
+mcInput.addEventListener('input', () => {
+  const v = mcInput.value.trim();
+  clearTimeout(skinTimer);
+
+  if (!v) {
+    setFieldState('minecraft','idle','Digite exatamente como aparece no jogo (maiúsculas importam).','info');
+    avatarEl.src = 'https://minotar.net/helm/Steve/100.png';
+    avatarEl.classList.add('dimmed'); avatarEl.classList.remove('loaded');
+    return;
+  }
+
+  // Validações específicas com mensagens claras
+  if (/\s/.test(v)) {
+    setFieldState('minecraft','error','Nicks no Minecraft não podem ter espaços.','error');
+  } else if (v.length < 3) {
+    setFieldState('minecraft','error','Nick muito curto — mínimo 3 caracteres.','error');
+    avatarEl.classList.add('dimmed'); avatarEl.classList.remove('loaded');
+  } else if (v.length > 16) {
+    setFieldState('minecraft','error','Nick muito longo — máximo 16 caracteres (limite do Minecraft Java).','error');
+  } else if (/[^a-zA-Z0-9_]/.test(v)) {
+    const bad = [...new Set(v.replace(/[a-zA-Z0-9_]/g,'').split(''))].join(', ');
+    setFieldState('minecraft','error',`Caractere não permitido em nicks Minecraft: "${bad}". Use apenas letras, números e _.`,'error');
+  } else {
+    setFieldState('minecraft','success','','ok');
+    avatarEl.classList.remove('dimmed');
+    skinTimer = setTimeout(() => {
+      avatarEl.src = `https://minotar.net/helm/${encodeURIComponent(v)}/100.png`;
+    }, 450);
+  }
+});
+avatarEl.addEventListener('load', () => {
+  if (!avatarEl.src.includes('Steve')) {
+    avatarEl.classList.add('loaded');
+    setTimeout(() => avatarEl.classList.remove('loaded'), 500);
+  }
+});
+avatarEl.addEventListener('error', () => {
+  avatarEl.src = 'https://minotar.net/helm/Steve/100.png';
+});
+mcInput.addEventListener('blur', () => {
+  if (!mcInput.value.trim()) setFieldState('minecraft','idle','Digite exatamente como aparece no jogo (maiúsculas importam).','info');
+});
+
+// ── Password strength ────────────────────────────
+const pwInput    = document.getElementById('f-password');
+const pwStrength = document.getElementById('pw-strength');
+const pwRules    = document.getElementById('pw-rules');
+const pwLabel    = document.getElementById('pw-label');
+const bars       = [1,2,3,4].map(i => document.getElementById('bar-' + i));
+const rules      = {
+  len:   document.getElementById('rule-len'),
+  upper: document.getElementById('rule-upper'),
+  lower: document.getElementById('rule-lower'),
+  num:   document.getElementById('rule-num'),
+};
+
+function calcStrength(pw) {
+  let score = 0;
+  const checks = {
+    len:   pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    num:   /[0-9]/.test(pw),
+    sym:   /[^a-zA-Z0-9]/.test(pw),
+    long:  pw.length >= 16,
+  };
+  if (checks.len)   score++;
+  if (checks.upper) score++;
+  if (checks.lower) score++;
+  if (checks.num)   score++;
+  if (checks.sym)   score++;
+  if (checks.long)  score++;
+  return { score, checks };
 }
 
-// ── Criação da Conta & Login Silencioso ───────────────────────
-async function handleSignup(event) {
-  event.preventDefault();
-  const username      = document.getElementById('f-username').value.trim();
-  const email         = document.getElementById('f-email').value.trim();
-  const minecraftName = document.getElementById('f-minecraft').value.trim();
-  const password      = document.getElementById('f-password').value;
+const STRENGTH_MAP = [
+  null,
+  { label:'Muito fraca', cls:'weak',   filled: 1 },
+  { label:'Fraca',       cls:'weak',   filled: 1 },
+  { label:'Razoável',    cls:'fair',   filled: 2 },
+  { label:'Boa',         cls:'good',   filled: 3 },
+  { label:'Forte',       cls:'strong', filled: 4 },
+  { label:'Muito forte', cls:'strong', filled: 4 },
+];
+
+pwInput.addEventListener('input', () => {
+  const pw = pwInput.value;
+  const hint = document.getElementById('hint-password');
+
+  if (!pw) {
+    pwStrength.classList.remove('visible');
+    pwRules.style.display = 'none';
+    setFieldState('password','idle');
+    hint.textContent = ''; hint.className = 'field-hint';
+    return;
+  }
+
+  pwStrength.classList.add('visible');
+  pwRules.style.display = 'grid';
+
+  const { score, checks } = calcStrength(pw);
+  const info = STRENGTH_MAP[Math.min(score, 6)];
+
+  // Barras
+  bars.forEach((b, i) => {
+    b.className = 'pw-bar';
+    if (i < info.filled) b.classList.add('filled-' + info.cls);
+  });
+
+  // Label
+  pwLabel.textContent = info.label;
+  pwLabel.className = 'pw-label ' + info.cls;
+
+  // Checklist
+  rules.len.classList.toggle('met', checks.len);
+  rules.upper.classList.toggle('met', checks.upper);
+  rules.lower.classList.toggle('met', checks.lower);
+  rules.num.classList.toggle('met', checks.num);
+
+  if (pw.length > 0 && pw.length < 8) {
+    setFieldState('password','error', `Ainda faltam ${8 - pw.length} caractere${8 - pw.length>1?'s':''}. Mínimo: 8.`, 'error');
+  } else if (pw.length > 128) {
+    setFieldState('password','error', 'Senha muito longa — máximo 128 caracteres.', 'error');
+  } else if (score >= 2) {
+    setFieldState('password','success');
+    hint.textContent = ''; hint.className = 'field-hint';
+  } else {
+    setFieldState('password','idle');
+    hint.textContent = ''; hint.className = 'field-hint';
+  }
+});
+
+// Toggle mostrar senha
+document.getElementById('toggle-pw').addEventListener('click', () => {
+  const isPass = pwInput.type === 'password';
+  pwInput.type = isPass ? 'text' : 'password';
+  // Alterna ícone eye/eye-off
+  document.getElementById('eye-icon').innerHTML = isPass
+    ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+       <line x1="1" y1="1" x2="23" y2="23"/>`
+    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+       <circle cx="12" cy="12" r="3"/>`;
+});
+
+// ── Alert global ─────────────────────────────────
+function showAlert(text, type, isHtml = false, targetId = 'signup-alert') {
+  const el = document.getElementById(targetId);
+  el.className = 'alert visible alert-' + type;
+  if (isHtml) el.innerHTML = text;
+  else el.textContent = text;
+}
+function clearAlert(targetId = 'signup-alert') {
+  const el = document.getElementById(targetId);
+  el.className = 'alert';
+  el.textContent = '';
+}
+
+// ── Shake card ───────────────────────────────────
+function shakeCard() {
+  const c = document.getElementById('mainCard');
+  c.classList.remove('shake');
+  void c.offsetWidth;
+  c.classList.add('shake');
+}
+
+// ── Submit signup ────────────────────────────────
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearAlert();
+
+  const username      = usernameInput.value.trim();
+  const email         = emailInput.value.trim();
+  const minecraftName = mcInput.value.trim();
+  const password      = pwInput.value;
   const btn           = document.getElementById('btn-signup');
+  const spinner       = document.getElementById('spinner-signup');
+  const btnText       = document.getElementById('btn-signup-text');
 
-  if (!username || !email || !minecraftName || !password) { showMessage('Preencha todos os campos.', 'error'); return; }
-  if (username.length < 3) { showMessage('O nome de usuário deve ter ao menos 3 caracteres.', 'error'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage('E-mail inválido.', 'error'); return; }
-  if (password.length < 8) { showMessage('A senha deve ter ao menos 8 caracteres.', 'error'); return; }
+  // ── Client-side validation completa ────────────
+  let firstError = null;
 
-  btn.disabled = true; 
-  btn.textContent = 'Aguarde...';
+  if (!username) {
+    setFieldState('username','error','Escolha um nome de usuário.','error');
+    firstError = firstError || 'f-username';
+  } else if (!RE_USERNAME.test(username)) {
+    if (username.length < 3) setFieldState('username','error','Mínimo 3 caracteres.','error');
+    else if (/\s/.test(username)) setFieldState('username','error','Sem espaços — use _ se necessário.','error');
+    else setFieldState('username','error','Somente letras, números e _. Sem caracteres especiais.','error');
+    firstError = firstError || 'f-username';
+  }
+
+  if (!email) {
+    setFieldState('email','error','Informe seu e-mail.','error');
+    firstError = firstError || 'f-email';
+  } else if (!RE_EMAIL.test(email)) {
+    setFieldState('email','error','E-mail inválido.','error');
+    firstError = firstError || 'f-email';
+  }
+
+  if (!minecraftName) {
+    setFieldState('minecraft','error','Informe seu nick no Minecraft.','error');
+    firstError = firstError || 'f-minecraft';
+  } else if (!RE_MINECRAFT.test(minecraftName)) {
+    if (minecraftName.length < 3) setFieldState('minecraft','error','Nick muito curto (mínimo 3 caracteres).','error');
+    else if (minecraftName.length > 16) setFieldState('minecraft','error','Nick muito longo (máximo 16 caracteres).','error');
+    else setFieldState('minecraft','error','Caractere inválido. Nicks Minecraft: letras, números e _ apenas.','error');
+    firstError = firstError || 'f-minecraft';
+  }
+
+  if (!password) {
+    setFieldState('password','error','Crie uma senha.','error');
+    firstError = firstError || 'f-password';
+  } else if (password.length < 8) {
+    setFieldState('password','error',`Faltam ${8 - password.length} caractere${8-password.length>1?'s':''}. Mínimo: 8.`,'error');
+    firstError = firstError || 'f-password';
+  }
+
+  if (firstError) {
+    document.getElementById(firstError).focus();
+    shakeCard();
+    return;
+  }
+
+  // ── Envia ────────────────────────────────────
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Criando conta…';
 
   const slowTimer = setTimeout(() => {
-    showMessage('O servidor está acordando (pode levar até 30 s)…', 'info');
+    showAlert('O servidor está acordando — pode levar até 30 segundos na primeira vez…', 'info');
   }, 4000);
 
   try {
@@ -517,166 +1039,269 @@ async function handleSignup(event) {
       body:    JSON.stringify({ username, email, minecraftName, password }),
     });
     clearTimeout(slowTimer);
-    
+    clearAlert();
     const data = await res.json();
-    
+
     if (!res.ok) {
       if (res.status === 409 || data.error === 'username/email already exists') {
         throw new Error('ACCOUNT_EXISTS');
       }
-      throw new Error(data.error || 'Erro ao criar conta.');
+      // Mapeia erros do servidor para mensagens amigáveis
+      const serverErrors = {
+        'invalid username': 'Nome de usuário inválido — use apenas letras, números e _.',
+        'invalid email':    'Endereço de e-mail inválido.',
+        'invalid password': 'Senha inválida — mínimo 8 caracteres.',
+        'username taken':   'Este nome de usuário já está em uso. Tente outro.',
+        'email taken':      'Este e-mail já possui uma conta. Tente fazer login.',
+      };
+      throw new Error(serverErrors[data.error] || data.error || 'Erro ao criar conta. Tente novamente.');
     }
 
-    // Sucesso - Mostra a tela de verificação
+    // Sucesso → tela de verificação
     pendingEmail = data.email || email;
-    document.getElementById('view-signup').style.display = 'none';
     document.getElementById('verify-email-display').textContent = pendingEmail;
-    document.getElementById('view-verify').style.display = 'block';
+    showView('verify');
+    startResendTimer();
 
   } catch (err) {
     clearTimeout(slowTimer);
+
     if (err.message === 'ACCOUNT_EXISTS') {
-      
-      // LOGIN SILENCIOSO: Tenta logar em background para ver se a conta está apenas não-verificada
+      // Tenta login silencioso para verificar se é conta não-verificada
       try {
         const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ login: email, password })
+          body: JSON.stringify({ login: email, password }),
         });
         const loginData = await loginRes.json();
 
-        // Se retornar 403 (Email não verificado), o backend envia automaticamente um novo código!
         if (loginRes.status === 403 && loginData.error === 'unverified_email') {
           pendingEmail = loginData.email || email;
-          document.getElementById('view-signup').style.display = 'none';
           document.getElementById('verify-email-display').textContent = pendingEmail;
-          document.getElementById('view-verify').style.display = 'block';
-          
-          showMessage('Enviamos um novo código para o seu e-mail.', 'success', false, true);
-          return; // Para a execução, o fluxo de erro não é mostrado
+          showView('verify');
+          showAlert('Enviamos um novo código para o seu e-mail.', 'success', false, 'verify-alert');
+          startResendTimer();
+          return;
         }
 
-        // Se retornar 200, a pessoa recriou uma conta que já existia e a senha estava certa!
         if (loginRes.ok) {
           localStorage.setItem(TOKEN_KEY, loginData.token);
           localStorage.setItem(SESSION_KEY, JSON.stringify(loginData.user));
           location.href = 'dashboard.html';
           return;
         }
-      } catch (e) {
-        // Falhas na rede do login silencioso são ignoradas para mostrar a mensagem de erro padrão
-      }
+      } catch (_) { /* ignora falha de rede no login silencioso */ }
 
-      // Mensagem normal de conta existente (se a senha for diferente da original)
-      showMessage('Este e-mail ou utilizador já está registado.<br><a href="login.html" style="color:var(--accent); text-decoration:underline; display:inline-block; margin-top:8px;">Fazer login com esta conta?</a>', 'error', true);
-    } else { 
-      showMessage(err.message, 'error'); 
+      showAlert(
+        'Este e-mail ou nome de usuário já está registado. ' +
+        '<a href="login.html" style="color:inherit;text-decoration:underline;font-weight:700;">Fazer login →</a>',
+        'error', true
+      );
+      shakeCard();
+    } else {
+      showAlert(err.message, 'error');
+      shakeCard();
     }
-    btn.disabled = false; 
-    btn.textContent = 'Criar Conta';
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = 'Criar Conta';
   }
+});
+
+// ── PIN input: navegação automática ─────────────
+const pinDigits = Array.from(document.querySelectorAll('.pin-digit'));
+
+pinDigits.forEach((input, idx) => {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace') {
+      if (!input.value && idx > 0) {
+        pinDigits[idx - 1].focus();
+        pinDigits[idx - 1].value = '';
+        pinDigits[idx - 1].classList.remove('filled');
+      }
+      input.classList.remove('filled');
+    }
+  });
+
+  input.addEventListener('input', (e) => {
+    // Permite apenas dígitos
+    input.value = input.value.replace(/\D/g, '').slice(-1);
+    if (input.value) {
+      input.classList.add('filled');
+      if (idx < 5) pinDigits[idx + 1].focus();
+      else input.blur();
+    } else {
+      input.classList.remove('filled');
+    }
+    // Auto-submit quando completo
+    const code = pinDigits.map(d => d.value).join('');
+    if (code.length === 6) submitVerify(code);
+  });
+
+  // Suporte a colar código completo
+  input.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
+    if (pasted.length >= 6) {
+      pinDigits.forEach((d, i) => {
+        d.value = pasted[i] || '';
+        d.classList.toggle('filled', !!d.value);
+      });
+      pinDigits[5].focus();
+      const code = pasted.slice(0, 6);
+      if (code.length === 6) submitVerify(code);
+    }
+  });
+});
+
+function getPinCode() {
+  return pinDigits.map(d => d.value).join('');
 }
 
-// ── Verificação do Código PIN ─────────────────────────────────
-async function handleVerify(event) {
-  event.preventDefault();
-  const code = document.getElementById('v-code').value.trim();
-  const btn  = document.getElementById('btn-verify');
+document.getElementById('verify-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  submitVerify(getPinCode());
+});
 
-  if (!code || code.length !== 6) { showMessage('Digite o código de 6 dígitos.', 'error', false, true); return; }
+async function submitVerify(code) {
+  const btn     = document.getElementById('btn-verify');
+  const spinner = document.getElementById('spinner-verify');
+  const btnText = document.getElementById('btn-verify-text');
 
-  btn.disabled = true; 
-  btn.textContent = 'Verificando...';
+  if (code.length !== 6) {
+    showAlert('Digite todos os 6 dígitos do código.', 'error', false, 'verify-alert');
+    shakeCard();
+    return;
+  }
+
+  if (btn.disabled) return; // evita duplo clique
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Verificando…';
+  clearAlert('verify-alert');
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/verify-email`, {
-      method:  'POST', 
+    const res  = await fetch(`${API_BASE}/api/auth/verify-email`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email: pendingEmail, code }),
     });
-    
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Código inválido ou expirado.');
 
-    // Salva o login no navegador e entra direto
+    if (!res.ok) {
+      const serverErrors = {
+        'invalid code':   'Código incorreto. Verifique e tente novamente.',
+        'expired code':   'Este código expirou. Solicite um novo abaixo.',
+        'code not found': 'Código não encontrado. Solicite um novo abaixo.',
+      };
+      throw new Error(serverErrors[data.error] || data.error || 'Código inválido ou expirado.');
+    }
+
+    // Login automático
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
-
-    // Show success screen with server IP instead of redirecting immediately
-    document.getElementById('view-verify').style.display = 'none';
-    document.getElementById('view-success').style.display = 'block';
+    showView('success');
 
   } catch (err) {
-    showMessage(err.message, 'error', false, true);
-    btn.disabled = false; 
-    btn.textContent = 'Verificar Conta';
+    showAlert(err.message, 'error', false, 'verify-alert');
+    shakeCard();
+    // Limpa os campos para nova tentativa
+    pinDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+    pinDigits[0].focus();
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = 'Verificar Conta';
   }
 }
 
-// ── Copy server IP ─────────────────────────────────────────────
-function copyIp(ip, porta = null) {
-  const text  = porta ? `${ip}:${porta}` : ip;
-  const iconId = porta ? 'copy-icon-bedrock' : 'copy-icon-java';
+// ── Reenvio de código com countdown ─────────────
+function startResendTimer(seconds = 60) {
+  const btn   = document.getElementById('resend-btn');
+  const timer = document.getElementById('resend-timer');
+  btn.disabled = true;
+  clearInterval(resendCountdown);
+  let s = seconds;
+  timer.textContent = `(${s}s)`;
+  resendCountdown = setInterval(() => {
+    s--;
+    if (s <= 0) {
+      clearInterval(resendCountdown);
+      timer.textContent = '';
+      btn.disabled = false;
+    } else {
+      timer.textContent = `(${s}s)`;
+    }
+  }, 1000);
+}
+
+document.getElementById('resend-btn').addEventListener('click', async () => {
+  if (!pendingEmail) return;
+  const btn = document.getElementById('resend-btn');
+  btn.disabled = true;
+
+  try {
+    // Usa o signup endpoint — o backend reenvía o código automaticamente se o e-mail não for verificado
+    await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: pendingEmail, password: '' }),
+    });
+  } catch (_) {}
+
+  showAlert('Novo código enviado! Verifique sua caixa de entrada.', 'success', false, 'verify-alert');
+  startResendTimer(60);
+});
+
+// ── Copy IPs ─────────────────────────────────────
+function copyIp(ip, porta) {
+  const text   = porta ? `${ip}:${porta}` : ip;
   const boxId  = porta ? 'ip-box-bedrock' : 'ip-box-java';
+  const iconId = porta ? 'copy-icon-bedrock' : 'copy-icon-java';
   navigator.clipboard.writeText(text).then(() => {
     const icon = document.getElementById(iconId);
     const box  = document.getElementById(boxId);
     icon.textContent = '✅';
-    icon.style.transform = 'scale(1.3)';
-    box.style.background = porta ? 'rgba(52,199,89,0.16)' : 'rgba(0,113,227,0.14)';
-    setTimeout(() => {
-      icon.textContent = '📋';
-      icon.style.transform = 'scale(1)';
-      box.style.background = '';
-    }, 2000);
-  }).catch(() => {
-    prompt('Copie o endereço:', text);
-  });
+    box.style.opacity = '0.75';
+    setTimeout(() => { icon.textContent = '📋'; box.style.opacity = ''; }, 2000);
+  }).catch(() => { prompt('Copie o endereço:', text); });
 }
 
-// ── Logout Manual ─────────────────────────────────────────────
+// ── Logout ────────────────────────────────────────
 function forceLogout() {
-  localStorage.removeItem(TOKEN_KEY); 
+  localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
-  document.getElementById('view-loggedin').style.display = 'none'; 
-  document.getElementById('view-signup').style.display = 'block';
+  showView('signup');
 }
 
-// ── Auto-Login ────────────────────────────────────────────────
+// ── Auto-login ────────────────────────────────────
 (async () => {
   const token = localStorage.getItem(TOKEN_KEY);
-  if (!token || pendingEmail) return; 
+  if (!token || pendingEmail) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { 
-      headers: { 'Authorization': `Bearer ${token}` } 
+    const res = await fetch(`${API_BASE}/api/me`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    
-    if (!res.ok) throw new Error('Token expirado');
-    
+    if (!res.ok) throw new Error();
     const me = await res.json();
-    const session = { 
-      username: me.username, 
-      email: me.email, 
-      minecraftName: me.minecraft_name, 
-      role: me.role 
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
-    const skinUrl = session.minecraftName 
-      ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png` 
+    const skinUrl = me.minecraft_name
+      ? `https://minotar.net/helm/${encodeURIComponent(me.minecraft_name)}/100.png`
       : 'https://minotar.net/helm/Steve/100.png';
-      
-    const avatarImg = document.getElementById('avatar-loggedin');
-    avatarImg.src = skinUrl;
-    avatarImg.onerror = () => { avatarImg.src = 'https://minotar.net/helm/Steve/100.png'; };
-    
-    document.getElementById('loggedin-name').textContent = session.username;
-    document.getElementById('view-loggedin').style.display = 'block';
-    document.getElementById('view-signup').style.display   = 'none';
+
+    const img = document.getElementById('avatar-loggedin');
+    img.src = skinUrl;
+    img.onerror = () => { img.src = 'https://minotar.net/helm/Steve/100.png'; };
+    document.getElementById('loggedin-name').textContent = me.username;
+    showView('loggedin');
+
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      username: me.username, email: me.email,
+      minecraftName: me.minecraft_name, role: me.role,
+    }));
   } catch {
-    localStorage.removeItem(TOKEN_KEY); 
+    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
   }
 })();
