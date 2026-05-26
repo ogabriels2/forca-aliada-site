@@ -970,6 +970,51 @@ async function createSessionAndRedirect(res, req, userRow, provider = 'oauth') {
   return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
 }
 
+// ─────────────────────────────────────────────
+// OAuth Helpers — CSRF State + Username util
+// ─────────────────────────────────────────────
+
+/**
+ * Gera N bytes aleatórios em base64url (sem +, /, =).
+ * Usado para gerar usernames únicos em contas criadas via OAuth.
+ */
+function randomBase64Url(n = 16) {
+  return crypto.randomBytes(n).toString('base64url');
+}
+
+/**
+ * Mapa em memória de OAuth states pendentes (proteção CSRF).
+ * Chave: state string | Valor: { provider, expiresAt }
+ * TTL: 10 minutos — tempo suficiente para o usuário autorizar.
+ */
+const _oauthStates = new Map();
+
+function buildOAuthState(provider) {
+  const state = randomBase64Url(24);
+  _oauthStates.set(state, {
+    provider,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+  });
+  // Housekeeping leve: remove states expirados a cada chamada
+  const now = Date.now();
+  for (const [k, v] of _oauthStates) {
+    if (v.expiresAt < now) _oauthStates.delete(k);
+  }
+  return state;
+}
+
+function readOAuthState(state, provider) {
+  const entry = _oauthStates.get(state);
+  if (!entry) throw new Error('State OAuth inválido ou expirado');
+  if (Date.now() > entry.expiresAt) {
+    _oauthStates.delete(state);
+    throw new Error('State OAuth expirado');
+  }
+  if (entry.provider !== provider) throw new Error('State OAuth de provider diferente');
+  _oauthStates.delete(state); // one-use: consumido após validação
+  return entry;
+}
+
 async function upsertSocialAccount({ provider, providerUserId, providerEmail, refreshToken, profileName }) {
   const normalizedEmail = sanitize(providerEmail).toLowerCase() || null;
   const providerId = sanitize(providerUserId);
@@ -1050,6 +1095,14 @@ app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
       [user.id, provider, providerUserId, providerEmail, payload.refreshToken || null]
     );
     const appToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    // Registra a sessão igual aos outros fluxos de login
+    const tokenHash = crypto.createHash('sha256').update(appToken).digest('hex');
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+    await pool.query(
+      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
+      [user.id, tokenHash, req.headers['user-agent'] || null, ip]
+    );
+    await audit({ actorId: user.id, actorName: user.username, type: 'login', message: `Conta vinculada e login social (${provider})` });
     res.json({ token: appToken, user: { username: user.username, email: user.email, role: user.role, minecraftName: user.minecraft_name } });
   } catch (_err) {
     res.status(400).json({ error: 'invalid or expired link token' });
