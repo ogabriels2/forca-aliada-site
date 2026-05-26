@@ -1467,6 +1467,68 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             </label>
           </div>
         </div>
+
+        <!-- ── Card: Skin Mojang ──────────────────── -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <span style="font-size:18px;line-height:1;">👕</span>
+              Customizar Skin (Oficial Mojang)
+            </div>
+          </div>
+          <p style="color:var(--text-secondary);font-size:13px;margin:-8px 0 18px;line-height:1.6;">
+            Mude a skin do seu Minecraft Original direto pelo site. Funciona apenas para contas vinculadas via Xbox.
+          </p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+            <div style="flex:1;min-width:200px;">
+              <input type="text" id="skin-url-input"
+                placeholder="Cole a URL da Skin (.png)"
+                style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-md);
+                       background:var(--bg-color);color:var(--text-primary);font-size:14px;font-family:inherit;
+                       outline:none;transition:border-color 0.18s,box-shadow 0.18s;"
+                onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-light)'"
+                onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+            </div>
+            <button id="btn-apply-skin" class="btn-primary"
+              onclick="applyMinecraftSkin()"
+              style="padding:11px 18px;border-radius:var(--radius-md);font-weight:600;font-size:14px;cursor:pointer;
+                     white-space:nowrap;flex-shrink:0;">
+              Aplicar Skin
+            </button>
+          </div>
+          <p id="skin-msg" style="font-size:13px;margin-top:10px;display:none;font-weight:500;"></p>
+        </div>
+
+        <!-- ── Card: Xbox Friends ─────────────────── -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div style="width:20px;height:20px;flex-shrink:0;">
+                <svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="9" height="9" fill="#107C10"/>
+                  <rect x="11" y="1" width="9" height="9" fill="#107C10"/>
+                  <rect x="1" y="11" width="9" height="9" fill="#107C10"/>
+                  <rect x="11" y="11" width="9" height="9" fill="#107C10"/>
+                </svg>
+              </div>
+              Amigos do Xbox na Força Aliada
+            </div>
+          </div>
+          <p style="color:var(--text-secondary);font-size:13px;margin:-8px 0 18px;line-height:1.6;">
+            Descubra quais amigos da sua lista do Xbox Live também jogam no servidor.
+          </p>
+          <button id="btn-load-friends"
+            onclick="loadXboxFriends()"
+            style="padding:10px 18px;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;
+                   border:1.5px solid var(--border);background:transparent;color:var(--text-primary);
+                   font-family:inherit;transition:border-color 0.18s,box-shadow 0.18s,background 0.18s;"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-light)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.background='transparent'">
+            Procurar Amigos
+          </button>
+          <div id="xbox-friends-list" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+
       </section>
 
       <!-- ══════════════════════════════════════════
@@ -3214,6 +3276,104 @@ function renderRanksRoadmap(currentMerit) {
 // Hook into tab switch to lazy-load merit data
 const _originalSwitchTab = switchTab;
 // Override switchTab to trigger merit loading
+
+// ── XBOX & MOJANG INTEGRATION ──────────────────────────────────
+
+async function applyMinecraftSkin() {
+  const urlInput = document.getElementById('skin-url-input');
+  const btn      = document.getElementById('btn-apply-skin');
+  const msg      = document.getElementById('skin-msg');
+  const skinUrl  = urlInput.value.trim();
+
+  if (!skinUrl || !skinUrl.startsWith('http')) {
+    msg.style.display = 'block';
+    msg.style.color   = 'var(--danger)';
+    msg.innerText     = 'Por favor, insira um link válido da imagem (.png)';
+    return;
+  }
+
+  const origText     = btn.innerText;
+  btn.innerText      = 'Aplicando…';
+  btn.disabled       = true;
+  msg.style.display  = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/minecraft/skin`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+      },
+      body: JSON.stringify({ skinUrl })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
+
+    msg.style.color  = 'var(--success)';
+    msg.innerText    = '✅ Skin alterada com sucesso! Entre no jogo para ver.';
+    urlInput.value   = '';
+    showToast('success', 'Skin aplicada!', 'Sua skin foi enviada à Mojang com sucesso.');
+  } catch (err) {
+    msg.style.color = 'var(--danger)';
+    msg.innerText   = '⚠️ Erro: ' + err.message + ' (Você vinculou sua conta Xbox?)';
+    showToast('error', 'Falha ao aplicar skin', err.message);
+  } finally {
+    msg.style.display = 'block';
+    btn.innerText     = origText;
+    btn.disabled      = false;
+  }
+}
+
+async function loadXboxFriends() {
+  const container = document.getElementById('xbox-friends-list');
+  const btn       = document.getElementById('btn-load-friends');
+
+  btn.innerText   = 'Sincronizando…';
+  btn.disabled    = true;
+  container.innerHTML = '<p style="font-size:13px;color:var(--text-secondary);">Comunicando com os servidores do Xbox…</p>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/xbox/friends`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}` }
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro na requisição');
+
+    if (!data.serverFriends || data.serverFriends.length === 0) {
+      container.innerHTML = `
+        <div style="background:var(--bg-color);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;font-size:13px;color:var(--text-secondary);">
+          Nenhum dos seus ${data.xboxFriendsTotal ?? 0} amigos do Xbox está registrado na Força Aliada ainda.
+        </div>`;
+    } else {
+      container.innerHTML = data.serverFriends.map(friend => `
+        <div style="display:flex;align-items:center;gap:14px;background:var(--bg-color);padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);transition:border-color 0.18s;"
+             onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <img src="https://minotar.net/helm/${encodeURIComponent(friend.minecraft_name)}/50.png"
+               width="40" height="40"
+               style="border-radius:10px;flex-shrink:0;"
+               onerror="this.src='https://minotar.net/helm/Steve/50.png'">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:14px;">${escapeHTML ? escapeHTML(friend.minecraft_name) : friend.minecraft_name}</div>
+            <div style="font-size:12px;color:var(--text-secondary);">@${escapeHTML ? escapeHTML(friend.username) : friend.username}</div>
+          </div>
+          <span style="font-size:11px;background:#107C10;color:#fff;padding:3px 10px;border-radius:980px;font-weight:700;white-space:nowrap;">
+            Xbox Friend
+          </span>
+        </div>
+      `).join('');
+    }
+
+    showToast('success', 'Amigos sincronizados', `${data.serverFriends?.length ?? 0} amigo(s) encontrado(s) na FA.`);
+  } catch (err) {
+    container.innerHTML = `<p style="font-size:13px;color:var(--danger);">Falha: ${err.message}. Sua conta está vinculada à Microsoft?</p>`;
+    showToast('error', 'Falha ao sincronizar', err.message);
+  } finally {
+    btn.innerText = 'Sincronizar Novamente';
+    btn.disabled  = false;
+  }
+}
 </script>
 </body>
 </html>
