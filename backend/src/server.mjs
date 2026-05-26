@@ -116,6 +116,27 @@ const AUDIT_SCHEMA_STATEMENTS = [
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 chars');
 const INGEST_SECRET = process.env.INGEST_SECRET; // Usado agora apenas como Fallback de emergência
+const FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || 'https://forcaaliada.ogabriels.com').replace(/\/+$/, '');
+
+function requireEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Configuração ausente: ${name}`);
+  return value;
+}
+
+function randomBase64Url(size = 32) {
+  return crypto.randomBytes(size).toString('base64url');
+}
+
+function buildOAuthState(provider) {
+  return jwt.sign({ provider, nonce: randomBase64Url(12) }, JWT_SECRET, { expiresIn: '10m' });
+}
+
+function readOAuthState(state, provider) {
+  const payload = jwt.verify(String(state || ''), JWT_SECRET);
+  if (!payload || payload.provider !== provider) throw new Error('Estado OAuth inválido');
+  return payload;
+}
 
 // ─────────────────────────────────────────────
 // Rate limiters
@@ -367,6 +388,21 @@ CREATE TABLE IF NOT EXISTS user_integrations (
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_integrations_xuid ON user_integrations(xbox_xuid);
+
+CREATE TABLE IF NOT EXISTS social_accounts (
+  id                 SERIAL PRIMARY KEY,
+  user_id            INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider           VARCHAR(32) NOT NULL,
+  provider_user_id   VARCHAR(255) NOT NULL,
+  provider_email     VARCHAR(255),
+  refresh_token      TEXT,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(provider, provider_user_id),
+  UNIQUE(user_id, provider)
+);
+CREATE INDEX IF NOT EXISTS idx_social_accounts_user ON social_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_social_accounts_provider_email ON social_accounts(provider, provider_email);
 `;
 await pool.query(featureSchemaSql);
 
@@ -862,11 +898,11 @@ app.post('/api/app/sync', async (req, res) => {
 
 async function exchangeMsCodeForToken(code) {
   const params = new URLSearchParams({
-    client_id: process.env.MS_CLIENT_ID,
-    client_secret: process.env.MS_CLIENT_SECRET,
+    client_id: requireEnv('MS_CLIENT_ID'),
+    client_secret: requireEnv('MS_CLIENT_SECRET'),
     code,
     grant_type: 'authorization_code',
-    redirect_uri: process.env.MS_REDIRECT_URI,
+    redirect_uri: requireEnv('MS_REDIRECT_URI'),
   });
   const res = await fetch('https://login.live.com/oauth20_token.srf', {
     method: 'POST',
@@ -932,23 +968,198 @@ async function getMinecraftProfile(mcAccessToken) {
   return res.json();
 }
 
+function oauthRedirectError(res, message, provider = 'oauth') {
+  return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${encodeURIComponent(provider)}&oauth_err=${encodeURIComponent(message)}`);
+}
+
+async function createSessionAndRedirect(res, req, userRow, provider = 'oauth') {
+  const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+  await pool.query(
+    `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
+    [userRow.id, tokenHash, req.headers['user-agent'], ip]
+  );
+  await audit({ actorId: userRow.id, actorName: userRow.username, type: 'login', message: `Login social (${provider})` });
+  return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
+}
+
+async function upsertSocialAccount({ provider, providerUserId, providerEmail, refreshToken, profileName }) {
+  const normalizedEmail = sanitize(providerEmail).toLowerCase() || null;
+  const providerId = sanitize(providerUserId);
+  if (!providerId) throw new Error('Perfil social inválido');
+
+  const { rows: linked } = await pool.query(
+    `SELECT u.* FROM social_accounts sa JOIN users u ON u.id=sa.user_id WHERE sa.provider=$1 AND sa.provider_user_id=$2 LIMIT 1`,
+    [provider, providerId]
+  );
+  if (linked[0]) {
+    await pool.query(
+      `UPDATE social_accounts SET provider_email=$1, refresh_token=COALESCE($2, refresh_token), updated_at=NOW() WHERE provider=$3 AND provider_user_id=$4`,
+      [normalizedEmail, refreshToken || null, provider, providerId]
+    );
+    return { status: 'ok', user: linked[0] };
+  }
+
+  if (normalizedEmail) {
+    const { rows: existingByEmail } = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [normalizedEmail]);
+    if (existingByEmail[0]) {
+      const linkToken = jwt.sign(
+        { provider, providerUserId: providerId, providerEmail: normalizedEmail, profileName: sanitize(profileName), refreshToken: refreshToken || null },
+        JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return { status: 'needs_confirmation', linkToken, email: normalizedEmail };
+    }
+  }
+
+  const baseName = sanitize(profileName).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20) || `${provider}_user`;
+  const username = `${baseName}_${randomBase64Url(4).toLowerCase()}`;
+  const fallbackEmail = normalizedEmail || `${provider}_${providerId}@oauth.forcaaliada.local`;
+  const randomPass = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+  const { rows: created } = await pool.query(
+    `INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,NULL,$3,'limited',TRUE) RETURNING *`,
+    [username, fallbackEmail, randomPass]
+  );
+  await pool.query(
+    `INSERT INTO social_accounts(user_id,provider,provider_user_id,provider_email,refresh_token) VALUES($1,$2,$3,$4,$5)`,
+    [created[0].id, provider, providerId, normalizedEmail, refreshToken || null]
+  );
+  return { status: 'ok', user: created[0] };
+}
+
 app.get('/api/auth/microsoft/login', (req, res) => {
   // ⚠️  IMPORTANTE: "offline_access" deve ficar no nível raiz (fora do XboxLive.*)
   //     para garantir que a Microsoft devolva o refresh_token.
   //     O scope NÃO deve ser duplamente encodado — deixe o URLSearchParams cuidar disso.
   const params = new URLSearchParams({
-    client_id:     process.env.MS_CLIENT_ID,
+    client_id:     requireEnv('MS_CLIENT_ID'),
     response_type: 'code',
-    redirect_uri:  process.env.MS_REDIRECT_URI,
+    redirect_uri:  requireEnv('MS_REDIRECT_URI'),
     scope:         'XboxLive.signin XboxLive.offline_access offline_access openid email profile',
     response_mode: 'query',
   });
   res.redirect(`https://login.live.com/oauth20_authorize.srf?${params.toString()}`);
 });
 
+app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
+  try {
+    const token = sanitize(req.body?.linkToken);
+    const confirm = Boolean(req.body?.confirm);
+    if (!token) return res.status(400).json({ error: 'missing link token' });
+    if (!confirm) return res.status(400).json({ error: 'confirmation required' });
+    const payload = jwt.verify(token, JWT_SECRET);
+    const provider = sanitize(payload.provider).toLowerCase();
+    const providerUserId = sanitize(payload.providerUserId);
+    const providerEmail = sanitize(payload.providerEmail).toLowerCase();
+    if (!provider || !providerUserId || !providerEmail) return res.status(400).json({ error: 'invalid token' });
+    const { rows: userRows } = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [providerEmail]);
+    const user = userRows[0];
+    if (!user) return res.status(404).json({ error: 'account not found' });
+    await pool.query(
+      `INSERT INTO social_accounts(user_id,provider,provider_user_id,provider_email,refresh_token)
+       VALUES($1,$2,$3,$4,$5)
+       ON CONFLICT (provider, provider_user_id)
+       DO UPDATE SET user_id=EXCLUDED.user_id, provider_email=EXCLUDED.provider_email, refresh_token=COALESCE(EXCLUDED.refresh_token, social_accounts.refresh_token), updated_at=NOW()`,
+      [user.id, provider, providerUserId, providerEmail, payload.refreshToken || null]
+    );
+    const appToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token: appToken, user: { username: user.username, email: user.email, role: user.role, minecraftName: user.minecraft_name } });
+  } catch (_err) {
+    res.status(400).json({ error: 'invalid or expired link token' });
+  }
+});
+
+function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scope }) {
+  app.get(`/api/auth/${provider}/login`, (_req, res) => {
+    const state = buildOAuthState(provider);
+    const params = new URLSearchParams({
+      client_id: requireEnv(`${provider.toUpperCase()}_CLIENT_ID`),
+      redirect_uri: requireEnv(`${provider.toUpperCase()}_REDIRECT_URI`),
+      response_type: 'code',
+      scope,
+      state,
+    });
+    if (provider === 'facebook') params.set('auth_type', 'rerequest');
+    res.redirect(`${authUrl}?${params.toString()}`);
+  });
+
+  app.get(`/api/auth/${provider}/callback`, async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      if (!code || !state) return oauthRedirectError(res, 'Acesso negado', provider);
+      readOAuthState(state, provider);
+
+      const tParams = new URLSearchParams({
+        client_id: requireEnv(`${provider.toUpperCase()}_CLIENT_ID`),
+        client_secret: requireEnv(`${provider.toUpperCase()}_CLIENT_SECRET`),
+        redirect_uri: requireEnv(`${provider.toUpperCase()}_REDIRECT_URI`),
+        code: String(code),
+        grant_type: 'authorization_code',
+      });
+      const tkRes = await fetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' }, body: tParams.toString() });
+      const tkData = await tkRes.json();
+      if (!tkRes.ok || !tkData.access_token) throw new Error('Falha ao obter token OAuth');
+      const profile = await profileLoader(tkData.access_token);
+      const outcome = await upsertSocialAccount({
+        provider,
+        providerUserId: profile.id,
+        providerEmail: profile.email,
+        refreshToken: tkData.refresh_token,
+        profileName: profile.name
+      });
+      if (outcome.status === 'needs_confirmation') {
+        return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${provider}&oauth_link_token=${encodeURIComponent(outcome.linkToken)}&oauth_email=${encodeURIComponent(outcome.email)}`);
+      }
+      return createSessionAndRedirect(res, req, outcome.user, provider);
+    } catch (err) {
+      return oauthRedirectError(res, err.message || 'Falha no login social', provider);
+    }
+  });
+}
+
+registerGenericOAuth({
+  provider: 'google',
+  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenUrl: 'https://oauth2.googleapis.com/token',
+  scope: 'openid email profile',
+  profileLoader: async (token) => {
+    const r = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${token}` } });
+    const d = await r.json();
+    if (!r.ok) throw new Error('Falha ao obter perfil Google');
+    return { id: d.sub, email: d.email, name: d.name };
+  }
+});
+
+registerGenericOAuth({
+  provider: 'facebook',
+  authUrl: 'https://www.facebook.com/v20.0/dialog/oauth',
+  tokenUrl: 'https://graph.facebook.com/v20.0/oauth/access_token',
+  scope: 'email,public_profile',
+  profileLoader: async (token) => {
+    const r = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(token)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error('Falha ao obter perfil Facebook');
+    return { id: d.id, email: d.email || null, name: d.name };
+  }
+});
+
+registerGenericOAuth({
+  provider: 'discord',
+  authUrl: 'https://discord.com/oauth2/authorize',
+  tokenUrl: 'https://discord.com/api/oauth2/token',
+  scope: 'identify email',
+  profileLoader: async (token) => {
+    const r = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } });
+    const d = await r.json();
+    if (!r.ok) throw new Error('Falha ao obter perfil Discord');
+    return { id: d.id, email: d.email || null, name: d.global_name || d.username };
+  }
+});
+
 app.get('/api/auth/microsoft/callback', async (req, res) => {
   const { code } = req.query;
-  if (!code) return res.redirect('https://forcaaliada.ogabriels.com/login.html?ms_err=Acesso negado');
+  if (!code) return res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_err=Acesso negado`);
 
   try {
     const msTokens = await exchangeMsCodeForToken(code);
@@ -1011,10 +1222,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
     await audit({ actorId: userRow.id, actorName: userRow.username, type: 'login', message: `Login Xbox/Minecraft: ${nick}` });
 
-    res.redirect(`https://forcaaliada.ogabriels.com/login.html?ms_token=${token}`);
+    res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_token=${token}`);
 
   } catch (err) {
-    res.redirect(`https://forcaaliada.ogabriels.com/login.html?ms_err=${encodeURIComponent(err.message)}`);
+    res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_err=${encodeURIComponent(err.message)}`);
   }
 });
 
