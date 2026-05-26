@@ -912,7 +912,13 @@ async function getMinecraftAccessToken(uhs, xstsToken) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identityToken: `XBL3.0 x=${uhs};${xstsToken}` })
   });
-  if (!res.ok) throw new Error('Falha na autenticação da Mojang (Você tem Minecraft Original?)');
+  if (!res.ok) {
+    // Tenta extrair o erro específico para facilitar diagnóstico
+    let detail = '';
+    try { const d = await res.json(); detail = d?.error || d?.errorMessage || ''; } catch {}
+    const hint = detail ? ` (${detail})` : ' — Verifique se a conta possui Minecraft Java Edition comprado';
+    throw new Error(`Falha na autenticação da Mojang${hint}`);
+  }
   return res.json();
 }
 
@@ -920,15 +926,24 @@ async function getMinecraftProfile(mcAccessToken) {
   const res = await fetch('https://api.minecraftservices.com/minecraft/profile', {
     headers: { 'Authorization': `Bearer ${mcAccessToken}` }
   });
-  if (res.status === 404) throw new Error('Esta conta não possui o Minecraft Java Edition comprado.');
-  if (!res.ok) throw new Error('Falha ao obter perfil do Minecraft');
+  // 404 = conta sem Minecraft Java Edition comprado
+  if (res.status === 404) throw new Error('Esta conta Microsoft não possui o Minecraft Java Edition comprado. O login Xbox requer Minecraft Original.');
+  if (!res.ok) throw new Error(`Falha ao obter perfil do Minecraft (HTTP ${res.status})`);
   return res.json();
 }
 
 app.get('/api/auth/microsoft/login', (req, res) => {
-  const scope = encodeURIComponent("XboxLive.signin XboxLive.offline_access openid email profile");
-  const url = `https://login.live.com/oauth20_authorize.srf?client_id=${process.env.MS_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.MS_REDIRECT_URI)}&scope=${scope}`;
-  res.redirect(url);
+  // ⚠️  IMPORTANTE: "offline_access" deve ficar no nível raiz (fora do XboxLive.*)
+  //     para garantir que a Microsoft devolva o refresh_token.
+  //     O scope NÃO deve ser duplamente encodado — deixe o URLSearchParams cuidar disso.
+  const params = new URLSearchParams({
+    client_id:     process.env.MS_CLIENT_ID,
+    response_type: 'code',
+    redirect_uri:  process.env.MS_REDIRECT_URI,
+    scope:         'XboxLive.signin XboxLive.offline_access offline_access openid email profile',
+    response_mode: 'query',
+  });
+  res.redirect(`https://login.live.com/oauth20_authorize.srf?${params.toString()}`);
 });
 
 app.get('/api/auth/microsoft/callback', async (req, res) => {
