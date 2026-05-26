@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Termos de Serviço | Força Aliada</title>
+<meta name="description" content="Leia os Termos de Serviço da Força Aliada. Regras de uso da plataforma, conta e servidor de Minecraft.">
+
+<!-- Inline theme script: runs before paint to avoid flash -->
+<script>
+(function(){
+  var key='fa_theme';
+  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';}
+  function apply(t){document.documentElement.setAttribute('data-theme',effective(t||localStorage.getItem(key)||'auto'));}
+  apply();
+  matchMedia('(prefers-color-scheme:dark)').addEventListener?.('change',function(){apply(localStorage.getItem(key)||'auto');});
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─── RESET ──────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;scroll-behavior:smooth;-webkit-text-size-adjust:100%;}
+
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root{
+  --bg:              #f4f5f7;
+  --surface:         #ffffff;
+  --surface-raised:  #eceef2;
+  --surface-float:   rgba(255,255,255,0.72);
+  --text-primary:    #10111a;
+  --text-secondary:  #4e5163;
+  --text-muted:      #94969f;
+  --accent:          #0056cc;        /* azul — termos */
+  --accent-mid:      #1d6be8;
+  --accent-hover:    #003fa3;
+  --accent-light:    rgba(0,86,204,0.08);
+  --accent-glow:     rgba(0,86,204,0.13);
+  --trust:           #3b82f6;
+  --warn:            #d97706;
+  --warn-light:      rgba(217,119,6,0.07);
+  --warn-border:     rgba(217,119,6,0.18);
+  --border:          rgba(0,0,0,0.07);
+  --border-mid:      rgba(0,0,0,0.11);
+  --border-strong:   rgba(0,0,0,0.16);
+  --shadow-xs:       0 1px 3px rgba(0,0,0,0.05);
+  --shadow-sm:       0 2px 8px rgba(0,0,0,0.07);
+  --shadow-md:       0 6px 28px rgba(0,0,0,0.09);
+  --shadow-lg:       0 16px 56px rgba(0,0,0,0.12);
+  --font-body:       'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-display:    'Lora',Georgia,'Times New Roman',serif;
+  --radius-sm:       8px;
+  --radius:          14px;
+  --radius-lg:       20px;
+  --ease:            cubic-bezier(0.4,0,0.2,1);
+  --ease-spring:     cubic-bezier(0.34,1.3,0.64,1);
+  --t:               0.18s;
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:              #0a0b10;
+  --surface:         #13141b;
+  --surface-raised:  #1c1d26;
+  --surface-float:   rgba(19,20,27,0.88);
+  --text-primary:    #e8e9f0;
+  --text-secondary:  #9496a8;
+  --text-muted:      #525567;
+  --accent:          #60a5fa;
+  --accent-mid:      #93c5fd;
+  --accent-hover:    #bfdbfe;
+  --accent-light:    rgba(96,165,250,0.1);
+  --accent-glow:     rgba(96,165,250,0.15);
+  --trust:           #93c5fd;
+  --warn:            #fbbf24;
+  --warn-light:      rgba(251,191,36,0.08);
+  --warn-border:     rgba(251,191,36,0.2);
+  --border:          rgba(255,255,255,0.07);
+  --border-mid:      rgba(255,255,255,0.10);
+  --border-strong:   rgba(255,255,255,0.16);
+  --shadow-xs:       0 1px 3px rgba(0,0,0,0.4);
+  --shadow-sm:       0 2px 8px rgba(0,0,0,0.5);
+  --shadow-md:       0 6px 28px rgba(0,0,0,0.55);
+  --shadow-lg:       0 16px 56px rgba(0,0,0,0.6);
+}
+
+/* ─── BODY ────────────────────────────────────────────── */
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--text-primary);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-feature-settings:'kern'1,'liga'1,'calt'1,'ss01'1;
+  line-height:1.6;
+  transition:background var(--t) var(--ease),color var(--t) var(--ease);
+}
+[data-theme="dark"] body{
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 0%,rgba(96,165,250,0.05) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 35% at 85% 15%,rgba(139,92,246,0.04) 0%,transparent 55%),
+    #0a0b10;
+}
+a{text-decoration:none;color:inherit;}
+
+/* ─── SKIP LINK ───────────────────────────────────────── */
+.skip-link{
+  position:absolute;top:-100px;left:16px;z-index:9999;
+  padding:8px 16px;background:var(--accent);color:#fff;
+  border-radius:var(--radius-sm);font-weight:600;font-size:14px;
+  transition:top 0.2s;
+}
+.skip-link:focus{top:16px;}
+
+/* ─── READ PROGRESS ───────────────────────────────────── */
+#read-progress{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  height:3px;background:transparent;pointer-events:none;
+}
+#read-progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--accent) 0%,var(--trust) 100%);
+  width:0%;
+  transition:width 0.08s linear;
+  border-radius:0 2px 2px 0;
+}
+
+/* ─── HEADER ──────────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:100;
+  height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;
+  background:var(--surface-float);
+  backdrop-filter:saturate(160%) blur(24px);
+  -webkit-backdrop-filter:saturate(160%) blur(24px);
+  border-bottom:1px solid var(--border);
+  transition:background var(--t) var(--ease),border-color var(--t) var(--ease);
+}
+.brand-link{
+  display:flex;align-items:center;gap:10px;
+  font-weight:700;font-size:16px;letter-spacing:-0.025em;
+  transition:opacity var(--t) var(--ease);
+}
+.brand-link:hover{opacity:0.65;}
+.logo-img{width:32px;height:32px;border-radius:8px;object-fit:cover;}
+.header-right{display:flex;align-items:center;gap:8px;}
+.btn-ghost{
+  font-family:var(--font-body);font-size:13px;font-weight:500;
+  color:var(--text-secondary);padding:6px 14px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-mid);background:transparent;
+  cursor:pointer;transition:all var(--t) var(--ease);
+}
+.btn-ghost:hover{background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-strong);}
+.btn-accent{
+  font-family:var(--font-body);font-size:13px;font-weight:600;
+  color:#fff;padding:6px 16px;border-radius:var(--radius-sm);
+  background:var(--accent);border:none;cursor:pointer;
+  transition:background var(--t) var(--ease),transform 0.1s;
+}
+.btn-accent:hover{background:var(--accent-hover);}
+.btn-accent:active{transform:scale(0.97);}
+
+/* ─── MOBILE TOC TOGGLE ───────────────────────────────── */
+.toc-toggle{
+  display:none;align-items:center;gap:8px;
+  font-family:var(--font-body);font-size:13px;font-weight:600;
+  color:var(--accent);background:var(--accent-light);
+  border:1px solid var(--accent-glow);border-radius:var(--radius-sm);
+  padding:7px 14px;cursor:pointer;
+  transition:all var(--t) var(--ease);
+  margin-bottom:20px;width:100%;justify-content:space-between;
+}
+.toc-toggle:hover{background:var(--accent-glow);}
+.toc-toggle-arrow{transition:transform 0.2s var(--ease);}
+.toc-toggle.open .toc-toggle-arrow{transform:rotate(180deg);}
+.toc-mobile-drawer{
+  display:none;
+  background:var(--surface);
+  border:1px solid var(--border-mid);
+  border-radius:var(--radius);
+  padding:16px;
+  margin-bottom:24px;
+  overflow:hidden;
+  max-height:0;
+  transition:max-height 0.35s var(--ease),padding 0.2s;
+}
+.toc-mobile-drawer.open{max-height:600px;display:block;}
+
+@media(max-width:860px){.toc-toggle{display:flex;}}
+
+/* ─── LAYOUT ──────────────────────────────────────────── */
+.page-wrap{
+  max-width:1120px;margin:0 auto;
+  padding:52px 28px 120px;
+  display:grid;
+  grid-template-columns:230px 1fr;
+  gap:64px;
+  align-items:start;
+}
+@media(max-width:860px){
+  .page-wrap{grid-template-columns:1fr;gap:0;padding:36px 20px 80px;}
+  .sidebar-col{display:none;}
+}
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar-col{
+  position:sticky;top:78px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.toc-head{
+  font-size:10px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--text-muted);
+  padding:0 10px;margin-bottom:10px;
+}
+.toc-link{
+  display:block;
+  font-size:13px;font-weight:500;color:var(--text-secondary);
+  padding:7px 10px;border-radius:var(--radius-sm);
+  border-left:2px solid transparent;
+  transition:all var(--t) var(--ease);
+  line-height:1.35;
+}
+.toc-link:hover{color:var(--text-primary);background:var(--surface-raised);}
+.toc-link.is-active{
+  color:var(--accent);background:var(--accent-light);
+  border-left-color:var(--accent);font-weight:600;
+}
+.toc-divider{height:1px;background:var(--border);margin:10px 10px;}
+.toc-meta-box{
+  margin-top:4px;padding:12px;
+  background:var(--surface-raised);border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  font-size:11.5px;color:var(--text-muted);line-height:1.65;
+}
+.toc-meta-box strong{color:var(--text-secondary);display:block;margin-bottom:3px;font-size:12px;}
+.toc-cross-link{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:12px;padding:9px 10px;
+  font-size:12.5px;font-weight:600;color:var(--accent);
+  background:var(--accent-light);border-radius:var(--radius-sm);
+  border:1px solid var(--accent-glow);
+  transition:all var(--t) var(--ease);
+}
+.toc-cross-link:hover{background:var(--accent-glow);}
+.toc-trust{
+  margin-top:10px;padding:10px 12px;
+  background:var(--surface-raised);border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+  font-size:11.5px;color:var(--text-muted);
+}
+.toc-trust-icon{font-size:16px;flex-shrink:0;}
+
+/* ─── ARTICLE ─────────────────────────────────────────── */
+.article-col{min-width:0;}
+.article-hero{
+  margin-bottom:48px;
+  padding:36px 40px;
+  background:var(--surface);
+  border:1px solid var(--border-mid);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+  position:relative;
+  overflow:hidden;
+}
+.article-hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent) 0%,var(--trust) 100%);
+}
+.article-hero::after{
+  content:'';position:absolute;top:3px;right:-40px;width:260px;height:220px;
+  background:radial-gradient(ellipse,var(--accent-light) 0%,transparent 70%);
+  pointer-events:none;
+}
+.doc-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;color:var(--accent);
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  padding:4px 11px;border-radius:980px;margin-bottom:18px;
+}
+.article-hero h1{
+  font-family:var(--font-display);
+  font-size:clamp(28px,4.5vw,44px);
+  font-weight:500;line-height:1.1;letter-spacing:-0.01em;
+  color:var(--text-primary);margin-bottom:14px;
+}
+.article-meta-row{
+  display:flex;flex-wrap:wrap;gap:16px 24px;
+  font-size:12.5px;color:var(--text-muted);margin-bottom:20px;
+}
+.meta-chip{display:flex;align-items:center;gap:5px;}
+.meta-chip svg{opacity:0.6;}
+.article-lead{
+  font-family:var(--font-display);
+  font-size:17px;color:var(--text-secondary);line-height:1.72;
+  padding-left:18px;border-left:2.5px solid var(--border-strong);
+  position:relative;z-index:1;
+}
+.reading-progress-row{
+  margin-top:20px;display:flex;align-items:center;gap:12px;
+}
+.reading-bar-track{
+  flex:1;height:4px;background:var(--surface-raised);
+  border-radius:2px;overflow:hidden;border:1px solid var(--border);
+}
+.reading-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--accent),var(--trust));
+  width:0%;transition:width 0.2s var(--ease);border-radius:2px;
+}
+.reading-pct{font-size:11px;font-weight:600;color:var(--text-muted);min-width:32px;text-align:right;}
+
+/* ─── SECTIONS ────────────────────────────────────────── */
+.doc-section{
+  margin-bottom:56px;
+  scroll-margin-top:80px;
+  opacity:0;transform:translateY(16px);
+  transition:opacity 0.45s var(--ease),transform 0.45s var(--ease);
+}
+.doc-section.is-visible{opacity:1;transform:none;}
+.section-eyebrow{
+  font-size:10.5px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;
+}
+.doc-section h2{
+  font-family:var(--font-display);
+  font-size:22px;font-weight:500;letter-spacing:-0.01em;
+  color:var(--text-primary);margin-bottom:20px;
+  padding-bottom:14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.h2-icon{
+  width:28px;height:28px;border-radius:8px;
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.doc-section p{
+  font-size:15px;color:var(--text-secondary);line-height:1.78;margin-bottom:16px;
+}
+.doc-section p:last-child{margin-bottom:0;}
+.doc-section p strong{color:var(--text-primary);font-weight:600;}
+.doc-section a{color:var(--accent);font-weight:500;border-bottom:1px solid var(--accent-glow);transition:border-color var(--t);}
+.doc-section a:hover{border-bottom-color:var(--accent);}
+
+/* ─── LISTS ───────────────────────────────────────────── */
+.doc-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin:16px 0;}
+.doc-list li{
+  font-size:14.5px;color:var(--text-secondary);line-height:1.65;
+  padding:13px 16px 13px 46px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  position:relative;
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease);
+}
+.doc-list li:hover{border-color:var(--border-strong);box-shadow:var(--shadow-xs);}
+.doc-list li::before{
+  content:attr(data-icon);position:absolute;left:14px;top:12px;
+  font-size:16px;line-height:1;
+}
+.doc-list li strong{color:var(--text-primary);font-weight:600;}
+
+/* ─── CALLOUTS ────────────────────────────────────────── */
+.callout{
+  padding:16px 20px;border-radius:var(--radius-sm);
+  margin:20px 0;display:flex;gap:13px;align-items:flex-start;
+}
+.callout-icon{font-size:18px;flex-shrink:0;margin-top:2px;}
+.callout-body p{font-size:14px;line-height:1.65;margin:0;}
+.callout-body strong{display:block;font-size:12.5px;font-weight:700;margin-bottom:4px;}
+.callout.info{background:var(--accent-light);border:1px solid var(--accent-glow);}
+.callout.info .callout-body p{color:var(--text-secondary);}
+.callout.info .callout-body strong{color:var(--accent);}
+.callout.warn{background:var(--warn-light);border:1px solid var(--warn-border);}
+.callout.warn .callout-body p{color:var(--text-secondary);}
+.callout.warn .callout-body strong{color:var(--warn);}
+
+/* ─── DEFINITIONS GRID ────────────────────────────────── */
+.def-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin:16px 0;
+}
+@media(max-width:560px){.def-grid{grid-template-columns:1fr;}}
+.def-card{
+  padding:16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease);
+}
+.def-card:hover{border-color:var(--border-strong);box-shadow:var(--shadow-xs);}
+.def-term{
+  font-size:11px;font-weight:700;letter-spacing:0.06em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:5px;
+}
+.def-desc{font-size:13.5px;color:var(--text-secondary);line-height:1.55;}
+
+/* ─── CONTACT CARDS ───────────────────────────────────── */
+.contact-card{
+  display:flex;align-items:center;gap:16px;
+  padding:18px 22px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-top:10px;
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease),transform 0.2s var(--ease-spring);
+}
+.contact-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light);transform:translateY(-1px);}
+.contact-icon-wrap{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.contact-text h4{font-size:14.5px;font-weight:700;margin-bottom:3px;}
+.contact-text p{font-size:13px;color:var(--text-secondary);margin:0;}
+.contact-text a{color:var(--accent);font-weight:500;border-bottom:1px solid var(--accent-glow);}
+.contact-text a:hover{border-bottom-color:var(--accent);}
+
+/* ─── FOOTER ──────────────────────────────────────────── */
+footer{
+  border-top:1px solid var(--border);
+  padding:44px 28px;
+}
+.footer-inner{
+  max-width:1120px;margin:0 auto;
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+}
+.footer-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 4px;}
+.footer-nav a{
+  font-size:13px;color:var(--text-muted);padding:5px 10px;
+  border-radius:6px;transition:all var(--t) var(--ease);
+}
+.footer-nav a:hover{color:var(--text-primary);background:var(--surface-raised);}
+.footer-nav a.is-current{color:var(--accent);font-weight:600;background:var(--accent-light);}
+.footer-bottom{
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;
+  gap:8px 24px;font-size:11.5px;color:var(--text-muted);text-align:center;
+}
+.footer-lgpd{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:980px;
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  color:var(--accent);font-size:11px;font-weight:700;letter-spacing:0.05em;
+}
+
+/* ─── SCROLL TOP ──────────────────────────────────────── */
+#scroll-top{
+  position:fixed;bottom:28px;right:28px;z-index:200;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border-mid);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;opacity:0;pointer-events:none;
+  box-shadow:var(--shadow-md);
+  transition:all 0.28s var(--ease-spring);
+  font-size:18px;color:var(--text-secondary);
+  font-family:inherit;
+}
+#scroll-top.is-visible{opacity:1;pointer-events:auto;}
+#scroll-top:hover{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(1.1);}
+#scroll-top:active{transform:scale(0.95);}
+
+/* ─── RESPONSIVE ──────────────────────────────────────── */
+@media(max-width:640px){
+  .article-hero{padding:24px 20px;}
+  .contact-card{flex-direction:column;align-items:flex-start;gap:10px;}
+}
+
+/* ─── FOCUS ───────────────────────────────────────────── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Ir para o conteúdo</a>
+<div id="read-progress" role="progressbar" aria-label="Progresso de leitura" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+  <div id="read-progress-fill"></div>
+</div>
+
+<button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Voltar ao topo">↑</button>
+
+<!-- ─── HEADER ─────────────────────────────────────────── -->
+<header role="banner">
+  <a href="index.html" class="brand-link" aria-label="Início — Força Aliada">
+    <img src="assets/images/logo.JPG"
+         onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+         alt="" class="logo-img" width="32" height="32" aria-hidden="true">
+    <span>Força Aliada</span>
+  </a>
+  <div class="header-right">
+    <a href="login.html"><button class="btn-ghost">Entrar</button></a>
+    <a href="signup.html"><button class="btn-accent">Criar conta</button></a>
+  </div>
+</header>
+
+<!-- ─── MAIN LAYOUT ────────────────────────────────────── -->
+<main id="main-content">
+  <div class="page-wrap">
+
+    <!-- SIDEBAR TOC (desktop) -->
+    <aside class="sidebar-col" aria-label="Índice do documento">
+      <div class="toc-head">Nesta página</div>
+
+      <a href="#definicoes"   class="toc-link">1. Definições</a>
+      <a href="#aceitacao"    class="toc-link">2. Aceitação</a>
+      <a href="#conta"        class="toc-link">3. Conta e Acesso</a>
+      <a href="#conduta"      class="toc-link">4. Regras de Conduta</a>
+      <a href="#conteudo"     class="toc-link">5. Conteúdo e Dados</a>
+      <a href="#integracao"   class="toc-link">6. Integração Microsoft</a>
+      <a href="#suspensao"    class="toc-link">7. Suspensão e Banimento</a>
+      <a href="#limitacao"    class="toc-link">8. Limitação de Responsabilidade</a>
+      <a href="#alteracoes"   class="toc-link">9. Alterações dos Termos</a>
+      <a href="#contato-ts"   class="toc-link">10. Contato</a>
+
+      <div class="toc-divider"></div>
+
+      <div class="toc-meta-box">
+        <strong>Versão 1.0</strong>
+        Vigente desde 25 de maio de 2025
+      </div>
+
+      <a href="/privacidade" class="toc-cross-link" aria-label="Ver Política de Privacidade">
+        <span>Política de Privacidade</span>
+        <span aria-hidden="true">→</span>
+      </a>
+
+      <div class="toc-trust">
+        <span class="toc-trust-icon">📄</span>
+        <span>Documento legal da <strong>Força Aliada</strong></span>
+      </div>
+    </aside>
+
+    <!-- ARTICLE -->
+    <div class="article-col">
+
+      <!-- Mobile TOC -->
+      <button class="toc-toggle" id="toc-toggle-btn" aria-expanded="false" aria-controls="toc-mobile-content">
+        <span>📋 Índice do documento</span>
+        <svg class="toc-toggle-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="toc-mobile-drawer" id="toc-mobile-content" aria-hidden="true">
+        <a href="#definicoes"   class="toc-link">1. Definições</a>
+        <a href="#aceitacao"    class="toc-link">2. Aceitação</a>
+        <a href="#conta"        class="toc-link">3. Conta e Acesso</a>
+        <a href="#conduta"      class="toc-link">4. Regras de Conduta</a>
+        <a href="#conteudo"     class="toc-link">5. Conteúdo e Dados</a>
+        <a href="#integracao"   class="toc-link">6. Integração Microsoft</a>
+        <a href="#suspensao"    class="toc-link">7. Suspensão e Banimento</a>
+        <a href="#limitacao"    class="toc-link">8. Limitação de Responsabilidade</a>
+        <a href="#alteracoes"   class="toc-link">9. Alterações dos Termos</a>
+        <a href="#contato-ts"   class="toc-link">10. Contato</a>
+      </div>
+
+      <!-- Hero Card -->
+      <div class="article-hero">
+        <div class="doc-badge" aria-label="Documento Legal">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          Documento Legal
+        </div>
+        <h1>Termos de Serviço</h1>
+        <div class="article-meta-row" aria-label="Metadados do documento">
+          <span class="meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Atualizado em 25 de mai. de 2025
+          </span>
+          <span class="meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Leitura: ~5 minutos
+          </span>
+          <span class="meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            forcaaliada.ogabriels.com
+          </span>
+        </div>
+        <p class="article-lead">
+          Estes Termos regem o uso de todos os serviços digitais da Força Aliada, incluindo o site, o painel de staff e o servidor de Minecraft. Ao criar uma conta ou acessar qualquer parte da plataforma, você concorda integralmente com o que está descrito aqui.
+        </p>
+        <div class="reading-progress-row" aria-hidden="true">
+          <div class="reading-bar-track"><div class="reading-bar-fill" id="inline-bar-fill"></div></div>
+          <span class="reading-pct" id="inline-bar-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- ─── SECTIONS ──────────────────────────────────── -->
+
+      <!-- 1. DEFINIÇÕES -->
+      <section class="doc-section" id="definicoes" aria-labelledby="h-definicoes">
+        <div class="section-eyebrow">Seção 01</div>
+        <h2 id="h-definicoes"><span class="h2-icon" aria-hidden="true">📖</span>Definições</h2>
+        <p>Para facilitar a leitura deste documento, alguns termos têm significado específico dentro do contexto da Força Aliada:</p>
+        <div class="def-grid">
+          <div class="def-card">
+            <div class="def-term">Força Aliada / FA</div>
+            <div class="def-desc">Comunidade de Minecraft administrada por Gabriel Moreira, incluindo o servidor de jogo, o site e o painel de staff.</div>
+          </div>
+          <div class="def-card">
+            <div class="def-term">Plataforma</div>
+            <div class="def-desc">O conjunto de serviços digitais da FA: site, painel administrativo, APIs e o servidor Minecraft hospedado em fa.ogabriels.com.</div>
+          </div>
+          <div class="def-card">
+            <div class="def-term">Usuário / Você</div>
+            <div class="def-desc">Qualquer pessoa que acessa a plataforma, cria uma conta ou se conecta ao servidor de Minecraft da FA.</div>
+          </div>
+          <div class="def-card">
+            <div class="def-term">Conta</div>
+            <div class="def-desc">Registro pessoal no site da FA, com credenciais de acesso ao painel de staff, vinculado a um nick de Minecraft.</div>
+          </div>
+          <div class="def-card">
+            <div class="def-term">Staff</div>
+            <div class="def-desc">Membros com funções administrativas na FA, com acesso ao painel de gerenciamento e responsabilidades com a comunidade.</div>
+          </div>
+          <div class="def-card">
+            <div class="def-term">Integração Xbox</div>
+            <div class="def-desc">Vinculação opcional da conta Microsoft/Xbox à conta FA, que permite login simplificado e acesso à troca de skin.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ACEITAÇÃO -->
+      <section class="doc-section" id="aceitacao" aria-labelledby="h-aceitacao">
+        <div class="section-eyebrow">Seção 02</div>
+        <h2 id="h-aceitacao"><span class="h2-icon" aria-hidden="true">✅</span>Aceitação dos Termos</h2>
+        <p>O uso da plataforma pressupõe que você leu, entendeu e concorda com estes Termos de Serviço. Se você não concorda com qualquer parte, não deve criar uma conta ou continuar usando os serviços da FA.</p>
+        <p>A aceitação ocorre de forma explícita no momento do cadastro e de forma contínua enquanto você mantiver e usar sua conta. Para usuários que ingressam via login com conta Microsoft/Xbox, a aceitação acontece ao concluir o fluxo de autenticação pela primeira vez.</p>
+        <div class="callout info" role="note">
+          <div class="callout-icon" aria-hidden="true">ℹ️</div>
+          <div class="callout-body">
+            <strong>Menores de idade</strong>
+            <p>Se você tem menos de 18 anos, a aceitação destes Termos requer o conhecimento e consentimento dos seus responsáveis legais. Ao prosseguir, confirmamos que essa condição foi cumprida.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. CONTA E ACESSO -->
+      <section class="doc-section" id="conta" aria-labelledby="h-conta">
+        <div class="section-eyebrow">Seção 03</div>
+        <h2 id="h-conta"><span class="h2-icon" aria-hidden="true">👤</span>Conta e Acesso</h2>
+        <p>Cada usuário pode possuir uma única conta na plataforma. Contas duplicadas podem ser encerradas sem aviso. Você é responsável por todas as ações realizadas por meio da sua conta, incluindo o que é feito por terceiros a quem você concedeu acesso.</p>
+        <ul class="doc-list">
+          <li data-icon="🔐"><strong>Credenciais:</strong> Sua senha deve ter no mínimo 8 caracteres. Nunca compartilhe suas credenciais. A FA nunca vai solicitar sua senha por qualquer canal.</li>
+          <li data-icon="📧"><strong>E-mail:</strong> O endereço cadastrado deve ser válido e acessível por você. É usado para verificação de conta e comunicações importantes.</li>
+          <li data-icon="🎮"><strong>Nick de Minecraft:</strong> O nick informado deve ser o seu nome real no jogo. Nicks falsos ou de terceiros resultam em bloqueio da conta.</li>
+          <li data-icon="🔒"><strong>Segurança:</strong> Em caso de acesso não autorizado, comunique imediatamente pelo Discord ou e-mail. Você pode revogar sessões ativas pelo painel de conta.</li>
+          <li data-icon="🌐"><strong>Login com Xbox:</strong> Ao usar a integração Microsoft/Xbox, você autoriza a FA a verificar sua identidade e coletar dados básicos do perfil Minecraft para criação ou vinculação da sua conta.</li>
+        </ul>
+        <p>A FA se reserva o direito de recusar ou encerrar contas que violem estes Termos, sem obrigação de reembolso de qualquer natureza.</p>
+      </section>
+
+      <!-- 4. CONDUTA -->
+      <section class="doc-section" id="conduta" aria-labelledby="h-conduta">
+        <div class="section-eyebrow">Seção 04</div>
+        <h2 id="h-conduta"><span class="h2-icon" aria-hidden="true">🤝</span>Regras de Conduta</h2>
+        <p>A Força Aliada é uma comunidade construída sobre respeito e colaboração. O comportamento no servidor, no site, no Discord e em qualquer canal oficial da FA está sujeito a estas regras:</p>
+        <ul class="doc-list">
+          <li data-icon="🚫"><strong>Proibido:</strong> Assédio, discriminação, discurso de ódio ou qualquer forma de abuso direcionado a outros membros, dentro ou fora do servidor.</li>
+          <li data-icon="🚫"><strong>Proibido:</strong> Uso de cheats, hacks, mods não autorizados ou qualquer recurso que ofereça vantagem injusta no servidor.</li>
+          <li data-icon="🚫"><strong>Proibido:</strong> Spam, flood ou divulgação de conteúdo não autorizado nos canais de comunicação da FA.</li>
+          <li data-icon="🚫"><strong>Proibido:</strong> Tentativas de invadir, sobrecarregar ou interferir no funcionamento do site, da API ou do servidor.</li>
+          <li data-icon="🚫"><strong>Proibido:</strong> Personificar outros jogadores, membros da staff ou a administração da FA.</li>
+          <li data-icon="🚫"><strong>Proibido:</strong> Divulgar informações pessoais de outros membros sem consentimento expresso (doxxing).</li>
+          <li data-icon="✅"><strong>Esperado:</strong> Respeitar decisões da staff, mesmo que discorde. O canal correto para contestação é o Discord oficial, via recurso formal.</li>
+        </ul>
+        <div class="callout warn" role="note">
+          <div class="callout-icon" aria-hidden="true">⚠️</div>
+          <div class="callout-body">
+            <strong>Comportamento fora do servidor</strong>
+            <p>Condutas graves praticadas fora dos ambientes da FA (redes sociais, outros servidores, etc.) que prejudiquem a reputação da comunidade ou de seus membros também podem resultar em sanções.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. CONTEÚDO E DADOS -->
+      <section class="doc-section" id="conteudo" aria-labelledby="h-conteudo">
+        <div class="section-eyebrow">Seção 05</div>
+        <h2 id="h-conteudo"><span class="h2-icon" aria-hidden="true">📁</span>Conteúdo e Dados do Usuário</h2>
+        <p>Ao usar a plataforma, você pode gerar ou fornecer conteúdo como nome de usuário, foto de perfil e registros de atividade no servidor. Sobre este conteúdo:</p>
+        <ul class="doc-list">
+          <li data-icon="📋"><strong>Propriedade:</strong> Você mantém os direitos sobre o conteúdo que fornece. Ao cadastrá-lo na FA, você concede uma licença limitada para que a plataforma o exiba e processe enquanto sua conta estiver ativa.</li>
+          <li data-icon="📊"><strong>Dados de atividade:</strong> O histórico de sessões no servidor (horários de entrada e saída, tempo jogado) é coletado e exibido no painel. Veja a <a href="/privacidade">Política de Privacidade</a> para detalhes completos.</li>
+          <li data-icon="🗑️"><strong>Exclusão:</strong> Você pode solicitar a exclusão da sua conta e dos seus dados a qualquer momento pelo Discord ou e-mail oficial. O processamento ocorre em até 30 dias.</li>
+        </ul>
+        <p>A FA não vende, aluga ou comercializa dados pessoais de usuários para terceiros. Os dados são utilizados exclusivamente para operar e melhorar os serviços da comunidade.</p>
+      </section>
+
+      <!-- 6. INTEGRAÇÃO MICROSOFT -->
+      <section class="doc-section" id="integracao" aria-labelledby="h-integracao">
+        <div class="section-eyebrow">Seção 06</div>
+        <h2 id="h-integracao"><span class="h2-icon" aria-hidden="true">🟦</span>Integração Microsoft e Xbox</h2>
+        <p>A FA oferece a opção de login e vinculação de conta via Microsoft/Xbox, incluindo acesso a funcionalidades como troca de skin no Minecraft e visualização de amigos do Xbox que também jogam no servidor.</p>
+        <ul class="doc-list">
+          <li data-icon="🔗"><strong>O que é coletado:</strong> Ao vincular sua conta Microsoft, a FA acessa e armazena o seu Xbox XUID, o UUID do Minecraft, o nome de usuário no jogo e um refresh token para manter a integração ativa.</li>
+          <li data-icon="🎨"><strong>Troca de skin:</strong> Utiliza a API oficial da Mojang em seu nome. Ao usar este recurso, você autoriza a FA a enviar requisições à Mojang com as credenciais da sua sessão Xbox.</li>
+          <li data-icon="👥"><strong>Lista de amigos:</strong> A consulta usa a API do Xbox Live em tempo real para identificar quais amigos também estão registrados na FA. A lista não é armazenada.</li>
+          <li data-icon="🔐"><strong>Segurança:</strong> Tokens de acesso não são armazenados em texto claro. A integração pode ser revogada a qualquer momento pelo painel de conta.</li>
+        </ul>
+        <p>Esta funcionalidade requer que você possua o Minecraft Java Edition e uma conta Microsoft válida. A FA não se responsabiliza por restrições impostas pela Microsoft ou Mojang ao uso das suas APIs.</p>
+      </section>
+
+      <!-- 7. SUSPENSÃO -->
+      <section class="doc-section" id="suspensao" aria-labelledby="h-suspensao">
+        <div class="section-eyebrow">Seção 07</div>
+        <h2 id="h-suspensao"><span class="h2-icon" aria-hidden="true">⚠️</span>Suspensão e Banimento</h2>
+        <p>A administração da FA pode aplicar sanções a qualquer conta que viole estes Termos ou as regras internas da comunidade. As sanções variam conforme a gravidade da situação:</p>
+        <ul class="doc-list">
+          <li data-icon="⚠️"><strong>Advertência:</strong> Aplicada em casos de infração leve ou pela primeira ocorrência. Fica registrada no histórico da conta.</li>
+          <li data-icon="⏸️"><strong>Suspensão temporária:</strong> Remoção temporária do acesso ao servidor e/ou ao painel. Duração definida caso a caso.</li>
+          <li data-icon="🔴"><strong>Banimento permanente:</strong> Para infrações graves, reincidentes ou que causem dano relevante à comunidade. Inclui a remoção da whitelist do servidor.</li>
+        </ul>
+        <p>Sanções aplicadas pela staff podem ser contestadas formalmente pelo canal de recursos no Discord oficial. A administração avaliará o recurso e comunicará a decisão final. Decisões tomadas pelo dono da comunidade são definitivas.</p>
+        <p>O encerramento voluntário de uma conta não reverte punições previamente aplicadas. Se uma conta banida criar uma nova para contornar o ban, ambas as contas serão encerradas.</p>
+      </section>
+
+      <!-- 8. LIMITAÇÃO -->
+      <section class="doc-section" id="limitacao" aria-labelledby="h-limitacao">
+        <div class="section-eyebrow">Seção 08</div>
+        <h2 id="h-limitacao"><span class="h2-icon" aria-hidden="true">📜</span>Limitação de Responsabilidade</h2>
+        <p>A Força Aliada é uma comunidade de jogos operada de forma voluntária. Os serviços são fornecidos "no estado em que se encontram", sem garantia de disponibilidade contínua ou ausência de erros.</p>
+        <ul class="doc-list">
+          <li data-icon="🌐"><strong>Disponibilidade:</strong> O servidor e o site podem ficar indisponíveis para manutenção, atualizações ou por motivos técnicos imprevistos. A FA não garante uptime mínimo.</li>
+          <li data-icon="💾"><strong>Dados:</strong> Embora adotemos boas práticas de segurança e backup, a FA não se responsabiliza por perda de dados causada por falhas técnicas, ataques externos ou situações fora do nosso controle.</li>
+          <li data-icon="🔧"><strong>Serviços de terceiros:</strong> A FA integra serviços da Microsoft, Xbox Live e Mojang. Problemas nessas APIs externas não são de responsabilidade da FA.</li>
+          <li data-icon="🤝"><strong>Interações entre usuários:</strong> A FA não se responsabiliza por conteúdo gerado por usuários nem por conflitos entre membros que ocorram fora dos canais moderados pela staff.</li>
+        </ul>
+      </section>
+
+      <!-- 9. ALTERAÇÕES -->
+      <section class="doc-section" id="alteracoes" aria-labelledby="h-alteracoes">
+        <div class="section-eyebrow">Seção 09</div>
+        <h2 id="h-alteracoes"><span class="h2-icon" aria-hidden="true">📢</span>Alterações dos Termos</h2>
+        <p>Estes Termos podem ser atualizados quando necessário, por exemplo para refletir novas funcionalidades da plataforma, mudanças legais ou ajustes nas regras da comunidade.</p>
+        <p>Em caso de alterações relevantes, os usuários ativos serão notificados pelo painel de conta e/ou pelo Discord oficial com pelo menos 7 dias de antecedência. O uso contínuo da plataforma após a vigência da nova versão constitui aceitação das mudanças.</p>
+        <p>A versão mais recente deste documento estará sempre disponível em <strong>forcaaliada.ogabriels.com/termos</strong>. A data de vigência está indicada no topo desta página.</p>
+      </section>
+
+      <!-- 10. CONTATO -->
+      <section class="doc-section" id="contato-ts" aria-labelledby="h-contato-ts">
+        <div class="section-eyebrow">Seção 10</div>
+        <h2 id="h-contato-ts"><span class="h2-icon" aria-hidden="true">💬</span>Contato</h2>
+        <p>Dúvidas sobre estes Termos, solicitações de exclusão de dados ou qualquer outra questão legal podem ser enviadas pelos canais abaixo:</p>
+        <div class="contact-card">
+          <div class="contact-icon-wrap" aria-hidden="true">💬</div>
+          <div class="contact-text">
+            <h4>Discord Oficial</h4>
+            <p>Canal preferencial para suporte, recursos e questões gerais. <a href="https://discord.gg/xZmRkB7PWd" target="_blank" rel="noopener">discord.gg/xZmRkB7PWd</a></p>
+          </div>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon-wrap" aria-hidden="true">📧</div>
+          <div class="contact-text">
+            <h4>E-mail</h4>
+            <p>Para questões formais e solicitações de dados. <a href="mailto:contato@ogabriels.com">contato@ogabriels.com</a></p>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /article-col -->
+  </div><!-- /page-wrap -->
+</main>
+
+<!-- ─── FOOTER ─────────────────────────────────────────── -->
+<footer role="contentinfo">
+  <div class="footer-inner">
+    <nav class="footer-nav" aria-label="Links do rodapé">
+      <a href="index.html">Início</a>
+      <a href="login.html">Entrar</a>
+      <a href="signup.html">Criar conta</a>
+      <a href="/termos" class="is-current" aria-current="page">Termos de Serviço</a>
+      <a href="/privacidade">Privacidade</a>
+      <a href="https://discord.gg/xZmRkB7PWd" target="_blank" rel="noopener">Discord</a>
+    </nav>
+    <div class="footer-bottom">
+      <span>© 2026 Gabriel Silva Dias Moreira (Força Aliada). Todos os direitos reservados.</span>
+      <span class="footer-lgpd">📄 Termos v1.0</span>
+      <span>Comunidade Força Aliada — Brasil</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ─── READ PROGRESS ──────────────────────────────── */
+const progressFill  = document.getElementById('read-progress-fill');
+const progressBar   = document.getElementById('read-progress');
+const inlineBarFill = document.getElementById('inline-bar-fill');
+const inlineBarPct  = document.getElementById('inline-bar-pct');
+const scrollTopBtn  = document.getElementById('scroll-top');
+
+function getReadPct(){
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  return docHeight > 0 ? Math.min(100, (scrollTop / docHeight) * 100) : 0;
+}
+
+function onScroll(){
+  const pct = getReadPct();
+  const pctStr = Math.round(pct) + '%';
+  progressFill.style.width = pctStr;
+  progressBar.setAttribute('aria-valuenow', Math.round(pct));
+  if(inlineBarFill) inlineBarFill.style.width = pctStr;
+  if(inlineBarPct)  inlineBarPct.textContent  = pctStr;
+  scrollTopBtn.classList.toggle('is-visible', window.scrollY > 480);
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+
+/* ─── SECTION REVEAL ON SCROLL ───────────────────── */
+const sections = document.querySelectorAll('.doc-section');
+const tocLinks = document.querySelectorAll('.toc-link');
+
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('is-visible'); });
+}, { threshold: 0.06 });
+sections.forEach(s => revealObserver.observe(s));
+
+/* ─── ACTIVE TOC LINK ────────────────────────────── */
+const activeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      const id = e.target.id;
+      tocLinks.forEach(l => {
+        const match = l.getAttribute('href') === '#' + id;
+        l.classList.toggle('is-active', match);
+        if(match) l.setAttribute('aria-current','location');
+        else l.removeAttribute('aria-current');
+      });
+    }
+  });
+}, { rootMargin:'-10% 0px -78% 0px' });
+sections.forEach(s => activeObserver.observe(s));
+
+/* ─── MOBILE TOC DRAWER ──────────────────────────── */
+const tocToggle = document.getElementById('toc-toggle-btn');
+const tocDrawer = document.getElementById('toc-mobile-content');
+tocToggle.addEventListener('click', function(){
+  const open = this.classList.toggle('open');
+  tocDrawer.classList.toggle('open', open);
+  this.setAttribute('aria-expanded', open);
+  tocDrawer.setAttribute('aria-hidden', !open);
+});
+
+tocDrawer.querySelectorAll('.toc-link').forEach(l => {
+  l.addEventListener('click', () => {
+    tocToggle.classList.remove('open');
+    tocDrawer.classList.remove('open');
+    tocToggle.setAttribute('aria-expanded','false');
+    tocDrawer.setAttribute('aria-hidden','true');
+  });
+});
+</script>
+</body>
+</html>

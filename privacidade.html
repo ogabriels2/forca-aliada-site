@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Privacidade | Força Aliada</title>
+<meta name="description" content="Entenda como a Força Aliada coleta, usa e protege seus dados pessoais conforme a LGPD.">
+
+<!-- Inline theme script: runs before paint to avoid flash -->
+<script>
+(function(){
+  var key='fa_theme';
+  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';}
+  function apply(t){document.documentElement.setAttribute('data-theme',effective(t||localStorage.getItem(key)||'auto'));}
+  apply();
+  matchMedia('(prefers-color-scheme:dark)').addEventListener?.('change',function(){apply(localStorage.getItem(key)||'auto');});
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─── RESET ──────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;scroll-behavior:smooth;-webkit-text-size-adjust:100%;}
+
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root{
+  --bg:              #f5f4f0;
+  --surface:         #ffffff;
+  --surface-raised:  #eeecea;
+  --surface-float:   rgba(255,255,255,0.72);
+  --text-primary:    #18180f;
+  --text-secondary:  #52524a;
+  --text-muted:      #98978e;
+  --accent:          #16803c;        /* verde — privacidade */
+  --accent-mid:      #15803d;
+  --accent-hover:    #166534;
+  --accent-light:    rgba(22,128,60,0.09);
+  --accent-glow:     rgba(22,128,60,0.14);
+  --trust:           #0ea56e;
+  --border:          rgba(0,0,0,0.07);
+  --border-mid:      rgba(0,0,0,0.11);
+  --border-strong:   rgba(0,0,0,0.16);
+  --shadow-xs:       0 1px 3px rgba(0,0,0,0.05);
+  --shadow-sm:       0 2px 8px rgba(0,0,0,0.07);
+  --shadow-md:       0 6px 28px rgba(0,0,0,0.09);
+  --shadow-lg:       0 16px 56px rgba(0,0,0,0.12);
+  --font-body:       'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-display:    'Lora',Georgia,'Times New Roman',serif;
+  --radius-sm:       8px;
+  --radius:          14px;
+  --radius-lg:       20px;
+  --ease:            cubic-bezier(0.4,0,0.2,1);
+  --ease-spring:     cubic-bezier(0.34,1.3,0.64,1);
+  --t:               0.18s;
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:              #0c0c0a;
+  --surface:         #161613;
+  --surface-raised:  #1e1e1b;
+  --surface-float:   rgba(22,22,19,0.88);
+  --text-primary:    #ededе8;
+  --text-secondary:  #9e9e96;
+  --text-muted:      #5a5a54;
+  --accent:          #4ade80;
+  --accent-mid:      #22c55e;
+  --accent-hover:    #86efac;
+  --accent-light:    rgba(74,222,128,0.1);
+  --accent-glow:     rgba(74,222,128,0.15);
+  --trust:           #34d399;
+  --border:          rgba(255,255,255,0.07);
+  --border-mid:      rgba(255,255,255,0.10);
+  --border-strong:   rgba(255,255,255,0.16);
+  --shadow-xs:       0 1px 3px rgba(0,0,0,0.4);
+  --shadow-sm:       0 2px 8px rgba(0,0,0,0.5);
+  --shadow-md:       0 6px 28px rgba(0,0,0,0.55);
+  --shadow-lg:       0 16px 56px rgba(0,0,0,0.6);
+}
+
+/* ─── BODY & BACKGROUNDS ──────────────────────────────── */
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--text-primary);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-feature-settings:'kern'1,'liga'1,'calt'1,'ss01'1;
+  line-height:1.6;
+  transition:background var(--t) var(--ease),color var(--t) var(--ease);
+}
+[data-theme="dark"] body{
+  background:
+    radial-gradient(ellipse 60% 40% at 90% 0%,rgba(74,222,128,0.045) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 35% at 10% 20%,rgba(52,211,153,0.03) 0%,transparent 55%),
+    #0c0c0a;
+}
+a{text-decoration:none;color:inherit;}
+
+/* ─── SKIP LINK ───────────────────────────────────────── */
+.skip-link{
+  position:absolute;top:-100px;left:16px;z-index:9999;
+  padding:8px 16px;background:var(--accent);color:#fff;
+  border-radius:var(--radius-sm);font-weight:600;font-size:14px;
+  transition:top 0.2s;
+}
+.skip-link:focus{top:16px;}
+
+/* ─── READ PROGRESS ───────────────────────────────────── */
+#read-progress{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  height:3px;background:transparent;pointer-events:none;
+}
+#read-progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--accent) 0%,var(--trust) 100%);
+  width:0%;
+  transition:width 0.08s linear;
+  border-radius:0 2px 2px 0;
+}
+
+/* ─── HEADER ──────────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:100;
+  height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;
+  background:var(--surface-float);
+  backdrop-filter:saturate(160%) blur(24px);
+  -webkit-backdrop-filter:saturate(160%) blur(24px);
+  border-bottom:1px solid var(--border);
+  transition:background var(--t) var(--ease),border-color var(--t) var(--ease);
+}
+.brand-link{
+  display:flex;align-items:center;gap:10px;
+  font-weight:700;font-size:16px;letter-spacing:-0.025em;
+  transition:opacity var(--t) var(--ease);
+}
+.brand-link:hover{opacity:0.65;}
+.logo-img{width:32px;height:32px;border-radius:8px;object-fit:cover;}
+.header-right{display:flex;align-items:center;gap:8px;}
+.btn-ghost{
+  font-family:var(--font-body);font-size:13px;font-weight:500;
+  color:var(--text-secondary);padding:6px 14px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-mid);background:transparent;
+  cursor:pointer;transition:all var(--t) var(--ease);
+}
+.btn-ghost:hover{background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-strong);}
+.btn-accent{
+  font-family:var(--font-body);font-size:13px;font-weight:600;
+  color:#fff;padding:6px 16px;border-radius:var(--radius-sm);
+  background:var(--accent);border:none;cursor:pointer;
+  transition:background var(--t) var(--ease),transform 0.1s;
+}
+.btn-accent:hover{background:var(--accent-hover);}
+.btn-accent:active{transform:scale(0.97);}
+
+/* ─── MOBILE TOC TOGGLE ───────────────────────────────── */
+.toc-toggle{
+  display:none;align-items:center;gap:8px;
+  font-family:var(--font-body);font-size:13px;font-weight:600;
+  color:var(--accent);background:var(--accent-light);
+  border:1px solid var(--accent-glow);border-radius:var(--radius-sm);
+  padding:7px 14px;cursor:pointer;
+  transition:all var(--t) var(--ease);
+  margin-bottom:20px;width:100%;justify-content:space-between;
+}
+.toc-toggle:hover{background:var(--accent-glow);}
+.toc-toggle-arrow{transition:transform 0.2s var(--ease);}
+.toc-toggle.open .toc-toggle-arrow{transform:rotate(180deg);}
+.toc-mobile-drawer{
+  display:none;
+  background:var(--surface);
+  border:1px solid var(--border-mid);
+  border-radius:var(--radius);
+  padding:16px;
+  margin-bottom:24px;
+  overflow:hidden;
+  max-height:0;
+  transition:max-height 0.35s var(--ease),padding 0.2s;
+}
+.toc-mobile-drawer.open{max-height:600px;display:block;}
+
+@media(max-width:860px){.toc-toggle{display:flex;}}
+
+/* ─── LAYOUT ──────────────────────────────────────────── */
+.page-wrap{
+  max-width:1120px;margin:0 auto;
+  padding:52px 28px 120px;
+  display:grid;
+  grid-template-columns:230px 1fr;
+  gap:64px;
+  align-items:start;
+}
+@media(max-width:860px){
+  .page-wrap{grid-template-columns:1fr;gap:0;padding:36px 20px 80px;}
+  .sidebar-col{display:none;}
+}
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar-col{
+  position:sticky;top:78px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.toc-head{
+  font-size:10px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--text-muted);
+  padding:0 10px;margin-bottom:10px;
+}
+.toc-link{
+  display:block;
+  font-size:13px;font-weight:500;color:var(--text-secondary);
+  padding:7px 10px;border-radius:var(--radius-sm);
+  border-left:2px solid transparent;
+  transition:all var(--t) var(--ease);
+  line-height:1.35;
+}
+.toc-link:hover{color:var(--text-primary);background:var(--surface-raised);}
+.toc-link.is-active{
+  color:var(--accent);background:var(--accent-light);
+  border-left-color:var(--accent);font-weight:600;
+}
+.toc-divider{height:1px;background:var(--border);margin:10px 10px;}
+.toc-meta-box{
+  margin-top:4px;padding:12px;
+  background:var(--surface-raised);border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  font-size:11.5px;color:var(--text-muted);line-height:1.65;
+}
+.toc-meta-box strong{color:var(--text-secondary);display:block;margin-bottom:3px;font-size:12px;}
+.toc-cross-link{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:12px;padding:9px 10px;
+  font-size:12.5px;font-weight:600;color:var(--accent);
+  background:var(--accent-light);border-radius:var(--radius-sm);
+  border:1px solid var(--accent-glow);
+  transition:all var(--t) var(--ease);
+}
+.toc-cross-link:hover{background:var(--accent-glow);}
+.toc-trust{
+  margin-top:10px;padding:10px 12px;
+  background:var(--surface-raised);border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+  font-size:11.5px;color:var(--text-muted);
+}
+.toc-trust-icon{font-size:16px;flex-shrink:0;}
+
+/* ─── ARTICLE HEADER ──────────────────────────────────── */
+.article-col{min-width:0;}
+.article-hero{
+  margin-bottom:48px;
+  padding:36px 40px;
+  background:var(--surface);
+  border:1px solid var(--border-mid);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+  position:relative;
+  overflow:hidden;
+}
+.article-hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent) 0%,var(--trust) 100%);
+}
+.article-hero::after{
+  content:'';position:absolute;top:3px;right:-40px;width:260px;height:220px;
+  background:radial-gradient(ellipse,var(--accent-light) 0%,transparent 70%);
+  pointer-events:none;
+}
+.doc-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;color:var(--accent);
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  padding:4px 11px;border-radius:980px;margin-bottom:18px;
+}
+.article-hero h1{
+  font-family:var(--font-display);
+  font-size:clamp(28px,4.5vw,44px);
+  font-weight:500;line-height:1.1;letter-spacing:-0.01em;
+  color:var(--text-primary);margin-bottom:14px;
+}
+.article-meta-row{
+  display:flex;flex-wrap:wrap;gap:16px 24px;
+  font-size:12.5px;color:var(--text-muted);margin-bottom:20px;
+}
+.meta-chip{display:flex;align-items:center;gap:5px;}
+.meta-chip svg{opacity:0.6;}
+.article-lead{
+  font-family:var(--font-display);
+  font-size:17px;color:var(--text-secondary);line-height:1.72;
+  padding-left:18px;border-left:2.5px solid var(--border-strong);
+  position:relative;z-index:1;
+}
+.reading-progress-row{
+  margin-top:20px;display:flex;align-items:center;gap:12px;
+}
+.reading-bar-track{
+  flex:1;height:4px;background:var(--surface-raised);
+  border-radius:2px;overflow:hidden;border:1px solid var(--border);
+}
+.reading-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--accent),var(--trust));
+  width:0%;transition:width 0.2s var(--ease);border-radius:2px;
+}
+.reading-pct{font-size:11px;font-weight:600;color:var(--text-muted);min-width:32px;text-align:right;}
+
+/* ─── SECTIONS ────────────────────────────────────────── */
+.doc-section{
+  margin-bottom:56px;
+  scroll-margin-top:80px;
+  opacity:0;transform:translateY(16px);
+  transition:opacity 0.45s var(--ease),transform 0.45s var(--ease);
+}
+.doc-section.is-visible{opacity:1;transform:none;}
+.section-eyebrow{
+  font-size:10.5px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;
+}
+.doc-section h2{
+  font-family:var(--font-display);
+  font-size:22px;font-weight:500;letter-spacing:-0.01em;
+  color:var(--text-primary);margin-bottom:20px;
+  padding-bottom:14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.h2-icon{
+  width:28px;height:28px;border-radius:8px;
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.doc-section p{
+  font-size:15px;color:var(--text-secondary);line-height:1.78;margin-bottom:16px;
+}
+.doc-section p:last-child{margin-bottom:0;}
+.doc-section p strong{color:var(--text-primary);font-weight:600;}
+.doc-section a{color:var(--accent);font-weight:500;border-bottom:1px solid var(--accent-glow);transition:border-color var(--t);}
+.doc-section a:hover{border-bottom-color:var(--accent);}
+
+/* ─── LISTS ───────────────────────────────────────────── */
+.doc-list{list-style:none;display:flex;flex-direction:column;gap:8px;margin:16px 0;}
+.doc-list li{
+  font-size:14.5px;color:var(--text-secondary);line-height:1.65;
+  padding:13px 16px 13px 46px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  position:relative;
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease);
+}
+.doc-list li:hover{border-color:var(--border-strong);box-shadow:var(--shadow-xs);}
+.doc-list li::before{
+  content:attr(data-icon);position:absolute;left:14px;top:12px;
+  font-size:16px;line-height:1;
+}
+.doc-list li strong{color:var(--text-primary);font-weight:600;}
+
+/* ─── CALLOUTS ────────────────────────────────────────── */
+.callout{
+  padding:16px 20px;border-radius:var(--radius-sm);
+  margin:20px 0;display:flex;gap:13px;align-items:flex-start;
+}
+.callout-icon{font-size:18px;flex-shrink:0;margin-top:2px;}
+.callout-body p{font-size:14px;line-height:1.65;margin:0;}
+.callout-body strong{display:block;font-size:12.5px;font-weight:700;margin-bottom:4px;}
+.callout.info{background:var(--accent-light);border:1px solid var(--accent-glow);}
+.callout.info .callout-body p{color:var(--text-secondary);}
+.callout.info .callout-body strong{color:var(--accent);}
+.callout.success{background:rgba(14,165,110,0.07);border:1px solid rgba(14,165,110,0.18);}
+[data-theme="dark"] .callout.success{background:rgba(52,211,153,0.08);border-color:rgba(52,211,153,0.2);}
+.callout.success .callout-body p{color:var(--text-secondary);}
+.callout.success .callout-body strong{color:var(--trust);}
+[data-theme="dark"] .callout.success .callout-body strong{color:var(--trust);}
+.callout.warn{background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.18);}
+.callout.warn .callout-body p{color:var(--text-secondary);}
+.callout.warn .callout-body strong{color:#b45309;}
+[data-theme="dark"] .callout.warn .callout-body strong{color:#fbbf24;}
+
+/* ─── DATA TABLE ──────────────────────────────────────── */
+.table-wrap{width:100%;overflow-x:auto;margin:20px 0;border-radius:var(--radius);border:1px solid var(--border);}
+.data-table{width:100%;border-collapse:collapse;font-size:14px;min-width:480px;}
+.data-table th{
+  text-align:left;padding:12px 16px;
+  background:var(--surface-raised);
+  font-size:10.5px;font-weight:700;letter-spacing:0.07em;
+  text-transform:uppercase;color:var(--text-muted);
+  border-bottom:1px solid var(--border-mid);white-space:nowrap;
+}
+.data-table td{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  color:var(--text-secondary);line-height:1.5;vertical-align:top;
+}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tbody tr{transition:background var(--t) var(--ease);}
+.data-table tbody tr:hover td{background:var(--surface-raised);}
+.data-table td:first-child{font-weight:600;color:var(--text-primary);white-space:nowrap;}
+code{
+  font-family:'SF Mono','Fira Code',monospace;
+  font-size:12.5px;background:var(--surface-raised);
+  padding:2px 6px;border-radius:4px;border:1px solid var(--border);
+  color:var(--accent);
+}
+
+/* ─── RIGHTS GRID ─────────────────────────────────────── */
+.rights-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));
+  gap:10px;margin:20px 0;
+}
+.right-card{
+  padding:18px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease),transform 0.2s var(--ease-spring);
+}
+.right-card:hover{
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light);
+  transform:translateY(-2px);
+}
+.right-card-icon{font-size:22px;margin-bottom:10px;display:block;}
+.right-card-title{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:5px;}
+.right-card-desc{font-size:12.5px;color:var(--text-secondary);line-height:1.55;}
+
+/* ─── CONTACT CARDS ───────────────────────────────────── */
+.contact-card{
+  display:flex;align-items:center;gap:16px;
+  padding:18px 22px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-top:10px;
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease),transform 0.2s var(--ease-spring);
+}
+.contact-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light);transform:translateY(-1px);}
+.contact-icon-wrap{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.contact-text h4{font-size:14.5px;font-weight:700;margin-bottom:3px;}
+.contact-text p{font-size:13px;color:var(--text-secondary);margin:0;}
+.contact-text a{color:var(--accent);font-weight:500;border-bottom:1px solid var(--accent-glow);}
+.contact-text a:hover{border-bottom-color:var(--accent);}
+
+/* ─── FOOTER ──────────────────────────────────────────── */
+footer{
+  border-top:1px solid var(--border);
+  padding:44px 28px;
+}
+.footer-inner{
+  max-width:1120px;margin:0 auto;
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+}
+.footer-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 4px;}
+.footer-nav a{
+  font-size:13px;color:var(--text-muted);padding:5px 10px;
+  border-radius:6px;transition:all var(--t) var(--ease);
+}
+.footer-nav a:hover{color:var(--text-primary);background:var(--surface-raised);}
+.footer-nav a.is-current{color:var(--accent);font-weight:600;background:var(--accent-light);}
+.footer-bottom{
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;
+  gap:8px 24px;font-size:11.5px;color:var(--text-muted);text-align:center;
+}
+.footer-lgpd{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:980px;
+  background:var(--accent-light);border:1px solid var(--accent-glow);
+  color:var(--accent);font-size:11px;font-weight:700;letter-spacing:0.05em;
+}
+
+/* ─── SCROLL TOP BUTTON ───────────────────────────────── */
+#scroll-top{
+  position:fixed;bottom:28px;right:28px;z-index:200;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border-mid);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;opacity:0;pointer-events:none;
+  box-shadow:var(--shadow-md);
+  transition:all 0.28s var(--ease-spring);
+  font-size:18px;color:var(--text-secondary);
+  font-family:inherit;
+}
+#scroll-top.is-visible{opacity:1;pointer-events:auto;}
+#scroll-top:hover{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(1.1);}
+#scroll-top:active{transform:scale(0.95);}
+
+/* ─── RESPONSIVE ──────────────────────────────────────── */
+@media(max-width:640px){
+  .article-hero{padding:24px 20px;}
+  .rights-grid{grid-template-columns:1fr 1fr;}
+  .contact-card{flex-direction:column;align-items:flex-start;gap:10px;}
+}
+@media(max-width:420px){
+  .rights-grid{grid-template-columns:1fr;}
+  .article-meta-row{gap:10px;}
+}
+
+/* ─── FOCUS VISIBLE ───────────────────────────────────── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Ir para o conteúdo</a>
+<div id="read-progress" role="progressbar" aria-label="Progresso de leitura" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+  <div id="read-progress-fill"></div>
+</div>
+
+<button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Voltar ao topo">↑</button>
+
+<!-- ─── HEADER ─────────────────────────────────────────── -->
+<header role="banner">
+  <a href="index.html" class="brand-link" aria-label="Início — Força Aliada">
+    <img src="assets/images/logo.JPG"
+         onerror="this.src='https://minotar.net/helm/Steve/100.png'"
+         alt="" class="logo-img" width="32" height="32" aria-hidden="true">
+    <span>Força Aliada</span>
+  </a>
+  <div class="header-right">
+    <a href="login.html"><button class="btn-ghost">Entrar</button></a>
+    <a href="signup.html"><button class="btn-accent">Criar conta</button></a>
+  </div>
+</header>
+
+<!-- ─── MAIN LAYOUT ────────────────────────────────────── -->
+<main id="main-content">
+  <div class="page-wrap">
+
+    <!-- SIDEBAR TOC (desktop) -->
+    <aside class="sidebar-col" aria-label="Índice do documento">
+      <div class="toc-head">Nesta página</div>
+
+      <a href="#responsavel"      class="toc-link">1. Controlador dos dados</a>
+      <a href="#coletamos"        class="toc-link">2. O que coletamos</a>
+      <a href="#como-usamos"      class="toc-link">3. Como usamos</a>
+      <a href="#armazenamento"    class="toc-link">4. Armazenamento</a>
+      <a href="#microsoft"        class="toc-link">5. Dados da Microsoft</a>
+      <a href="#compartilhamento" class="toc-link">6. Compartilhamento</a>
+      <a href="#retencao"         class="toc-link">7. Retenção e exclusão</a>
+      <a href="#cookies"          class="toc-link">8. Cookies e armazenamento</a>
+      <a href="#direitos"         class="toc-link">9. Seus direitos</a>
+      <a href="#seguranca"        class="toc-link">10. Segurança</a>
+      <a href="#alteracoes"       class="toc-link">11. Alterações</a>
+      <a href="#contato-pp"       class="toc-link">12. Contato</a>
+
+      <div class="toc-divider"></div>
+
+      <div class="toc-meta-box">
+        <strong>Versão 1.0</strong>
+        Vigente desde 25 de maio de 2025
+      </div>
+
+      <a href="/termos" class="toc-cross-link" aria-label="Ver Termos de Serviço">
+        <span>Termos de Serviço</span>
+        <span aria-hidden="true">→</span>
+      </a>
+
+      <div class="toc-trust">
+        <span class="toc-trust-icon">🛡️</span>
+        <span>Conforme <strong>LGPD</strong> Lei&nbsp;13.709/2018</span>
+      </div>
+    </aside>
+
+    <!-- ARTICLE CONTENT -->
+    <div class="article-col">
+
+      <!-- Mobile TOC -->
+      <button class="toc-toggle" id="toc-toggle-btn" aria-expanded="false" aria-controls="toc-mobile-content">
+        <span>📋 Índice do documento</span>
+        <svg class="toc-toggle-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="toc-mobile-drawer" id="toc-mobile-content" aria-hidden="true">
+        <a href="#responsavel"      class="toc-link">1. Controlador dos dados</a>
+        <a href="#coletamos"        class="toc-link">2. O que coletamos</a>
+        <a href="#como-usamos"      class="toc-link">3. Como usamos</a>
+        <a href="#armazenamento"    class="toc-link">4. Armazenamento</a>
+        <a href="#microsoft"        class="toc-link">5. Dados da Microsoft</a>
+        <a href="#compartilhamento" class="toc-link">6. Compartilhamento</a>
+        <a href="#retencao"         class="toc-link">7. Retenção e exclusão</a>
+        <a href="#cookies"          class="toc-link">8. Cookies e armazenamento</a>
+        <a href="#direitos"         class="toc-link">9. Seus direitos</a>
+        <a href="#seguranca"        class="toc-link">10. Segurança</a>
+        <a href="#alteracoes"       class="toc-link">11. Alterações</a>
+        <a href="#contato-pp"       class="toc-link">12. Contato</a>
+      </div>
+
+      <!-- Hero Card -->
+      <div class="article-hero">
+        <div class="doc-badge" aria-label="Privacidade e Proteção de Dados">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Privacidade e Proteção de Dados
+        </div>
+        <h1>Política de Privacidade</h1>
+        <div class="article-meta-row" aria-label="Metadados do documento">
+          <span class="meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Atualizado em 25 de mai. de 2025
+          </span>
+          <span class="meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Leitura: ~6 minutos
+          </span>
+          <span class="meta-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            forcaaliada.ogabriels.com
+          </span>
+        </div>
+        <p class="article-lead">
+          A Força Aliada respeita a privacidade de todos os seus membros. Este documento explica de forma clara e direta quais dados são coletados quando você usa a plataforma, por que eles são necessários, como são protegidos e quais são seus direitos sobre eles.
+        </p>
+        <div class="reading-progress-row" aria-hidden="true">
+          <div class="reading-bar-track"><div class="reading-bar-fill" id="inline-bar-fill"></div></div>
+          <span class="reading-pct" id="inline-bar-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- ─── SECTIONS ──────────────────────────────────── -->
+
+      <!-- 1. RESPONSÁVEL -->
+      <section class="doc-section" id="responsavel" aria-labelledby="h-responsavel">
+        <div class="section-eyebrow">Seção 01</div>
+        <h2 id="h-responsavel"><span class="h2-icon" aria-hidden="true">🏛️</span>Controlador dos Dados</h2>
+        <p>O responsável pelo tratamento dos dados pessoais coletados pela plataforma é <strong>Gabriel Moreira</strong>, fundador e administrador da comunidade Força Aliada, com sede no Brasil.</p>
+        <p>Para qualquer comunicação relacionada a dados pessoais, use os canais indicados na Seção 12 deste documento.</p>
+        <div class="callout success" role="note">
+          <div class="callout-icon" aria-hidden="true">🛡️</div>
+          <div class="callout-body">
+            <strong>Compromisso com a privacidade</strong>
+            <p>A FA coleta apenas os dados estritamente necessários para operar os serviços. Não existe monetização de dados. Nenhuma informação pessoal é vendida ou compartilhada com anunciantes.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. O QUE COLETAMOS -->
+      <section class="doc-section" id="coletamos" aria-labelledby="h-coletamos">
+        <div class="section-eyebrow">Seção 02</div>
+        <h2 id="h-coletamos"><span class="h2-icon" aria-hidden="true">📋</span>Dados que Coletamos</h2>
+        <p>Os dados coletados variam conforme o tipo de interação que você tem com a plataforma. A tabela abaixo detalha cada categoria:</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Dado</th>
+                <th scope="col">Origem</th>
+                <th scope="col">Por que coletamos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Nome de usuário</td><td>Cadastro manual</td><td>Identificação na plataforma e no painel de staff</td></tr>
+              <tr><td>Endereço de e-mail</td><td>Cadastro manual</td><td>Verificação de conta, recuperação de senha e comunicações</td></tr>
+              <tr><td>Nick de Minecraft</td><td>Cadastro ou via Xbox</td><td>Vinculação ao perfil no servidor, skin e whitelist</td></tr>
+              <tr><td>Senha (hash bcrypt)</td><td>Cadastro manual</td><td>Autenticação segura. Nunca armazenada em texto claro</td></tr>
+              <tr><td>Endereço IP</td><td>Acesso ao site/API</td><td>Segurança, detecção de abusos e registros de auditoria</td></tr>
+              <tr><td>User-Agent</td><td>Acesso ao site/API</td><td>Identificação de dispositivo nas sessões web ativas</td></tr>
+              <tr><td>Localização aproximada</td><td>Derivado do IP</td><td>Exibição informativa no painel de sessões</td></tr>
+              <tr><td>Histórico de sessões</td><td>Servidor Minecraft</td><td>Estatísticas de atividade exibidas no painel pessoal</td></tr>
+              <tr><td>UUID e Xbox XUID</td><td>API Microsoft/Mojang (se vinculado)</td><td>Vinculação de conta Xbox e funcionalidades de integração</td></tr>
+              <tr><td>Refresh token Microsoft</td><td>API Microsoft (se vinculado)</td><td>Manter a integração Xbox ativa sem solicitar login repetido</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout info" role="note">
+          <div class="callout-icon" aria-hidden="true">ℹ️</div>
+          <div class="callout-body">
+            <strong>Login via Xbox</strong>
+            <p>Ao usar a autenticação Microsoft, o fluxo OAuth acontece diretamente nos servidores da Microsoft. A FA recebe apenas os dados listados acima, nunca a senha da sua conta Microsoft.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. COMO USAMOS -->
+      <section class="doc-section" id="como-usamos" aria-labelledby="h-como-usamos">
+        <div class="section-eyebrow">Seção 03</div>
+        <h2 id="h-como-usamos"><span class="h2-icon" aria-hidden="true">⚙️</span>Como Usamos os Dados</h2>
+        <p>Cada dado coletado tem uma finalidade específica e não é utilizado para outros fins sem base legal adequada. As finalidades são:</p>
+        <ul class="doc-list">
+          <li data-icon="🔐"><strong>Autenticação e segurança:</strong> Verificar sua identidade ao fazer login, detectar acessos não autorizados e proteger a conta contra uso indevido.</li>
+          <li data-icon="👤"><strong>Operação da conta:</strong> Exibir seu perfil no painel, mostrar histórico de atividade, calcular mérito e rank, e gerenciar preferências personalizadas.</li>
+          <li data-icon="📧"><strong>Comunicação:</strong> Enviar e-mails transacionais como código de verificação, confirmação de cadastro e recuperação de senha. Não enviamos newsletters sem consentimento.</li>
+          <li data-icon="🎮"><strong>Integração com o servidor:</strong> Vincular sua conta ao nick de Minecraft para whitelist, exibição de skin e sincronização de dados de jogo.</li>
+          <li data-icon="🔍"><strong>Auditoria interna:</strong> Registrar ações relevantes (logins, alterações de perfil, ações de moderação) para rastreabilidade e segurança da plataforma.</li>
+          <li data-icon="📊"><strong>Melhoria dos serviços:</strong> Analisar padrões de uso de forma agregada e não identificável para melhorar a experiência da plataforma.</li>
+        </ul>
+      </section>
+
+      <!-- 4. ARMAZENAMENTO -->
+      <section class="doc-section" id="armazenamento" aria-labelledby="h-armazenamento">
+        <div class="section-eyebrow">Seção 04</div>
+        <h2 id="h-armazenamento"><span class="h2-icon" aria-hidden="true">🗄️</span>Armazenamento e Localização</h2>
+        <p>Os dados da plataforma são armazenados em infraestrutura cloud com as seguintes características:</p>
+        <ul class="doc-list">
+          <li data-icon="🗄️"><strong>Banco de dados:</strong> PostgreSQL hospedado no <strong>Neon.tech</strong>, em região AWS US-East-1. Os dados são criptografados em repouso e em trânsito via TLS.</li>
+          <li data-icon="⚙️"><strong>Servidor de aplicação:</strong> API hospedada no <strong>Render.com</strong>, em região US-East. O acesso à API é feito exclusivamente via HTTPS.</li>
+          <li data-icon="🔑"><strong>Senhas:</strong> Armazenadas apenas como hash bcrypt (custo 10), nunca em texto claro. Tokens de sessão são armazenados como hash SHA-256.</li>
+          <li data-icon="🔄"><strong>Refresh tokens Microsoft:</strong> Armazenados de forma segura no banco. São usados exclusivamente para renovar integrações Xbox e podem ser revogados pelo painel a qualquer momento.</li>
+        </ul>
+      </section>
+
+      <!-- 5. MICROSOFT -->
+      <section class="doc-section" id="microsoft" aria-labelledby="h-microsoft">
+        <div class="section-eyebrow">Seção 05</div>
+        <h2 id="h-microsoft"><span class="h2-icon" aria-hidden="true">🟦</span>Dados da Microsoft</h2>
+        <p>Se você optar por vincular sua conta Microsoft à FA, dados adicionais são coletados via OAuth 2.0, respeitando os escopos de permissão aprovados por você no momento da vinculação.</p>
+        <ul class="doc-list">
+          <li data-icon="🔗"><strong>Dados coletados:</strong> Xbox XUID (identificador único do Xbox Live), UUID do Minecraft, nome de usuário no jogo e refresh token para renovação de sessão.</li>
+          <li data-icon="👥"><strong>Amigos do Xbox:</strong> A funcionalidade consulta a API do Xbox Live em tempo real. Os dados dos seus amigos <strong>não são armazenados</strong> no banco da FA.</li>
+          <li data-icon="🎨"><strong>Troca de skin:</strong> A FA faz uma requisição à API da Mojang em seu nome. A URL da skin não fica armazenada após o envio.</li>
+          <li data-icon="❌"><strong>Revogação:</strong> Você pode desvincular a conta Microsoft pelo painel a qualquer momento. Para revogar no lado Microsoft, acesse <a href="https://account.microsoft.com" target="_blank" rel="noopener">account.microsoft.com</a>.</li>
+        </ul>
+        <p>A Política de Privacidade da Microsoft se aplica às informações tratadas nos servidores deles. Consulte <a href="https://privacy.microsoft.com" target="_blank" rel="noopener">privacy.microsoft.com</a> para mais detalhes.</p>
+      </section>
+
+      <!-- 6. COMPARTILHAMENTO -->
+      <section class="doc-section" id="compartilhamento" aria-labelledby="h-compartilhamento">
+        <div class="section-eyebrow">Seção 06</div>
+        <h2 id="h-compartilhamento"><span class="h2-icon" aria-hidden="true">🤝</span>Compartilhamento de Dados</h2>
+        <p>A FA não vende, aluga, cede ou compartilha dados pessoais de usuários com terceiros para fins comerciais. O compartilhamento só ocorre nos seguintes casos:</p>
+        <ul class="doc-list">
+          <li data-icon="🤝"><strong>Provedores de infraestrutura:</strong> Neon.tech (banco de dados) e Render.com (servidor de aplicação) têm acesso técnico aos dados para operar os serviços, com obrigação contratual de protegê-los.</li>
+          <li data-icon="📨"><strong>Serviço de e-mail:</strong> A Resend.com processa os e-mails transacionais. Apenas o endereço destinatário é compartilhado para essa finalidade.</li>
+          <li data-icon="⚖️"><strong>Obrigação legal:</strong> Em caso de ordem judicial ou determinação de autoridade competente, os dados podem ser compartilhados conforme exigido por lei brasileira.</li>
+          <li data-icon="🛡️"><strong>Proteção de direitos:</strong> Em casos de ameaça à segurança da plataforma, fraude ou abuso, informações técnicas como IP podem ser usadas para investigação interna.</li>
+        </ul>
+      </section>
+
+      <!-- 7. RETENÇÃO -->
+      <section class="doc-section" id="retencao" aria-labelledby="h-retencao">
+        <div class="section-eyebrow">Seção 07</div>
+        <h2 id="h-retencao"><span class="h2-icon" aria-hidden="true">⏳</span>Retenção e Exclusão de Dados</h2>
+        <p>Os dados são mantidos enquanto a conta estiver ativa. Após a exclusão da conta:</p>
+        <ul class="doc-list">
+          <li data-icon="🗑️"><strong>Dados pessoais identificáveis</strong> (e-mail, senha, nome de usuário): removidos em até 30 dias após a solicitação.</li>
+          <li data-icon="📊"><strong>Histórico de sessões no servidor:</strong> Anonimizado ou removido no mesmo prazo.</li>
+          <li data-icon="📋"><strong>Registros de auditoria:</strong> Podem ser mantidos por até 90 dias adicionais para fins de segurança e investigação de eventuais incidentes passados.</li>
+          <li data-icon="🔗"><strong>Dados de integração Microsoft</strong> (XUID, UUID, refresh token): removidos imediatamente ao desvincular a conta ou ao excluir o perfil.</li>
+        </ul>
+        <p>Para solicitar a exclusão, envie mensagem pelo Discord oficial ou por e-mail com o assunto "Exclusão de Dados". A solicitação será processada em até 30 dias corridos.</p>
+      </section>
+
+      <!-- 8. COOKIES -->
+      <section class="doc-section" id="cookies" aria-labelledby="h-cookies">
+        <div class="section-eyebrow">Seção 08</div>
+        <h2 id="h-cookies"><span class="h2-icon" aria-hidden="true">🍪</span>Cookies e Armazenamento Local</h2>
+        <p>O site da FA não utiliza cookies de rastreamento nem ferramentas de analytics de terceiros. O armazenamento no navegador é usado exclusivamente para:</p>
+        <ul class="doc-list">
+          <li data-icon="🔑"><strong><code>fa_token</code>:</strong> Token JWT de autenticação. Armazenado no <code>localStorage</code>. Expira em 7 dias. Necessário para manter sua sessão ativa sem fazer login repetidamente.</li>
+          <li data-icon="👤"><strong><code>fa_session</code>:</strong> Cache básico dos dados do perfil (nome de usuário, role, nick de Minecraft). Armazenado no <code>localStorage</code>. Atualizado a cada login.</li>
+          <li data-icon="🎨"><strong><code>fa_theme</code>:</strong> Preferência de tema visual (claro, escuro ou automático). Armazenado no <code>localStorage</code>. Não contém dados pessoais.</li>
+        </ul>
+        <p>Esses dados ficam apenas no seu dispositivo e não são acessíveis a terceiros. Você pode limpá-los nas configurações do navegador, o que equivale a encerrar a sessão local.</p>
+      </section>
+
+      <!-- 9. DIREITOS -->
+      <section class="doc-section" id="direitos" aria-labelledby="h-direitos">
+        <div class="section-eyebrow">Seção 09</div>
+        <h2 id="h-direitos"><span class="h2-icon" aria-hidden="true">⚖️</span>Seus Direitos</h2>
+        <p>De acordo com a <strong>Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018)</strong>, você possui os seguintes direitos em relação aos seus dados pessoais:</p>
+        <div class="rights-grid">
+          <div class="right-card">
+            <span class="right-card-icon" aria-hidden="true">👁️</span>
+            <div class="right-card-title">Acesso</div>
+            <div class="right-card-desc">Solicitar uma cópia dos dados pessoais que temos sobre você.</div>
+          </div>
+          <div class="right-card">
+            <span class="right-card-icon" aria-hidden="true">✏️</span>
+            <div class="right-card-title">Correção</div>
+            <div class="right-card-desc">Corrigir dados incorretos ou desatualizados pelo painel ou via solicitação.</div>
+          </div>
+          <div class="right-card">
+            <span class="right-card-icon" aria-hidden="true">🗑️</span>
+            <div class="right-card-title">Exclusão</div>
+            <div class="right-card-desc">Solicitar a exclusão dos seus dados quando não houver mais base legal para o tratamento.</div>
+          </div>
+          <div class="right-card">
+            <span class="right-card-icon" aria-hidden="true">📦</span>
+            <div class="right-card-title">Portabilidade</div>
+            <div class="right-card-desc">Receber seus dados em formato estruturado para transferência a outro serviço.</div>
+          </div>
+          <div class="right-card">
+            <span class="right-card-icon" aria-hidden="true">🚫</span>
+            <div class="right-card-title">Oposição</div>
+            <div class="right-card-desc">Opor-se ao tratamento de dados em casos onde ele não seja estritamente necessário.</div>
+          </div>
+          <div class="right-card">
+            <span class="right-card-icon" aria-hidden="true">📋</span>
+            <div class="right-card-title">Informação</div>
+            <div class="right-card-desc">Saber com quais terceiros seus dados foram compartilhados e por qual motivo.</div>
+          </div>
+        </div>
+        <p>Para exercer qualquer um desses direitos, entre em contato pelos canais indicados na Seção 12. Responderemos em até 15 dias úteis.</p>
+      </section>
+
+      <!-- 10. SEGURANÇA -->
+      <section class="doc-section" id="seguranca" aria-labelledby="h-seguranca">
+        <div class="section-eyebrow">Seção 10</div>
+        <h2 id="h-seguranca"><span class="h2-icon" aria-hidden="true">🔒</span>Segurança dos Dados</h2>
+        <p>A FA adota medidas técnicas para proteger os dados contra acesso não autorizado, alteração, divulgação ou destruição:</p>
+        <ul class="doc-list">
+          <li data-icon="🔒"><strong>HTTPS obrigatório:</strong> Toda comunicação entre o navegador e a API é feita via TLS. Requisições HTTP não seguras são rejeitadas.</li>
+          <li data-icon="🛡️"><strong>Rate limiting:</strong> Rotas sensíveis como login e recuperação de senha possuem limitação de tentativas por IP para prevenir ataques de força bruta.</li>
+          <li data-icon="🔑"><strong>Hashing de senhas:</strong> Senhas são transformadas em hash com bcrypt antes de serem armazenadas. O processo é irreversível.</li>
+          <li data-icon="📋"><strong>Auditoria:</strong> Ações relevantes como logins e alterações de perfil são registradas em log com IP e timestamp.</li>
+          <li data-icon="🔐"><strong>Controle de sessão:</strong> Você pode visualizar e revogar todas as sessões web ativas pelo painel de conta em tempo real.</li>
+          <li data-icon="⚔️"><strong>Proteção de cabeçalhos:</strong> O servidor utiliza Helmet.js para definir cabeçalhos HTTP de segurança e bloquear vetores comuns de ataque.</li>
+        </ul>
+        <p>Em caso de incidente de segurança que afete dados pessoais, a FA notificará os usuários afetados pelo Discord e/ou e-mail no menor prazo possível.</p>
+      </section>
+
+      <!-- 11. ALTERAÇÕES -->
+      <section class="doc-section" id="alteracoes" aria-labelledby="h-alteracoes">
+        <div class="section-eyebrow">Seção 11</div>
+        <h2 id="h-alteracoes"><span class="h2-icon" aria-hidden="true">📢</span>Alterações nesta Política</h2>
+        <p>Esta Política de Privacidade pode ser atualizada para refletir mudanças na plataforma, nas integrações com terceiros ou em obrigações legais. Quando isso ocorrer:</p>
+        <ul class="doc-list">
+          <li data-icon="📢"><strong>Mudanças relevantes:</strong> Serão comunicadas com pelo menos 7 dias de antecedência pelo painel de notificações e/ou pelo Discord oficial.</li>
+          <li data-icon="📅"><strong>Versão atual:</strong> A data de vigência está indicada no topo do documento. A versão mais recente estará sempre disponível em <strong>forcaaliada.ogabriels.com/privacidade</strong>.</li>
+          <li data-icon="✅"><strong>Consentimento:</strong> O uso contínuo da plataforma após a vigência de uma nova versão equivale ao aceite das mudanças.</li>
+        </ul>
+      </section>
+
+      <!-- 12. CONTATO -->
+      <section class="doc-section" id="contato-pp" aria-labelledby="h-contato-pp">
+        <div class="section-eyebrow">Seção 12</div>
+        <h2 id="h-contato-pp"><span class="h2-icon" aria-hidden="true">💬</span>Contato e Solicitações</h2>
+        <p>Para exercer seus direitos, tirar dúvidas sobre esta Política ou reportar um incidente de segurança:</p>
+        <div class="contact-card">
+          <div class="contact-icon-wrap" aria-hidden="true">💬</div>
+          <div class="contact-text">
+            <h4>Discord Oficial</h4>
+            <p>Canal principal para suporte e solicitações gerais. <a href="https://discord.gg/xZmRkB7PWd" target="_blank" rel="noopener">discord.gg/xZmRkB7PWd</a></p>
+          </div>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon-wrap" aria-hidden="true">📧</div>
+          <div class="contact-text">
+            <h4>E-mail</h4>
+            <p>Para questões formais, solicitações de dados e relatórios de incidentes. <a href="mailto:contato@ogabriels.com">contato@ogabriels.com</a></p>
+          </div>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon-wrap" aria-hidden="true">⚖️</div>
+          <div class="contact-text">
+            <h4>Autoridade Nacional de Proteção de Dados</h4>
+            <p>Se acreditar que seus direitos não foram atendidos, você pode contatar a ANPD em <a href="https://www.gov.br/anpd" target="_blank" rel="noopener">gov.br/anpd</a>.</p>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /article-col -->
+  </div><!-- /page-wrap -->
+</main>
+
+<!-- ─── FOOTER ─────────────────────────────────────────── -->
+<footer role="contentinfo">
+  <div class="footer-inner">
+    <nav class="footer-nav" aria-label="Links do rodapé">
+      <a href="index.html">Início</a>
+      <a href="login.html">Entrar</a>
+      <a href="signup.html">Criar conta</a>
+      <a href="/termos">Termos de Serviço</a>
+      <a href="/privacidade" class="is-current" aria-current="page">Privacidade</a>
+      <a href="https://discord.gg/xZmRkB7PWd" target="_blank" rel="noopener">Discord</a>
+    </nav>
+    <div class="footer-bottom">
+      <span>© 2026 Gabriel Silva Dias Moreira (Força Aliada). Todos os direitos reservados.</span>
+      <span class="footer-lgpd">🛡️ LGPD</span>
+      <span>Conforme Lei nº 13.709/2018</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ─── READ PROGRESS ──────────────────────────────── */
+const progressFill = document.getElementById('read-progress-fill');
+const progressBar  = document.getElementById('read-progress');
+const inlineBarFill = document.getElementById('inline-bar-fill');
+const inlineBarPct  = document.getElementById('inline-bar-pct');
+const scrollTopBtn  = document.getElementById('scroll-top');
+
+function getReadPct(){
+  const scrollTop  = window.scrollY;
+  const docHeight  = document.documentElement.scrollHeight - window.innerHeight;
+  return docHeight > 0 ? Math.min(100, (scrollTop / docHeight) * 100) : 0;
+}
+
+function onScroll(){
+  const pct = getReadPct();
+  const pctStr = Math.round(pct) + '%';
+  progressFill.style.width = pctStr;
+  progressBar.setAttribute('aria-valuenow', Math.round(pct));
+  if(inlineBarFill) inlineBarFill.style.width = pctStr;
+  if(inlineBarPct)  inlineBarPct.textContent  = pctStr;
+  scrollTopBtn.classList.toggle('is-visible', window.scrollY > 480);
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+
+/* ─── SECTION REVEAL ON SCROLL ───────────────────── */
+const sections   = document.querySelectorAll('.doc-section');
+const tocLinks   = document.querySelectorAll('.toc-link');
+
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('is-visible'); });
+}, { threshold: 0.06 });
+sections.forEach(s => revealObserver.observe(s));
+
+/* ─── ACTIVE TOC LINK ────────────────────────────── */
+const activeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      const id = e.target.id;
+      tocLinks.forEach(l => {
+        const match = l.getAttribute('href') === '#' + id;
+        l.classList.toggle('is-active', match);
+        if(match) l.setAttribute('aria-current','location');
+        else l.removeAttribute('aria-current');
+      });
+    }
+  });
+}, { rootMargin:'-10% 0px -78% 0px' });
+sections.forEach(s => activeObserver.observe(s));
+
+/* ─── MOBILE TOC DRAWER ──────────────────────────── */
+const tocToggle  = document.getElementById('toc-toggle-btn');
+const tocDrawer  = document.getElementById('toc-mobile-content');
+tocToggle.addEventListener('click', function(){
+  const open = this.classList.toggle('open');
+  tocDrawer.classList.toggle('open', open);
+  this.setAttribute('aria-expanded', open);
+  tocDrawer.setAttribute('aria-hidden', !open);
+});
+
+/* Close drawer when a link is clicked */
+tocDrawer.querySelectorAll('.toc-link').forEach(l => {
+  l.addEventListener('click', () => {
+    tocToggle.classList.remove('open');
+    tocDrawer.classList.remove('open');
+    tocToggle.setAttribute('aria-expanded','false');
+    tocDrawer.setAttribute('aria-hidden','true');
+  });
+});
+</script>
+</body>
+</html>
