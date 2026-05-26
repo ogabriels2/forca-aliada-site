@@ -17,461 +17,470 @@
 })();
 </script>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+
 <style>
-/* ── Reset & Base ─────────────────────────────── */
+/* ── Reset ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design Tokens — IDENTICAL to login.html ───── */
 :root {
-  --bg:            #f0f2f8;
-  --card-bg:       rgba(255,255,255,0.92);
-  --text-primary:  #111827;
-  --text-secondary:#6b7280;
-  --text-muted:    #9ca3af;
-  --accent:        #0071e3;
-  --accent-hover:  #005bbf;
-  --accent-light:  rgba(0,113,227,0.10);
-  --danger:        #dc2626;
-  --danger-bg:     rgba(220,38,38,0.08);
-  --success:       #16a34a;
-  --success-bg:    rgba(22,163,74,0.08);
-  --warning:       #d97706;
-  --border:        #e5e7eb;
-  --border-focus:  #0071e3;
-  --input-bg:      #ffffff;
-  --radius-card:   20px;
-  --radius-input:  10px;
-  --radius-btn:    980px;
-  --shadow-card:   0 4px 6px -1px rgba(0,0,0,0.07), 0 20px 40px -8px rgba(0,0,0,0.10);
-  --font:          -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-  --transition:    0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --bg:           #f5f6fa;
+  --bg-dots:      rgba(0,0,0,0.035);
+  --surface:      #ffffff;
+  --surface-2:    #f0f2f7;
+  --border:       #e3e6ef;
+  --border-focus: #5b6cf9;
+  --text-1:       #0d1117;
+  --text-2:       #5c6370;
+  --text-3:       #9da4b0;
+  --accent:       #5b6cf9;
+  --accent-2:     #7c4fff;
+  --accent-glow:  rgba(91,108,249,0.22);
+  --accent-soft:  rgba(91,108,249,0.10);
+  --danger:       #e5424a;
+  --danger-soft:  rgba(229,66,74,0.10);
+  --success:      #1aab5e;
+  --success-soft: rgba(26,171,94,0.10);
+  --warning:      #d97706;
+  --warning-soft: rgba(217,119,6,0.10);
+  --info-soft:    rgba(91,108,249,0.09);
+  --ms-color:     #2f2f2f;
+  --google-border:#dadce0;
+  --radius:       14px;
+  --radius-sm:    9px;
+  --radius-pill:  999px;
+  --font:         'Outfit', -apple-system, sans-serif;
+  --mono:         'JetBrains Mono', monospace;
+  --shadow:       0 2px 8px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.06);
+  --t:            0.17s cubic-bezier(.4,0,.2,1);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg:            #080d14;
-  --card-bg:       rgba(17,24,39,0.90);
-  --text-primary:  #f8fafc;
-  --text-secondary:#94a3b8;
-  --text-muted:    #64748b;
-  --accent:        #60a5fa;
-  --accent-hover:  #93c5fd;
-  --accent-light:  rgba(96,165,250,0.14);
-  --danger:        #f87171;
-  --danger-bg:     rgba(248,113,113,0.10);
-  --success:       #4ade80;
-  --success-bg:    rgba(74,222,128,0.10);
-  --warning:       #fbbf24;
-  --border:        rgba(148,163,184,0.18);
-  --border-focus:  #60a5fa;
-  --input-bg:      rgba(15,23,42,0.80);
-  --shadow-card:   0 4px 6px -1px rgba(0,0,0,0.3), 0 20px 60px -8px rgba(0,0,0,0.5);
+  --bg:           #0b0d14;
+  --bg-dots:      rgba(255,255,255,0.028);
+  --surface:      #131720;
+  --surface-2:    #1a1f2e;
+  --border:       rgba(255,255,255,0.08);
+  --border-focus: #7c8dfc;
+  --text-1:       #eef0f8;
+  --text-2:       #8892a4;
+  --text-3:       #4f5869;
+  --accent:       #7c8dfc;
+  --accent-2:     #a78bfa;
+  --accent-glow:  rgba(124,141,252,0.28);
+  --accent-soft:  rgba(124,141,252,0.12);
+  --danger:       #ff6b6b;
+  --danger-soft:  rgba(255,107,107,0.12);
+  --success:      #34d399;
+  --success-soft: rgba(52,211,153,0.12);
+  --warning:      #fbbf24;
+  --warning-soft: rgba(251,191,36,0.10);
+  --info-soft:    rgba(124,141,252,0.10);
+  --ms-color:     #e8eaf0;
+  --google-border:rgba(255,255,255,0.12);
+  --shadow:       0 2px 8px rgba(0,0,0,0.3), 0 20px 50px rgba(0,0,0,0.45);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.25);
 }
 
-html { font-size: 16px; }
+/* ── Base ──────────────────────────────────────── */
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 body {
   font-family: var(--font);
-  background-color: var(--bg);
-  color: var(--text-primary);
+  background: var(--bg);
+  color: var(--text-1);
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  transition: background-color 0.3s, color 0.3s;
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  transition: background .3s, color .3s;
+  background-image: radial-gradient(var(--bg-dots) 1px, transparent 1px);
+  background-size: 22px 22px;
 }
-
 [data-theme="dark"] body {
-  background:
-    radial-gradient(ellipse at 20% 0%, rgba(96,165,250,0.10) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 0%, rgba(139,92,246,0.08) 0%, transparent 50%),
-    #080d14;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 15% -10%, rgba(91,108,249,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 5%, rgba(124,79,255,0.10) 0%, transparent 55%),
+    radial-gradient(var(--bg-dots) 1px, transparent 1px);
+  background-size: auto, auto, 22px 22px;
 }
-
 a { text-decoration: none; color: inherit; }
 
-/* ── Header ──────────────────────────────────── */
+/* ── Header ─────────────────────────────────────── */
 header {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: 56px;
+  position: fixed; top: 0; left: 0; right: 0; height: 58px;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px;
-  background: rgba(255,255,255,0.75);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-  z-index: 100;
+  padding: 0 28px;
+  background: rgba(245,246,250,0.80);
+  backdrop-filter: saturate(200%) blur(24px);
+  -webkit-backdrop-filter: saturate(200%) blur(24px);
+  border-bottom: 1px solid var(--border);
+  z-index: 100; transition: background .3s;
 }
-[data-theme="dark"] header {
-  background: rgba(8,13,20,0.82);
-  border-color: rgba(255,255,255,0.06);
-}
+[data-theme="dark"] header { background: rgba(11,13,20,0.85); }
 .brand-link {
   display: flex; align-items: center; gap: 10px;
-  font-weight: 600; font-size: 17px; letter-spacing: -0.02em;
-  opacity: 1; transition: opacity var(--transition);
+  font-weight: 700; font-size: 16px; letter-spacing: -0.01em;
+  transition: opacity var(--t);
 }
-.brand-link:hover { opacity: 0.75; }
-.logo-img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
-.nav-link {
-  font-size: 14px; font-weight: 500;
-  color: var(--accent);
-  padding: 7px 14px;
-  border-radius: 8px;
-  background: var(--accent-light);
-  transition: background var(--transition);
+.brand-link:hover { opacity: .72; }
+.logo-img { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; box-shadow: 0 0 0 1.5px rgba(91,108,249,0.35); }
+.header-pill {
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  padding: 6px 14px; border-radius: var(--radius-pill);
+  border: 1.5px solid var(--accent-soft); background: var(--accent-soft);
+  transition: border-color var(--t), background var(--t), transform var(--t);
 }
-.nav-link:hover { background: rgba(0,113,227,0.16); }
-[data-theme="dark"] .nav-link:hover { background: rgba(96,165,250,0.20); }
+.header-pill:hover { border-color: var(--accent); transform: translateY(-1px); }
 
-/* ── Layout ──────────────────────────────────── */
-.page-wrapper {
-  flex: 1;
-  display: flex; align-items: center; justify-content: center;
-  padding: 80px 20px 40px;
-  min-height: 100vh;
+/* ── Layout ─────────────────────────────────────── */
+.page-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 80px 20px 48px; min-height: 100dvh;
 }
 
-/* ── Card ─────────────────────────────────────── */
+/* ── Card ───────────────────────────────────────── */
 .card {
   width: 100%; max-width: 440px;
-  background: var(--card-bg);
-  border-radius: var(--radius-card);
+  background: var(--surface);
+  border-radius: 20px;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow);
   padding: 36px 36px 32px;
-  animation: cardIn 0.35s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+  animation: fadeUp .4s cubic-bezier(.22,1,.36,1) both;
 }
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px) scale(.97); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
 }
 @media (max-width: 480px) {
-  .card { padding: 28px 20px 24px; border-radius: 16px; }
+  .card { padding: 28px 22px 24px; border-radius: 18px; max-width: 100%; }
 }
 
-/* ── Avatar ───────────────────────────────────── */
-.avatar-wrap {
-  display: flex; justify-content: center; margin-bottom: 20px;
-  position: relative;
-}
-.avatar-img {
-  width: 72px; height: 72px;
-  border-radius: 18px;
-  object-fit: cover;
-  background: var(--border);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  transition: opacity 0.25s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
-}
-.avatar-img.dimmed { opacity: 0.35; transform: scale(0.92); }
-.avatar-img.loaded { transform: scale(1.04); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+/* ── Card header ────────────────────────────────── */
+.card-title { font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
+.card-sub   { font-size: 13.5px; color: var(--text-2); line-height: 1.55; margin-bottom: 20px; }
 
-/* ── Card Header ──────────────────────────────── */
-.card-title {
-  font-size: 22px; font-weight: 700; letter-spacing: -0.03em;
-  text-align: center; margin-bottom: 4px;
-}
-.card-subtitle {
-  font-size: 14px; color: var(--text-secondary);
-  text-align: center; margin-bottom: 28px; line-height: 1.5;
-}
-
-/* ── Step indicator ───────────────────────────── */
+/* ── Steps ──────────────────────────────────────── */
 .steps {
   display: flex; align-items: center; justify-content: center;
-  gap: 6px; margin-bottom: 28px;
+  gap: 6px; margin-bottom: 22px;
 }
 .step-dot {
-  width: 8px; height: 8px; border-radius: 50%;
+  width: 7px; height: 7px; border-radius: 50%;
   background: var(--border);
-  transition: background var(--transition), width var(--transition);
+  transition: width .3s, background .3s, border-radius .3s;
 }
-.step-dot.active {
-  background: var(--accent);
-  width: 24px; border-radius: 4px;
-}
-.step-dot.done { background: var(--success); }
+.step-dot.active { width: 22px; border-radius: 4px; background: var(--accent); }
+.step-dot.done   { background: var(--success); }
 
-/* ── Form Fields ──────────────────────────────── */
-.field {
-  margin-bottom: 14px;
-  position: relative;
-}
+/* ── Fields ─────────────────────────────────────── */
+.field { margin-bottom: 14px; }
 .field label {
-  display: block;
-  font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-  transition: color var(--transition);
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 700; letter-spacing: .02em;
+  text-transform: uppercase; color: var(--text-2);
+  margin-bottom: 6px; transition: color var(--t);
 }
-.field.has-error label { color: var(--danger); }
+.field.has-error   label { color: var(--danger); }
 .field.has-success label { color: var(--success); }
 
-.input-wrap {
-  position: relative;
-  display: flex; align-items: center;
-}
+.input-wrap { position: relative; display: flex; align-items: center; }
 .input-wrap input {
-  width: 100%;
-  padding: 12px 42px 12px 14px;
-  font-family: var(--font); font-size: 15px;
-  color: var(--text-primary);
-  background: var(--input-bg);
+  width: 100%; padding: 12px 42px 12px 14px;
+  font-family: var(--font); font-size: 15px; font-weight: 500;
+  color: var(--text-1); background: var(--surface-2);
   border: 1.5px solid var(--border);
-  border-radius: var(--radius-input);
-  outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  border-radius: var(--radius-sm); outline: none;
+  transition: border-color var(--t), box-shadow var(--t), background var(--t);
   line-height: 1.4;
 }
-.input-wrap input::placeholder { color: var(--text-muted); }
+.input-wrap input::placeholder { color: var(--text-3); font-weight: 400; }
 .input-wrap input:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--accent-light);
-  background: var(--input-bg);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: var(--surface);
 }
-.field.has-error .input-wrap input {
-  border-color: var(--danger) !important;
-  box-shadow: 0 0 0 3px var(--danger-bg) !important;
-}
-.field.has-success .input-wrap input {
-  border-color: var(--success) !important;
-}
+.field.has-error   .input-wrap input { border-color: var(--danger) !important;  box-shadow: 0 0 0 3px var(--danger-soft) !important; }
+.field.has-success .input-wrap input { border-color: var(--success) !important; box-shadow: 0 0 0 3px var(--success-soft) !important; }
 
-/* Ícone de status no input */
 .input-status {
-  position: absolute; right: 13px;
-  font-size: 16px; line-height: 1;
-  pointer-events: none;
-  opacity: 0; transform: scale(0.6);
-  transition: opacity 0.2s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: absolute; right: 12px;
+  font-size: 14px; font-weight: 700; pointer-events: none;
 }
-.field.has-error  .input-status,
-.field.has-success .input-status {
-  opacity: 1; transform: scale(1);
-}
+.field.has-error   .input-status { color: var(--danger); }
+.field.has-success .input-status { color: var(--success); }
 
-/* Botão toggle senha */
 .toggle-pass {
-  position: absolute; right: 13px;
-  background: none; border: none; cursor: pointer;
-  color: var(--text-muted); padding: 0;
-  display: flex; align-items: center;
-  transition: color var(--transition);
-  z-index: 1;
+  position: absolute; right: 12px; background: none; border: none; cursor: pointer;
+  color: var(--text-3); display: flex; align-items: center; padding: 2px;
+  transition: color var(--t); z-index: 1; border-radius: 4px;
 }
-.toggle-pass:hover { color: var(--text-secondary); }
+.toggle-pass:hover { color: var(--text-2); }
 
-/* ── Hint / Error text ────────────────────────── */
+/* field hints */
 .field-hint {
   font-size: 12px; margin-top: 5px; line-height: 1.5;
-  display: none;
+  display: none; font-weight: 500;
 }
-.field-hint.visible { display: block; }
-.field-hint.hint-error  { color: var(--danger); }
-.field-hint.hint-ok     { color: var(--success); }
-.field-hint.hint-info   { color: var(--text-muted); }
+.field-hint.visible    { display: block; }
+.field-hint.hint-info  { color: var(--text-3); }
+.field-hint.hint-error { color: var(--danger); }
+.field-hint.hint-ok    { color: var(--success); }
 
-/* ── Password strength ────────────────────────── */
+/* ── Password strength ──────────────────────────── */
 .pw-strength {
-  margin-top: 8px; display: none;
+  display: none; margin-top: 8px;
+  align-items: center; gap: 8px;
 }
-.pw-strength.visible { display: block; }
+.pw-strength.visible { display: flex; }
 .pw-bars {
-  display: flex; gap: 4px; margin-bottom: 5px;
+  display: flex; gap: 3px; flex: 1;
 }
 .pw-bar {
-  flex: 1; height: 3px; border-radius: 2px;
+  height: 3px; flex: 1; border-radius: 2px;
   background: var(--border);
-  transition: background 0.25s;
+  transition: background .25s;
 }
 .pw-bar.filled-weak   { background: var(--danger); }
 .pw-bar.filled-fair   { background: var(--warning); }
-.pw-bar.filled-good   { background: #3b82f6; }
+.pw-bar.filled-good   { background: #60a5fa; }
 .pw-bar.filled-strong { background: var(--success); }
-.pw-label {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--text-muted);
-  transition: color 0.25s;
-}
+
+.pw-label { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .pw-label.weak   { color: var(--danger); }
 .pw-label.fair   { color: var(--warning); }
-.pw-label.good   { color: #3b82f6; }
+.pw-label.good   { color: #60a5fa; }
 .pw-label.strong { color: var(--success); }
 
-/* ── Regras de senha ──────────────────────────── */
+/* ── Pw rules checklist ─────────────────────────── */
 .pw-rules {
   list-style: none; margin-top: 8px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px;
 }
 .pw-rules li {
-  font-size: 12px; color: var(--text-muted);
-  display: flex; align-items: center; gap: 5px;
-  transition: color 0.2s;
+  font-size: 11.5px; color: var(--text-3); font-weight: 500;
+  padding-left: 14px; position: relative;
+  transition: color .2s;
 }
 .pw-rules li::before {
-  content: '○';
-  font-size: 10px;
-  transition: content 0.2s;
+  content: '○'; position: absolute; left: 0;
+  font-size: 9px; line-height: 1.8;
 }
 .pw-rules li.met { color: var(--success); }
-.pw-rules li.met::before { content: '●'; }
+.pw-rules li.met::before { content: '✓'; }
 
-/* ── Submit Button ────────────────────────────── */
+/* ── Minecraft hint box ─────────────────────────── */
+.hint-box {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 13px;
+  background: var(--info-soft);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+  font-size: 12.5px; color: var(--text-2); line-height: 1.55;
+}
+.hint-box-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Alert ───────────────────────────────────────── */
+.alert {
+  border-radius: var(--radius-sm); padding: 11px 13px;
+  font-size: 13px; font-weight: 500; line-height: 1.5;
+  margin-bottom: 14px; display: none;
+}
+.alert.visible { display: block; }
+.alert-error   { background: var(--danger-soft);  color: var(--danger);  border: 1px solid rgba(229,66,74,.2); }
+.alert-success { background: var(--success-soft); color: var(--success); border: 1px solid rgba(26,171,94,.2); }
+.alert-info    { background: var(--info-soft);    color: var(--accent);  border: 1px solid rgba(91,108,249,.18); }
+
+/* ── Submit ─────────────────────────────────────── */
 .btn-submit {
-  width: 100%; padding: 14px;
-  margin-top: 4px;
-  font-family: var(--font); font-size: 15px; font-weight: 600;
+  width: 100%; padding: 13.5px;
+  font-family: var(--font); font-size: 15px; font-weight: 700;
   color: #fff;
-  background: var(--accent);
-  border: none; border-radius: var(--radius-btn);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none; border-radius: var(--radius);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: background var(--transition), transform var(--transition), box-shadow var(--transition), opacity var(--transition);
-  position: relative; overflow: hidden;
+  transition: transform var(--t), box-shadow var(--t), opacity var(--t), filter var(--t);
+  box-shadow: 0 4px 14px var(--accent-glow);
 }
 .btn-submit:hover:not(:disabled) {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0,113,227,0.30);
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 22px var(--accent-glow);
+  filter: brightness(1.07);
 }
-.btn-submit:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
-.btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-submit:active:not(:disabled) { transform: translateY(0); }
+.btn-submit:disabled { opacity: .55; cursor: not-allowed; }
 
-[data-theme="dark"] .btn-submit {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  box-shadow: 0 4px 14px rgba(37,99,235,0.25);
-}
-[data-theme="dark"] .btn-submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
-  box-shadow: 0 8px 24px rgba(37,99,235,0.35);
-}
-
-/* Spinner */
 .spinner {
-  width: 16px; height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  display: none;
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin .6s linear infinite; display: none; flex-shrink: 0;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Alert global ─────────────────────────────── */
-.alert {
-  border-radius: 10px; padding: 12px 14px;
-  font-size: 13.5px; font-weight: 500; line-height: 1.5;
-  margin-top: 14px; display: none;
+/* ── OAuth section ───────────────────────────────── */
+.oauth-section { margin-bottom: 24px; }
+.oauth-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3);
+  text-align: center; margin-bottom: 12px;
 }
-.alert.visible { display: block; }
-.alert-error   { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(220,38,38,0.20); }
-.alert-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(22,163,74,0.20); }
-.alert-info    { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(0,113,227,0.20); }
+.btn-oauth-hero {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 13px 20px;
+  font-family: var(--font); font-size: 14.5px; font-weight: 700;
+  color: var(--ms-color);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius); cursor: pointer;
+  transition: border-color var(--t), box-shadow var(--t), transform var(--t), background var(--t);
+  position: relative; overflow: hidden;
+}
+.btn-oauth-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(91,108,249,0.07), transparent 60%);
+  opacity: 0; transition: opacity var(--t);
+}
+.btn-oauth-hero:hover { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); transform: translateY(-1px); }
+.btn-oauth-hero:hover::before { opacity: 1; }
+.btn-oauth-hero:active { transform: translateY(0); box-shadow: none; }
 
-/* ── Footer ───────────────────────────────────── */
+.xbox-label-stack { text-align: left; }
+.xbox-title { font-size: 14px; font-weight: 700; display: block; line-height: 1.2; }
+.xbox-sub   { font-size: 11px; color: var(--text-2); font-weight: 500; display: block; }
+.xbox-badge { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.xbox-dot   { width: 8px; height: 8px; border-radius: 50%; background: #107C10; box-shadow: 0 0 6px rgba(16,124,16,0.7); flex-shrink: 0; }
+
+.oauth-social-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-top: 8px;
+}
+.btn-oauth-social {
+  height: 46px; display: flex; align-items: center; justify-content: center; gap: 7px;
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: box-shadow var(--t), transform var(--t), filter var(--t), border-color var(--t);
+  border: 1.5px solid;
+}
+.btn-oauth-social span { font-size: 12px; font-weight: 700; letter-spacing: -.01em; }
+.btn-oauth-social:hover  { transform: translateY(-1.5px); }
+.btn-oauth-social:active { transform: translateY(0); }
+.btn-oauth-google   { background: var(--surface); border-color: var(--google-border); color: var(--text-1); }
+.btn-oauth-google:hover { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+.btn-oauth-facebook { background: #1877F2; border-color: #1877F2; color: #fff; }
+.btn-oauth-facebook:hover { filter: brightness(1.08); box-shadow: 0 0 0 3px rgba(24,119,242,.28); }
+.btn-oauth-discord  { background: #5865F2; border-color: #5865F2; color: #fff; }
+.btn-oauth-discord:hover  { filter: brightness(1.08); box-shadow: 0 0 0 3px rgba(88,101,242,.28); }
+
+/* ── Divider ────────────────────────────────────── */
+.divider {
+  display: flex; align-items: center; gap: 10px; margin: 20px 0;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── Card footer ─────────────────────────────────── */
 .card-footer {
-  margin-top: 22px; text-align: center;
-  font-size: 13.5px; color: var(--text-secondary);
+  margin-top: 20px; text-align: center;
+  font-size: 13.5px; color: var(--text-2);
 }
 .card-footer a {
-  color: var(--text-primary); font-weight: 600;
-  transition: color var(--transition);
+  color: var(--accent); font-weight: 700;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--t);
 }
-.card-footer a:hover { color: var(--accent); }
+.card-footer a:hover { border-color: var(--accent); }
 
-/* ── PIN Input ────────────────────────────────── */
+/* ── Logged-in view ──────────────────────────────── */
+#view-loggedin { display: none; text-align: center; }
+.loggedin-avatar {
+  width: 80px; height: 80px; border-radius: 18px; object-fit: cover;
+  margin: 0 auto 16px; display: block;
+  border: 2px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+}
+.loggedin-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; letter-spacing: -.02em; }
+.loggedin-sub  { font-size: 14px; color: var(--text-2); margin-bottom: 24px; }
+.btn-danger-text {
+  font-size: 13px; color: var(--danger); cursor: pointer;
+  background: none; border: none; font-family: var(--font); font-weight: 600; padding: 4px;
+  transition: opacity var(--t);
+}
+.btn-danger-text:hover { opacity: .75; }
+
+/* ── Verification view ───────────────────────────── */
+#view-verify  { display: none; }
+#view-success { display: none; }
+
+.view-icon { font-size: 42px; text-align: center; margin-bottom: 12px; }
+
 .pin-grid {
-  display: flex; gap: 8px; justify-content: center;
-  margin-bottom: 8px;
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 8px; margin-bottom: 4px;
 }
 .pin-digit {
-  width: 48px; height: 56px;
+  width: 100%; height: 52px; text-align: center;
+  font-family: var(--mono); font-size: 22px; font-weight: 500;
+  color: var(--text-1); background: var(--surface-2);
   border: 1.5px solid var(--border);
-  border-radius: 10px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 22px; font-weight: 700; letter-spacing: 0;
-  text-align: center;
-  outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
-  caret-color: transparent;
+  border-radius: var(--radius-sm); outline: none;
+  caret-color: var(--accent);
+  transition: border-color var(--t), box-shadow var(--t), background var(--t);
 }
 .pin-digit:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: var(--surface);
 }
 .pin-digit.filled { border-color: var(--accent); }
 
-/* ── Resend timer ─────────────────────────────── */
-.resend-wrap {
-  margin-top: 16px; text-align: center;
-  font-size: 13px; color: var(--text-secondary);
-}
+.resend-wrap { margin-top: 14px; text-align: center; font-size: 13px; color: var(--text-2); }
 .resend-btn {
   background: none; border: none; cursor: pointer;
-  color: var(--accent); font-weight: 600; font-size: 13px;
-  padding: 0; font-family: var(--font);
-  transition: opacity var(--transition);
+  color: var(--accent); font-weight: 700; font-size: 13px;
+  padding: 0; font-family: var(--font); transition: opacity var(--t);
 }
-.resend-btn:disabled { opacity: 0.45; cursor: default; }
+.resend-btn:disabled { opacity: .4; cursor: default; }
 
-/* ── Success / Server IPs ─────────────────────── */
-.server-ips { margin: 20px 0 8px; }
+/* ── Server IPs (success) ────────────────────────── */
+.server-ips { margin: 18px 0 8px; }
 .ip-label {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--text-muted);
-  margin-bottom: 7px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 7px;
 }
 .ip-box {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 16px; border-radius: 12px;
-  cursor: pointer; margin-bottom: 8px;
-  border: 1.5px solid;
-  transition: background 0.15s;
+  padding: 12px 15px; border-radius: var(--radius-sm);
+  cursor: pointer; margin-bottom: 8px; border: 1.5px solid;
+  transition: background .15s, transform .15s;
 }
-.ip-box.java   { background: rgba(0,113,227,0.06); border-color: rgba(0,113,227,0.20); }
-.ip-box.bedrock{ background: rgba(22,163,74,0.06);  border-color: rgba(22,163,74,0.20); }
-.ip-box:hover.java    { background: rgba(0,113,227,0.12); }
-.ip-box:hover.bedrock { background: rgba(22,163,74,0.12); }
+.ip-box:hover { transform: translateY(-1px); }
+.ip-box.java    { background: var(--info-soft);    border-color: var(--accent-soft); }
+.ip-box.bedrock { background: var(--success-soft); border-color: rgba(26,171,94,.2); }
 .ip-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 15px; font-weight: 700;
-  color: var(--text-primary);
+  font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--text-1);
 }
-.ip-port { font-size: 12px; color: var(--text-muted); margin-left: 6px; }
-.ip-copy { font-size: 18px; transition: transform 0.2s; }
-.ip-hint {
-  font-size: 12px; color: var(--text-muted); text-align: center;
-  margin-bottom: 4px;
-}
+.ip-port { font-size: 12px; color: var(--text-3); margin-left: 5px; }
+.ip-copy { font-size: 17px; transition: transform .2s; }
+.ip-hint { font-size: 11.5px; color: var(--text-3); text-align: center; margin-bottom: 4px; }
 
-/* ── Shake ────────────────────────────────────── */
+/* ── Shake ───────────────────────────────────────── */
 @keyframes shake {
   0%,100% { transform: translateX(0); }
-  16%,50%  { transform: translateX(-6px); }
-  33%,66%  { transform: translateX(6px); }
+  18%,54%  { transform: translateX(-7px); }
+  36%,72%  { transform: translateX(7px); }
 }
-.shake { animation: shake 0.38s ease; }
-
-/* ── Emoji header ─────────────────────────────── */
-.view-icon { font-size: 44px; text-align: center; margin-bottom: 12px; }
-
-/* ── Logged-in view ───────────────────────────── */
-#view-loggedin { display: none; text-align: center; }
-.loggedin-avatar {
-  width: 80px; height: 80px; border-radius: 20px;
-  object-fit: cover; margin: 0 auto 16px;
-  display: block; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-}
-.loggedin-name {
-  font-size: 20px; font-weight: 700; margin-bottom: 4px;
-}
-.loggedin-sub {
-  font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;
-}
-
-/* ── Hidden views ─────────────────────────────── */
-#view-verify, #view-success { display: none; }
+.shake { animation: shake .38s ease; }
 </style>
-
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 </head>
 <body>
 
@@ -479,31 +488,31 @@ header {
   <a href="index.html" class="brand-link">
     <img src="assets/images/logo.JPG"
          onerror="this.src='https://minotar.net/helm/Steve/100.png'"
-         alt="FA Logo" class="logo-img" width="32" height="32">
+         alt="FA Logo" class="logo-img" width="30" height="30">
     <span>Força Aliada</span>
   </a>
-  <a href="login.html" class="nav-link">Fazer login</a>
+  <a href="login.html" class="header-pill">Fazer login</a>
 </header>
 
-<div class="page-wrapper">
+<div class="page-wrap">
   <div class="card" id="mainCard">
 
-    <!-- ── View: Já está logado ──────────────────── -->
+    <!-- ── View: já logado ─────────────────────── -->
     <div id="view-loggedin">
       <img id="avatar-loggedin" class="loggedin-avatar"
            src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
       <div id="loggedin-name" class="loggedin-name"></div>
       <div class="loggedin-sub">Você já possui uma conta ativa.</div>
       <button class="btn-submit" onclick="location.href='dashboard.html'">Acessar o Painel</button>
-      <div class="card-footer" style="margin-top:16px;">
-        <a onclick="forceLogout()" style="color:var(--danger);cursor:pointer;">Entrar com outra conta</a>
+      <div class="card-footer" style="margin-top:14px;">
+        <button class="btn-danger-text" onclick="forceLogout()">Entrar com outra conta</button>
       </div>
     </div>
 
-    <!-- ── View: Cadastro ───────────────────────── -->
+    <!-- ── View: cadastro ─────────────────────── -->
     <div id="view-signup">
       <h1 class="card-title">Criar sua conta</h1>
-      <p class="card-subtitle">Acesso ao painel da Staff Força Aliada</p>
+      <p class="card-sub">Acesso ao painel da Staff Força Aliada</p>
 
       <div class="steps" aria-hidden="true">
         <div class="step-dot active" id="dot-1"></div>
@@ -511,9 +520,67 @@ header {
         <div class="step-dot" id="dot-3"></div>
       </div>
 
+      <!-- ── OAuth ACIMA do formulário ─────────── -->
+      <div class="oauth-section">
+        <p class="oauth-label">Cadastrar com</p>
+
+        <!-- Xbox / Microsoft — hero button -->
+        <button type="button" id="btn-ms-signup" class="btn-oauth-hero"
+          onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/microsoft/login'">
+          <svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink:0;">
+            <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+            <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+            <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+          </svg>
+          <div class="xbox-label-stack">
+            <span class="xbox-title">Cadastrar com Xbox / Minecraft</span>
+            <span class="xbox-sub">Vincula seu nick automaticamente — recomendado</span>
+          </div>
+          <div class="xbox-badge">
+            <div class="xbox-dot"></div>
+          </div>
+        </button>
+
+        <!-- Social row -->
+        <div class="oauth-social-row">
+          <button type="button" class="btn-oauth-social btn-oauth-google"
+            aria-label="Cadastrar com Google"
+            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/google/login'">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15 19 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/>
+              <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.2-8l-6.5 5C9.7 39.5 16.3 44 24 44z"/>
+              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.2 5.7-6 7.5l.1-.1 6.2 5.2C35.1 41 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+            </svg>
+            <span>Google</span>
+          </button>
+          <button type="button" class="btn-oauth-social btn-oauth-facebook"
+            aria-label="Cadastrar com Facebook"
+            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/facebook/login'">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#fff" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12"/>
+            </svg>
+            <span>Facebook</span>
+          </button>
+          <button type="button" class="btn-oauth-social btn-oauth-discord"
+            aria-label="Cadastrar com Discord"
+            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/discord/login'">
+            <svg width="18" height="14" viewBox="0 0 127.14 96.36" aria-hidden="true">
+              <path fill="#fff" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.08 0A72.37 72.37 0 0 0 45.67 0a105.89 105.89 0 0 0-26.24 8.07C2.79 33.07-1.71 57.45.54 81.48a105.73 105.73 0 0 0 32.17 16.24 77.7 77.7 0 0 0 6.89-11.31 68.42 68.42 0 0 1-10.84-5.18c.91-.67 1.8-1.37 2.66-2.09a75.57 75.57 0 0 0 64.3 0c.87.72 1.76 1.42 2.66 2.09a68.68 68.68 0 0 1-10.86 5.19 77.31 77.31 0 0 0 6.9 11.3 105.25 105.25 0 0 0 32.19-16.24c2.64-27.87-4.5-52.03-19.91-73.41ZM42.45 65.69C36.18 65.69 31 59.95 31 52.88s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.06 12.81-11.4 12.81Zm42.24 0c-6.27 0-11.4-5.74-11.4-12.81s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.05 12.81-11.45 12.81Z"/>
+            </svg>
+            <span>Discord</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider">ou com e-mail e senha</div>
+
+      <!-- Form -->
       <form id="signup-form" autocomplete="on" novalidate>
 
-        <!-- Nome de usuário -->
+        <!-- Username -->
         <div class="field" id="field-username">
           <label for="f-username">Nome de usuário</label>
           <div class="input-wrap">
@@ -542,6 +609,7 @@ header {
           </div>
           <div class="field-hint" id="hint-email"></div>
         </div>
+
         <!-- Senha -->
         <div class="field" id="field-password">
           <label for="f-password">Senha</label>
@@ -560,7 +628,6 @@ header {
               </svg>
             </button>
           </div>
-          <!-- Barra de força -->
           <div class="pw-strength" id="pw-strength">
             <div class="pw-bars">
               <div class="pw-bar" id="bar-1"></div>
@@ -570,7 +637,6 @@ header {
             </div>
             <span class="pw-label" id="pw-label"></span>
           </div>
-          <!-- Checklist de requisitos -->
           <ul class="pw-rules" id="pw-rules" style="display:none;">
             <li id="rule-len">8+ caracteres</li>
             <li id="rule-upper">Letra maiúscula</li>
@@ -580,15 +646,12 @@ header {
           <div class="field-hint" id="hint-password"></div>
         </div>
 
-        <!-- Aviso: nick vinculado via Xbox -->
-        <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
-                    background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.15);
-                    border-radius:8px;margin-bottom:14px;font-size:13px;color:#374151;line-height:1.5;">
-          <span style="font-size:16px;flex-shrink:0;margin-top:1px;">🎮</span>
+        <!-- Aviso nick Minecraft -->
+        <div class="hint-box">
+          <span class="hint-box-icon">🎮</span>
           <span>Seu nick no Minecraft será vinculado <strong>após o cadastro</strong>, conectando sua conta Xbox/Microsoft no painel.</span>
         </div>
 
-        <!-- Alerta global -->
         <div class="alert" id="signup-alert" role="alert" aria-live="assertive"></div>
 
         <button type="submit" id="btn-signup" class="btn-submit">
@@ -597,101 +660,39 @@ header {
         </button>
       </form>
 
-      <!-- ── Divisor OAuth ────────────────────────── -->
-      <div class="divider" style="margin: 20px 0 16px;">ou continue com</div>
-
-      <!-- ── Botão Xbox / Microsoft ──────────────── -->
-      <button type="button" id="btn-ms-signup"
-        style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;
-               background:var(--card-bg);border:1.5px solid var(--border);border-radius:var(--radius-btn);
-               font-family:var(--font);font-size:15px;font-weight:600;color:var(--text-primary);
-               cursor:pointer;transition:background var(--transition),border-color var(--transition),box-shadow var(--transition);
-               outline:none;"
-        onmouseover="this.style.borderColor='var(--border-focus)';this.style.boxShadow='0 0 0 3px var(--accent-light)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'"
-        onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/microsoft/login'">
-        <svg viewBox="0 0 21 21" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
-          <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
-          <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
-          <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
-        </svg>
-        Cadastrar com Xbox / Minecraft
-      </button>
-
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;">
-        <button type="button" aria-label="Cadastrar com Google"
-          onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/google/login'"
-          style="height:48px;display:flex;align-items:center;justify-content:center;background:var(--card-bg);border:1.5px solid var(--border);border-radius:var(--radius-btn);cursor:pointer;transition:background var(--transition),border-color var(--transition),box-shadow var(--transition);outline:none;"
-          onmouseover="this.style.borderColor='var(--border-focus)';this.style.boxShadow='0 0 0 3px var(--accent-light)'"
-          onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
-          <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true">
-            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
-            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15 19 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/>
-            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.2-8l-6.5 5C9.7 39.5 16.3 44 24 44z"/>
-            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.2 5.7-6 7.5l.1-.1 6.2 5.2C35.1 41 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/>
-          </svg>
-        </button>
-        <button type="button" aria-label="Cadastrar com Facebook"
-          onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/facebook/login'"
-          style="height:48px;display:flex;align-items:center;justify-content:center;background:#1877F2;border:1.5px solid #1877F2;border-radius:var(--radius-btn);cursor:pointer;transition:filter var(--transition),box-shadow var(--transition);outline:none;"
-          onmouseover="this.style.filter='brightness(1.05)';this.style.boxShadow='0 0 0 3px rgba(24,119,242,.25)'"
-          onmouseout="this.style.filter='none';this.style.boxShadow='none'">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#fff" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12"/>
-          </svg>
-        </button>
-        <button type="button" aria-label="Cadastrar com Discord"
-          onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/discord/login'"
-          style="height:48px;display:flex;align-items:center;justify-content:center;background:#5865F2;border:1.5px solid #5865F2;border-radius:var(--radius-btn);cursor:pointer;transition:filter var(--transition),box-shadow var(--transition);outline:none;"
-          onmouseover="this.style.filter='brightness(1.07)';this.style.boxShadow='0 0 0 3px rgba(88,101,242,.24)'"
-          onmouseout="this.style.filter='none';this.style.boxShadow='none'">
-          <svg width="22" height="16" viewBox="0 0 127.14 96.36" aria-hidden="true">
-            <path fill="#fff" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.08 0A72.37 72.37 0 0 0 45.67 0a105.89 105.89 0 0 0-26.24 8.07C2.79 33.07-1.71 57.45.54 81.48a105.73 105.73 0 0 0 32.17 16.24 77.7 77.7 0 0 0 6.89-11.31 68.42 68.42 0 0 1-10.84-5.18c.91-.67 1.8-1.37 2.66-2.09a75.57 75.57 0 0 0 64.3 0c.87.72 1.76 1.42 2.66 2.09a68.68 68.68 0 0 1-10.86 5.19 77.31 77.31 0 0 0 6.9 11.3 105.25 105.25 0 0 0 32.19-16.24c2.64-27.87-4.5-52.03-19.91-73.41ZM42.45 65.69C36.18 65.69 31 59.95 31 52.88s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.06 12.81-11.4 12.81Zm42.24 0c-6.27 0-11.4-5.74-11.4-12.81s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.05 12.81-11.45 12.81Z"/>
-          </svg>
-        </button>
-      </div>
-
       <div class="card-footer">
-        Já faz parte da equipe? <a href="login.html">Faça login aqui</a>
+        Já faz parte da equipe? <a href="login.html">Fazer login</a>
       </div>
-    </div>
+    </div><!-- /view-signup -->
 
-    <!-- ── View: Verificação de e-mail ─────────── -->
+    <!-- ── View: verificação de e-mail ────────── -->
     <div id="view-verify">
       <div class="view-icon">✉️</div>
       <h1 class="card-title">Confirme seu e-mail</h1>
-      <p class="card-subtitle">
+      <p class="card-sub">
         Enviamos um código de 6 dígitos para<br>
-        <strong id="verify-email-display" style="color:var(--text-primary);"></strong>
+        <strong id="verify-email-display" style="color:var(--text-1);"></strong>
       </p>
 
       <div class="steps" aria-hidden="true">
         <div class="step-dot done"></div>
-        <div class="step-dot active" style="width:24px;border-radius:4px;background:var(--accent);"></div>
+        <div class="step-dot active" style="width:22px;border-radius:4px;background:var(--accent);"></div>
         <div class="step-dot"></div>
       </div>
 
       <form id="verify-form" autocomplete="off" novalidate>
-        <!-- PIN com 6 campos separados para UX mobile excelente -->
         <div class="pin-grid" role="group" aria-label="Código de verificação de 6 dígitos">
-          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
-                 maxlength="1" aria-label="Dígito 1" data-pos="0">
-          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
-                 maxlength="1" aria-label="Dígito 2" data-pos="1">
-          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
-                 maxlength="1" aria-label="Dígito 3" data-pos="2">
-          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
-                 maxlength="1" aria-label="Dígito 4" data-pos="3">
-          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
-                 maxlength="1" aria-label="Dígito 5" data-pos="4">
-          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]"
-                 maxlength="1" aria-label="Dígito 6" data-pos="5">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Dígito 1" data-pos="0">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Dígito 2" data-pos="1">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Dígito 3" data-pos="2">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Dígito 4" data-pos="3">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Dígito 5" data-pos="4">
+          <input class="pin-digit" type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Dígito 6" data-pos="5">
         </div>
 
         <div class="alert" id="verify-alert" role="alert" aria-live="assertive"></div>
 
-        <button type="submit" id="btn-verify" class="btn-submit" style="margin-top:16px;">
+        <button type="submit" id="btn-verify" class="btn-submit" style="margin-top:4px;">
           <div class="spinner" id="spinner-verify"></div>
           <span id="btn-verify-text">Verificar Conta</span>
         </button>
@@ -704,16 +705,16 @@ header {
       </div>
     </div>
 
-    <!-- ── View: Sucesso ────────────────────────── -->
+    <!-- ── View: sucesso ──────────────────────── -->
     <div id="view-success">
       <div class="view-icon">🎉</div>
       <h1 class="card-title">Conta ativada!</h1>
-      <p class="card-subtitle">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist.</p>
+      <p class="card-sub">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist.</p>
 
       <div class="steps" aria-hidden="true">
         <div class="step-dot done"></div>
         <div class="step-dot done"></div>
-        <div class="step-dot active" style="width:24px;border-radius:4px;background:var(--accent);"></div>
+        <div class="step-dot active" style="width:22px;border-radius:4px;background:var(--accent);"></div>
       </div>
 
       <div class="server-ips">
@@ -722,8 +723,7 @@ header {
           <span class="ip-mono">fa.ogabriels.com</span>
           <span class="ip-copy" id="copy-icon-java">📋</span>
         </div>
-
-        <div class="ip-label" style="margin-top:12px;">Bedrock / Mobile / Console</div>
+        <div class="ip-label" style="margin-top:11px;">Bedrock / Mobile / Console</div>
         <div class="ip-box bedrock" onclick="copyIp('fa.ogabriels.com','19132')" id="ip-box-bedrock" role="button" tabindex="0">
           <div>
             <span class="ip-mono">fa.ogabriels.com</span>
@@ -740,7 +740,7 @@ header {
     </div>
 
   </div><!-- /card -->
-</div><!-- /page-wrapper -->
+</div><!-- /page-wrap -->
 
 <script>
 'use strict';
@@ -751,7 +751,6 @@ const TOKEN_KEY   = 'fa_token';
 let pendingEmail    = '';
 let resendCountdown = null;
 
-// ── Redirect if already verified ────────────────
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.has('verify')) {
   pendingEmail = urlParams.get('verify');
@@ -760,16 +759,15 @@ if (urlParams.has('verify')) {
   startResendTimer();
 }
 
-// ── View manager ────────────────────────────────
 function showView(name) {
   ['loggedin','signup','verify','success'].forEach(v => {
     document.getElementById('view-' + v).style.display = v === name ? '' : 'none';
   });
 }
 
-// ── Validation helpers ───────────────────────────
-const RE_USERNAME  = /^[a-z0-9_]{3,32}$/i;
-const RE_EMAIL     = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RE_USERNAME = /^[a-z0-9_]{3,32}$/i;
+const RE_EMAIL    = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function setFieldState(fieldId, state, hintText, hintType) {
   const field  = document.getElementById('field-' + fieldId);
   const hint   = document.getElementById('hint-' + fieldId);
@@ -790,48 +788,37 @@ function setFieldState(fieldId, state, hintText, hintType) {
   }
 }
 
-// ── Username validation ──────────────────────────
 const usernameInput = document.getElementById('f-username');
 usernameInput.addEventListener('input', () => {
   const v = usernameInput.value;
   if (!v) { setFieldState('username','idle','3–32 caracteres. Letras, números e _ (underline) apenas.','info'); return; }
-
-  if (v.length < 3) {
-    setFieldState('username','error','Muito curto — mínimo 3 caracteres.','error');
-  } else if (v.length > 32) {
-    setFieldState('username','error','Muito longo — máximo 32 caracteres.','error');
-  } else if (/\s/.test(v)) {
-    setFieldState('username','error','Espaços não são permitidos. Use _ (underline) se quiser separar palavras.','error');
-  } else if (/[^a-zA-Z0-9_]/.test(v)) {
+  if (v.length < 3)               { setFieldState('username','error','Muito curto — mínimo 3 caracteres.','error'); }
+  else if (v.length > 32)         { setFieldState('username','error','Muito longo — máximo 32 caracteres.','error'); }
+  else if (/\s/.test(v))          { setFieldState('username','error','Espaços não são permitidos. Use _ (underline) se quiser separar palavras.','error'); }
+  else if (/[^a-zA-Z0-9_]/.test(v)) {
     const bad = [...new Set(v.replace(/[a-zA-Z0-9_]/g,'').split(''))].join(' ');
     setFieldState('username','error',`Caractere inválido: "${bad.trim()}". Use apenas letras, números e _.`,'error');
-  } else {
-    setFieldState('username','success','','ok');
-  }
+  } else { setFieldState('username','success','','ok'); }
 });
 usernameInput.addEventListener('blur', () => {
   if (!usernameInput.value) setFieldState('username','idle','3–32 caracteres. Letras, números e _ (underline) apenas.','info');
 });
 
-// ── E-mail validation ────────────────────────────
 const emailInput = document.getElementById('f-email');
 emailInput.addEventListener('input', () => {
   const v = emailInput.value.trim();
   if (!v) { setFieldState('email','idle'); document.getElementById('hint-email').textContent=''; return; }
   if (!RE_EMAIL.test(v)) {
     if (!v.includes('@')) setFieldState('email','error','Faltou o "@" no e-mail.','error');
-    else if (v.endsWith('@'))   setFieldState('email','error','Informe o domínio após o "@" (ex: gmail.com).','error');
+    else if (v.endsWith('@')) setFieldState('email','error','Informe o domínio após o "@" (ex: gmail.com).','error');
     else setFieldState('email','error','Formato de e-mail inválido.','error');
-  } else {
-    setFieldState('email','success','','ok');
-  }
+  } else { setFieldState('email','success','','ok'); }
 });
 emailInput.addEventListener('blur', () => {
   const v = emailInput.value.trim();
   if (!v) { setFieldState('email','idle'); document.getElementById('hint-email').textContent=''; }
 });
 
-// ── Password strength ────────────────────────────
 const pwInput    = document.getElementById('f-password');
 const pwStrength = document.getElementById('pw-strength');
 const pwRules    = document.getElementById('pw-rules');
@@ -846,20 +833,9 @@ const rules      = {
 
 function calcStrength(pw) {
   let score = 0;
-  const checks = {
-    len:   pw.length >= 8,
-    upper: /[A-Z]/.test(pw),
-    lower: /[a-z]/.test(pw),
-    num:   /[0-9]/.test(pw),
-    sym:   /[^a-zA-Z0-9]/.test(pw),
-    long:  pw.length >= 16,
-  };
-  if (checks.len)   score++;
-  if (checks.upper) score++;
-  if (checks.lower) score++;
-  if (checks.num)   score++;
-  if (checks.sym)   score++;
-  if (checks.long)  score++;
+  const checks = { len: pw.length >= 8, upper: /[A-Z]/.test(pw), lower: /[a-z]/.test(pw), num: /[0-9]/.test(pw), sym: /[^a-zA-Z0-9]/.test(pw), long: pw.length >= 16 };
+  if (checks.len)   score++; if (checks.upper) score++; if (checks.lower) score++;
+  if (checks.num)   score++; if (checks.sym)   score++; if (checks.long)  score++;
   return { score, checks };
 }
 
@@ -874,57 +850,30 @@ const STRENGTH_MAP = [
 ];
 
 pwInput.addEventListener('input', () => {
-  const pw = pwInput.value;
+  const pw   = pwInput.value;
   const hint = document.getElementById('hint-password');
-
   if (!pw) {
-    pwStrength.classList.remove('visible');
-    pwRules.style.display = 'none';
-    setFieldState('password','idle');
-    hint.textContent = ''; hint.className = 'field-hint';
-    return;
+    pwStrength.classList.remove('visible'); pwRules.style.display = 'none';
+    setFieldState('password','idle'); hint.textContent = ''; hint.className = 'field-hint'; return;
   }
-
-  pwStrength.classList.add('visible');
-  pwRules.style.display = 'grid';
-
+  pwStrength.classList.add('visible'); pwRules.style.display = 'grid';
   const { score, checks } = calcStrength(pw);
   const info = STRENGTH_MAP[Math.min(score, 6)];
-
-  // Barras
-  bars.forEach((b, i) => {
-    b.className = 'pw-bar';
-    if (i < info.filled) b.classList.add('filled-' + info.cls);
-  });
-
-  // Label
-  pwLabel.textContent = info.label;
-  pwLabel.className = 'pw-label ' + info.cls;
-
-  // Checklist
+  bars.forEach((b, i) => { b.className = 'pw-bar'; if (i < info.filled) b.classList.add('filled-' + info.cls); });
+  pwLabel.textContent = info.label; pwLabel.className = 'pw-label ' + info.cls;
   rules.len.classList.toggle('met', checks.len);
   rules.upper.classList.toggle('met', checks.upper);
   rules.lower.classList.toggle('met', checks.lower);
   rules.num.classList.toggle('met', checks.num);
-
-  if (pw.length > 0 && pw.length < 8) {
-    setFieldState('password','error', `Ainda faltam ${8 - pw.length} caractere${8 - pw.length>1?'s':''}. Mínimo: 8.`, 'error');
-  } else if (pw.length > 128) {
-    setFieldState('password','error', 'Senha muito longa — máximo 128 caracteres.', 'error');
-  } else if (score >= 2) {
-    setFieldState('password','success');
-    hint.textContent = ''; hint.className = 'field-hint';
-  } else {
-    setFieldState('password','idle');
-    hint.textContent = ''; hint.className = 'field-hint';
-  }
+  if (pw.length > 0 && pw.length < 8) { setFieldState('password','error',`Ainda faltam ${8-pw.length} caractere${8-pw.length>1?'s':''}. Mínimo: 8.`,'error'); }
+  else if (pw.length > 128)           { setFieldState('password','error','Senha muito longa — máximo 128 caracteres.','error'); }
+  else if (score >= 2)                { setFieldState('password','success'); hint.textContent=''; hint.className='field-hint'; }
+  else                                { setFieldState('password','idle'); hint.textContent=''; hint.className='field-hint'; }
 });
 
-// Toggle mostrar senha
 document.getElementById('toggle-pw').addEventListener('click', () => {
   const isPass = pwInput.type === 'password';
   pwInput.type = isPass ? 'text' : 'password';
-  // Alterna ícone eye/eye-off
   document.getElementById('eye-icon').innerHTML = isPass
     ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
        <line x1="1" y1="1" x2="23" y2="23"/>`
@@ -932,40 +881,29 @@ document.getElementById('toggle-pw').addEventListener('click', () => {
        <circle cx="12" cy="12" r="3"/>`;
 });
 
-// ── Alert global ─────────────────────────────────
 function showAlert(text, type, isHtml = false, targetId = 'signup-alert') {
   const el = document.getElementById(targetId);
   el.className = 'alert visible alert-' + type;
-  if (isHtml) el.innerHTML = text;
-  else el.textContent = text;
+  if (isHtml) el.innerHTML = text; else el.textContent = text;
 }
 function clearAlert(targetId = 'signup-alert') {
   const el = document.getElementById(targetId);
-  el.className = 'alert';
-  el.textContent = '';
+  el.className = 'alert'; el.textContent = '';
 }
 
-// ── Shake card ───────────────────────────────────
 function shakeCard() {
   const c = document.getElementById('mainCard');
-  c.classList.remove('shake');
-  void c.offsetWidth;
-  c.classList.add('shake');
+  c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
 }
 
-// ── Submit signup ────────────────────────────────
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  clearAlert();
-
-  const username      = usernameInput.value.trim();
-  const email         = emailInput.value.trim();
-  const password      = pwInput.value;
-  const btn           = document.getElementById('btn-signup');
-  const spinner       = document.getElementById('spinner-signup');
-  const btnText       = document.getElementById('btn-signup-text');
-
-  // ── Client-side validation completa ────────────
+  e.preventDefault(); clearAlert();
+  const username = usernameInput.value.trim();
+  const email    = emailInput.value.trim();
+  const password = pwInput.value;
+  const btn      = document.getElementById('btn-signup');
+  const spinner  = document.getElementById('spinner-signup');
+  const btnText  = document.getElementById('btn-signup-text');
   let firstError = null;
 
   if (!username) {
@@ -977,155 +915,85 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     else setFieldState('username','error','Somente letras, números e _. Sem caracteres especiais.','error');
     firstError = firstError || 'f-username';
   }
+  if (!email)           { setFieldState('email','error','Informe seu e-mail.','error'); firstError = firstError || 'f-email'; }
+  else if (!RE_EMAIL.test(email)) { setFieldState('email','error','E-mail inválido.','error'); firstError = firstError || 'f-email'; }
+  if (!password)        { setFieldState('password','error','Crie uma senha.','error'); firstError = firstError || 'f-password'; }
+  else if (password.length < 8) { setFieldState('password','error',`Faltam ${8-password.length} caractere${8-password.length>1?'s':''}. Mínimo: 8.`,'error'); firstError = firstError || 'f-password'; }
 
-  if (!email) {
-    setFieldState('email','error','Informe seu e-mail.','error');
-    firstError = firstError || 'f-email';
-  } else if (!RE_EMAIL.test(email)) {
-    setFieldState('email','error','E-mail inválido.','error');
-    firstError = firstError || 'f-email';
-  }
+  if (firstError) { document.getElementById(firstError).focus(); shakeCard(); return; }
 
-
-  if (!password) {
-    setFieldState('password','error','Crie uma senha.','error');
-    firstError = firstError || 'f-password';
-  } else if (password.length < 8) {
-    setFieldState('password','error',`Faltam ${8 - password.length} caractere${8-password.length>1?'s':''}. Mínimo: 8.`,'error');
-    firstError = firstError || 'f-password';
-  }
-
-  if (firstError) {
-    document.getElementById(firstError).focus();
-    shakeCard();
-    return;
-  }
-
-  // ── Envia ────────────────────────────────────
-  btn.disabled = true;
-  spinner.style.display = 'block';
-  btnText.textContent = 'Criando conta…';
-
-  const slowTimer = setTimeout(() => {
-    showAlert('O servidor está acordando — pode levar até 30 segundos na primeira vez…', 'info');
-  }, 4000);
+  btn.disabled = true; spinner.style.display = 'block'; btnText.textContent = 'Criando conta…';
+  const slowTimer = setTimeout(() => { showAlert('O servidor está acordando — pode levar até 30 segundos na primeira vez…','info'); }, 4000);
 
   try {
-    const res = await fetch(`${API_BASE}/api/auth/signup`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, email, password }),
+    const res  = await fetch(`${API_BASE}/api/auth/signup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
     });
-    clearTimeout(slowTimer);
-    clearAlert();
+    clearTimeout(slowTimer); clearAlert();
     const data = await res.json();
 
     if (!res.ok) {
-      if (res.status === 409 || data.error === 'username/email already exists') {
-        throw new Error('ACCOUNT_EXISTS');
-      }
-      // Mapeia erros do servidor para mensagens amigáveis
+      if (res.status === 409 || data.error === 'username/email already exists') throw new Error('ACCOUNT_EXISTS');
       const serverErrors = {
-        'invalid username': 'Nome de usuário inválido — use apenas letras, números e _.',
-        'invalid email':    'Endereço de e-mail inválido.',
-        'invalid password': 'Senha inválida — mínimo 8 caracteres.',
-        'username taken':   'Este nome de usuário já está em uso. Tente outro.',
-        'email taken':      'Este e-mail já possui uma conta. Tente fazer login.',
+        'invalid username':'Nome de usuário inválido — use apenas letras, números e _.',
+        'invalid email':'Endereço de e-mail inválido.',
+        'invalid password':'Senha inválida — mínimo 8 caracteres.',
+        'username taken':'Este nome de usuário já está em uso. Tente outro.',
+        'email taken':'Este e-mail já possui uma conta. Tente fazer login.',
       };
       throw new Error(serverErrors[data.error] || data.error || 'Erro ao criar conta. Tente novamente.');
     }
 
-    // Sucesso → tela de verificação
     pendingEmail = data.email || email;
     document.getElementById('verify-email-display').textContent = pendingEmail;
     showView('verify');
     startResendTimer();
-
   } catch (err) {
     clearTimeout(slowTimer);
-
     if (err.message === 'ACCOUNT_EXISTS') {
-      // Tenta login silencioso para verificar se é conta não-verificada
       try {
-        const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const loginRes  = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ login: email, password }),
         });
         const loginData = await loginRes.json();
-
         if (loginRes.status === 403 && loginData.error === 'unverified_email') {
           pendingEmail = loginData.email || email;
           document.getElementById('verify-email-display').textContent = pendingEmail;
           showView('verify');
-          showAlert('Enviamos um novo código para o seu e-mail.', 'success', false, 'verify-alert');
-          startResendTimer();
-          return;
+          showAlert('Enviamos um novo código para o seu e-mail.','success',false,'verify-alert');
+          startResendTimer(); return;
         }
-
-        if (loginRes.ok) {
-          localStorage.setItem(TOKEN_KEY, loginData.token);
-          localStorage.setItem(SESSION_KEY, JSON.stringify(loginData.user));
-          location.href = 'dashboard.html';
-          return;
-        }
-      } catch (_) { /* ignora falha de rede no login silencioso */ }
-
-      showAlert(
-        'Este e-mail ou nome de usuário já está registado. ' +
-        '<a href="login.html" style="color:inherit;text-decoration:underline;font-weight:700;">Fazer login →</a>',
-        'error', true
-      );
+        if (loginRes.ok) { localStorage.setItem(TOKEN_KEY, loginData.token); localStorage.setItem(SESSION_KEY, JSON.stringify(loginData.user)); location.href = 'dashboard.html'; return; }
+      } catch (_) {}
+      showAlert('Este e-mail ou nome de usuário já está registado. <a href="login.html" style="color:inherit;text-decoration:underline;font-weight:700;">Fazer login →</a>','error',true);
       shakeCard();
-    } else {
-      showAlert(err.message, 'error');
-      shakeCard();
-    }
-    btn.disabled = false;
-    spinner.style.display = 'none';
-    btnText.textContent = 'Criar Conta';
+    } else { showAlert(err.message,'error'); shakeCard(); }
+    btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = 'Criar Conta';
   }
 });
 
-// ── PIN input: navegação automática ─────────────
 const pinDigits = Array.from(document.querySelectorAll('.pin-digit'));
-
 pinDigits.forEach((input, idx) => {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Backspace') {
-      if (!input.value && idx > 0) {
-        pinDigits[idx - 1].focus();
-        pinDigits[idx - 1].value = '';
-        pinDigits[idx - 1].classList.remove('filled');
-      }
+      if (!input.value && idx > 0) { pinDigits[idx-1].focus(); pinDigits[idx-1].value = ''; pinDigits[idx-1].classList.remove('filled'); }
       input.classList.remove('filled');
     }
   });
-
   input.addEventListener('input', (e) => {
-    // Permite apenas dígitos
-    input.value = input.value.replace(/\D/g, '').slice(-1);
-    if (input.value) {
-      input.classList.add('filled');
-      if (idx < 5) pinDigits[idx + 1].focus();
-      else input.blur();
-    } else {
-      input.classList.remove('filled');
-    }
-    // Auto-submit quando completo
+    input.value = input.value.replace(/\D/g,'').slice(-1);
+    if (input.value) { input.classList.add('filled'); if (idx < 5) pinDigits[idx+1].focus(); else input.blur(); }
+    else { input.classList.remove('filled'); }
     const code = pinDigits.map(d => d.value).join('');
     if (code.length === 6) submitVerify(code);
   });
-
-  // Suporte a colar código completo
   input.addEventListener('paste', (e) => {
     e.preventDefault();
     const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
     if (pasted.length >= 6) {
-      pinDigits.forEach((d, i) => {
-        d.value = pasted[i] || '';
-        d.classList.toggle('filled', !!d.value);
-      });
+      pinDigits.forEach((d, i) => { d.value = pasted[i] || ''; d.classList.toggle('filled', !!d.value); });
       pinDigits[5].focus();
       const code = pasted.slice(0, 6);
       if (code.length === 6) submitVerify(code);
@@ -1133,105 +1001,60 @@ pinDigits.forEach((input, idx) => {
   });
 });
 
-function getPinCode() {
-  return pinDigits.map(d => d.value).join('');
-}
-
-document.getElementById('verify-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  submitVerify(getPinCode());
-});
+function getPinCode() { return pinDigits.map(d => d.value).join(''); }
+document.getElementById('verify-form').addEventListener('submit', (e) => { e.preventDefault(); submitVerify(getPinCode()); });
 
 async function submitVerify(code) {
   const btn     = document.getElementById('btn-verify');
   const spinner = document.getElementById('spinner-verify');
   const btnText = document.getElementById('btn-verify-text');
-
-  if (code.length !== 6) {
-    showAlert('Digite todos os 6 dígitos do código.', 'error', false, 'verify-alert');
-    shakeCard();
-    return;
-  }
-
-  if (btn.disabled) return; // evita duplo clique
-  btn.disabled = true;
-  spinner.style.display = 'block';
-  btnText.textContent = 'Verificando…';
-  clearAlert('verify-alert');
-
+  if (code.length !== 6) { showAlert('Digite todos os 6 dígitos do código.','error',false,'verify-alert'); shakeCard(); return; }
+  if (btn.disabled) return;
+  btn.disabled = true; spinner.style.display = 'block'; btnText.textContent = 'Verificando…'; clearAlert('verify-alert');
   try {
     const res  = await fetch(`${API_BASE}/api/auth/verify-email`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email: pendingEmail, code }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingEmail, code }),
     });
     const data = await res.json();
-
     if (!res.ok) {
-      const serverErrors = {
-        'invalid code':   'Código incorreto. Verifique e tente novamente.',
-        'expired code':   'Este código expirou. Solicite um novo abaixo.',
-        'code not found': 'Código não encontrado. Solicite um novo abaixo.',
-      };
+      const serverErrors = { 'invalid code':'Código incorreto. Verifique e tente novamente.', 'expired code':'Este código expirou. Solicite um novo abaixo.', 'code not found':'Código não encontrado. Solicite um novo abaixo.' };
       throw new Error(serverErrors[data.error] || data.error || 'Código inválido ou expirado.');
     }
-
-    // Login automático
-    localStorage.setItem(TOKEN_KEY, data.token);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+    localStorage.setItem(TOKEN_KEY, data.token); localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
     showView('success');
-
   } catch (err) {
-    showAlert(err.message, 'error', false, 'verify-alert');
-    shakeCard();
-    // Limpa os campos para nova tentativa
+    showAlert(err.message,'error',false,'verify-alert'); shakeCard();
     pinDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
-    pinDigits[0].focus();
-    btn.disabled = false;
-    spinner.style.display = 'none';
-    btnText.textContent = 'Verificar Conta';
+    pinDigits[0].focus(); btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = 'Verificar Conta';
   }
 }
 
-// ── Reenvio de código com countdown ─────────────
 function startResendTimer(seconds = 60) {
   const btn   = document.getElementById('resend-btn');
   const timer = document.getElementById('resend-timer');
-  btn.disabled = true;
-  clearInterval(resendCountdown);
-  let s = seconds;
-  timer.textContent = `(${s}s)`;
+  btn.disabled = true; clearInterval(resendCountdown);
+  let s = seconds; timer.textContent = `(${s}s)`;
   resendCountdown = setInterval(() => {
     s--;
-    if (s <= 0) {
-      clearInterval(resendCountdown);
-      timer.textContent = '';
-      btn.disabled = false;
-    } else {
-      timer.textContent = `(${s}s)`;
-    }
+    if (s <= 0) { clearInterval(resendCountdown); timer.textContent = ''; btn.disabled = false; }
+    else { timer.textContent = `(${s}s)`; }
   }, 1000);
 }
 
 document.getElementById('resend-btn').addEventListener('click', async () => {
   if (!pendingEmail) return;
-  const btn = document.getElementById('resend-btn');
-  btn.disabled = true;
-
+  document.getElementById('resend-btn').disabled = true;
   try {
-    // Usa o signup endpoint — o backend reenvía o código automaticamente se o e-mail não for verificado
     await fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ login: pendingEmail, password: '' }),
     });
   } catch (_) {}
-
-  showAlert('Novo código enviado! Verifique sua caixa de entrada.', 'success', false, 'verify-alert');
+  showAlert('Novo código enviado! Verifique sua caixa de entrada.','success',false,'verify-alert');
   startResendTimer(60);
 });
 
-// ── Copy IPs ─────────────────────────────────────
 function copyIp(ip, porta) {
   const text   = porta ? `${ip}:${porta}` : ip;
   const boxId  = porta ? 'ip-box-bedrock' : 'ip-box-java';
@@ -1239,49 +1062,29 @@ function copyIp(ip, porta) {
   navigator.clipboard.writeText(text).then(() => {
     const icon = document.getElementById(iconId);
     const box  = document.getElementById(boxId);
-    icon.textContent = '✅';
-    box.style.opacity = '0.75';
+    icon.textContent = '✅'; box.style.opacity = '.75';
     setTimeout(() => { icon.textContent = '📋'; box.style.opacity = ''; }, 2000);
   }).catch(() => { prompt('Copie o endereço:', text); });
 }
 
-// ── Logout ────────────────────────────────────────
 function forceLogout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  showView('signup');
+  localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); showView('signup');
 }
 
-// ── Auto-login ────────────────────────────────────
 (async () => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token || pendingEmail) return;
-
   try {
-    const res = await fetch(`${API_BASE}/api/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error();
     const me = await res.json();
-
-    const skinUrl = me.minecraft_name
-      ? `https://minotar.net/helm/${encodeURIComponent(me.minecraft_name)}/100.png`
-      : 'https://minotar.net/helm/Steve/100.png';
-
+    const skinUrl = me.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(me.minecraft_name)}/100.png` : 'https://minotar.net/helm/Steve/100.png';
     const img = document.getElementById('avatar-loggedin');
-    img.src = skinUrl;
-    img.onerror = () => { img.src = 'https://minotar.net/helm/Steve/100.png'; };
+    img.src = skinUrl; img.onerror = () => { img.src = 'https://minotar.net/helm/Steve/100.png'; };
     document.getElementById('loggedin-name').textContent = me.username;
     showView('loggedin');
-
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      username: me.username, email: me.email,
-      minecraftName: me.minecraft_name, role: me.role,
-    }));
-  } catch {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(SESSION_KEY);
-  }
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role }));
+  } catch { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); }
 })();
 </script>
 </body>
