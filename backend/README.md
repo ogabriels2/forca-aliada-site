@@ -15,9 +15,6 @@
 - `MS_CLIENT_ID` (OAuth app da Microsoft/Xbox)
 - `MS_CLIENT_SECRET` (OAuth app da Microsoft/Xbox)
 - `MS_REDIRECT_URI` (precisa bater 1:1 com o callback cadastrado na Microsoft)
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
-- `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`, `FACEBOOK_REDIRECT_URI`
-- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`
 
 ## Variáveis opcionais
 - `PORT` (default `8787`)
