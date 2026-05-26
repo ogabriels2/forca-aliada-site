@@ -372,6 +372,137 @@ header {
 .alert-success { background: var(--success-soft); color: var(--success); border: 1px solid rgba(26,171,94,.2); }
 .alert-info    { background: var(--info-soft); color: var(--accent); border: 1px solid rgba(91,108,249,.18); }
 
+/* ── OAuth loading overlay ───────────────────────── */
+.oauth-loading-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(11,13,20,0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+.oauth-loading-overlay.visible {
+  opacity: 1; pointer-events: all;
+}
+.oauth-loading-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px 36px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  animation: fadeUp .3s cubic-bezier(.22,1,.36,1) both;
+}
+.oauth-loading-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto 14px;
+}
+.oauth-loading-text {
+  font-size: 14px; font-weight: 600; color: var(--text-1);
+  margin-bottom: 4px;
+}
+.oauth-loading-sub {
+  font-size: 12.5px; color: var(--text-2);
+}
+
+/* ── Link-confirm modal ──────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 9100;
+  background: rgba(11,13,20,0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s ease;
+}
+.modal-backdrop.visible {
+  opacity: 1; pointer-events: all;
+}
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  width: 100%; max-width: 400px;
+  padding: 32px 28px 24px;
+  animation: fadeUp .32s cubic-bezier(.22,1,.36,1) both;
+}
+.modal-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  font-size: 26px;
+}
+.modal-icon-link {
+  background: var(--accent-soft);
+}
+.modal-title {
+  font-size: 18px; font-weight: 800; letter-spacing: -.02em;
+  color: var(--text-1); text-align: center; margin-bottom: 8px;
+}
+.modal-body {
+  font-size: 13.5px; color: var(--text-2); line-height: 1.65;
+  text-align: center; margin-bottom: 20px;
+}
+.modal-body strong { color: var(--text-1); }
+.modal-email-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px 4px 8px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-1);
+  margin: 8px 0 16px;
+}
+.modal-email-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success); flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(26,171,94,.6);
+}
+.modal-actions {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.btn-modal-primary {
+  width: 100%; padding: 13px;
+  font-family: var(--font); font-size: 14.5px; font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none; border-radius: var(--radius);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: filter var(--t), transform var(--t), box-shadow var(--t);
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+.btn-modal-primary:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); box-shadow: 0 8px 22px var(--accent-glow); }
+.btn-modal-primary:disabled { opacity: .55; cursor: not-allowed; }
+.btn-modal-secondary {
+  width: 100%; padding: 11px;
+  font-family: var(--font); font-size: 13.5px; font-weight: 600;
+  color: var(--text-2);
+  background: none; border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--t), color var(--t);
+}
+.btn-modal-secondary:hover { border-color: var(--border-focus); color: var(--text-1); }
+.modal-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none; flex-shrink: 0;
+}
+.modal-note {
+  font-size: 11.5px; color: var(--text-3); text-align: center;
+  margin-top: 14px; line-height: 1.5;
+}
+
 /* ── Attempts bar ────────────────────────────────── */
 .attempts-bar {
   height: 2px; border-radius: 1px;
@@ -625,32 +756,87 @@ header {
   </div><!-- /card -->
 </div><!-- /page-wrap -->
 
+<!-- ── OAuth loading overlay ──────────────────────── -->
+<div id="oauth-loading-overlay" class="oauth-loading-overlay" role="status" aria-label="Autenticando…">
+  <div class="oauth-loading-box">
+    <div class="oauth-loading-spinner"></div>
+    <div class="oauth-loading-text" id="oauth-loading-title">Autenticando…</div>
+    <div class="oauth-loading-sub" id="oauth-loading-sub">Verificando sua conta</div>
+  </div>
+</div>
+
+<!-- ── Link-confirm modal ──────────────────────────── -->
+<div id="link-confirm-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
+  <div class="modal-box">
+    <div class="modal-icon modal-icon-link" aria-hidden="true">🔗</div>
+    <h2 class="modal-title" id="modal-title-text">Conectar conta</h2>
+    <p class="modal-body">
+      Já existe uma conta com este e-mail:
+    </p>
+    <div style="text-align:center;">
+      <span class="modal-email-pill">
+        <span class="modal-email-dot"></span>
+        <span id="modal-email-text">—</span>
+      </span>
+    </div>
+    <p class="modal-body" style="margin-bottom:0;">
+      Quer conectar seu <strong id="modal-provider-name">provedor</strong> a essa conta?
+      Depois disso, você poderá entrar com um clique — <strong>sem precisar de senha.</strong>
+    </p>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button id="btn-modal-confirm" class="btn-modal-primary">
+        <div class="modal-spinner" id="modal-spinner"></div>
+        <span id="btn-modal-confirm-text">Sim, conectar e entrar</span>
+      </button>
+      <button id="btn-modal-cancel" class="btn-modal-secondary">Cancelar — entrar de outra forma</button>
+    </div>
+    <p class="modal-note">
+      Apenas o necessário para o login é armazenado. Nenhuma postagem ou dado adicional é acessado.
+    </p>
+  </div>
+</div>
+
 <script>
 'use strict';
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
-const OAUTH_LINK_TOKEN_KEY = 'fa_oauth_link_token';
 
 let failedAttempts = 0;
 const MAX_ATTEMPTS = 5;
 
+// ── Provider display names ────────────────────────
+const PROVIDER_NAMES = {
+  google:    'Google',
+  facebook:  'Facebook',
+  discord:   'Discord',
+  microsoft: 'Xbox / Microsoft',
+  xbox:      'Xbox / Microsoft',
+};
+function providerLabel(p) {
+  return PROVIDER_NAMES[p?.toLowerCase()] || (p ? p.charAt(0).toUpperCase() + p.slice(1) : 'provedor social');
+}
+
+// ── View switching ────────────────────────────────
 function showView(name) {
   document.getElementById('view-loggedin').style.display = name === 'loggedin' ? '' : 'none';
   document.getElementById('view-login').style.display    = name === 'login'    ? '' : 'none';
 }
 
+// ── Alert ────────────────────────────────────────
 function showAlert(text, type, isHtml = false) {
   const el = document.getElementById('login-alert');
   el.className = 'alert visible alert-' + type;
   if (isHtml) el.innerHTML = text;
   else el.textContent = text;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function clearAlert() {
   const el = document.getElementById('login-alert');
   el.className = 'alert'; el.textContent = '';
 }
 
+// ── Field errors ──────────────────────────────────
 function setFieldError(fieldId, hintText) {
   const field = document.getElementById('field-' + fieldId);
   const hint  = document.getElementById('hint-'  + fieldId);
@@ -666,6 +852,7 @@ function clearFieldError(fieldId) {
   hint.classList.remove('visible');
 }
 
+// ── Card shake ────────────────────────────────────
 function shakeCard() {
   const c = document.getElementById('mainCard');
   c.classList.remove('shake');
@@ -673,6 +860,7 @@ function shakeCard() {
   c.classList.add('shake');
 }
 
+// ── Attempts bar ──────────────────────────────────
 function updateAttemptsBar(attempts) {
   const bar  = document.getElementById('attempts-bar');
   const fill = document.getElementById('attempts-fill');
@@ -681,6 +869,38 @@ function updateAttemptsBar(attempts) {
   fill.style.width = Math.min((attempts / MAX_ATTEMPTS) * 100, 100) + '%';
 }
 
+// ── OAuth loading overlay ─────────────────────────
+function showOAuthLoading(title = 'Autenticando…', sub = 'Verificando sua conta') {
+  document.getElementById('oauth-loading-title').textContent = title;
+  document.getElementById('oauth-loading-sub').textContent   = sub;
+  document.getElementById('oauth-loading-overlay').classList.add('visible');
+}
+function hideOAuthLoading() {
+  document.getElementById('oauth-loading-overlay').classList.remove('visible');
+}
+
+// ── Link-confirm modal ────────────────────────────
+function showLinkModal(provider, email) {
+  document.getElementById('modal-email-text').textContent    = email || '—';
+  document.getElementById('modal-provider-name').textContent = providerLabel(provider);
+  document.getElementById('link-confirm-modal').classList.add('visible');
+  // Trap focus on confirm button for accessibility
+  setTimeout(() => document.getElementById('btn-modal-confirm').focus(), 50);
+}
+function hideLinkModal() {
+  document.getElementById('link-confirm-modal').classList.remove('visible');
+}
+
+// Close modal on backdrop click
+document.getElementById('link-confirm-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) hideLinkModal();
+});
+// Close modal on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideLinkModal();
+});
+
+// ── Password toggle ───────────────────────────────
 document.getElementById('toggle-pw').addEventListener('click', () => {
   const input  = document.getElementById('pass-input');
   const isPass = input.type === 'password';
@@ -695,6 +915,7 @@ document.getElementById('toggle-pw').addEventListener('click', () => {
 document.getElementById('login-input').addEventListener('input', () => { clearFieldError('login'); clearAlert(); });
 document.getElementById('pass-input').addEventListener('input', () => { clearFieldError('password'); clearAlert(); });
 
+// ── Error translation ─────────────────────────────
 const SERVER_ERRORS = {
   'invalid credentials':    'Usuário ou senha incorretos. Verifique e tente novamente.',
   'invalid_credentials':    'Usuário ou senha incorretos. Verifique e tente novamente.',
@@ -716,6 +937,7 @@ function translateError(err, status) {
   return err || 'Falha no login. Verifique suas credenciais.';
 }
 
+// ── Login form submit ─────────────────────────────
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAlert();
@@ -812,85 +1034,167 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       showAlert('Falha na conexão. Verifique sua internet e tente novamente.', 'error');
       shakeCard();
     }
-    if (!document.getElementById('btn-login').style.pointerEvents) {
-      btn.disabled = false;
-      spinner.style.display = 'none';
-      btnText.textContent   = 'Iniciar Sessão';
-    }
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent   = 'Iniciar Sessão';
   }
 });
 
+// ── Force logout ──────────────────────────────────
 function forceLogout() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
   showView('login');
 }
 
+// ── OAuth link-confirm flow ───────────────────────
+async function handleLinkConfirm(linkToken, provider, email) {
+  // Show modal — user must actively consent within the site
+  showLinkModal(provider, email);
+
+  return new Promise((resolve) => {
+    const btnConfirm   = document.getElementById('btn-modal-confirm');
+    const btnCancel    = document.getElementById('btn-modal-cancel');
+    const modalSpinner = document.getElementById('modal-spinner');
+    const btnText      = document.getElementById('btn-modal-confirm-text');
+
+    async function onConfirm() {
+      btnConfirm.disabled = true;
+      btnCancel.disabled  = true;
+      modalSpinner.style.display = 'block';
+      btnText.textContent = 'Conectando…';
+
+      try {
+        const rr = await fetch(`${API_BASE}/api/auth/oauth/confirm-link`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ linkToken, confirm: true }),
+        });
+        const data = await rr.json();
+        if (!rr.ok || !data.token) throw new Error(data.error || 'Falha ao vincular conta');
+
+        localStorage.setItem(TOKEN_KEY, data.token);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+        hideLinkModal();
+        showOAuthLoading('Conta conectada!', 'Redirecionando para o painel…');
+        setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+        resolve(true);
+      } catch (err) {
+        hideLinkModal();
+        showAlert(
+          `Não foi possível conectar sua conta ${providerLabel(provider)}. ` +
+          'Tente novamente ou <a href="recuperar.html" style="color:inherit;font-weight:700;text-decoration:underline;">recupere sua senha</a> para acessar.',
+          'error', true
+        );
+        shakeCard();
+        resolve(false);
+      } finally {
+        cleanup();
+      }
+    }
+
+    function onCancel() {
+      hideLinkModal();
+      showAlert(
+        'Conexão cancelada. Você pode entrar com e-mail e senha, ou tentar novamente com ' +
+        providerLabel(provider) + '.',
+        'info'
+      );
+      cleanup();
+      resolve(false);
+    }
+
+    function cleanup() {
+      btnConfirm.removeEventListener('click', onConfirm);
+      btnCancel.removeEventListener('click', onCancel);
+      // Reset modal button state
+      btnConfirm.disabled = false;
+      btnCancel.disabled  = false;
+      modalSpinner.style.display = 'none';
+      document.getElementById('btn-modal-confirm-text').textContent = 'Sim, conectar e entrar';
+    }
+
+    btnConfirm.addEventListener('click', onConfirm);
+    btnCancel.addEventListener('click', onCancel);
+  });
+}
+
+// ── DOMContentLoaded: handle OAuth redirects ──────
 window.addEventListener('DOMContentLoaded', async () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const oauthErr  = urlParams.get('oauth_err') || urlParams.get('ms_err');
-  const oauthProvider = urlParams.get('oauth_provider') || 'xbox';
+  const urlParams  = new URLSearchParams(window.location.search);
+
+  // Normalize: ms_err/ms_token are legacy params from the Xbox callback; unify with generic names
+  const oauthErr      = urlParams.get('oauth_err') || urlParams.get('ms_err');
+  const oauthProvider = urlParams.get('oauth_provider') || null; // No default fallback — null is correct
   const oauthToken    = urlParams.get('oauth_token') || urlParams.get('ms_token');
   const linkToken     = urlParams.get('oauth_link_token');
   const linkEmail     = urlParams.get('oauth_email');
 
+  // Always clean URL params immediately to avoid re-triggering on refresh
+  if (oauthErr || oauthToken || linkToken) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // ── Case 1: OAuth error ──────────────────────────
   if (oauthErr) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    showAlert(`Falha no login ${oauthProvider}: ` + decodeURIComponent(oauthErr), 'error');
+    const providerStr = oauthProvider ? providerLabel(oauthProvider) : 'social';
+    const decodedErr  = decodeURIComponent(oauthErr);
+    showAlert(
+      `Falha ao entrar com ${providerStr}. ${decodedErr || 'Tente novamente.'}`,
+      'error'
+    );
+    showView('login');
+    return;
   }
 
+  // ── Case 2: New provider link needs user consent ─
+  // This only triggers when the backend confirms it's a BRAND NEW link
+  // (i.e., the provider was not yet associated with any account).
+  // If already linked, the backend returns oauth_token directly → Case 3.
   if (linkToken) {
-    localStorage.setItem(OAUTH_LINK_TOKEN_KEY, linkToken);
-    window.history.replaceState({}, document.title, window.location.pathname);
-    const confirmed = window.confirm(`Já existe uma conta com o e-mail ${linkEmail || 'informado'}. Deseja vincular e entrar nessa conta?`);
-    if (!confirmed) {
-      showAlert('Vinculação cancelada. Faça login manual e tente novamente se desejar vincular.', 'error');
-      return;
-    }
-    try {
-      const rr = await fetch(`${API_BASE}/api/auth/oauth/confirm-link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ linkToken, confirm: true }),
-      });
-      const data = await rr.json();
-      if (!rr.ok || !data.token) throw new Error(data.error || 'Falha ao vincular conta');
-      localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
-      window.location.href = 'dashboard.html';
-      return;
-    } catch (e) {
-      showAlert(e.message || 'Falha ao vincular conta social.', 'error');
-      return;
-    }
+    showView('login');
+    // Small delay so the page is visible before the modal opens
+    setTimeout(() => handleLinkConfirm(linkToken, oauthProvider, linkEmail), 120);
+    return;
   }
 
+  // ── Case 3: Successful OAuth login (existing or newly created account) ──
+  // The backend issues oauth_token when:
+  //   a) the provider was already linked (returning user) — login directly
+  //   b) a brand new account was created via OAuth — login directly
+  // No re-authorization or confirmation needed in either case.
   if (oauthToken) {
-    document.body.style.opacity = '0.5';
-    document.body.style.pointerEvents = 'none';
-    localStorage.setItem(TOKEN_KEY, oauthToken);
-    window.history.replaceState({}, document.title, window.location.pathname);
+    showOAuthLoading(
+      oauthProvider ? `Entrando com ${providerLabel(oauthProvider)}…` : 'Autenticando…',
+      'Verificando sua conta'
+    );
 
     try {
       const res = await fetch(`${API_BASE}/api/me`, {
         headers: { Authorization: `Bearer ${oauthToken}` }
       });
-      if (!res.ok) throw new Error('Falha ao validar sessão social');
+      if (!res.ok) throw new Error('Sessão inválida');
       const me = await res.json();
+      localStorage.setItem(TOKEN_KEY, oauthToken);
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         username: me.username, email: me.email,
         minecraftName: me.minecraft_name, role: me.role,
       }));
       window.location.href = 'dashboard.html';
-    } catch (err) {
-      document.body.style.opacity = '1';
-      document.body.style.pointerEvents = 'auto';
+    } catch {
+      hideOAuthLoading();
       localStorage.removeItem(TOKEN_KEY);
-      showAlert('A sessão social expirou ou houve uma falha de conexão.', 'error');
+      showAlert(
+        'A sessão expirou ou houve uma falha de conexão. Tente entrar novamente.',
+        'error'
+      );
+      showView('login');
     }
+    return;
   }
 });
 
+// ── Session check (runs immediately) ─────────────
 (async () => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) { showView('login'); return; }
