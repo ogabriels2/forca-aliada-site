@@ -562,7 +562,7 @@ header {
             <span class="input-status" id="status-minecraft" aria-hidden="true"></span>
           </div>
           <div class="field-hint hint-info visible" id="hint-minecraft">
-            Digite exatamente como aparece no jogo (maiúsculas importam).
+            Será verificado na Mojang — use o nick exato da sua conta Java Edition.
           </div>
         </div>
 
@@ -827,7 +827,7 @@ mcInput.addEventListener('input', () => {
   clearTimeout(skinTimer);
 
   if (!v) {
-    setFieldState('minecraft','idle','Digite exatamente como aparece no jogo (maiúsculas importam).','info');
+    setFieldState('minecraft','idle','Será verificado na Mojang — use o nick exato da sua conta Java Edition.','info');
     avatarEl.src = 'https://minotar.net/helm/Steve/100.png';
     avatarEl.classList.add('dimmed'); avatarEl.classList.remove('loaded');
     return;
@@ -862,7 +862,7 @@ avatarEl.addEventListener('error', () => {
   avatarEl.src = 'https://minotar.net/helm/Steve/100.png';
 });
 mcInput.addEventListener('blur', () => {
-  if (!mcInput.value.trim()) setFieldState('minecraft','idle','Digite exatamente como aparece no jogo (maiúsculas importam).','info');
+  if (!mcInput.value.trim()) setFieldState('minecraft','idle','Será verificado na Mojang — use o nick exato da sua conta Java Edition.','info');
 });
 
 // ── Password strength ────────────────────────────
@@ -1054,6 +1054,9 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     showAlert('O servidor está acordando — pode levar até 30 segundos na primeira vez…', 'info');
   }, 4000);
 
+  // ── Feedback visual: verificando nick ───────────────────
+  btnText.textContent = 'Verificando nick…';
+
   try {
     const res = await fetch(`${API_BASE}/api/auth/signup`, {
       method:  'POST',
@@ -1065,10 +1068,19 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
+      // Erros relacionados ao nick Minecraft (campo específico)
+      if (data.field === 'minecraftName') {
+        setFieldState('minecraft', 'error', data.error, 'error');
+        document.getElementById('f-minecraft').focus();
+        shakeCard();
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Criar Conta';
+        return;
+      }
       if (res.status === 409 || data.error === 'username/email already exists') {
         throw new Error('ACCOUNT_EXISTS');
       }
-      // Mapeia erros do servidor para mensagens amigáveis
       const serverErrors = {
         'invalid username': 'Nome de usuário inválido — use apenas letras, números e _.',
         'invalid email':    'Endereço de e-mail inválido.',
@@ -1077,6 +1089,13 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         'email taken':      'Este e-mail já possui uma conta. Tente fazer login.',
       };
       throw new Error(serverErrors[data.error] || data.error || 'Erro ao criar conta. Tente novamente.');
+    }
+
+    // Sucesso → atualiza preview com nick verificado (capitalização da Mojang)
+    if (data.minecraftName) {
+      document.getElementById('f-minecraft').value = data.minecraftName;
+      document.getElementById('avatar-preview').src = `https://minotar.net/helm/${encodeURIComponent(data.minecraftName)}/100.png`;
+      setFieldState('minecraft', 'success', `✓ Nick verificado na Mojang: ${data.minecraftName}`, 'ok');
     }
 
     // Sucesso → tela de verificação
