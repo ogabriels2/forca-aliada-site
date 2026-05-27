@@ -2,12 +2,18 @@
  * Força Aliada – Backend API  (server.mjs)
  * ─────────────────────────────────────────
  * Stack : Node.js (ESM) + Express + PostgreSQL + JWT + bcrypt
- * * Novidades nesta versão
- * ──────────────────────
+ *
+ * Funcionalidades principais
+ * ──────────────────────────
  * • Sistema de Integração (App Keys) para Desktop App.
- * • Rota /api/app/sync para receber dados push em tempo real com segurança máxima.
- * • Auto-cura Híbrida: O Site entra em repouso se a App estiver conectada.
- * • Rastreamento de Origem: O banco sabe se a sessão veio da App ou do Site.
+ * • POST /api/app/heartbeat — App sinaliza presença a cada 10s (leve, só memória).
+ * • POST /api/app/sync      — Recebe push de sessões/eventos em tempo real.
+ * • GET  /api/app/whitelist-queue — App busca novos cadastros pendentes.
+ * • Máquina de estados do servidor Minecraft (unknown/offline/online).
+ * • Detecção de TCPShield com Offline MOTD via 4 heurísticas em cascata.
+ * • Cloud Lockout: após shutdown explícito, bloqueia reconexão do heartbeat por 60s.
+ * • Auto-cura Híbrida: Site entra em repouso se o App estiver conectado.
+ * • Rastreamento de Origem: banco distingue sessões abertas pelo App vs pelo Site.
  */
 
 import * as util from 'minecraft-server-util';
@@ -73,7 +79,7 @@ function isAppConnectedInMemory() {
 // Detecção de ping "real" vs TCPShield:
 //   O TCPShield responde ao status ping em <2ms (é cache local).
 //   Um servidor Minecraft real tem RTT mínimo de ~5ms mesmo na mesma LAN.
-//   Se a latência for < TCPSHIELD_MIN_REAL_LATENCY_MS E não tiver lista de
+//   Se a latência for < TCPSHIELD_MIN_LATENCY_MS E não tiver lista de
 //   jogadores (que o TCPShield omite), consideramos suspeito de TCPShield.
 //   Nesse caso, retornamos 'online' mas com flag tcpshield_suspect: true,
 //   e o status real é determinado pelo _mcState em vez do ping.
@@ -125,9 +131,13 @@ const _cloudLockout = {
 function activateCloudLockout() {
   _cloudLockout.active = true;
   _cloudLockout.since  = Date.now();
+  console.info(`[cloud-lockout] Ativado — heartbeats bloqueados por ${CLOUD_MODE_LOCKOUT_MS / 1000}s após shutdown`);
 }
 
 function releaseCloudLockout() {
+  if (_cloudLockout.active) {
+    console.info('[cloud-lockout] Liberado — app pode se reconectar como master');
+  }
   _cloudLockout.active = false;
   _cloudLockout.since  = 0;
 }
@@ -149,9 +159,13 @@ const _mcState = {
 };
 
 function setMcState(state, setBy) {
+  const prev = _mcState.state;
   _mcState.state  = state;
   _mcState.setAt  = Date.now();
   _mcState.setBy  = setBy;
+  if (prev !== state) {
+    console.info(`[mc-state] ${prev} → ${state} (por: ${setBy})`);
+  }
   // Invalida o cache imediatamente quando o estado muda por sinal do app
   if (setBy === 'app_signal') {
     _mcStatusCache.data     = null;
@@ -1134,7 +1148,7 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
         set_at: _mcState.setAt ? new Date(_mcState.setAt).toISOString() : null,
       },
       cloud_mode: !appConnected,
-      minecraft: { ...fallback, checkedAt: undefined, onlineSince: null, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h, error: 'status unavailable' },
+      minecraft: { ...fallback, checkedAt: undefined, onlineSince: null, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h, status_source: 'failed', error: 'status unavailable' },
     });
   }
 });
@@ -1281,6 +1295,7 @@ app.post('/api/app/heartbeat', async (req, res) => {
   // está dentro do FORCED_RECHECK_MS, continua sendo respeitado; se expirou, o
   // isMcStateTrustworthy() já teria revertido para 'unknown' automaticamente.
   if (wasDisconnected) {
+    console.info(`[heartbeat] App reconectado após timeout (chave: ${_appHeartbeat.keyName || 'fallback'})`);
     _mcStatusCache.data      = null;
     _mcStatusCache.expiresAt = 0;
   }
