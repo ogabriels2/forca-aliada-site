@@ -1819,6 +1819,34 @@ async function syncThemePreference() {
 }
 
 // BOOTSTRAP — cache-first: renderiza imediatamente com localStorage, revalida em background
+// ── Aplica visibilidade dos cards baseada no role atual ──────────────────────
+// Chamado no initDashboard E sempre que o role é revalidado pelo servidor,
+// garantindo que os cards apareçam corretamente em todos os cenários de boot.
+function applyRoleVisibility() {
+  const role = session?.role;
+  if (!role || role === 'limited') return;
+
+  // Cards visíveis para qualquer staff (full + owner)
+  document.getElementById('admin-users-card').style.display          = 'block';
+  document.getElementById('admin-notifications-card').style.display  = 'block';
+
+  // Cards exclusivos do owner
+  if (role === 'owner') {
+    document.getElementById('audit-card').style.display         = 'block';
+    document.getElementById('qa-audit').style.display           = 'flex';
+    document.getElementById('btn-export-staff').style.display   = 'inline-flex';
+    document.getElementById('manager-promo-card').style.display = 'block';
+    document.getElementById('app-keys-card').style.display      = 'block';
+    document.getElementById('qa-appkeys').style.display         = 'flex';
+  }
+
+  // Merit & Capital — visível para full e owner
+  if (role === 'full' || role === 'owner') {
+    document.getElementById('merit-card').style.display = 'block';
+    document.getElementById('qa-merit').style.display   = 'flex';
+  }
+}
+
 (async () => {
   if (!token) { logout(); return; }
 
@@ -1847,11 +1875,14 @@ async function syncThemePreference() {
     if (session.role === 'limited') { window.location.replace('account.html'); return; }
 
     if (document.body.style.visibility !== 'visible') {
+      // Primeiro boot sem cache — inicializa tudo
       document.body.style.visibility = 'visible';
       initDashboard();
     } else {
-      // Atualiza silenciosamente foto/nome no nav
+      // Revalidação em background — atualiza perfil e re-aplica visibilidade
+      // (garante que cards apareçam se o role no cache estava desatualizado)
       renderProfile();
+      applyRoleVisibility();
     }
   } catch (err) {
     console.error('Erro crítico no Bootstrap:', err);
@@ -1880,37 +1911,27 @@ function initDashboard() {
   renderProfile();
   loadData();
   _startStatusPolling();
-  document.getElementById('admin-users-card').style.display = 'block';
-  document.getElementById('admin-notifications-card').style.display = 'block';
+
+  // Aplica visibilidade dos cards baseada no role atual
+  applyRoleVisibility();
   updateNotificationAudienceHint();
   loadNotifications();
   loadAdminNotifications();
   fetchAdminUsers();
   updateSortBarForTab('registered');
 
-  // Funções apenas para owner
+  // Carregamento inicial de dados exclusivos do owner
   if (session.role === 'owner') {
-    document.getElementById('audit-card').style.display = 'block';
-    document.getElementById('qa-audit').style.display = 'flex';
-    document.getElementById('btn-export-staff').style.display = 'inline-flex';
     fetchAuditLogs();
-    
     // Recarrega logs de auditoria a cada 60 segundos automaticamente
     setInterval(() => {
       if (document.visibilityState === 'visible') fetchAuditLogs(0);
     }, 60_000);
-
-    // Inicia a aba do App Desktop
-    document.getElementById('manager-promo-card').style.display = 'block';
-    document.getElementById('app-keys-card').style.display = 'block';
-    document.getElementById('qa-appkeys').style.display = 'flex';
     fetchAppKeys();
   }
 
-  // Merit & Capital — visível para full e owner
+  // Merit & Capital — inicialização para full e owner
   if (session.role === 'full' || session.role === 'owner') {
-    document.getElementById('merit-card').style.display = 'block';
-    document.getElementById('qa-merit').style.display = 'flex';
     // Cache admin users for autocomplete once they're loaded
     setTimeout(()=>{
       if(globalAdminUsers && globalAdminUsers.length > 0) {
@@ -1947,7 +1968,12 @@ function initDashboard() {
       if (session.role !== me.role) {
         session.role = me.role;
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        if (session.role === 'limited') window.location.replace('account.html');
+        if (session.role === 'limited') {
+          window.location.replace('account.html');
+        } else {
+          // Role atualizado — re-aplica visibilidade dos cards
+          applyRoleVisibility();
+        }
       }
     } catch (err) {
       // Falha de rede: Mantém o utilizador na página.
