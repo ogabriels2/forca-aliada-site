@@ -1862,9 +1862,24 @@ async function syncThemePreference() {
   }
 })();
 
+// Intervalo de polling do status do servidor (modo nuvem: 60s; modo app: 120s como fallback)
+let _statusPollInterval = null;
+
+function _startStatusPolling() {
+  if (_statusPollInterval) clearInterval(_statusPollInterval);
+  // Intervalo base de 60s — quando o app está conectado o dado vem em tempo real via sync,
+  // mas mantemos um fallback de 120s para detectar desconexões do app e atualizar a UI.
+  // Em modo nuvem (sem app), 60s é o intervalo ideal: detecta mudanças externas em ~1 min.
+  _statusPollInterval = setInterval(async () => {
+    if (document.visibilityState !== 'visible') return; // não polui com requests em background
+    await loadData();
+  }, 60_000);
+}
+
 function initDashboard() {
   renderProfile();
   loadData();
+  _startStatusPolling();
   document.getElementById('admin-users-card').style.display = 'block';
   document.getElementById('admin-notifications-card').style.display = 'block';
   updateNotificationAudienceHint();
@@ -2768,13 +2783,58 @@ function renderDashboard() {
   }
 
   // Indicador de fonte de dados (App vs Site)
-  const appConnected = globalHealthData?.app_connected ?? globalHistData?.app_connected ?? false;
+  const appConnected = globalHealthData?.app_connected ?? false;
+  const cloudMode    = globalHealthData?.cloud_mode    ?? !appConnected;
+  const mcState      = globalHealthData?.mc_state      ?? null;
+  const statusSrc    = globalHealthData?.minecraft?.status_source ?? null;
+
+  // Deriva um tooltip mais informativo baseado no status_source e mc_state
+  function _buildCloudTooltip() {
+    const lastCheck = globalHealthData?.checked_at
+      ? new Date(globalHealthData.checked_at).toLocaleTimeString('pt-BR')
+      : '–';
+    let src = '';
+    if (statusSrc === 'state_machine')              src = 'Estado: App sinalizou offline (aguardando recheck)';
+    else if (statusSrc === 'state_machine_fallback') src = 'Estado: App offline + mcstatus.io inacessível';
+    else if (statusSrc === 'mcstatus_confirmed_offline') src = 'Confirmado offline via mcstatus.io (TCPShield filtrado)';
+    else if (statusSrc === 'mcstatus_online')        src = 'Online confirmado via mcstatus.io';
+    else if (statusSrc === 'mcstatus_offline')       src = 'Offline confirmado via mcstatus.io';
+    else if (statusSrc === 'failed')                 src = 'Todas as fontes falharam';
+    else if (statusSrc === 'ping')                   src = 'Ping TCP direto';
+    const stateInfo = mcState ? ` · Estado interno: ${mcState.state} (por ${mcState.set_by})` : '';
+    return `Modo Nuvem — sem App conectado. Dados via ping do site (atualiza a cada 1 min). Última checagem: ${lastCheck}. ${src}${stateInfo}`;
+  }
+
   const appEl = document.getElementById('app-source-indicator');
   if (appEl) {
     if (appConnected) {
-      appEl.innerHTML = `<span title="Força Aliada Manager conectado — dados em tempo real via App" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;border:1px solid rgba(52,199,89,0.3);"><span style="width:6px;height:6px;border-radius:50%;background:#34c759;display:inline-block;animation:pulse-dot 1.5s infinite;"></span>📡 App conectado</span>`;
+      const keyName = globalHealthData?.app_last_seen
+        ? ` · Último sinal: ${new Date(globalHealthData.app_last_seen).toLocaleTimeString('pt-BR')}`
+        : '';
+      appEl.innerHTML = `<span title="Força Aliada Manager conectado — dados em tempo real via App${keyName}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;border:1px solid rgba(52,199,89,0.3);"><span style="width:6px;height:6px;border-radius:50%;background:#34c759;display:inline-block;animation:pulse-dot 1.5s infinite;"></span>📡 App conectado</span>`;
     } else {
-      appEl.innerHTML = `<span title="Sem conexão com o App — dados via ping do site (a cada 1 min)" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(0,113,227,0.08);color:#0071e3;border:1px solid rgba(0,113,227,0.2);">☁️ Modo Site</span>`;
+      // Modo nuvem — distingue entre: servidor detectado online externamente vs offline
+      const mcOnline = globalApiData?.online ?? false;
+      let cloudLabel, cloudColor, cloudBg, cloudBorder;
+      if (mcState?.state === 'offline' && mcState?.set_by === 'app_signal') {
+        // App sinalizou offline e ainda está no período de lockout
+        cloudLabel  = '☁️ Modo Nuvem · Servidor desligado';
+        cloudColor  = '#8e8e93';
+        cloudBg     = 'rgba(142,142,147,0.10)';
+        cloudBorder = 'rgba(142,142,147,0.25)';
+      } else if (mcOnline) {
+        // Servidor online detectado em modo nuvem (ligado externamente, sem app)
+        cloudLabel  = '☁️ Modo Nuvem · Online detectado';
+        cloudColor  = '#0071e3';
+        cloudBg     = 'rgba(0,113,227,0.10)';
+        cloudBorder = 'rgba(0,113,227,0.25)';
+      } else {
+        cloudLabel  = '☁️ Modo Nuvem';
+        cloudColor  = '#0071e3';
+        cloudBg     = 'rgba(0,113,227,0.08)';
+        cloudBorder = 'rgba(0,113,227,0.20)';
+      }
+      appEl.innerHTML = `<span title="${_buildCloudTooltip()}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:${cloudBg};color:${cloudColor};border:1px solid ${cloudBorder};">${cloudLabel}</span>`;
     }
   }
 
