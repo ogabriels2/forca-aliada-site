@@ -980,8 +980,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <button class="quick-action-btn" onclick="scrollToSection('server-overview')">
             <span class="qa-icon">🖥️</span><span class="qa-label">Visão do Servidor</span><span class="qa-arrow">›</span>
           </button>
-          <button class="quick-action-btn" onclick="scrollToSection('admin-users-card')">
+          <button class="quick-action-btn" id="qa-staff" onclick="scrollToSection('admin-users-card')" style="display:none;">
             <span class="qa-icon">👥</span><span class="qa-label">Contas da Staff</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" id="qa-notifications" onclick="scrollToSection('admin-notifications-card')" style="display:none;">
+            <span class="qa-icon">📢</span><span class="qa-label">Publicações</span><span class="qa-arrow">›</span>
           </button>
           <button class="quick-action-btn" id="qa-audit" onclick="scrollToSection('audit-card')" style="display:none;">
             <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
@@ -1239,13 +1242,14 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
 
         <div class="audit-tabs">
-          <button class="audit-tab active" id="atab-all"      onclick="filterAuditLogs('all')">Todos</button>
-          <button class="audit-tab"        id="atab-create"   onclick="filterAuditLogs('create')">Criações</button>
-          <button class="audit-tab"        id="atab-update"   onclick="filterAuditLogs('update')">Edições</button>
-          <button class="audit-tab"        id="atab-delete"   onclick="filterAuditLogs('delete')">Exclusões</button>
-          <button class="audit-tab"        id="atab-login"    onclick="filterAuditLogs('login')">Logins</button>
-          <button class="audit-tab"        id="atab-security" onclick="filterAuditLogs('security')">Segurança</button>
-          <button class="audit-tab"        id="atab-system"   onclick="filterAuditLogs('system')">Sistema</button>
+          <button class="audit-tab active" id="atab-all"              onclick="filterAuditLogs('all')">Todos</button>
+          <button class="audit-tab"        id="atab-create"           onclick="filterAuditLogs('create')">Criações</button>
+          <button class="audit-tab"        id="atab-update"           onclick="filterAuditLogs('update')">Edições</button>
+          <button class="audit-tab"        id="atab-delete"           onclick="filterAuditLogs('delete')">Exclusões</button>
+          <button class="audit-tab"        id="atab-login"            onclick="filterAuditLogs('login')">Logins</button>
+          <button class="audit-tab"        id="atab-security"         onclick="filterAuditLogs('security')">Segurança</button>
+          <button class="audit-tab"        id="atab-notification_create" onclick="filterAuditLogs('notification_create')">Notificações</button>
+          <button class="audit-tab"        id="atab-system"           onclick="filterAuditLogs('system')">Sistema</button>
         </div>
 
         <div class="audit-list" id="audit-log-list">
@@ -1824,26 +1828,54 @@ async function syncThemePreference() {
 // garantindo que os cards apareçam corretamente em todos os cenários de boot.
 function applyRoleVisibility() {
   const role = session?.role;
+
+  // Reseta todos os cards condicionais antes de re-aplicar (evita cards "fantasmas"
+  // caso o role tenha sido rebaixado sem recarregar a página)
+  const conditionalCards = [
+    'admin-users-card', 'admin-notifications-card', 'audit-card',
+    'merit-card', 'manager-promo-card', 'app-keys-card',
+  ];
+  conditionalCards.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // Reseta quick-action buttons condicionais
+  const el = (id) => document.getElementById(id);
+  const hide = (id, d='none') => { const e=el(id); if(e) e.style.display=d; };
+  hide('qa-staff');
+  hide('qa-notifications');
+  hide('qa-audit');
+  hide('qa-appkeys');
+  hide('qa-merit');
+  hide('btn-export-staff');
+
   if (!role || role === 'limited') return;
 
   // Cards visíveis para qualquer staff (full + owner)
-  document.getElementById('admin-users-card').style.display          = 'block';
-  document.getElementById('admin-notifications-card').style.display  = 'block';
+  hide('admin-users-card',         'block');
+  hide('admin-notifications-card', 'block');
+  hide('qa-staff',                 'flex');
+  hide('qa-notifications',         'flex');
 
-  // Cards exclusivos do owner
-  if (role === 'owner') {
-    document.getElementById('audit-card').style.display         = 'block';
-    document.getElementById('qa-audit').style.display           = 'flex';
-    document.getElementById('btn-export-staff').style.display   = 'inline-flex';
-    document.getElementById('manager-promo-card').style.display = 'block';
-    document.getElementById('app-keys-card').style.display      = 'block';
-    document.getElementById('qa-appkeys').style.display         = 'flex';
+  // Logs de Auditoria — API usa requireAdmin (full + owner), UI alinhada
+  if (role === 'full' || role === 'owner') {
+    hide('audit-card', 'block');
+    hide('qa-audit',   'flex');
   }
 
   // Merit & Capital — visível para full e owner
   if (role === 'full' || role === 'owner') {
-    document.getElementById('merit-card').style.display = 'block';
-    document.getElementById('qa-merit').style.display   = 'flex';
+    hide('merit-card', 'block');
+    hide('qa-merit',   'flex');
+  }
+
+  // Cards e ações exclusivos do owner
+  if (role === 'owner') {
+    hide('btn-export-staff',    'inline-flex');
+    hide('manager-promo-card',  'block');
+    hide('app-keys-card',       'block');
+    hide('qa-appkeys',          'flex');
   }
 }
 
@@ -1852,13 +1884,14 @@ function applyRoleVisibility() {
 
   // Se há sessão em cache, mostra a página imediatamente
   const cached = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } })();
-  if (cached && cached.username && cached.role !== 'limited') {
+  if (cached && cached.username && (cached.role === 'full' || cached.role === 'owner')) {
     session = cached;
     document.body.style.visibility = 'visible';
     initDashboard();
   } else if (cached && cached.role === 'limited') {
     window.location.replace('account.html'); return;
   }
+  // Se não há cache válido com role, aguarda a revalidação da API antes de exibir
 
   // Revalida em background (ou bootstrap completo se sem cache)
   try {
@@ -2531,7 +2564,7 @@ async function fetchAuditLogs(pageOverride = null) {
 function filterAuditLogs(type) {
   auditFilterActive = type;
   auditPage = 0;
-  ['all', 'create', 'update', 'delete', 'login', 'security', 'system'].forEach(t => {
+  ['all', 'create', 'update', 'delete', 'login', 'security', 'notification_create', 'system'].forEach(t => {
     document.getElementById(`atab-${t}`)?.classList.toggle('active', t === type);
   });
   fetchAuditLogs();
