@@ -23,9 +23,14 @@ import crypto from 'crypto';
 const PROCESS_STARTED_AT = new Date();
 
 // ── Cache em memória para status do Minecraft ──────────────────────────────────
-// TTL curto (15s) para que mudanças de estado sejam percebidas rápido em modo nuvem.
+// Cache de status do Minecraft.
+// TTL: 50s — ligeiramente menor que o intervalo de polling do dashboard (60s).
+// Isso garante que quando o dashboard chama /api/server/status no ciclo de 60s,
+// o cache já expirou e um ping fresco é feito, eliminando dados stale no pior caso.
+// Sem cache nenhum, cada request ao dashboard dispararia um ping completo (UDP + TCP + mcstatus.io)
+// que pode levar 3-8s, tornando o endpoint lento para múltiplos admins simultâneos.
 const _mcStatusCache = { data: null, expiresAt: 0 };
-const MC_STATUS_TTL_MS = 15_000; // 15s — equilíbrio entre frescor e carga
+const MC_STATUS_TTL_MS = 50_000; // 50s < 60s (ciclo do dashboard) → sempre dado fresco no poll
 
 // ── Estado em memória do heartbeat do App (sem I/O de banco) ──────────────────
 // O app deve chamar POST /api/app/heartbeat a cada 10 segundos.
@@ -74,7 +79,36 @@ function isAppConnectedInMemory() {
 //   e o status real é determinado pelo _mcState em vez do ping.
 
 const FORCED_RECHECK_MS        = 3 * 60_000; // 3 min sem app → sai de 'offline' para 'unknown'
-const TCPSHIELD_MIN_LATENCY_MS = 5;           // pings mais rápidos que isso são suspeitos
+const TCPSHIELD_MIN_LATENCY_MS = 5;           // pings mais rápidos que isso são suspeitos (sem Offline MOTD)
+
+// ── Detecção de TCPShield com Offline MOTD ────────────────────────────────────
+//
+// Com "Offline MOTD enabled" no TCPShield, o proxy responde ao status ping TCP
+// mesmo quando o backend está offline — com latência real de datacenter (~20-80ms)
+// e MOTD customizado. Isso quebra o critério de latência < 5ms.
+//
+// Solução em camadas:
+//
+//  Camada 1 — UDP Query (porta 25565, protocolo Query do Minecraft):
+//    O TCPShield NÃO proxeia UDP. Se queryFull() responder → servidor real online.
+//    Se der timeout → sem UDP ou servidor offline.
+//    Requer enable-query=true no server.properties (configurável via variável MC_QUERY_PORT).
+//
+//  Camada 2 — Heurística de conteúdo do MOTD:
+//    Compara o MOTD retornado com o MOTD offline configurado (MC_OFFLINE_MOTD env var).
+//    Se bater exatamente → é o MOTD do TCPShield → offline.
+//
+//  Camada 3 — mcstatus.io (já existente):
+//    Consulta de um datacenter externo diferente. Se mcstatus.io também ver "online"
+//    com a mesma contagem de 0 players e mesmo MOTD → provavelmente TCPShield em ambos.
+//    mcstatus.io tem cache próprio de ~30s então não é 100% confiável sozinho.
+//
+//  Camada 4 — players.online > 0 como confirmação positiva:
+//    Se o servidor reporta jogadores online, ele definitivamente está rodando.
+//    O Offline MOTD do TCPShield sempre retorna 0 jogadores.
+//
+// A variável MC_QUERY_PORT define a porta UDP para o Query (padrão: mesma porta TCP, 25565).
+// Se MC_QUERY_DISABLED=true, pula a camada UDP e vai direto para as outras.
 
 // ── Controle de heartbeat pós-shutdown ────────────────────────────────────────
 // Quando o app envia serverStopped, zeramos o lastSeenAt do heartbeat para que o site
@@ -645,7 +679,19 @@ next();
 // ─────────────────────────────────────────────
 // Health
 // ─────────────────────────────────────────────
-app.get('/healthz', (_req, res) => res.json({ ok: true, startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) }));
+app.get('/healthz', (_req, res) => res.json({
+  ok: true,
+  startedAt: PROCESS_STARTED_AT.toISOString(),
+  uptimeSeconds: Math.floor(process.uptime()),
+  mc_state: _mcState,
+  cloud_lockout: { active: _cloudLockout.active, since: _cloudLockout.since || null },
+  app_connected: isAppConnectedInMemory(),
+  // Configuração de detecção de TCPShield (para debug)
+  tcpshield_detection: {
+    query_enabled: process.env.MC_QUERY_DISABLED !== 'true',
+    offline_motd_configured: Boolean(process.env.MC_OFFLINE_MOTD),
+  },
+}));
 
 // ── Keep-alive público (usado pelo GitHub Actions para evitar cold start) ──
 app.get('/ping', (_req, res) => {
@@ -663,22 +709,42 @@ app.get('/ping', (_req, res) => {
 //  1. Se _mcState é confiável e diz 'offline' → retorna offline sem ping
 //     (evita falso positivo do TCPShield após shutdown sinalizado pelo app)
 //
-//  2. Tenta ping TCP direto (sem SRV para reduzir latência de resolução DNS)
-//     → Se responde mas com latência < TCPSHIELD_MIN_LATENCY_MS e sem jogadores:
-//       • Suspeito de TCPShield. Consulta mcstatus.io como segunda opinião.
-//       • Se mcstatus.io também diz online com latência real → é online de verdade
-//       • Se mcstatus.io diz offline → TCPShield estava cacheando, retorna offline
-//     → Se responde com latência real (≥ 5ms) → online confirmado
+//  2. Tenta UDP Query (bypassa TCPShield completamente).
+//     Se responder → online real confirmado.
+//     Requer enable-query=true no server.properties. Desativar com MC_QUERY_DISABLED=true.
 //
-//  3. Se ping direto falha → tenta SRV → tenta mcstatus.io
+//  3. Tenta ping TCP de status (sem SRV, depois com SRV como fallback).
+//
+//  4. Analisa o resultado do ping com 3 heurísticas de detecção de TCPShield:
+//
+//     Heurística A — players.max === 0 (sinal mais forte e mais confiável):
+//       Um servidor Minecraft REAL nunca reporta max=0.
+//       O TCPShield "Offline MOTD" retorna max=0 por não conhecer o backend offline.
+//       Se max=0 → TCPShield respondendo → servidor offline.
+//       Checa mcstatus.io para confirmar/enriquecer dados antes de declarar offline.
+//       Se mcstatus.io também retornar max=0 → offline confirmado.
+//       Se mcstatus.io retornar max>0 → servidor online (TCPShield estava enganoso,
+//       mas o servidor real está acessível de outro datacenter).
+//
+//     Heurística B — latência < 5ms sem sample list:
+//       TCPShield sem "Offline MOTD" responde do cache local em <1ms.
+//       Um servidor real tem RTT mínimo de ~5ms mesmo na mesma LAN.
+//
+//     Heurística C — MOTD corresponde a MC_OFFLINE_MOTD (env var):
+//       Compara o MOTD retornado com o texto configurado no TCPShield.
+//
+//  5. Se ping TCP falha completamente → tenta mcstatus.io (com verificação de max=0)
 //     → Se tudo falha → offline
 
 async function fetchMinecraftStatus() {
-  const host = process.env.MC_HOST || 'fa.ogabriels.com';
+  const host          = process.env.MC_HOST           || 'fa.ogabriels.com';
+  const queryPort     = parseInt(process.env.MC_QUERY_PORT || '25565');
+  const queryDisabled = process.env.MC_QUERY_DISABLED === 'true';
+  const offlineMotd   = (process.env.MC_OFFLINE_MOTD || '').trim().toLowerCase();
 
   // ── Passo 1: verificar máquina de estados ────────────────────────────────
   // Se o app sinalizou shutdown E ainda não expirou o período de recheck,
-  // retorna offline sem nem tentar o ping — TCPShield poderia enganar.
+  // retorna offline sem nem tentar o ping.
   if (isMcStateTrustworthy() && _mcState.state === 'offline') {
     return {
       host, checkedAt: new Date(), online: false,
@@ -687,17 +753,43 @@ async function fetchMinecraftStatus() {
     };
   }
 
+  // ── Passo 2: UDP Query — bypassa TCPShield completamente ─────────────────
+  // O TCPShield não proxeia UDP. Uma resposta aqui = servidor real online.
+  // Requer enable-query=true no server.properties.
+  if (!queryDisabled) {
+    try {
+      const qStart = Date.now();
+      const qResult = await util.queryFull(host, queryPort, { timeout: 2500, enableSRV: false });
+      const qLatency = Date.now() - qStart;
+      // Resposta UDP recebida — servidor definitivamente online
+      if (_mcState.state !== 'online') setMcState('online', 'ping');
+      return {
+        host, checkedAt: new Date(), online: true,
+        version: qResult.version || null,
+        players: {
+          online: qResult.players?.online || 0,
+          max:    qResult.players?.max    || 0,
+          list:   (qResult.players?.list  || []).filter(Boolean),
+        },
+        latencyMs: qLatency,
+        raw: qResult, source: 'udp_query',
+      };
+    } catch (_qErr) {
+      // UDP falhou — pode ser: servidor offline, query desabilitado, ou firewall.
+      // Não concluímos offline aqui; continuamos com TCP + heurísticas.
+    }
+  }
+
+  // ── Passo 3: ping TCP direto ──────────────────────────────────────────────
   const started = Date.now();
-  let result = null;
+  let result    = null;
   let latencyMs = null;
   let pingFailed = false;
 
-  // ── Passo 2: ping TCP direto ─────────────────────────────────────────────
   try {
     result = await util.status(host, 25565, { timeout: 3000, enableSRV: false });
     latencyMs = Math.max(0, Date.now() - started);
   } catch (_err1) {
-    // Falhou sem SRV — tenta com SRV
     try {
       const srvStart = Date.now();
       result = await util.status(host, 25565, { timeout: 3000, enableSRV: true });
@@ -707,30 +799,68 @@ async function fetchMinecraftStatus() {
     }
   }
 
-  // ── Passo 3: se ping respondeu, verificar se é TCPShield cacheado ────────
+  // ── Passo 4: análise do resultado do ping TCP ─────────────────────────────
   if (result && !pingFailed) {
     const reportedOnline = Number(result.players?.online || 0);
-    const hasSample = (result.players?.sample || []).length > 0;
-    const isFastPing = latencyMs < TCPSHIELD_MIN_LATENCY_MS;
+    const hasSample      = (result.players?.sample || []).length > 0;
+    const isFastPing     = latencyMs < TCPSHIELD_MIN_LATENCY_MS;
 
-    // Critério de suspeita TCPShield:
-    //   • Latência irreal (< 5ms) — cache local responde mais rápido que qualquer RTT real
-    //   • E não há lista de jogadores (TCPShield não passa a amostra de jogadores no cache)
-    // Se _mcState === 'offline' por sinal do app, elevamos a suspeita mesmo com latência OK
-    const stateOffline = _mcState.state === 'offline' && _mcState.setBy === 'app_signal';
-    const tcpShieldSuspect = (isFastPing && !hasSample) || stateOffline;
+    // Confirmação positiva imediata: se há jogadores reportados, é real.
+    // (TCPShield Offline MOTD sempre retorna 0 jogadores)
+    if (reportedOnline > 0) {
+      if (_mcState.state !== 'online') setMcState('online', 'ping');
+      const onlinePlayers = (result.players?.sample || [])
+        .map(p => p.name).filter(n => Boolean(n) && n !== 'Anonymous Player');
+      return {
+        host, checkedAt: new Date(), online: true,
+        version: result.version?.name || null,
+        players: { online: reportedOnline, max: Number(result.players?.max || 0), list: onlinePlayers },
+        latencyMs: result.roundTripLatency || latencyMs,
+        raw: result, source: 'ping',
+      };
+    }
+
+    // 0 jogadores reportados — pode ser TCPShield Offline MOTD ou servidor vazio real.
+    // Aplicamos heurísticas em cascata, em ordem de confiança:
+    const reportedMax = Number(result.players?.max || 0);
+
+    // Heurística A — max = 0 (sinal mais forte, exclusivo do TCPShield):
+    //   Um servidor Minecraft REAL nunca reporta max=0. Mesmo vazio, reporta max=N
+    //   conforme configurado no server.properties (ex: 20, 100, 250).
+    //   O TCPShield "Offline MOTD" retorna max=0 porque não tem como saber o
+    //   valor real do backend offline. Este sinal sozinho já é suficiente.
+    const maxIsZero = reportedMax === 0;
+
+    // Heurística B: latência sub-5ms (TCPShield sem Offline MOTD — cache local)
+    const stateOffline   = _mcState.state === 'offline' && _mcState.setBy === 'app_signal';
+    const latencySuspect = isFastPing && !hasSample;
+
+    // Heurística C: MOTD bate com o Offline MOTD configurado (MC_OFFLINE_MOTD env)
+    let motdSuspect = false;
+    if (offlineMotd) {
+      const returnedMotd = (
+        result.motd?.clean ||
+        result.description?.text ||
+        result.description ||
+        ''
+      ).toString().trim().toLowerCase();
+      motdSuspect = returnedMotd.length > 0 && (returnedMotd === offlineMotd || returnedMotd.includes(offlineMotd));
+    }
+
+    const tcpShieldSuspect = maxIsZero || latencySuspect || motdSuspect || stateOffline;
 
     if (tcpShieldSuspect) {
-      // Segunda opinião: mcstatus.io faz a verificação do seu próprio datacenter
-      // e não é afetado pelo cache do TCPShield desta instância
+      // Segunda opinião: mcstatus.io consulta de datacenter diferente.
       try {
         const apiRes = await fetch(`https://api.mcstatus.io/v2/status/java/${encodeURIComponent(host)}`, {
           signal: AbortSignal.timeout(4000),
         });
         if (apiRes.ok) {
           const data = await apiRes.json();
+          const extMax    = Number(data.players?.max    || 0);
+          const extOnline = Number(data.players?.online || 0);
+
           if (!data.online) {
-            // mcstatus.io confirma offline — TCPShield estava cacheando
             setMcState('offline', 'ping');
             return {
               host, checkedAt: new Date(), online: false,
@@ -738,52 +868,63 @@ async function fetchMinecraftStatus() {
               latencyMs: null, raw: data, source: 'mcstatus_confirmed_offline',
             };
           }
-          // mcstatus.io diz online também — servidor genuinamente online
-          // Usa os dados do mcstatus.io (mais ricos que o cache do TCPShield)
-          result = {
-            version: { name: data.version?.name_raw || data.version?.name },
-            players: {
-              online: data.players?.online || 0,
-              max:    data.players?.max    || 0,
-              sample: (data.players?.list || []).map(p => ({ name: p.name_raw || p.name })),
-            },
-            roundTripLatency: data.latency,
+
+          // mcstatus.io diz online — mas se max=0, o TCPShield também enganou o mcstatus.io.
+          // max=0 em QUALQUER fonte → offline.
+          if (extMax === 0) {
+            setMcState('offline', 'ping');
+            return {
+              host, checkedAt: new Date(), online: false,
+              version: null, players: { online: 0, max: 0, list: [] },
+              latencyMs: null, raw: data, source: 'tcpshield_max_zero_confirmed',
+            };
+          }
+
+          // mcstatus.io retornou max > 0 → servidor real online (pode estar vazio)
+          if (_mcState.state !== 'online') setMcState('online', 'ping');
+          const list = (data.players?.list || []).map(p => p.name_raw || p.name).filter(Boolean);
+          return {
+            host, checkedAt: new Date(), online: true,
+            version: data.version?.name_raw || data.version?.name || null,
+            players: { online: extOnline, max: extMax, list },
+            latencyMs: data.latency || latencyMs,
+            raw: data, source: extOnline > 0 ? 'mcstatus_online' : 'mcstatus_empty_online',
           };
-          latencyMs = data.latency || latencyMs;
         }
       } catch (_apiErr) {
-        // mcstatus.io inacessível — se o estado era 'offline' por sinal do app,
-        // mantemos offline; caso contrário, confiamos no ping direto
-        if (stateOffline) {
+        // mcstatus.io inacessível — decidimos pelos sinais locais
+        if (maxIsZero || stateOffline || motdSuspect) {
+          // Sinais fortes o suficiente mesmo sem mcstatus.io
+          if (stateOffline) {
+            return {
+              host, checkedAt: new Date(), online: false,
+              version: null, players: { online: 0, max: 0, list: [] },
+              latencyMs: null, raw: null, source: 'state_machine_fallback',
+            };
+          }
+          setMcState('offline', 'ping');
           return {
             host, checkedAt: new Date(), online: false,
             version: null, players: { online: 0, max: 0, list: [] },
-            latencyMs: null, raw: null, source: 'state_machine_fallback',
+            latencyMs: null, raw: null,
+            source: maxIsZero ? 'tcpshield_max_zero_fallback' : 'offline_motd_match_fallback',
           };
         }
-        // Estado 'unknown' e mcstatus.io falhou: confia no ping direto
+        // latencySuspect apenas, sem mcstatus.io → benefício da dúvida → online
       }
     }
 
-    // Ping confirmado como real (latência OK, ou mcstatus.io confirmou)
+    // Sem suspeita de TCPShield (max > 0, latência real, MOTD não bate, app não sinalizou)
+    // → servidor online real, possivelmente vazio
     const onlinePlayers = (result.players?.sample || [])
-      .map(p => p.name)
-      .filter(name => Boolean(name) && name !== 'Anonymous Player');
-
-    // Atualiza máquina de estados apenas se veio por sinal do app ou se mudou
-    if (_mcState.state !== 'online' && _mcState.setBy !== 'app_signal') {
-      setMcState('online', 'ping');
-    } else if (_mcState.setBy === 'app_signal' && _mcState.state === 'offline') {
-      // App disse offline mas ping real confirmou online — servidor foi ligado externamente
-      setMcState('online', 'ping');
-    }
-
+      .map(p => p.name).filter(n => Boolean(n) && n !== 'Anonymous Player');
+    if (_mcState.state !== 'online') setMcState('online', 'ping');
     return {
       host, checkedAt: new Date(), online: true,
       version: result.version?.name || null,
       players: {
-        online: Number(result.players?.online || 0),
-        max:    Number(result.players?.max    || 0),
+        online: reportedOnline,
+        max:    reportedMax,
         list:   onlinePlayers,
       },
       latencyMs: result.roundTripLatency || latencyMs,
@@ -791,7 +932,7 @@ async function fetchMinecraftStatus() {
     };
   }
 
-  // ── Passo 4: ping falhou completamente — tenta mcstatus.io ───────────────
+  // ── Passo 5: ping TCP falhou completamente — tenta mcstatus.io ───────────
   try {
     const apiRes = await fetch(`https://api.mcstatus.io/v2/status/java/${encodeURIComponent(host)}`, {
       signal: AbortSignal.timeout(5000),
@@ -808,27 +949,28 @@ async function fetchMinecraftStatus() {
       };
     }
 
-    // mcstatus.io diz online (ping direto falhou por roteamento, não por offline)
-    const onlinePlayers = (data.players?.list || [])
-      .map(p => p.name_raw || p.name)
-      .filter(Boolean);
+    // TCP falhou mas mcstatus.io respondeu — ainda assim checar max=0
+    // (TCPShield pode ter enganado o mcstatus.io com Offline MOTD)
+    const extMaxFallback = Number(data.players?.max || 0);
+    if (extMaxFallback === 0) {
+      setMcState('offline', 'ping');
+      return {
+        host, checkedAt: new Date(), online: false,
+        version: null, players: { online: 0, max: 0, list: [] },
+        latencyMs: null, raw: data, source: 'tcpshield_max_zero_mcstatus',
+      };
+    }
 
+    const onlinePlayers = (data.players?.list || []).map(p => p.name_raw || p.name).filter(Boolean);
     if (_mcState.state !== 'online') setMcState('online', 'ping');
-
     return {
       host, checkedAt: new Date(), online: true,
       version: data.version?.name_raw || data.version?.name || null,
-      players: {
-        online: data.players?.online || 0,
-        max:    data.players?.max    || 0,
-        list:   onlinePlayers,
-      },
+      players: { online: data.players?.online || 0, max: extMaxFallback, list: onlinePlayers },
       latencyMs: data.latency || null,
       raw: data, source: 'mcstatus_online',
     };
-
   } catch (_err3) {
-    // Tudo falhou — inacessível
     console.warn('[mc-status] Todas as tentativas falharam');
     setMcState('offline', 'ping');
     return {
