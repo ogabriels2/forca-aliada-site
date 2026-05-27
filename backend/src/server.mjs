@@ -2380,18 +2380,20 @@ app.get('/api/notifications', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
-
-const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
-res.json(rows);
+  try {
+    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
+    res.json(rows);
+  } catch (err) { console.error('[GET /api/notifications]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
 app.get('/api/notifications/unread-count', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
-
-const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
-res.json({ count: rows[0].count });
+  try {
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
+    res.json({ count: rows[0].count });
+  } catch (err) { console.error('[GET /api/notifications/unread-count]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
 app.post('/api/notifications/:id/read', auth, async (req, res) => {
@@ -2399,14 +2401,15 @@ app.post('/api/notifications/:id/read', auth, async (req, res) => {
   if (!id) return res.status(400).json({ error: 'invalid id' });
   const role = req.user.role;
   const mc = (req.user.minecraft_name || '').toLowerCase();
-  const visible = await pool.query(
-    `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
-    [id, role, String(req.user.sub), mc],
-  );
-  if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
-
-  await pool.query(`INSERT INTO notification_reads(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
-  res.json({ ok: true });
+  try {
+    const visible = await pool.query(
+      `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
+      [id, role, String(req.user.sub), mc],
+    );
+    if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
+    await pool.query(`INSERT INTO notification_reads(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
+    res.json({ ok: true });
+  } catch (err) { console.error('[POST /api/notifications/:id/read]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
 app.delete('/api/notifications/:id', auth, async (req, res) => {
@@ -2414,23 +2417,25 @@ app.delete('/api/notifications/:id', auth, async (req, res) => {
   if (!id) return res.status(400).json({ error: 'invalid id' });
   const role = req.user.role;
   const mc = (req.user.minecraft_name || '').toLowerCase();
-  const visible = await pool.query(
-    `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
-    [id, role, String(req.user.sub), mc],
-  );
-  if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
-
-  await pool.query(`INSERT INTO notification_deletes(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
-  res.json({ ok: true });
+  try {
+    const visible = await pool.query(
+      `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
+      [id, role, String(req.user.sub), mc],
+    );
+    if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
+    await pool.query(`INSERT INTO notification_deletes(notification_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [id, req.user.sub]);
+    res.json({ ok: true });
+  } catch (err) { console.error('[DELETE /api/notifications/:id]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
 app.post('/api/notifications/read-all', auth, async (req, res) => {
   const userId = req.user.sub;
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
-
-await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
-res.json({ ok: true });
+  try {
+    await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
+    res.json({ ok: true });
+  } catch (err) { console.error('[POST /api/notifications/read-all]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
 app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
@@ -2474,7 +2479,7 @@ app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   res.json(rows);
 });
 
-app.delete('/api/admin/notifications/:id', auth, requireOwner, async (req, res) => {
+app.delete('/api/admin/notifications/:id', auth, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
 
