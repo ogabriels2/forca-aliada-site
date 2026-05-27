@@ -26,6 +26,20 @@ const PROCESS_STARTED_AT = new Date();
 const _mcStatusCache = { data: null, expiresAt: 0 };
 const MC_STATUS_TTL_MS = 30_000; // 30 segundos
 
+// ── Estado em memória do heartbeat do App (sem I/O de banco) ──
+// O app deve chamar POST /api/app/heartbeat a cada 10 segundos.
+// Se não receber nada em APP_HEARTBEAT_TIMEOUT_MS, considera desconectado.
+const _appHeartbeat = {
+  lastSeenAt: 0,          // timestamp Unix em ms da última chamada
+  keyId: null,            // id da chave que fez o último heartbeat
+  keyName: null,          // nome amigável
+};
+const APP_HEARTBEAT_TIMEOUT_MS = 30_000; // 30s — tolerância (3 ciclos de 10s)
+
+function isAppConnectedInMemory() {
+  return Date.now() - _appHeartbeat.lastSeenAt < APP_HEARTBEAT_TIMEOUT_MS;
+}
+
 // ─────────────────────────────────────────────
 // App
 // ─────────────────────────────────────────────
@@ -547,20 +561,44 @@ async function fetchMinecraftStatus() {
     try {
       result = await util.status(host, 25565, { timeout: 2500, enableSRV: true });
     } catch (err2) {
-      const res = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
-      if (!res.ok) throw new Error('Todas as tentativas de ping falharam.');
-      const data = await res.json();
-      if (!data.online) throw new Error('Servidor offline reportado pela API.');
-
-      result = {
-        version: { name: data.version?.name_raw || data.version?.name },
-        players: {
-          online: data.players?.online || 0,
-          max: data.players?.max || 0,
-          sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
-        },
-        roundTripLatency: data.latency
-      };
+      try {
+        const apiRes = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
+        if (!apiRes.ok) throw new Error('API mcstatus falhou');
+        const data = await apiRes.json();
+        if (!data.online) {
+          // Servidor genuinamente offline conforme API externa
+          return {
+            host,
+            checkedAt: new Date(),
+            online: false,
+            version: null,
+            players: { online: 0, max: 0, list: [] },
+            latencyMs: null,
+            raw: data,
+          };
+        }
+        result = {
+          version: { name: data.version?.name_raw || data.version?.name },
+          players: {
+            online: data.players?.online || 0,
+            max: data.players?.max || 0,
+            sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
+          },
+          roundTripLatency: data.latency
+        };
+      } catch (err3) {
+        // Todas as tentativas falharam — server inacessível, marca offline
+        console.warn('[mc-status] Todas as tentativas falharam:', err3.message);
+        return {
+          host,
+          checkedAt: new Date(),
+          online: false,
+          version: null,
+          players: { online: 0, max: 0, list: [] },
+          latencyMs: null,
+          raw: null,
+        };
+      }
     }
   }
 
@@ -636,39 +674,60 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
     await recordServerStatus(status);
 
     // --- SISTEMA DE AUTO-CURA (MASTER/SLAVE) ---
-    const now = status.checkedAt;
-    const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-    
-    // Verifica se a App Desktop esteve ativa no último minuto
-    const { rows: activeApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
-    const isAppConnected = activeApps.length > 0;
+    // Usa heartbeat em memória: se o app mandou sinal nos últimos 30s, ele é o master
+    const appConnected = isAppConnectedInMemory();
 
-    // Se o Site for o Ativo (App desconectada)
-    if (status.online && !isAppConnected) {
-      const onlinePlayers = status.players.list;
-      const reportedCount = status.players.online;
-      const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
+    if (!appConnected) {
+      // Site assume controle — reconcilia sessões abertas com o que o MC reporta
+      const now = status.checkedAt;
+      const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
 
-      if (!isProxyHidingNames) {
+      if (!status.online) {
+        // Servidor offline e app não está conectado: fecha TODAS as sessões abertas
         for (const row of active.rows) {
-          if (!onlinePlayers.includes(row.player)) {
-            const dur = (now - new Date(row.entered_at)) / 3600000;
-            await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
-          }
+          const dur = (now - new Date(row.entered_at)) / 3600000;
+          await pool.query(
+            'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+            [now, +dur.toFixed(2), row.player]
+          );
         }
-        for (const p of onlinePlayers) {
-          const already = active.rows.some(r => r.player === p);
-          // O Site marca as suas próprias sessões com origin 'site'
-          if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')", [p, now]);
+      } else {
+        const onlinePlayers = status.players.list;
+        const reportedCount = status.players.online;
+        const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
+
+        if (!isProxyHidingNames) {
+          // Fecha sessões de quem não aparece mais na lista
+          for (const row of active.rows) {
+            if (!onlinePlayers.includes(row.player)) {
+              const dur = (now - new Date(row.entered_at)) / 3600000;
+              await pool.query(
+                'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+                [now, +dur.toFixed(2), row.player]
+              );
+            }
+          }
+          // Abre sessões de novos jogadores detectados pelo site
+          for (const p of onlinePlayers) {
+            const already = active.rows.some(r => r.player === p);
+            if (!already) {
+              await pool.query(
+                "INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')",
+                [p, now]
+              );
+            }
+          }
         }
       }
     }
-    // Se a App está conectada, o site "cruza os braços" e não faz nada, evitando duplicados!
+    // Se o App está conectado (heartbeat recente), o site não faz nada — evita duplicados
 
     const stats = await getServerStatusStats(status.host, status.online);
     return res.json({
       checked_at: status.checkedAt.toISOString(),
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
+      app_connected: appConnected,
+      app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
       minecraft: {
         host: status.host, online: status.online, version: status.version,
         players: { online: status.players.online, max: status.players.max, list: status.players.list },
@@ -681,22 +740,26 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
     const fallback = { host, checkedAt, online: false, version: null, players: { online: 0, max: 0, list: [] }, latencyMs: null };
     await recordServerStatus(fallback).catch(e => console.error('[server status record]', e));
 
-    // O Servidor caiu de vez. Vamos verificar se a App também caiu antes de auto-deslogar toda a gente
-    try {
-      const { rows: fallbackApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
-      if (fallbackApps.length === 0) {
+    const appConnected = isAppConnectedInMemory();
+    if (!appConnected) {
+      try {
         const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
         for (const row of active.rows) {
           const dur = (checkedAt - new Date(row.entered_at)) / 3600000;
-          await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [checkedAt, +dur.toFixed(2), row.player]);
+          await pool.query(
+            'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+            [checkedAt, +dur.toFixed(2), row.player]
+          );
         }
-      }
-    } catch (e) {}
+      } catch (e) { console.error('[server status close sessions]', e); }
+    }
 
     const stats = await getServerStatusStats(host, false).catch(() => ({ uptime24hPct: 0, onlineSince: null, samples24h: 0 }));
     return res.json({
       checked_at: checkedAt.toISOString(),
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
+      app_connected: appConnected,
+      app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
       minecraft: { ...fallback, checkedAt: undefined, onlineSince: null, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h, error: 'status unavailable' },
     });
   }
@@ -713,31 +776,51 @@ try {
   const status = await fetchMinecraftStatusCached();
   await recordServerStatus(status);
   
-  const { rows: activeApps } = await pool.query("SELECT id FROM app_integration_keys WHERE last_used_at >= NOW() - INTERVAL '1 minute'");
-  const isAppConnected = activeApps.length > 0;
+  // Usa heartbeat em memória — sem bater no banco
+  const appConnected = isAppConnectedInMemory();
 
-  if (status.online && !isAppConnected) {
-    const onlinePlayers = status.players.list;
-    const reportedCount = status.players.online;
+  if (!appConnected) {
     const now = status.checkedAt;
     const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-    const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
 
-    if (!isProxyHidingNames) {
+    if (!status.online) {
+      // Cron detectou offline e app não está ativa: fecha todas as sessões
       for (const row of active.rows) {
-        if (!onlinePlayers.includes(row.player)) {
-          const dur = (now - new Date(row.entered_at)) / 3600000;
-          await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
-        }
+        const dur = (now - new Date(row.entered_at)) / 3600000;
+        await pool.query(
+          'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+          [now, +dur.toFixed(2), row.player]
+        );
       }
-      for (const p of onlinePlayers) {
-        const already = active.rows.some(r => r.player === p);
-        if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')", [p, now]);
+    } else {
+      const onlinePlayers = status.players.list;
+      const reportedCount = status.players.online;
+      const isProxyHidingNames = reportedCount > 0 && onlinePlayers.length === 0;
+
+      if (!isProxyHidingNames) {
+        for (const row of active.rows) {
+          if (!onlinePlayers.includes(row.player)) {
+            const dur = (now - new Date(row.entered_at)) / 3600000;
+            await pool.query(
+              'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+              [now, +dur.toFixed(2), row.player]
+            );
+          }
+        }
+        for (const p of onlinePlayers) {
+          const already = active.rows.some(r => r.player === p);
+          if (!already) {
+            await pool.query(
+              "INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')",
+              [p, now]
+            );
+          }
+        }
       }
     }
   }
 
-  res.json({ ok: true });
+  res.json({ ok: true, app_connected: appConnected, server_online: status.online });
 } catch (err) {
   res.status(500).json({ error: 'snapshot failed' });
 }
@@ -751,7 +834,7 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
 
   try {
     const online  = await pool.query(
-      'SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL'
+      'SELECT player, entered_at, origin FROM player_sessions WHERE left_at IS NULL'
     );
     const history = await pool.query(
       'SELECT player, entered_at, left_at, duration_hours, origin FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1',
@@ -761,13 +844,15 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
     res.json({
       onlinePlayers: online.rows.map(r => r.player),
       activeSessions: online.rows.reduce((acc, r) => ({
-        ...acc, [r.player]: { name: r.player, enteredAt: r.entered_at }
+        ...acc, [r.player]: { name: r.player, enteredAt: r.entered_at, origin: r.origin || 'site' }
       }), {}),
       history: history.rows.map(r => ({
         player: r.player, enteredAt: r.entered_at,
         leftAt: r.left_at, hoursOnline: r.duration_hours,
-        origin: r.origin // Exporta a origem
+        origin: r.origin || 'site'
       })),
+      app_connected: isAppConnectedInMemory(),
+      app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
     });
   } catch (err) {
     res.status(500).json({ error: 'Falha ao buscar histórico' });
@@ -777,6 +862,36 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────
 // INTEGRAÇÃO DE APLICATIVO (O PUSH)
 // ─────────────────────────────────────────────
+
+// ── Helper: valida a chave do app e retorna { isValid, appKeyId } ──
+async function validateAppKey(key) {
+  if (!key) return { isValid: false, appKeyId: null };
+  if (key === INGEST_SECRET && INGEST_SECRET) return { isValid: true, appKeyId: null };
+  const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+  const { rows } = await pool.query(
+    'UPDATE app_integration_keys SET last_used_at=NOW() WHERE key_hash=$1 RETURNING id, name',
+    [keyHash]
+  );
+  if (!rows.length) return { isValid: false, appKeyId: null };
+  return { isValid: true, appKeyId: rows[0].id, keyName: rows[0].name };
+}
+
+/**
+ * POST /api/app/heartbeat
+ * Chamado pelo app a cada 10 segundos para sinalizar que está ativo.
+ * Operação leve — só atualiza memória + last_used_at no banco (1 query).
+ * Não reconcilia sessões; essa responsabilidade é do /api/app/sync.
+ */
+app.post('/api/app/heartbeat', async (req, res) => {
+  const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const { isValid, appKeyId, keyName } = await validateAppKey(key).catch(() => ({ isValid: false }));
+  if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
+
+  _appHeartbeat.lastSeenAt = Date.now();
+  if (appKeyId) { _appHeartbeat.keyId = appKeyId; _appHeartbeat.keyName = keyName || null; }
+
+  res.json({ ok: true, server_time: new Date().toISOString() });
+});
 
 app.post('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
     const name = sanitize(req.body.name || 'Força Aliada Manager PC');
@@ -805,25 +920,13 @@ app.delete('/api/admin/app-keys/:id', auth, requireOwner, async (req, res) => {
 app.post('/api/app/sync', async (req, res) => {
     const key = req.headers['x-app-key'] || req.headers['x-ingest-secret']; 
     if (!key) return res.status(401).json({ error: 'Chave não fornecida' });
-    let isValid = false;
 
-    if (key === INGEST_SECRET && INGEST_SECRET) {
-        isValid = true;
-    } else {
-        const keyHash = crypto.createHash('sha256').update(key).digest('hex');
-        const { rows } = await pool.query('UPDATE app_integration_keys SET last_used_at=NOW() WHERE key_hash=$1 RETURNING id', [keyHash]);
-        if (rows.length > 0) isValid = true;
-    }
-
+    const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false }));
     if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
-    // Resolve the app key id for queue delivery tracking
-    let appKeyId = null;
-    try {
-        const keyHash = crypto.createHash('sha256').update(key).digest('hex');
-        const { rows: kr } = await pool.query('SELECT id FROM app_integration_keys WHERE key_hash=$1', [keyHash]);
-        appKeyId = kr[0]?.id || null;
-    } catch { /* fallback key has no id */ }
+    // Sync também atualiza o heartbeat em memória (garante que site não interfira durante sync)
+    _appHeartbeat.lastSeenAt = Date.now();
+    if (appKeyId) _appHeartbeat.keyId = appKeyId;
 
     try {
         const payload  = req.body?.payload || req.body;
