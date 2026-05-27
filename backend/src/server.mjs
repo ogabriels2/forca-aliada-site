@@ -40,6 +40,30 @@ function isAppConnectedInMemory() {
   return Date.now() - _appHeartbeat.lastSeenAt < APP_HEARTBEAT_TIMEOUT_MS;
 }
 
+// ── Estado em memória: o app avisou explicitamente que o servidor MC foi desligado ──
+// Isso permite sobrescrever o ping do TCPShield (que cacheia o MOTD por ~1s e
+// continua respondendo "online" mesmo quando o servidor real está offline).
+// A flag é limpa quando o app manda serverStarted: true OU quando o app
+// reconecta após um período offline (heartbeat fresco após timeout).
+const _serverState = {
+  knownOffline: false,      // true = app sinalizou shutdown explicitamente
+  knownOfflineAt: 0,        // quando foi sinalizado
+  knownOnline: false,       // true = app sinalizou que o servidor subiu
+};
+
+// Quando o TCPShield responde como "online" mas o app sinalizou shutdown,
+// confiamos no app por até TCPSHIELD_TRUST_DURATION_MS.
+// Após esse tempo, voltamos a confiar no ping (caso o admin reinicie manualmente).
+const TCPSHIELD_TRUST_DURATION_MS = 5 * 60_000; // 5 minutos
+
+function isServerKnownOffline() {
+  if (!_serverState.knownOffline) return false;
+  // Se o app voltou a conectar depois do shutdown, o servidor pode ter subido
+  if (_serverState.knownOnline) return false;
+  // Confiamos no sinal de shutdown por até 5 minutos
+  return Date.now() - _serverState.knownOfflineAt < TCPSHIELD_TRUST_DURATION_MS;
+}
+
 // ─────────────────────────────────────────────
 // App
 // ─────────────────────────────────────────────
@@ -552,6 +576,26 @@ app.get('/ping', (_req, res) => {
 // ─────────────────────────────────────────────
 async function fetchMinecraftStatus() {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
+
+  // ── Proteção TCPShield ──────────────────────────────────────────────────
+  // O TCPShield cacheia o MOTD do servidor a cada ~1s. Isso significa que
+  // mesmo após o servidor real ser desligado, o TCPShield continua respondendo
+  // ao ping de status como se estivesse online (com o último MOTD cacheado).
+  // Quando o App nos sinaliza explicitamente que desligou (serverStopped: true),
+  // retornamos offline diretamente sem nem tentar o ping — evitando falso positivo.
+  if (isServerKnownOffline()) {
+    return {
+      host,
+      checkedAt: new Date(),
+      online: false,
+      version: null,
+      players: { online: 0, max: 0, list: [] },
+      latencyMs: null,
+      raw: null,
+      source: 'app_signal', // indica que veio do sinal do app, não do ping
+    };
+  }
+
   const started = Date.now();
   let result = null;
 
@@ -575,6 +619,7 @@ async function fetchMinecraftStatus() {
             players: { online: 0, max: 0, list: [] },
             latencyMs: null,
             raw: data,
+            source: 'mcstatus_api',
           };
         }
         result = {
@@ -597,6 +642,7 @@ async function fetchMinecraftStatus() {
           players: { online: 0, max: 0, list: [] },
           latencyMs: null,
           raw: null,
+          source: 'failed',
         };
       }
     }
@@ -619,6 +665,7 @@ async function fetchMinecraftStatus() {
     },
     latencyMs: result.roundTripLatency || latencyMs,
     raw: result,
+    source: 'ping',
   };
 }
 
@@ -728,10 +775,12 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
       app_connected: appConnected,
       app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
+      server_known_offline: isServerKnownOffline(), // app sinalizou shutdown — ignora TCPShield
       minecraft: {
         host: status.host, online: status.online, version: status.version,
         players: { online: status.players.online, max: status.players.max, list: status.players.list },
         latencyMs: status.latencyMs, onlineSince: stats.onlineSince, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h,
+        status_source: status.source || 'ping', // 'ping' | 'mcstatus_api' | 'app_signal'
       },
     });
   } catch (err) {
@@ -887,10 +936,50 @@ app.post('/api/app/heartbeat', async (req, res) => {
   const { isValid, appKeyId, keyName } = await validateAppKey(key).catch(() => ({ isValid: false }));
   if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
+  const wasDisconnected = !isAppConnectedInMemory();
   _appHeartbeat.lastSeenAt = Date.now();
   if (appKeyId) { _appHeartbeat.keyId = appKeyId; _appHeartbeat.keyName = keyName || null; }
 
+  // Se o app estava desconectado (timeout) e voltou, limpamos o knownOffline
+  // para que o ping volte a funcionar normalmente (admin pode ter reiniciado manualmente).
+  // Não limpamos se foi um shutdown explícito recente — nesse caso só serverStarted limpa.
+  if (wasDisconnected && !_serverState.knownOffline) {
+    _serverState.knownOnline = false; // reset, deixa o ping decidir
+  }
+
   res.json({ ok: true, server_time: new Date().toISOString() });
+});
+
+/**
+ * GET /api/app/whitelist-queue
+ * Retorna itens pendentes da fila de whitelist (ainda não entregues ao app).
+ * Usado pelo app desktop para buscar novos cadastros mesmo fora do ciclo de sync.
+ */
+app.get('/api/app/whitelist-queue', async (req, res) => {
+  const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false }));
+  if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
+
+  try {
+    const { rows: pending } = await pool.query(
+      'SELECT id, minecraft_name, queued_at FROM whitelist_queue WHERE delivered_at IS NULL ORDER BY queued_at ASC LIMIT 50'
+    );
+
+    if (pending.length > 0) {
+      const ids = pending.map(r => r.id);
+      await pool.query(
+        `UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2)`,
+        [appKeyId, ids]
+      );
+    }
+
+    res.json({
+      ok: true,
+      pending: pending.map(r => ({ id: r.id, username: r.minecraft_name, queued_at: r.queued_at })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Falha ao buscar fila' });
+  }
 });
 
 app.post('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
@@ -933,6 +1022,42 @@ app.post('/api/app/sync', async (req, res) => {
         const online   = (payload?.onlinePlayers || []).filter(Boolean);
         const now      = new Date();
 
+        // ── Sinal de shutdown: app avisou que o servidor foi desligado ──
+        // Fecha todas as sessões abertas IMEDIATAMENTE, sem esperar o heartbeat expirar.
+        if (payload?.serverStopped === true) {
+            _appHeartbeat.lastSeenAt = 0; // invalida heartbeat para modo nuvem imediato
+            // Marca o servidor como known-offline para sobrescrever o TCPShield
+            _serverState.knownOffline = true;
+            _serverState.knownOfflineAt = Date.now();
+            _serverState.knownOnline = false;
+            // Invalida cache de status MC para que a próxima consulta retorne offline
+            _mcStatusCache.data = null;
+            _mcStatusCache.expiresAt = 0;
+            const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+            for (const row of active.rows) {
+                const dur = (now - new Date(row.entered_at)) / 3600000;
+                await pool.query(
+                    'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+                    [now, +dur.toFixed(2), row.player]
+                );
+            }
+            await audit({
+                type: 'system', severity: 'info',
+                message: 'App sinalizou shutdown do servidor — sessões abertas encerradas, modo nuvem ativado',
+                metadata: { sessionsClosed: active.rows.length },
+            });
+            return res.json({ ok: true, mode: 'cloud', whitelist_add: [] });
+        }
+
+        // ── Sinal de startup: app avisou que o servidor subiu ──
+        if (payload?.serverStarted === true) {
+            _serverState.knownOffline = false;
+            _serverState.knownOnline = true;
+            // Invalida cache para forçar ping fresco
+            _mcStatusCache.data = null;
+            _mcStatusCache.expiresAt = 0;
+        }
+
         const active   = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
 
         for (const row of active.rows) {
@@ -972,6 +1097,7 @@ app.post('/api/app/sync', async (req, res) => {
           message: `App Sync: ${online.length} jogador(es) online registrado(s)${pending.length ? `, ${pending.length} whitelist(s) entregue(s)` : ''}`,
           metadata: {
             onlinePlayers: online,
+            serverStarted: payload?.serverStarted || false,
             sessionsOpened: online.filter(p => !active.rows.some(r => r.player === p)).length,
             sessionsClosed: active.rows.filter(r => !online.includes(r.player)).length,
             whitelistDelivered: pending.map(r => r.minecraft_name),
