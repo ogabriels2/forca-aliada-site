@@ -1882,20 +1882,25 @@ function applyRoleVisibility() {
 (async () => {
   if (!token) { logout(); return; }
 
-  // Se há sessão em cache, mostra a página imediatamente
+  // Se há sessão em cache, mostra a página imediatamente com role do cache
+  // e revalida em background. Isso garante que usuários com sessões antigas (sem role)
+  // ou com Render em cold start não fiquem presos numa tela em branco.
   const cached = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } })();
-  if (cached && cached.username && (cached.role === 'full' || cached.role === 'owner')) {
+  let _dashboardInitialized = false;
+  if (cached && cached.username) {
+    if (cached.role === 'limited') { window.location.replace('account.html'); return; }
     session = cached;
     document.body.style.visibility = 'visible';
-    initDashboard();
-  } else if (cached && cached.role === 'limited') {
-    window.location.replace('account.html'); return;
+    if (cached.role === 'full' || cached.role === 'owner') {
+      initDashboard();
+      _dashboardInitialized = true;
+    }
+    // Se role desconhecido (sessão antiga sem campo role), aguarda API para completar o boot.
   }
-  // Se não há cache válido com role, aguarda a revalidação da API antes de exibir
-
-  // Revalida em background (ou bootstrap completo se sem cache)
+  // Revalida em background (sempre) para garantir role atualizado
+  // apiFetch() com retry automático — essencial para cold start do Render (pode levar 30s+)
   try {
-    const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await apiFetch(`/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
 
     if (res.status === 401 || res.status === 403) { logout(); return; }
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
@@ -1910,6 +1915,9 @@ function applyRoleVisibility() {
     if (document.body.style.visibility !== 'visible') {
       // Primeiro boot sem cache — inicializa tudo
       document.body.style.visibility = 'visible';
+      initDashboard();
+    } else if (!_dashboardInitialized) {
+      // Cache existia mas sem role — agora temos o role, inicializa tudo
       initDashboard();
     } else {
       // Revalidação em background — atualiza perfil e re-aplica visibilidade
@@ -1947,20 +1955,27 @@ function initDashboard() {
 
   // Aplica visibilidade dos cards baseada no role atual
   applyRoleVisibility();
+  // Segundo chamada com pequeno delay: garante que a visibilidade seja aplicada
+  // mesmo que algum script externo ou race condition resete o display após o load
+  setTimeout(applyRoleVisibility, 150);
   updateNotificationAudienceHint();
   loadNotifications();
   loadAdminNotifications();
   fetchAdminUsers();
   updateSortBarForTab('registered');
 
-  // Carregamento inicial de dados exclusivos do owner
+  // Carregamento inicial de dados do owner
   if (session.role === 'owner') {
+    fetchAppKeys();
+  }
+
+  // Audit logs — visível para full E owner (alinhado com a API requireAdmin)
+  if (session.role === 'full' || session.role === 'owner') {
     fetchAuditLogs();
     // Recarrega logs de auditoria a cada 60 segundos automaticamente
     setInterval(() => {
       if (document.visibilityState === 'visible') fetchAuditLogs(0);
     }, 60_000);
-    fetchAppKeys();
   }
 
   // Merit & Capital — inicialização para full e owner
@@ -2485,7 +2500,7 @@ function generateAppKey() {
         document.getElementById('new-key-alert').style.display = 'block';
         document.getElementById('new-key-value').value = data.key;
         fetchAppKeys();
-        if(session.role === 'owner') fetchAuditLogs();
+        if(session.role === 'owner' || session.role === 'full') fetchAuditLogs();
         
         showToast('Chave de integração gerada com sucesso!', 'success');
       } catch (e) {
@@ -2521,7 +2536,7 @@ function revokeAppKey(id, name) {
         if (!res.ok) throw new Error();
         
         fetchAppKeys();
-        if(session.role === 'owner') fetchAuditLogs();
+        if(session.role === 'owner' || session.role === 'full') fetchAuditLogs();
         showToast('Chave revogada com sucesso. Acesso cortado.', 'success');
       } catch (e) {
         showToast('Erro ao tentar revogar a chave.', 'error');
@@ -3153,9 +3168,16 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   const chartBtn = document.getElementById('modal-chart-btn');
   if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
 
-  const siteAcc = siteAccountId
-    ? globalAdminUsers.find(u => u.id === siteAccountId)
-    : globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase());
+  // Busca por ID (com coerção de tipo para garantir compatibilidade string/number do pg)
+  // Se não encontrar por ID, tenta por minecraft_name como fallback robusto
+  const siteAcc = (() => {
+    if (siteAccountId != null) {
+      const byId = globalAdminUsers.find(u => Number(u.id) === Number(siteAccountId));
+      if (byId) return byId;
+    }
+    return globalAdminUsers.find(u => u.minecraft_name?.toLowerCase() === playerName.toLowerCase())
+        || globalAdminUsers.find(u => u.username?.toLowerCase() === playerName.toLowerCase());
+  })();
 
   if (siteAcc) {
     currentEditingAdminId = siteAcc.id;
@@ -3172,17 +3194,20 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
     document.getElementById('modal-create-account').style.display = 'none';
 
     if (session.role === 'full') {
-      document.getElementById('admin-lock-screen').style.display   = 'block';
-      document.getElementById('admin-data-content').style.display  = 'none';
-      document.getElementById('btn-edit-account').style.display    = 'none';
-      document.getElementById('action-bar-edit').style.display     = 'none';
+      // Usuário full: exige confirmação de senha para ver dados sensíveis
+      document.getElementById('admin-lock-screen').style.display        = 'block';
+      document.getElementById('admin-data-content').style.display       = 'none';
+      document.getElementById('btn-edit-account').style.display         = 'none';
+      document.getElementById('action-bar-edit').style.display          = 'none';
       document.getElementById('advanced-security-wrapper').style.display = 'none';
       setAdminEditMode(false);
     } else {
-      document.getElementById('admin-lock-screen').style.display   = 'none';
-      document.getElementById('admin-data-content').style.display  = 'grid';
-      document.getElementById('btn-edit-account').style.display    = 'block';
-      setAdminEditMode(false);
+      // Owner: acesso total direto
+      document.getElementById('admin-lock-screen').style.display        = 'none';
+      document.getElementById('admin-data-content').style.display       = 'grid';
+      document.getElementById('btn-edit-account').style.display         = 'block';
+      document.getElementById('action-bar-edit').style.display          = 'flex';
+      setAdminEditMode(false); // avançado e senha ficam ocultos até clicar em Editar
     }
   } else {
     currentEditingAdminId = null;
@@ -3311,7 +3336,7 @@ async function saveAdminUser() {
       const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { showToast('Erro ao salvar. Verifique se e-mail ou usuário já existem.', 'error'); return; }
       if (newPwd) { const pwRes = await apiFetch(`/api/admin/users/${currentEditingAdminId}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ newPassword: newPwd }) }); if (!pwRes.ok) showToast('Dados salvos, mas erro ao alterar senha.', 'warning'); }
-      if (session.role === 'owner') fetchAuditLogs();
+      if (session.role === 'owner' || session.role === 'full') fetchAuditLogs();
       await fetchAdminUsers();
       document.getElementById('av-username').textContent = body.username;
       document.getElementById('av-email').textContent    = body.email;
@@ -3333,7 +3358,7 @@ async function executeAdminDelete() {
     onConfirm: async () => {
       const res = await apiFetch(`/api/admin/users/${currentEditingAdminId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
-        if (session.role === 'owner') fetchAuditLogs();
+        if (session.role === 'owner' || session.role === 'full') fetchAuditLogs();
         await fetchAdminUsers(); closeModal(); showToast(`Conta de ${targetName} excluída.`);
       } else { showToast('Erro ao excluir. O admin principal não pode ser removido.', 'error'); }
     }
@@ -3355,7 +3380,7 @@ async function submitCreateAccount() {
   btn.disabled = false; btn.textContent = 'Criar Cadastro';
   if (res.ok) {
     const data = await res.json();
-    if (session.role === 'owner') fetchAuditLogs();
+    if (session.role === 'owner' || session.role === 'full') fetchAuditLogs();
     await fetchAdminUsers();
     currentEditingAdminId = data.id;
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
