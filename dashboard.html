@@ -1018,6 +1018,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
       <div class="card" id="server-overview">
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+        <div style="margin-bottom:12px;" id="app-source-indicator"></div>
 
         <div class="dashboard-grid">
           <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
@@ -1861,9 +1862,24 @@ async function syncThemePreference() {
   }
 })();
 
+// Intervalo de polling do status do servidor (modo nuvem: 60s; modo app: 120s como fallback)
+let _statusPollInterval = null;
+
+function _startStatusPolling() {
+  if (_statusPollInterval) clearInterval(_statusPollInterval);
+  // Intervalo base de 60s — quando o app está conectado o dado vem em tempo real via sync,
+  // mas mantemos um fallback de 120s para detectar desconexões do app e atualizar a UI.
+  // Em modo nuvem (sem app), 60s é o intervalo ideal: detecta mudanças externas em ~1 min.
+  _statusPollInterval = setInterval(async () => {
+    if (document.visibilityState !== 'visible') return; // não polui com requests em background
+    await loadData();
+  }, 60_000);
+}
+
 function initDashboard() {
   renderProfile();
   loadData();
+  _startStatusPolling();
   document.getElementById('admin-users-card').style.display = 'block';
   document.getElementById('admin-notifications-card').style.display = 'block';
   updateNotificationAudienceHint();
@@ -1913,6 +1929,9 @@ function initDashboard() {
 
   if (liveInterval) clearInterval(liveInterval);
   liveInterval = setInterval(async () => {
+    // Não executa em background para não gerar requests desnecessários
+    if (document.visibilityState !== 'visible') return;
+
     try {
       const res = await fetch(`${API_BASE}/api/me`, { headers: { 'Authorization': `Bearer ${token}` } });
 
@@ -1933,7 +1952,8 @@ function initDashboard() {
     } catch (err) {
       // Falha de rede: Mantém o utilizador na página.
     }
-    applyFilters();
+    // Redesenha filtros apenas se há dados carregados (evita flicker no boot)
+    if (globalHistData) applyFilters();
     if (document.getElementById('player-modal').classList.contains('active')) renderModalTable();
   }, 10000);
 }
@@ -2012,13 +2032,17 @@ function normalizeNotification(n) {
 async function loadNotifications() {
   try {
     const res = await apiFetch(`/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Falha ao buscar notificações');
+    if (res.status === 401 || res.status === 403) return; // token expirado — o liveInterval vai deslogar
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     notifList = (await res.json()).map(normalizeNotification);
 
-    const countRes = await fetch(`${API_BASE}/api/notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!countRes.ok) throw new Error('Falha ao buscar contagem de notificações');
-    const countData = await countRes.json();
-    notifUnread = countData.count;
+    // Tenta buscar contagem precisa do servidor; usa contagem local como fallback
+    try {
+      const countRes = await apiFetch(`/api/notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
+      notifUnread = countRes.ok ? (await countRes.json()).count : notifList.filter(n => n.unread).length;
+    } catch {
+      notifUnread = notifList.filter(n => n.unread).length;
+    }
   } catch (err) {
     console.error('[notifications]', err);
     notifList = [];
@@ -2732,16 +2756,18 @@ async function loadData() {
       apiFetch(`/api/snapshots/latest`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
 
-    globalHealthData = statusData;
-    globalApiData = statusData?.minecraft ? {
-      online: statusData.minecraft.online,
-      version: statusData.minecraft.version,
-      players: statusData.minecraft.players,
-      debug: { ping: statusData.minecraft.latencyMs },
-    } : null;
-    
-    // O site volta a receber onlinePlayers, activeSessions e history no formato correto
-    globalHistData = histData; 
+    // Só substitui os dados globais se recebeu resposta válida
+    // (mantém dados anteriores em caso de falha pontual de rede)
+    if (statusData !== null) {
+      globalHealthData = statusData;
+      globalApiData = statusData?.minecraft ? {
+        online: statusData.minecraft.online,
+        version: statusData.minecraft.version,
+        players: statusData.minecraft.players,
+        debug: { ping: statusData.minecraft.latencyMs },
+      } : null;
+    }
+    if (histData !== null) globalHistData = histData;
     
     renderDashboard();
     updateActivityChart();
@@ -2751,6 +2777,25 @@ async function loadData() {
   } catch (err) {
     console.error("Erro ao carregar os dados principais do servidor:", err);
   }
+}
+
+// Constrói tooltip informativo para o indicador de modo nuvem
+function _buildCloudTooltip(statusSrc, mcState) {
+  const lastCheck = globalHealthData?.checked_at
+    ? new Date(globalHealthData.checked_at).toLocaleTimeString('pt-BR')
+    : '–';
+  const srcMap = {
+    state_machine:                'App sinalizou offline (aguardando recheck)',
+    state_machine_fallback:       'App offline + mcstatus.io inacessível',
+    mcstatus_confirmed_offline:   'Confirmado offline via mcstatus.io (TCPShield filtrado)',
+    mcstatus_online:              'Online confirmado via mcstatus.io',
+    mcstatus_offline:             'Offline confirmado via mcstatus.io',
+    failed:                       'Todas as fontes falharam',
+    ping:                         'Ping TCP direto',
+  };
+  const src       = srcMap[statusSrc] ? `Fonte: ${srcMap[statusSrc]}.` : '';
+  const stateInfo = mcState ? ` · Estado: ${mcState.state} (por ${mcState.set_by})` : '';
+  return `Modo Nuvem — sem App conectado. Dados via ping do site (atualiza a cada 1 min). Última checagem: ${lastCheck}. ${src}${stateInfo}`.trim();
 }
 
 function renderDashboard() {
@@ -2765,6 +2810,45 @@ function renderDashboard() {
     document.getElementById('server-version').textContent = '-';
     document.getElementById('online-count').textContent   = '0 / 0';
   }
+
+  // Indicador de fonte de dados (App vs Site)
+  const appConnected = globalHealthData?.app_connected ?? false;
+  const mcState      = globalHealthData?.mc_state      ?? null;
+  const statusSrc    = globalHealthData?.minecraft?.status_source ?? null;
+
+  const appEl = document.getElementById('app-source-indicator');
+  if (appEl) {
+    if (appConnected) {
+      const keyName = globalHealthData?.app_last_seen
+        ? ` · Último sinal: ${new Date(globalHealthData.app_last_seen).toLocaleTimeString('pt-BR')}`
+        : '';
+      appEl.innerHTML = `<span title="Força Aliada Manager conectado — dados em tempo real via App${keyName}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;border:1px solid rgba(52,199,89,0.3);"><span style="width:6px;height:6px;border-radius:50%;background:#34c759;display:inline-block;animation:pulse-dot 1.5s infinite;"></span>📡 App conectado</span>`;
+    } else {
+      // Modo nuvem — distingue entre: servidor detectado online externamente vs offline
+      const mcOnline = globalApiData?.online ?? false;
+      let cloudLabel, cloudColor, cloudBg, cloudBorder;
+      if (mcState?.state === 'offline' && mcState?.set_by === 'app_signal') {
+        // App sinalizou offline e ainda está no período de lockout
+        cloudLabel  = '☁️ Modo Nuvem · Servidor desligado';
+        cloudColor  = '#8e8e93';
+        cloudBg     = 'rgba(142,142,147,0.10)';
+        cloudBorder = 'rgba(142,142,147,0.25)';
+      } else if (mcOnline) {
+        // Servidor online detectado em modo nuvem (ligado externamente, sem app)
+        cloudLabel  = '☁️ Modo Nuvem · Online detectado';
+        cloudColor  = '#0071e3';
+        cloudBg     = 'rgba(0,113,227,0.10)';
+        cloudBorder = 'rgba(0,113,227,0.25)';
+      } else {
+        cloudLabel  = '☁️ Modo Nuvem';
+        cloudColor  = '#0071e3';
+        cloudBg     = 'rgba(0,113,227,0.08)';
+        cloudBorder = 'rgba(0,113,227,0.20)';
+      }
+      appEl.innerHTML = `<span title="${_buildCloudTooltip(statusSrc, mcState)}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:${cloudBg};color:${cloudColor};border:1px solid ${cloudBorder};">${cloudLabel}</span>`;
+    }
+  }
+
   applyFilters();
 }
 
@@ -2796,7 +2880,11 @@ function applyFilters() {
     ? filteredLive.map(pName => {
         const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === pName.toLowerCase())];
         const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
+        const origin = sData?.origin || 'site';
+        const originBadge = origin === 'app'
+          ? `<span title="Detectado pelo Força Aliada Manager" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;margin-left:6px;border:1px solid rgba(52,199,89,0.3);">📡 App</span>`
+          : `<span title="Detectado pelo site via ping" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:980px;background:rgba(0,113,227,0.10);color:#0071e3;margin-left:6px;border:1px solid rgba(0,113,227,0.2);">☁️ Site</span>`;
+        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}${originBadge}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', (nameFilter || durationFilter > 0) ? 'Nenhum resultado para os filtros atuais.' : 'O servidor está vazio no momento.');
 
@@ -2821,7 +2909,11 @@ function applyFilters() {
         const leftDate = new Date(e.leftAt), isToday = leftDate.toDateString() === new Date().toDateString(), isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
-        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
+        const origin = e.origin || 'site';
+        const originBadge = origin === 'app'
+          ? `<span title="Detectado pelo Força Aliada Manager" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;margin-left:5px;border:1px solid rgba(52,199,89,0.3);">📡 App</span>`
+          : `<span title="Detectado pelo site via ping" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:rgba(0,113,227,0.10);color:#0071e3;margin-left:5px;border:1px solid rgba(0,113,227,0.2);">☁️ Site</span>`;
+        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}${originBadge}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
       }).join('')
     : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : 'Nenhum jogador desconectado recentemente.');
 }
@@ -3244,12 +3336,14 @@ async function fetchUnregistered() {
   unregisteredRequest = (async () => {
   try {
     const res = await apiFetch(`/api/players/unregistered`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Falha ao buscar jogadores sem cadastro');
+    // 403 = sem permissão (role limited/full sem acesso) → silencioso
+    if (res.status === 403) { globalUnregistered = []; return; }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     globalUnregistered = await res.json();
   } catch (err) {
     console.error('[unregistered]', err);
     globalUnregistered = [];
-    showToast('Não foi possível carregar jogadores sem cadastro do backend.', 'error');
+    showToast('Não foi possível carregar a lista de jogadores sem cadastro.', 'error');
   }
   const badge = document.getElementById('unreg-count-badge');
   if (globalUnregistered.length > 0) { badge.textContent = globalUnregistered.length; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
