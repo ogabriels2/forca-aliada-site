@@ -22,46 +22,128 @@ import crypto from 'crypto';
 
 const PROCESS_STARTED_AT = new Date();
 
-// ── Cache em memória para status do Minecraft (evita bater na API externa a cada request) ──
+// ── Cache em memória para status do Minecraft ──────────────────────────────────
+// TTL curto (15s) para que mudanças de estado sejam percebidas rápido em modo nuvem.
 const _mcStatusCache = { data: null, expiresAt: 0 };
-const MC_STATUS_TTL_MS = 30_000; // 30 segundos
+const MC_STATUS_TTL_MS = 15_000; // 15s — equilíbrio entre frescor e carga
 
-// ── Estado em memória do heartbeat do App (sem I/O de banco) ──
+// ── Estado em memória do heartbeat do App (sem I/O de banco) ──────────────────
 // O app deve chamar POST /api/app/heartbeat a cada 10 segundos.
 // Se não receber nada em APP_HEARTBEAT_TIMEOUT_MS, considera desconectado.
 const _appHeartbeat = {
-  lastSeenAt: 0,          // timestamp Unix em ms da última chamada
-  keyId: null,            // id da chave que fez o último heartbeat
-  keyName: null,          // nome amigável
+  lastSeenAt: 0,   // timestamp Unix em ms da última chamada
+  keyId: null,
+  keyName: null,
 };
-const APP_HEARTBEAT_TIMEOUT_MS = 30_000; // 30s — tolerância (3 ciclos de 10s)
+const APP_HEARTBEAT_TIMEOUT_MS = 30_000; // 30s — tolerância de 3 ciclos
 
 function isAppConnectedInMemory() {
   return Date.now() - _appHeartbeat.lastSeenAt < APP_HEARTBEAT_TIMEOUT_MS;
 }
 
-// ── Estado em memória: o app avisou explicitamente que o servidor MC foi desligado ──
-// Isso permite sobrescrever o ping do TCPShield (que cacheia o MOTD por ~1s e
-// continua respondendo "online" mesmo quando o servidor real está offline).
-// A flag é limpa quando o app manda serverStarted: true OU quando o app
-// reconecta após um período offline (heartbeat fresco após timeout).
-const _serverState = {
-  knownOffline: false,      // true = app sinalizou shutdown explicitamente
-  knownOfflineAt: 0,        // quando foi sinalizado
-  knownOnline: false,       // true = app sinalizou que o servidor subiu
+// ── Máquina de estados do servidor Minecraft ──────────────────────────────────
+//
+// Problema que essa máquina resolve:
+//
+//  1. O TCPShield faz cache do MOTD do servidor e responde ao ping de status
+//     mesmo quando o servidor real está OFFLINE. Isso faz o site reportar
+//     "online" erroneamente.
+//
+//  2. Quando o app sinaliza shutdown mas o admin liga o servidor diretamente
+//     (sem o app), o site ficaria preso em "offline" indefinidamente.
+//
+// Solução: máquina de 3 estados + detecção de ping "superficial" do TCPShield.
+//
+//  Estados:
+//   'unknown'  — sem informação confiável, usa detecção de ping com filtro TCPShield
+//   'offline'  — app sinalizou shutdown OU ping confirmou offline real
+//   'online'   — app sinalizou startup OU ping real confirmou online
+//
+//  Transições:
+//   any  → 'online'   via: app envia serverStarted:true  OU  ping real responde
+//   any  → 'offline'  via: app envia serverStopped:true
+//  'offline' → 'unknown' após FORCED_RECHECK_MS sem app conectado
+//                       (permite que modo nuvem cheque se servidor subiu externamente)
+//
+// Detecção de ping "real" vs TCPShield:
+//   O TCPShield responde ao status ping em <2ms (é cache local).
+//   Um servidor Minecraft real tem RTT mínimo de ~5ms mesmo na mesma LAN.
+//   Se a latência for < TCPSHIELD_MIN_REAL_LATENCY_MS E não tiver lista de
+//   jogadores (que o TCPShield omite), consideramos suspeito de TCPShield.
+//   Nesse caso, retornamos 'online' mas com flag tcpshield_suspect: true,
+//   e o status real é determinado pelo _mcState em vez do ping.
+
+const FORCED_RECHECK_MS        = 3 * 60_000; // 3 min sem app → sai de 'offline' para 'unknown'
+const TCPSHIELD_MIN_LATENCY_MS = 5;           // pings mais rápidos que isso são suspeitos
+
+// ── Controle de heartbeat pós-shutdown ────────────────────────────────────────
+// Quando o app envia serverStopped, zeramos o lastSeenAt do heartbeat para que o site
+// entre em modo nuvem imediatamente. Porém o app continua mandando heartbeats normalmente.
+// Para evitar que o próximo heartbeat (em ~10s) reconecte o app e saia do modo nuvem,
+// bloqueamos novos heartbeats por CLOUD_MODE_LOCKOUT_MS após um shutdown explícito.
+// O bloqueio é levantado quando o app envia serverStarted:true (server foi relançado).
+const CLOUD_MODE_LOCKOUT_MS = 60_000; // 60s após serverStopped, heartbeats não reconectam
+const _cloudLockout = {
+  active: false,
+  since:  0,
 };
 
-// Quando o TCPShield responde como "online" mas o app sinalizou shutdown,
-// confiamos no app por até TCPSHIELD_TRUST_DURATION_MS.
-// Após esse tempo, voltamos a confiar no ping (caso o admin reinicie manualmente).
-const TCPSHIELD_TRUST_DURATION_MS = 5 * 60_000; // 5 minutos
+function activateCloudLockout() {
+  _cloudLockout.active = true;
+  _cloudLockout.since  = Date.now();
+}
 
-function isServerKnownOffline() {
-  if (!_serverState.knownOffline) return false;
-  // Se o app voltou a conectar depois do shutdown, o servidor pode ter subido
-  if (_serverState.knownOnline) return false;
-  // Confiamos no sinal de shutdown por até 5 minutos
-  return Date.now() - _serverState.knownOfflineAt < TCPSHIELD_TRUST_DURATION_MS;
+function releaseCloudLockout() {
+  _cloudLockout.active = false;
+  _cloudLockout.since  = 0;
+}
+
+// Retorna true se heartbeats ainda estão bloqueados (modo nuvem obrigatório após shutdown)
+function isCloudLockoutActive() {
+  if (!_cloudLockout.active) return false;
+  if (Date.now() - _cloudLockout.since > CLOUD_MODE_LOCKOUT_MS) {
+    releaseCloudLockout(); // Expirou — app pode se reconectar
+    return false;
+  }
+  return true;
+}
+
+const _mcState = {
+  state: 'unknown',        // 'unknown' | 'offline' | 'online'
+  setAt: 0,                // quando o estado foi estabelecido
+  setBy: 'init',           // 'app_signal' | 'ping' | 'init'
+};
+
+function setMcState(state, setBy) {
+  _mcState.state  = state;
+  _mcState.setAt  = Date.now();
+  _mcState.setBy  = setBy;
+  // Invalida o cache imediatamente quando o estado muda por sinal do app
+  if (setBy === 'app_signal') {
+    _mcStatusCache.data     = null;
+    _mcStatusCache.expiresAt = 0;
+  }
+}
+
+// Retorna true se devemos confiar no _mcState em vez do resultado do ping.
+// Usado para suprimir falsos "online" do TCPShield após shutdown sinalizado.
+function isMcStateTrustworthy() {
+  if (_mcState.state === 'unknown') return false;
+  if (_mcState.state === 'online')  return false; // 'online' via sinal do app é sempre confiável
+  if (_mcState.state === 'offline') {
+    // Se o app está desconectado há muito tempo, liberamos para o ping
+    // checar se o servidor foi ligado externamente
+    if (!isAppConnectedInMemory()) {
+      const timeSinceSet = Date.now() - _mcState.setAt;
+      if (timeSinceSet > FORCED_RECHECK_MS) {
+        // Volta para 'unknown' automaticamente — modo nuvem vai detectar
+        setMcState('unknown', 'timeout');
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 // ─────────────────────────────────────────────
@@ -572,101 +654,189 @@ app.get('/ping', (_req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// Minecraft Status (Híbrido) - ANTI BLOQUEIO TCPSHIELD
 // ─────────────────────────────────────────────
+// Minecraft Status — Híbrido com detecção de TCPShield
+// ─────────────────────────────────────────────
+//
+// Fluxo de decisão:
+//
+//  1. Se _mcState é confiável e diz 'offline' → retorna offline sem ping
+//     (evita falso positivo do TCPShield após shutdown sinalizado pelo app)
+//
+//  2. Tenta ping TCP direto (sem SRV para reduzir latência de resolução DNS)
+//     → Se responde mas com latência < TCPSHIELD_MIN_LATENCY_MS e sem jogadores:
+//       • Suspeito de TCPShield. Consulta mcstatus.io como segunda opinião.
+//       • Se mcstatus.io também diz online com latência real → é online de verdade
+//       • Se mcstatus.io diz offline → TCPShield estava cacheando, retorna offline
+//     → Se responde com latência real (≥ 5ms) → online confirmado
+//
+//  3. Se ping direto falha → tenta SRV → tenta mcstatus.io
+//     → Se tudo falha → offline
+
 async function fetchMinecraftStatus() {
   const host = process.env.MC_HOST || 'fa.ogabriels.com';
 
-  // ── Proteção TCPShield ──────────────────────────────────────────────────
-  // O TCPShield cacheia o MOTD do servidor a cada ~1s. Isso significa que
-  // mesmo após o servidor real ser desligado, o TCPShield continua respondendo
-  // ao ping de status como se estivesse online (com o último MOTD cacheado).
-  // Quando o App nos sinaliza explicitamente que desligou (serverStopped: true),
-  // retornamos offline diretamente sem nem tentar o ping — evitando falso positivo.
-  if (isServerKnownOffline()) {
+  // ── Passo 1: verificar máquina de estados ────────────────────────────────
+  // Se o app sinalizou shutdown E ainda não expirou o período de recheck,
+  // retorna offline sem nem tentar o ping — TCPShield poderia enganar.
+  if (isMcStateTrustworthy() && _mcState.state === 'offline') {
     return {
-      host,
-      checkedAt: new Date(),
-      online: false,
-      version: null,
-      players: { online: 0, max: 0, list: [] },
-      latencyMs: null,
-      raw: null,
-      source: 'app_signal', // indica que veio do sinal do app, não do ping
+      host, checkedAt: new Date(), online: false,
+      version: null, players: { online: 0, max: 0, list: [] },
+      latencyMs: null, raw: null, source: 'state_machine',
     };
   }
 
   const started = Date.now();
   let result = null;
+  let latencyMs = null;
+  let pingFailed = false;
 
+  // ── Passo 2: ping TCP direto ─────────────────────────────────────────────
   try {
-    result = await util.status(host, 25565, { timeout: 2500, enableSRV: false });
-  } catch (err1) {
+    result = await util.status(host, 25565, { timeout: 3000, enableSRV: false });
+    latencyMs = Math.max(0, Date.now() - started);
+  } catch (_err1) {
+    // Falhou sem SRV — tenta com SRV
     try {
-      result = await util.status(host, 25565, { timeout: 2500, enableSRV: true });
-    } catch (err2) {
-      try {
-        const apiRes = await fetch(`https://api.mcstatus.io/v2/status/java/${host}`);
-        if (!apiRes.ok) throw new Error('API mcstatus falhou');
-        const data = await apiRes.json();
-        if (!data.online) {
-          // Servidor genuinamente offline conforme API externa
-          return {
-            host,
-            checkedAt: new Date(),
-            online: false,
-            version: null,
-            players: { online: 0, max: 0, list: [] },
-            latencyMs: null,
-            raw: data,
-            source: 'mcstatus_api',
-          };
-        }
-        result = {
-          version: { name: data.version?.name_raw || data.version?.name },
-          players: {
-            online: data.players?.online || 0,
-            max: data.players?.max || 0,
-            sample: data.players?.list?.map(p => ({ name: p.name_raw || p.name })) || []
-          },
-          roundTripLatency: data.latency
-        };
-      } catch (err3) {
-        // Todas as tentativas falharam — server inacessível, marca offline
-        console.warn('[mc-status] Todas as tentativas falharam:', err3.message);
-        return {
-          host,
-          checkedAt: new Date(),
-          online: false,
-          version: null,
-          players: { online: 0, max: 0, list: [] },
-          latencyMs: null,
-          raw: null,
-          source: 'failed',
-        };
-      }
+      const srvStart = Date.now();
+      result = await util.status(host, 25565, { timeout: 3000, enableSRV: true });
+      latencyMs = Math.max(0, Date.now() - srvStart);
+    } catch (_err2) {
+      pingFailed = true;
     }
   }
 
-  const latencyMs = Math.max(0, Date.now() - started);
-  const onlinePlayers = (result.players.sample || [])
-    .map(p => p.name)
-    .filter(name => Boolean(name) && name !== 'Anonymous Player');
+  // ── Passo 3: se ping respondeu, verificar se é TCPShield cacheado ────────
+  if (result && !pingFailed) {
+    const reportedOnline = Number(result.players?.online || 0);
+    const hasSample = (result.players?.sample || []).length > 0;
+    const isFastPing = latencyMs < TCPSHIELD_MIN_LATENCY_MS;
 
-  return {
-    host,
-    checkedAt: new Date(),
-    online: true,
-    version: result.version?.name || null,
-    players: {
-      online: Number(result.players.online || 0),
-      max: Number(result.players.max || 0),
-      list: onlinePlayers,
-    },
-    latencyMs: result.roundTripLatency || latencyMs,
-    raw: result,
-    source: 'ping',
-  };
+    // Critério de suspeita TCPShield:
+    //   • Latência irreal (< 5ms) — cache local responde mais rápido que qualquer RTT real
+    //   • E não há lista de jogadores (TCPShield não passa a amostra de jogadores no cache)
+    // Se _mcState === 'offline' por sinal do app, elevamos a suspeita mesmo com latência OK
+    const stateOffline = _mcState.state === 'offline' && _mcState.setBy === 'app_signal';
+    const tcpShieldSuspect = (isFastPing && !hasSample) || stateOffline;
+
+    if (tcpShieldSuspect) {
+      // Segunda opinião: mcstatus.io faz a verificação do seu próprio datacenter
+      // e não é afetado pelo cache do TCPShield desta instância
+      try {
+        const apiRes = await fetch(`https://api.mcstatus.io/v2/status/java/${encodeURIComponent(host)}`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        if (apiRes.ok) {
+          const data = await apiRes.json();
+          if (!data.online) {
+            // mcstatus.io confirma offline — TCPShield estava cacheando
+            setMcState('offline', 'ping');
+            return {
+              host, checkedAt: new Date(), online: false,
+              version: null, players: { online: 0, max: 0, list: [] },
+              latencyMs: null, raw: data, source: 'mcstatus_confirmed_offline',
+            };
+          }
+          // mcstatus.io diz online também — servidor genuinamente online
+          // Usa os dados do mcstatus.io (mais ricos que o cache do TCPShield)
+          result = {
+            version: { name: data.version?.name_raw || data.version?.name },
+            players: {
+              online: data.players?.online || 0,
+              max:    data.players?.max    || 0,
+              sample: (data.players?.list || []).map(p => ({ name: p.name_raw || p.name })),
+            },
+            roundTripLatency: data.latency,
+          };
+          latencyMs = data.latency || latencyMs;
+        }
+      } catch (_apiErr) {
+        // mcstatus.io inacessível — se o estado era 'offline' por sinal do app,
+        // mantemos offline; caso contrário, confiamos no ping direto
+        if (stateOffline) {
+          return {
+            host, checkedAt: new Date(), online: false,
+            version: null, players: { online: 0, max: 0, list: [] },
+            latencyMs: null, raw: null, source: 'state_machine_fallback',
+          };
+        }
+        // Estado 'unknown' e mcstatus.io falhou: confia no ping direto
+      }
+    }
+
+    // Ping confirmado como real (latência OK, ou mcstatus.io confirmou)
+    const onlinePlayers = (result.players?.sample || [])
+      .map(p => p.name)
+      .filter(name => Boolean(name) && name !== 'Anonymous Player');
+
+    // Atualiza máquina de estados apenas se veio por sinal do app ou se mudou
+    if (_mcState.state !== 'online' && _mcState.setBy !== 'app_signal') {
+      setMcState('online', 'ping');
+    } else if (_mcState.setBy === 'app_signal' && _mcState.state === 'offline') {
+      // App disse offline mas ping real confirmou online — servidor foi ligado externamente
+      setMcState('online', 'ping');
+    }
+
+    return {
+      host, checkedAt: new Date(), online: true,
+      version: result.version?.name || null,
+      players: {
+        online: Number(result.players?.online || 0),
+        max:    Number(result.players?.max    || 0),
+        list:   onlinePlayers,
+      },
+      latencyMs: result.roundTripLatency || latencyMs,
+      raw: result, source: 'ping',
+    };
+  }
+
+  // ── Passo 4: ping falhou completamente — tenta mcstatus.io ───────────────
+  try {
+    const apiRes = await fetch(`https://api.mcstatus.io/v2/status/java/${encodeURIComponent(host)}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!apiRes.ok) throw new Error('mcstatus.io HTTP ' + apiRes.status);
+    const data = await apiRes.json();
+
+    if (!data.online) {
+      setMcState('offline', 'ping');
+      return {
+        host, checkedAt: new Date(), online: false,
+        version: null, players: { online: 0, max: 0, list: [] },
+        latencyMs: null, raw: data, source: 'mcstatus_offline',
+      };
+    }
+
+    // mcstatus.io diz online (ping direto falhou por roteamento, não por offline)
+    const onlinePlayers = (data.players?.list || [])
+      .map(p => p.name_raw || p.name)
+      .filter(Boolean);
+
+    if (_mcState.state !== 'online') setMcState('online', 'ping');
+
+    return {
+      host, checkedAt: new Date(), online: true,
+      version: data.version?.name_raw || data.version?.name || null,
+      players: {
+        online: data.players?.online || 0,
+        max:    data.players?.max    || 0,
+        list:   onlinePlayers,
+      },
+      latencyMs: data.latency || null,
+      raw: data, source: 'mcstatus_online',
+    };
+
+  } catch (_err3) {
+    // Tudo falhou — inacessível
+    console.warn('[mc-status] Todas as tentativas falharam');
+    setMcState('offline', 'ping');
+    return {
+      host, checkedAt: new Date(), online: false,
+      version: null, players: { online: 0, max: 0, list: [] },
+      latencyMs: null, raw: null, source: 'failed',
+    };
+  }
 }
 
 async function fetchMinecraftStatusCached() {
@@ -675,7 +845,7 @@ async function fetchMinecraftStatusCached() {
     return _mcStatusCache.data;
   }
   const fresh = await fetchMinecraftStatus();
-  _mcStatusCache.data = fresh;
+  _mcStatusCache.data      = fresh;
   _mcStatusCache.expiresAt = now + MC_STATUS_TTL_MS;
   return fresh;
 }
@@ -775,12 +945,19 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
       app_connected: appConnected,
       app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
-      server_known_offline: isServerKnownOffline(), // app sinalizou shutdown — ignora TCPShield
+      // Estado da máquina de estados — para o dashboard mostrar modo nuvem corretamente
+      mc_state: {
+        state:  _mcState.state,   // 'unknown' | 'offline' | 'online'
+        set_by: _mcState.setBy,   // 'app_signal' | 'ping' | 'init' | 'timeout'
+        set_at: _mcState.setAt ? new Date(_mcState.setAt).toISOString() : null,
+      },
+      // cloud_mode: true quando o site opera sem o app (ping autônomo a cada 1 min)
+      cloud_mode: !appConnected,
       minecraft: {
         host: status.host, online: status.online, version: status.version,
         players: { online: status.players.online, max: status.players.max, list: status.players.list },
         latencyMs: status.latencyMs, onlineSince: stats.onlineSince, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h,
-        status_source: status.source || 'ping', // 'ping' | 'mcstatus_api' | 'app_signal'
+        status_source: status.source || 'ping', // 'ping'|'mcstatus_online'|'mcstatus_confirmed_offline'|'state_machine'|'state_machine_fallback'|'failed'
       },
     });
   } catch (err) {
@@ -809,6 +986,12 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
       app_connected: appConnected,
       app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
+      mc_state: {
+        state:  _mcState.state,
+        set_by: _mcState.setBy,
+        set_at: _mcState.setAt ? new Date(_mcState.setAt).toISOString() : null,
+      },
+      cloud_mode: !appConnected,
       minecraft: { ...fallback, checkedAt: undefined, onlineSince: null, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h, error: 'status unavailable' },
     });
   }
@@ -937,14 +1120,27 @@ app.post('/api/app/heartbeat', async (req, res) => {
   if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
   const wasDisconnected = !isAppConnectedInMemory();
+
+  // Se o cloud lockout está ativo (shutdown recente), não registramos o heartbeat como
+  // "app conectado" — o app está vivo mas o servidor foi explicitamente desligado.
+  // O lockout expira em CLOUD_MODE_LOCKOUT_MS ou quando serverStarted:true chegar.
+  if (isCloudLockoutActive()) {
+    // Respondemos OK para o app não achar que há um problema de rede,
+    // mas não atualizamos lastSeenAt — o modo nuvem permanece ativo.
+    return res.json({ ok: true, cloud_lockout: true, server_time: new Date().toISOString() });
+  }
+
   _appHeartbeat.lastSeenAt = Date.now();
   if (appKeyId) { _appHeartbeat.keyId = appKeyId; _appHeartbeat.keyName = keyName || null; }
 
-  // Se o app estava desconectado (timeout) e voltou, limpamos o knownOffline
-  // para que o ping volte a funcionar normalmente (admin pode ter reiniciado manualmente).
-  // Não limpamos se foi um shutdown explícito recente — nesse caso só serverStarted limpa.
-  if (wasDisconnected && !_serverState.knownOffline) {
-    _serverState.knownOnline = false; // reset, deixa o ping decidir
+  // Se o app estava desconectado (timeout) e voltou: invalida o cache para que o próximo
+  // /api/server/status faça um ping fresco (não retorna dados velhos do período offline).
+  // O estado da máquina (_mcState) é mantido — se era 'offline' por sinal do app e ainda
+  // está dentro do FORCED_RECHECK_MS, continua sendo respeitado; se expirou, o
+  // isMcStateTrustworthy() já teria revertido para 'unknown' automaticamente.
+  if (wasDisconnected) {
+    _mcStatusCache.data      = null;
+    _mcStatusCache.expiresAt = 0;
   }
 
   res.json({ ok: true, server_time: new Date().toISOString() });
@@ -1024,15 +1220,12 @@ app.post('/api/app/sync', async (req, res) => {
 
         // ── Sinal de shutdown: app avisou que o servidor foi desligado ──
         // Fecha todas as sessões abertas IMEDIATAMENTE, sem esperar o heartbeat expirar.
+        // Ativa o cloud lockout para que heartbeats subsequentes do app não
+        // reconectem o modo app antes que o servidor realmente suba de novo.
         if (payload?.serverStopped === true) {
-            _appHeartbeat.lastSeenAt = 0; // invalida heartbeat para modo nuvem imediato
-            // Marca o servidor como known-offline para sobrescrever o TCPShield
-            _serverState.knownOffline = true;
-            _serverState.knownOfflineAt = Date.now();
-            _serverState.knownOnline = false;
-            // Invalida cache de status MC para que a próxima consulta retorne offline
-            _mcStatusCache.data = null;
-            _mcStatusCache.expiresAt = 0;
+            _appHeartbeat.lastSeenAt = 0; // invalida heartbeat → modo nuvem imediato
+            activateCloudLockout();       // bloqueia reconexão via heartbeat por CLOUD_MODE_LOCKOUT_MS
+            setMcState('offline', 'app_signal');
             const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
             for (const row of active.rows) {
                 const dur = (now - new Date(row.entered_at)) / 3600000;
@@ -1043,19 +1236,17 @@ app.post('/api/app/sync', async (req, res) => {
             }
             await audit({
                 type: 'system', severity: 'info',
-                message: 'App sinalizou shutdown do servidor — sessões abertas encerradas, modo nuvem ativado',
+                message: 'App sinalizou shutdown do servidor — sessões encerradas, modo nuvem ativado',
                 metadata: { sessionsClosed: active.rows.length },
             });
             return res.json({ ok: true, mode: 'cloud', whitelist_add: [] });
         }
 
         // ── Sinal de startup: app avisou que o servidor subiu ──
+        // Libera o cloud lockout: o servidor foi relançado pelo app.
         if (payload?.serverStarted === true) {
-            _serverState.knownOffline = false;
-            _serverState.knownOnline = true;
-            // Invalida cache para forçar ping fresco
-            _mcStatusCache.data = null;
-            _mcStatusCache.expiresAt = 0;
+            releaseCloudLockout(); // app pode voltar a ser master
+            setMcState('online', 'app_signal');
         }
 
         const active   = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
