@@ -2475,27 +2475,34 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
 });
 
 app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
-  const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY n.created_at DESC  `);
-  res.json(rows);
+  try {
+    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY n.created_at DESC  `);
+    res.json(rows);
+  } catch (err) {
+    console.error('[GET /api/admin/notifications]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 app.delete('/api/admin/notifications/:id', auth, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
-
-const { rowCount } = await pool.query('DELETE FROM notifications WHERE id=$1', [id]);
-if (!rowCount) return res.status(404).json({ error: 'not found' });
-
-await auditFromReq(req, {
-  actorId:   req.user.sub,
-  actorName: req.user.username,
-  type:      'delete',
-  severity:  'info',
-  targetId:  id,
-  message:   `Notificação #${id} deletada por ${req.user.username}`,
-});
-
-res.json({ ok: true });
+  try {
+    const { rowCount } = await pool.query('DELETE FROM notifications WHERE id=$1', [id]);
+    if (!rowCount) return res.status(404).json({ error: 'not found' });
+    await auditFromReq(req, {
+      actorId:   req.user.sub,
+      actorName: req.user.username,
+      type:      'delete',
+      severity:  'info',
+      targetId:  id,
+      message:   `Notificação #${id} deletada por ${req.user.username}`,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE /api/admin/notifications/:id]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // ─────────────────────────────────────────────
@@ -2774,16 +2781,21 @@ res.json(rows);
 // ADMIN – Gerenciamento de usuários
 // ─────────────────────────────────────────────
 app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
-const { rows } = await pool.query(`
-  SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.created_at,
-    COALESCE(pb.merit_total, 0)     AS merit_total,
-    COALESCE(pb.capital_balance, 0) AS capital_balance,
-    COALESCE(pb.rank, 'ferro')      AS rank
-  FROM users u
-  LEFT JOIN player_balances pb ON pb.minecraft_name = LOWER(u.minecraft_name)
-  ORDER BY u.id DESC
-`);
-res.json(rows);
+try {
+  const { rows } = await pool.query(`
+    SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.created_at,
+      COALESCE(pb.merit_total, 0)     AS merit_total,
+      COALESCE(pb.capital_balance, 0) AS capital_balance,
+      COALESCE(pb.rank, 'ferro')      AS rank
+    FROM users u
+    LEFT JOIN player_balances pb ON pb.minecraft_name = LOWER(u.minecraft_name)
+    ORDER BY u.id DESC
+  `);
+  res.json(rows);
+} catch (err) {
+  console.error('[GET /api/admin/users error]', err);
+  res.status(500).json({ error: 'Internal server error' });
+}
 });
 
 app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
