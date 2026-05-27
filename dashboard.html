@@ -1018,6 +1018,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
       <div class="card" id="server-overview">
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+        <div style="margin-bottom:12px;" id="app-source-indicator"></div>
 
         <div class="dashboard-grid">
           <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
@@ -2765,6 +2766,18 @@ function renderDashboard() {
     document.getElementById('server-version').textContent = '-';
     document.getElementById('online-count').textContent   = '0 / 0';
   }
+
+  // Indicador de fonte de dados (App vs Site)
+  const appConnected = globalHealthData?.app_connected ?? globalHistData?.app_connected ?? false;
+  const appEl = document.getElementById('app-source-indicator');
+  if (appEl) {
+    if (appConnected) {
+      appEl.innerHTML = `<span title="Força Aliada Manager conectado — dados em tempo real via App" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;border:1px solid rgba(52,199,89,0.3);"><span style="width:6px;height:6px;border-radius:50%;background:#34c759;display:inline-block;animation:pulse-dot 1.5s infinite;"></span>📡 App conectado</span>`;
+    } else {
+      appEl.innerHTML = `<span title="Sem conexão com o App — dados via ping do site (a cada 1 min)" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(0,113,227,0.08);color:#0071e3;border:1px solid rgba(0,113,227,0.2);">☁️ Modo Site</span>`;
+    }
+  }
+
   applyFilters();
 }
 
@@ -2796,7 +2809,11 @@ function applyFilters() {
     ? filteredLive.map(pName => {
         const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === pName.toLowerCase())];
         const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
+        const origin = sData?.origin || 'site';
+        const originBadge = origin === 'app'
+          ? `<span title="Detectado pelo Força Aliada Manager" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;margin-left:6px;border:1px solid rgba(52,199,89,0.3);">📡 App</span>`
+          : `<span title="Detectado pelo site via ping" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:980px;background:rgba(0,113,227,0.10);color:#0071e3;margin-left:6px;border:1px solid rgba(0,113,227,0.2);">☁️ Site</span>`;
+        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}${originBadge}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', (nameFilter || durationFilter > 0) ? 'Nenhum resultado para os filtros atuais.' : 'O servidor está vazio no momento.');
 
@@ -2821,7 +2838,11 @@ function applyFilters() {
         const leftDate = new Date(e.leftAt), isToday = leftDate.toDateString() === new Date().toDateString(), isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
-        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
+        const origin = e.origin || 'site';
+        const originBadge = origin === 'app'
+          ? `<span title="Detectado pelo Força Aliada Manager" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;margin-left:5px;border:1px solid rgba(52,199,89,0.3);">📡 App</span>`
+          : `<span title="Detectado pelo site via ping" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:rgba(0,113,227,0.10);color:#0071e3;margin-left:5px;border:1px solid rgba(0,113,227,0.2);">☁️ Site</span>`;
+        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}${originBadge}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
       }).join('')
     : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : 'Nenhum jogador desconectado recentemente.');
 }
