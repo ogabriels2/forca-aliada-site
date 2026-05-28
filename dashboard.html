@@ -1318,6 +1318,237 @@ header {
   line-height: 1.45;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+.portal-home {
+  display: grid;
+  gap: 16px;
+}
+
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decision-card {
+  min-width: 0;
+  min-height: 116px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+
+.decision-card:hover {
+  border-color: rgba(0,113,227,.32);
+  background: var(--surface-subtle);
+  transform: translateY(-1px);
+}
+
+.decision-card span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.decision-card strong {
+  display: block;
+  margin-top: 12px;
+  color: var(--text-primary);
+  font-size: 22px;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.decision-card em {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.portal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.portal-panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.portal-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.portal-panel-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.portal-panel-header p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.portal-alert-list,
+.portal-work-list,
+.command-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.portal-alert-item,
+.portal-work-item,
+.command-card {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+}
+
+button.portal-alert-item,
+button.portal-work-item,
+.command-card {
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+
+button.portal-alert-item:hover,
+button.portal-work-item:hover,
+.command-card:hover {
+  background: var(--surface);
+  border-color: rgba(0,113,227,.28);
+}
+
+.portal-alert-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.portal-alert-item .alert-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--surface-strong);
+  font-size: 14px;
+}
+
+.portal-alert-item strong,
+.portal-work-item strong,
+.command-card strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.portal-alert-item span:not(.alert-icon),
+.portal-work-item span,
+.command-card span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.portal-alert-item.warning { border-left: 3px solid var(--warning); }
+.portal-alert-item.danger { border-left: 3px solid var(--danger); }
+.portal-alert-item.info { border-left: 3px solid var(--accent); }
+.portal-alert-item.success { border-left: 3px solid var(--success); }
+
+.portal-work-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.portal-work-item .work-count {
+  min-width: 36px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.command-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.command-card {
+  min-height: 104px;
+}
+
+.command-card .command-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: var(--surface-strong);
+}
+
+.workspace-tab.active,
+.workspace-tab.primary.active {
+  background: var(--nav-active);
+  color: #fff;
+}
+
+.workspace-tab.primary:not(.active) {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.workspace-panel-grid {
+  display: grid;
+  gap: 18px;
+}
+
 .dashboard-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
@@ -1492,6 +1723,11 @@ textarea:focus {
   .nav-group-label {
     grid-column: 1 / -1;
   }
+
+  .decision-grid,
+  .command-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -1506,6 +1742,10 @@ textarea:focus {
   .dashboard-section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .portal-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1553,6 +1793,15 @@ textarea:focus {
     right: -74px;
     width: min(340px, calc(100vw - 24px));
   }
+
+  .decision-grid,
+  .command-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-alert-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
 }
 
 [data-theme="dark"] {
@@ -1589,6 +1838,11 @@ textarea:focus {
 
 [data-theme="dark"] .hero-action-ghost,
 [data-theme="dark"] .hero-status-item,
+[data-theme="dark"] .decision-card,
+[data-theme="dark"] .portal-panel,
+[data-theme="dark"] .portal-alert-item,
+[data-theme="dark"] .portal-work-item,
+[data-theme="dark"] .command-card,
 [data-theme="dark"] .sidebar-meta-item,
 [data-theme="dark"] .summary-details,
 [data-theme="dark"] .mini-card,
@@ -1602,8 +1856,18 @@ textarea:focus {
 }
 
 [data-theme="dark"] .quick-action-btn:hover,
-[data-theme="dark"] .workspace-tab:hover {
+[data-theme="dark"] .workspace-tab:hover,
+[data-theme="dark"] .decision-card:hover,
+[data-theme="dark"] .command-card:hover,
+[data-theme="dark"] button.portal-alert-item:hover,
+[data-theme="dark"] button.portal-work-item:hover {
   background: rgba(51,65,85,0.72);
+}
+
+[data-theme="dark"] .workspace-tab.active,
+[data-theme="dark"] .workspace-tab.primary.active {
+  background: #dbeafe;
+  color: #0f172a;
 }
 
 </style>
@@ -1774,18 +2038,118 @@ textarea:focus {
       </section>
 
       <nav class="workspace-tabs" aria-label="Areas do dashboard">
-        <button class="workspace-tab primary" type="button" onclick="scrollToSection('server-overview')">Opera&ccedil;&atilde;o</button>
-        <button class="workspace-tab" type="button" onclick="scrollToSection('stats-card')">Intelig&ecirc;ncia</button>
-        <button class="workspace-tab" id="hub-admin" type="button" onclick="scrollToSection('admin-users-card')" style="display:none;">Governan&ccedil;a</button>
-        <button class="workspace-tab" id="hub-economy" type="button" onclick="scrollToSection('merit-card')" style="display:none;">Economia</button>
-        <button class="workspace-tab" id="hub-platform" type="button" onclick="scrollToSection('app-keys-card')" style="display:none;">Plataforma</button>
+        <button class="workspace-tab primary active" data-workspace-nav="overview" type="button" onclick="switchWorkspace('overview')">Vis&atilde;o geral</button>
+        <button class="workspace-tab" data-workspace-nav="operations" type="button" onclick="switchWorkspace('operations', 'server-overview')">Opera&ccedil;&atilde;o</button>
+        <button class="workspace-tab" data-workspace-nav="intelligence" type="button" onclick="switchWorkspace('intelligence', 'stats-card')">Intelig&ecirc;ncia</button>
+        <button class="workspace-tab" data-workspace-nav="governance" id="hub-admin" type="button" onclick="switchWorkspace('governance', 'admin-users-card')" style="display:none;">Governan&ccedil;a</button>
+        <button class="workspace-tab" data-workspace-nav="economy" id="hub-economy" type="button" onclick="switchWorkspace('economy', 'merit-card')" style="display:none;">Economia</button>
+        <button class="workspace-tab" data-workspace-nav="platform" id="hub-platform" type="button" onclick="switchWorkspace('platform', 'app-keys-card')" style="display:none;">Plataforma</button>
       </nav>
 
       <div id="alerts-card" style="display:none;">
         <div class="alerts-wrapper" id="alerts-wrapper"></div>
       </div>
 
-      <div class="dashboard-section-heading" id="operations-section-heading">
+      <section class="portal-home" id="portal-overview" data-workspace-panel="overview" aria-label="Visao geral executiva">
+        <div class="decision-grid">
+          <button class="decision-card" type="button" onclick="switchWorkspace('operations', 'server-overview')">
+            <span>Servidor</span>
+            <strong id="exec-server-status">Carregando</strong>
+            <em id="exec-server-sub">Sa&uacute;de, capacidade e lat&ecirc;ncia.</em>
+          </button>
+          <button class="decision-card" type="button" onclick="switchWorkspace('operations', 'server-overview')">
+            <span>Jogadores</span>
+            <strong id="exec-players-online">-</strong>
+            <em id="exec-players-sub">Online agora e atividade recente.</em>
+          </button>
+          <button class="decision-card" type="button" onclick="switchWorkspace('intelligence', 'stats-card')">
+            <span>Engajamento</span>
+            <strong id="exec-sessions-today">-</strong>
+            <em id="exec-engagement-sub">Sess&otilde;es hoje e ritmo da comunidade.</em>
+          </button>
+          <button class="decision-card" type="button" onclick="switchWorkspace('governance', 'admin-users-card')" id="exec-governance-card" style="display:none;">
+            <span>Governan&ccedil;a</span>
+            <strong id="exec-governance-status">-</strong>
+            <em id="exec-governance-sub">Contas, cadastros e riscos.</em>
+          </button>
+          <button class="decision-card" type="button" onclick="switchWorkspace('economy', 'merit-card')" id="exec-economy-card" style="display:none;">
+            <span>Economia</span>
+            <strong id="exec-economy-status">-</strong>
+            <em id="exec-economy-sub">M&eacute;rito, capital e progress&atilde;o.</em>
+          </button>
+        </div>
+
+        <div class="portal-grid">
+          <section class="portal-panel">
+            <div class="portal-panel-header">
+              <div>
+                <h3>Aten&ccedil;&atilde;o agora</h3>
+                <p>Itens que podem exigir decis&atilde;o ou acompanhamento.</p>
+              </div>
+              <button class="btn-export" type="button" onclick="switchWorkspace('operations', 'server-overview')">Abrir opera&ccedil;&atilde;o</button>
+            </div>
+            <div class="portal-alert-list" id="executive-alerts-list">
+              <div class="portal-alert-item success">
+                <span class="alert-icon">✓</span>
+                <div><strong>Nenhum alerta carregado</strong><span>Os dados aparecem aqui ap&oacute;s a sincroniza&ccedil;&atilde;o.</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="portal-panel">
+            <div class="portal-panel-header">
+              <div>
+                <h3>Fila de trabalho</h3>
+                <p>Entradas curtas para decidir onde agir.</p>
+              </div>
+            </div>
+            <div class="portal-work-list">
+              <button class="portal-work-item" type="button" onclick="switchWorkspace('governance', 'admin-users-card')" id="work-unregistered" style="display:none;">
+                <div><strong>Jogadores sem cadastro</strong><span>Converter atividade em conta.</span></div>
+                <span class="work-count" id="work-unregistered-count">0</span>
+              </button>
+              <button class="portal-work-item" type="button" onclick="switchWorkspace('governance', 'audit-card')" id="work-audit" style="display:none;">
+                <div><strong>Eventos auditados</strong><span>Revisar atividade sens&iacute;vel.</span></div>
+                <span class="work-count" id="work-audit-count">0</span>
+              </button>
+              <button class="portal-work-item" type="button" onclick="switchWorkspace('platform', 'app-keys-card')" id="work-platform" style="display:none;">
+                <div><strong>Integra&ccedil;&atilde;o externa</strong><span>Manager, chaves e sincroniza&ccedil;&atilde;o.</span></div>
+                <span class="work-count" id="work-platform-count">-</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div class="command-grid" aria-label="Areas principais">
+          <button class="command-card" type="button" onclick="switchWorkspace('operations', 'server-overview')">
+            <span class="command-icon">🖥️</span>
+            <strong>Opera&ccedil;&atilde;o do servidor</strong>
+            <span>Status, gr&aacute;fico, jogadores online e hist&oacute;rico.</span>
+          </button>
+          <button class="command-card" type="button" onclick="switchWorkspace('intelligence', 'stats-card')">
+            <span class="command-icon">📊</span>
+            <strong>Intelig&ecirc;ncia</strong>
+            <span>M&eacute;tricas, ranking de atividade e exporta&ccedil;&atilde;o.</span>
+          </button>
+          <button class="command-card" type="button" onclick="switchWorkspace('governance', 'admin-users-card')" id="cmd-governance" style="display:none;">
+            <span class="command-icon">👥</span>
+            <strong>Governan&ccedil;a</strong>
+            <span>Equipe, jogadores sem conta, avisos e auditoria.</span>
+          </button>
+          <button class="command-card" type="button" onclick="switchWorkspace('economy', 'merit-card')" id="cmd-economy" style="display:none;">
+            <span class="command-icon">⭐</span>
+            <strong>Economia</strong>
+            <span>M&eacute;rito, capital, leaderboard e transa&ccedil;&otilde;es.</span>
+          </button>
+          <button class="command-card" type="button" onclick="switchWorkspace('platform', 'app-keys-card')" id="cmd-platform" style="display:none;">
+            <span class="command-icon">🔌</span>
+            <strong>Plataforma</strong>
+            <span>App Manager, chaves e futuras integra&ccedil;&otilde;es.</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="dashboard-section-heading" id="operations-section-heading" data-workspace-panel="operations" hidden>
         <div>
           <span>Opera&ccedil;&atilde;o</span>
           <h2>Servidor e atividade em tempo real</h2>
@@ -1793,7 +2157,7 @@ textarea:focus {
         <p>Sa&uacute;de, busca de jogadores, sess&otilde;es ativas e hist&oacute;rico recente.</p>
       </div>
 
-      <div class="card" id="server-overview">
+      <div class="card" id="server-overview" data-workspace-panel="operations" hidden>
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
         <div style="margin-bottom:12px;" id="app-source-indicator"></div>
 
