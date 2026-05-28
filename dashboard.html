@@ -1275,7 +1275,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
       </div>
 
-    </div><div class="card" id="merit-card" style="display:none; margin-top:24px;">
+      <div class="card" id="merit-card" style="display:none; margin-top:24px;">
         <h3>⭐ Mérito &amp; Capital <span id="merit-card-sub">Gerencie reputação e economia</span></h3>
 
         <div class="merit-stat-mini" id="merit-stats-mini">
@@ -1775,6 +1775,7 @@ let currentEditingAdminId = null;
 let currentModalPlayerName = null;
 let adminSortState      = { key: 'name', asc: true };
 let topPlayersMode      = 'hours';
+let _statusPollInterval = null;
 
 // ══ Toast ══
 function showToast(message, type = 'success', duration = 3500) {
@@ -1935,7 +1936,6 @@ function applyRoleVisibility() {
 })();
 
 // Intervalo de polling do status do servidor (modo nuvem: 60s; modo app: 120s como fallback)
-let _statusPollInterval = null;
 
 function _startStatusPolling() {
   if (_statusPollInterval) clearInterval(_statusPollInterval);
@@ -1950,14 +1950,15 @@ function _startStatusPolling() {
 
 function initDashboard() {
   renderProfile();
-  loadData();
-  _startStatusPolling();
 
   // Aplica visibilidade dos cards baseada no role atual
   applyRoleVisibility();
   // Segundo chamada com pequeno delay: garante que a visibilidade seja aplicada
   // mesmo que algum script externo ou race condition resete o display após o load
   setTimeout(applyRoleVisibility, 150);
+
+  loadData();
+  _startStatusPolling();
   updateNotificationAudienceHint();
   loadNotifications();
   loadAdminNotifications();
