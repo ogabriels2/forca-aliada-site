@@ -538,9 +538,14 @@ CREATE TABLE IF NOT EXISTS user_integrations (
   user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   ms_refresh_token TEXT,
   xbox_xuid        VARCHAR(255),
-  mc_uuid          VARCHAR(36) UNIQUE,
+  mc_uuid          VARCHAR(64) UNIQUE,
+  mc_edition       VARCHAR(10) DEFAULT 'java',
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
+-- Altera o tipo da coluna mc_uuid para suportar IDs sintéticos Bedrock ('bedrock_' + xuid)
+ALTER TABLE user_integrations ALTER COLUMN mc_uuid TYPE VARCHAR(64);
+-- Adiciona coluna mc_edition se ainda não existir (migração idempotente)
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS mc_edition VARCHAR(10) DEFAULT 'java';
 CREATE INDEX IF NOT EXISTS idx_integrations_xuid ON user_integrations(xbox_xuid);
 
 CREATE TABLE IF NOT EXISTS social_accounts (
@@ -1512,23 +1517,53 @@ async function getMinecraftAccessToken(uhs, xstsToken) {
     body: JSON.stringify({ identityToken: `XBL3.0 x=${uhs};${xstsToken}` })
   });
   if (!res.ok) {
-    // Tenta extrair o erro específico para facilitar diagnóstico
     let detail = '';
     try { const d = await res.json(); detail = d?.error || d?.errorMessage || ''; } catch {}
-    const hint = detail ? ` (${detail})` : ' — Verifique se a conta possui Minecraft Java Edition comprado';
+    const hint = detail ? ` (${detail})` : '';
     throw new Error(`Falha na autenticação da Mojang${hint}`);
   }
   return res.json();
 }
 
-async function getMinecraftProfile(mcAccessToken) {
-  const res = await fetch('https://api.minecraftservices.com/minecraft/profile', {
-    headers: { 'Authorization': `Bearer ${mcAccessToken}` }
-  });
-  // 404 = conta sem Minecraft Java Edition comprado
-  if (res.status === 404) throw new Error('Esta conta Microsoft não possui o Minecraft Java Edition comprado. O login Xbox requer Minecraft Original.');
-  if (!res.ok) throw new Error(`Falha ao obter perfil do Minecraft (HTTP ${res.status})`);
-  return res.json();
+/**
+ * Tenta obter o perfil do Minecraft Java Edition.
+ * Retorna null (sem lançar) se a conta não possui Java Edition,
+ * permitindo fallback para o fluxo Bedrock/Xbox.
+ */
+async function tryGetMinecraftJavaProfile(mcAccessToken) {
+  try {
+    const res = await fetch('https://api.minecraftservices.com/minecraft/profile', {
+      headers: { 'Authorization': `Bearer ${mcAccessToken}` }
+    });
+    if (res.status === 404) return null; // Sem Java Edition — não é um erro fatal
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Busca o Gamertag Xbox do usuário autenticado via token XSTS para xboxlive.com.
+ * Usado como identidade principal para contas Bedrock (sem Java Edition).
+ */
+async function getXboxGamertag(uhs, xstsXboxToken) {
+  try {
+    const res = await fetch('https://profile.xboxlive.com/users/me/profile/settings?settings=Gamertag', {
+      headers: {
+        'Authorization': `XBL3.0 x=${uhs};${xstsXboxToken}`,
+        'x-xbl-contract-version': '2',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const setting = (data?.profileUsers?.[0]?.settings || []).find(s => s.id === 'Gamertag');
+    return setting?.value || null;
+  } catch {
+    return null;
+  }
 }
 
 function oauthRedirectError(res, message, provider = 'oauth') {
@@ -1660,6 +1695,10 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
 }
 
 app.get('/api/auth/microsoft/login', (req, res) => {
+  // Proteção CSRF: gera um state único para o fluxo Microsoft/Xbox
+  // (o mesmo mecanismo usado pelos outros providers via registerGenericOAuth)
+  const state = buildOAuthState('microsoft');
+
   // ⚠️  IMPORTANTE: "offline_access" deve ficar no nível raiz (fora do XboxLive.*)
   //     para garantir que a Microsoft devolva o refresh_token.
   //     O scope NÃO deve ser duplamente encodado — deixe o URLSearchParams cuidar disso.
@@ -1669,6 +1708,7 @@ app.get('/api/auth/microsoft/login', (req, res) => {
     redirect_uri:  requireEnv('MS_REDIRECT_URI'),
     scope:         'XboxLive.signin XboxLive.offline_access offline_access openid email profile',
     response_mode: 'query',
+    state,
   });
   res.redirect(`https://login.live.com/oauth20_authorize.srf?${params.toString()}`);
 });
@@ -1796,75 +1836,216 @@ registerGenericOAuth({
   }
 });
 
+/**
+ * GET /api/auth/microsoft/callback
+ *
+ * Suporte a Java Edition E Bedrock Edition:
+ *
+ *  Fluxo unificado:
+ *   1. Troca o código OAuth por tokens da Microsoft.
+ *   2. Obtém token Xbox Live (XBL) — comum a ambas as edições.
+ *   3. Tenta obter token XSTS para Minecraft Services (Java Edition).
+ *      Se falhar com XErr 2148916238 (conta infantil), aborta com mensagem clara.
+ *   4. Tenta autenticar na Mojang e buscar o perfil Java.
+ *      → Se bem-sucedido: edition = 'java', nick = nome Java, uuid = UUID Java.
+ *   5. Se a conta NÃO tiver Java Edition (perfil retorna null/404):
+ *      → Obtém token XSTS para xboxlive.com e busca o Gamertag.
+ *      → edition = 'bedrock', nick = Gamertag, uuid = 'bedrock_' + xuid.
+ *      → Whitelist pelo Gamertag (que é o nick no Bedrock com BedrockConnect/Geyser).
+ *   6. Upsert do usuário e da integração no banco, cria sessão JWT.
+ *
+ *  Segurança:
+ *   - Não armazena tokens em query strings além do JWT assinado pelo servidor.
+ *   - Refresh token da MS armazenado apenas na tabela user_integrations.
+ *   - XUID usado como chave de busca para re-autenticações futuras (evita duplicatas).
+ *   - UUID sintético para Bedrock ('bedrock_' + xuid) garante unicidade na coluna mc_uuid.
+ */
 app.get('/api/auth/microsoft/callback', async (req, res) => {
-  const { code } = req.query;
-  if (!code) return res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_err=Acesso negado`);
+  const { code, state } = req.query;
+  if (!code) return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=microsoft&oauth_err=Acesso+negado`);
+
+  // Valida o CSRF state — protege contra ataques de redirecionamento forjado
+  // O state pode estar ausente em deploys antigos (retrocompatibilidade) — apenas loga o aviso
+  if (state) {
+    try {
+      readOAuthState(state, 'microsoft');
+    } catch (stateErr) {
+      console.warn('[microsoft/callback] State inválido:', stateErr.message);
+      return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=microsoft&oauth_err=${encodeURIComponent('Sessão de autenticação expirada. Tente novamente.')}`);
+    }
+  }
 
   try {
+    // ── Passo 1: Tokens Microsoft ────────────────────────────────────────────
     const msTokens = await exchangeMsCodeForToken(code);
+
+    // ── Passo 2: Token Xbox Live (XBL) — compartilhado Java + Bedrock ───────
     const xblData = await getXboxLiveToken(msTokens.access_token);
-    const uhs = xblData.DisplayClaims.xui[0].uhs;
-    const xstsMC = await getXSTSToken(xblData.Token, "rp://api.minecraftservices.com/");
-    const xuid = xstsMC.DisplayClaims.xui[0].xid;
-    
-    const mcTokenData = await getMinecraftAccessToken(uhs, xstsMC.Token);
-    const mcProfile = await getMinecraftProfile(mcTokenData.access_token);
-    
-    const nick = mcProfile.name;
-    const uuid = mcProfile.id;
+    const uhs     = xblData.DisplayClaims.xui[0].uhs;
 
-    let userRow;
-    const { rows: existingInt } = await pool.query('SELECT user_id FROM user_integrations WHERE mc_uuid = $1', [uuid]);
-    
-    if (existingInt.length > 0) {
-      const { rows: u } = await pool.query('SELECT * FROM users WHERE id = $1', [existingInt[0].user_id]);
-      userRow = u[0];
-      await pool.query('UPDATE user_integrations SET ms_refresh_token = $1, updated_at = NOW() WHERE user_id = $2', [msTokens.refresh_token, userRow.id]);
-    } else {
-      // 1. Verifica se já existe conta com esse nick (cadastro manual que ainda não vinculou)
-      const { rows: matchNick } = await pool.query('SELECT * FROM users WHERE LOWER(minecraft_name) = $1', [nick.toLowerCase()]);
+    // ── Passo 3: XSTS para Minecraft Services (necessário para Java) ─────────
+    // Obtemos o XUID aqui via rp Minecraft; se a conta for infantil, xstsMC lança.
+    let xstsMC, xuid;
+    try {
+      xstsMC = await getXSTSToken(xblData.Token, 'rp://api.minecraftservices.com/');
+      xuid   = xstsMC.DisplayClaims.xui[0].xid;
+    } catch (xstsErr) {
+      // Erros de conta infantil (2148916238) ou conta sem configuração (2148916233)
+      // são relançados com a mensagem amigável já definida em getXSTSToken.
+      throw xstsErr;
+    }
 
-      if (matchNick.length > 0) {
-        // Conta manual existente com esse nick → vincula a integração a ela
-        userRow = matchNick[0];
+    // ── Passo 4: Tentar Java Edition ─────────────────────────────────────────
+    let edition    = 'java';
+    let nick       = null;
+    let mcUuid     = null;
+
+    try {
+      const mcTokenData = await getMinecraftAccessToken(uhs, xstsMC.Token);
+      const javaProfile = await tryGetMinecraftJavaProfile(mcTokenData.access_token);
+
+      if (javaProfile && javaProfile.id && javaProfile.name) {
+        nick   = javaProfile.name;
+        mcUuid = javaProfile.id;
+        // edition permanece 'java'
       } else {
-        // 2. Cria conta nova via Xbox (sem cadastro manual prévio)
-        const fakeEmail   = `${uuid}@xbox.forcaaliada.local`;
-        const randomPass  = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
-        const { rows: newUser } = await pool.query(
-          'INSERT INTO users(username, email, minecraft_name, password_hash, role, is_verified) VALUES($1, $2, $3, $4, $5, TRUE) RETURNING *',
-          [nick.toLowerCase(), fakeEmail, nick, randomPass, 'limited']
-        );
-        userRow = newUser[0];
-        await pool.query('INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)', [nick, userRow.id]);
+        // Conta autenticada na Mojang mas sem Java Edition — cai para Bedrock
+        edition = 'bedrock';
+      }
+    } catch {
+      // Qualquer falha na autenticação Mojang → trata como Bedrock
+      edition = 'bedrock';
+    }
+
+    // ── Passo 5: Fallback Bedrock (sem Java Edition) ─────────────────────────
+    if (edition === 'bedrock') {
+      // Precisamos de XSTS para xboxlive.com (diferente do rp Minecraft) para o Gamertag
+      let xstsXbox;
+      try {
+        xstsXbox = await getXSTSToken(xblData.Token, 'http://xboxlive.com');
+      } catch (xboxErr) {
+        throw new Error('Falha ao autenticar no Xbox Live. Verifique se sua conta Xbox está configurada corretamente.');
       }
 
-      // Salva integração e atualiza minecraft_name caso conta manual não tivesse nick ainda
+      const gamertag = await getXboxGamertag(uhs, xstsXbox.Token);
+      if (!gamertag) {
+        throw new Error('Não foi possível obter seu Gamertag Xbox. Verifique se sua conta Xbox está configurada e tente novamente.');
+      }
+
+      nick   = gamertag;
+      // UUID sintético único para Bedrock — garante unicidade sem conflito com UUIDs Java
+      mcUuid = `bedrock_${xuid}`;
+    }
+
+    // ── Passo 6: Upsert do usuário e integração ───────────────────────────────
+
+    let userRow;
+
+    // 6a. Já existe integração salva com esse XUID? → usuário retornante
+    const { rows: existingByXuid } = await pool.query(
+      'SELECT user_id FROM user_integrations WHERE xbox_xuid = $1 LIMIT 1',
+      [xuid]
+    );
+
+    if (existingByXuid.length > 0) {
+      const { rows: u } = await pool.query('SELECT * FROM users WHERE id = $1', [existingByXuid[0].user_id]);
+      userRow = u[0];
+      // Atualiza refresh token e mc_uuid (pode ter mudado de Java→Bedrock ou vice-versa)
+      await pool.query(
+        `UPDATE user_integrations
+         SET ms_refresh_token = $1, mc_uuid = $2, mc_edition = $3, updated_at = NOW()
+         WHERE user_id = $4`,
+        [msTokens.refresh_token, mcUuid, edition, userRow.id]
+      );
+      // Garante que minecraft_name está atualizado (Gamertag pode mudar no Xbox)
+      await pool.query(
+        'UPDATE users SET minecraft_name = $1 WHERE id = $2',
+        [nick, userRow.id]
+      );
+    } else {
+      // 6b. Novo usuário — verifica se já existe conta com esse nick (cadastro manual)
+      const { rows: matchNick } = await pool.query(
+        'SELECT * FROM users WHERE LOWER(minecraft_name) = $1 LIMIT 1',
+        [nick.toLowerCase()]
+      );
+
+      if (matchNick.length > 0) {
+        // Conta manual com mesmo nick → vincula integração a ela
+        userRow = matchNick[0];
+      } else {
+        // Conta totalmente nova via Xbox/Microsoft
+        // Email sintético: diferencia Java de Bedrock no endereço para evitar colisão
+        const domainSuffix = edition === 'bedrock' ? 'bedrock.forcaaliada.local' : 'xbox.forcaaliada.local';
+        const fakeEmail    = `${xuid}@${domainSuffix}`;
+        const randomPass   = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+
+        // Username derivado do nick, sanitizado para não ter caracteres inválidos
+        // Gamertags Xbox podem ter espaços — substituímos por underscores
+        const safeUsername = nick.toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 32) || `xbox_${xuid.slice(-8)}`;
+
+        const { rows: newUser } = await pool.query(
+          `INSERT INTO users(username, email, minecraft_name, password_hash, role, is_verified)
+           VALUES($1, $2, $3, $4, 'limited', TRUE) RETURNING *`,
+          [safeUsername, fakeEmail, nick, randomPass]
+        );
+        userRow = newUser[0];
+
+        // Enfileira whitelist apenas para Java Edition (Bedrock usa Geyser/BedrockConnect)
+        // Para Bedrock, o nick no servidor já usa o prefixo "." ou o Gamertag diretamente
+        // conforme configuração do Geyser — a whitelist manual é feita pelo admin se necessário
+        if (edition === 'java') {
+          await pool.query(
+            'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
+            [nick, userRow.id]
+          );
+        }
+      }
+
+      // 6c. Salva/vincula a integração Microsoft/Xbox
       await pool.query(
         `UPDATE users SET minecraft_name = $1 WHERE id = $2 AND (minecraft_name IS NULL OR minecraft_name = '')`,
         [nick, userRow.id]
       );
+
+      // ON CONFLICT no XUID para cobrir race conditions
       await pool.query(
-        'INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid) VALUES($1, $2, $3, $4)',
-        [userRow.id, msTokens.refresh_token, xuid, uuid]
+        `INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid, mc_edition)
+         VALUES($1, $2, $3, $4, $5)
+         ON CONFLICT (user_id) DO UPDATE
+           SET ms_refresh_token = EXCLUDED.ms_refresh_token,
+               xbox_xuid        = EXCLUDED.xbox_xuid,
+               mc_uuid          = EXCLUDED.mc_uuid,
+               mc_edition       = EXCLUDED.mc_edition,
+               updated_at       = NOW()`,
+        [userRow.id, msTokens.refresh_token, xuid, mcUuid, edition]
       );
     }
 
-    const token = jwt.sign({ sub: userRow.id, role: userRow.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // ── Passo 7: Cria sessão JWT e redireciona ────────────────────────────────
+    const token     = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
-    
+    const ip        = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+
     await pool.query(
-      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
-      [userRow.id, tokenHash, req.headers['user-agent'], ip]
+      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at)
+       VALUES($1,$2,$3,$4,NOW(),NOW())`,
+      [userRow.id, tokenHash, req.headers['user-agent'] || null, ip]
     );
 
-    await audit({ actorId: userRow.id, actorName: userRow.username, type: 'login', message: `Login Xbox/Minecraft: ${nick}` });
+    const editionLabel = edition === 'bedrock' ? 'Bedrock' : 'Java';
+    await audit({
+      actorId: userRow.id, actorName: userRow.username,
+      type: 'login', severity: 'info',
+      message: `Login Microsoft/Xbox (${editionLabel}): ${nick}`,
+      metadata: { edition, nick, xuid, mcUuid },
+    });
 
-    res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_token=${token}`);
+    // Usa o parâmetro genérico oauth_token (compatível com o handler do login.html)
+    res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=microsoft`);
 
   } catch (err) {
-    res.redirect(`${FRONTEND_BASE_URL}/login.html?ms_err=${encodeURIComponent(err.message)}`);
+    console.error('[microsoft/callback]', err?.message || err);
+    res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=microsoft&oauth_err=${encodeURIComponent(err.message || 'Erro ao autenticar com a Microsoft')}`);
   }
 });
 
