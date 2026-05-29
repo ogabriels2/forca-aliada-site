@@ -1637,10 +1637,11 @@ function randomBase64Url(n = 16) {
  */
 const _oauthStates = new Map();
 
-function buildOAuthState(provider) {
+function buildOAuthState(provider, linkUserId = null) {
   const state = randomBase64Url(24);
   _oauthStates.set(state, {
     provider,
+    linkUserId,  // se fornecido, o callback deve vincular ao usuário existente em vez de fazer login
     expiresAt: Date.now() + 10 * 60 * 1000,
   });
   // Housekeeping leve: remove states expirados a cada chamada
@@ -1733,7 +1734,21 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
 app.get('/api/auth/microsoft/login', (req, res) => {
   // Proteção CSRF: gera um state único para o fluxo Microsoft/Xbox
   // (o mesmo mecanismo usado pelos outros providers via registerGenericOAuth)
-  const state = buildOAuthState('microsoft');
+
+  // Se link_token for fornecido (fluxo de vinculação a partir da account.html),
+  // extrai o userId para armazenar no state — o callback irá vincular ao usuário existente
+  let linkUserId = null;
+  const rawLinkToken = req.query.link_token;
+  if (rawLinkToken) {
+    try {
+      const payload = jwt.verify(rawLinkToken, JWT_SECRET);
+      linkUserId = payload.sub || null;
+    } catch (_) {
+      // Token inválido ou expirado — ignora e segue fluxo normal de login
+    }
+  }
+
+  const state = buildOAuthState('microsoft', linkUserId);
 
   // ⚠️  IMPORTANTE: "offline_access" deve ficar no nível raiz (fora do XboxLive.*)
   //     para garantir que a Microsoft devolva o refresh_token.
@@ -1786,8 +1801,19 @@ app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
 });
 
 function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scope }) {
-  app.get(`/api/auth/${provider}/login`, (_req, res) => {
-    const state = buildOAuthState(provider);
+  app.get(`/api/auth/${provider}/login`, (req, res) => {
+    // Se link_token for fornecido (fluxo de vinculação a partir da account.html),
+    // extrai o userId para armazenar no state
+    let linkUserId = null;
+    const rawLinkToken = req.query.link_token;
+    if (rawLinkToken) {
+      try {
+        const payload = jwt.verify(rawLinkToken, JWT_SECRET);
+        linkUserId = payload.sub || null;
+      } catch (_) { /* token inválido — ignora */ }
+    }
+
+    const state = buildOAuthState(provider, linkUserId);
     const params = new URLSearchParams({
       client_id: requireEnv(`${provider.toUpperCase()}_CLIENT_ID`),
       redirect_uri: requireEnv(`${provider.toUpperCase()}_REDIRECT_URI`),
@@ -1803,7 +1829,8 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
     try {
       const { code, state } = req.query;
       if (!code || !state) return oauthRedirectError(res, 'Acesso negado', provider);
-      readOAuthState(state, provider);
+      const stateEntry = readOAuthState(state, provider);
+      const linkUserId = stateEntry?.linkUserId || null;
 
       const tParams = new URLSearchParams({
         client_id: requireEnv(`${provider.toUpperCase()}_CLIENT_ID`),
@@ -1816,6 +1843,31 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
       const tkData = await tkRes.json();
       if (!tkRes.ok || !tkData.access_token) throw new Error('Falha ao obter token OAuth');
       const profile = await profileLoader(tkData.access_token);
+
+      // Fluxo de vinculação: usuário já logado na account.html
+      if (linkUserId) {
+        const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE id = $1', [linkUserId]);
+        if (!existingUser[0]) throw new Error('Conta não encontrada para vinculação.');
+        const userRow = existingUser[0];
+
+        // Vincula a conta social ao usuário existente
+        await pool.query(
+          `INSERT INTO social_accounts(user_id, provider, provider_user_id, provider_email, refresh_token)
+           VALUES($1, $2, $3, $4, $5)
+           ON CONFLICT (provider, provider_user_id)
+           DO UPDATE SET user_id=EXCLUDED.user_id, provider_email=EXCLUDED.provider_email,
+             refresh_token=COALESCE(EXCLUDED.refresh_token, social_accounts.refresh_token), updated_at=NOW()`,
+          [userRow.id, provider, profile.id, profile.email || null, tkData.refresh_token || null]
+        );
+
+        await audit({ actorId: userRow.id, actorName: userRow.username, type: 'update', message: `${provider} vinculado via account.html` });
+
+        // Redireciona para login.html — o popup detecta e fecha com postMessage
+        const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
+        return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
+      }
+
+      // Fluxo normal de login
       const outcome = await upsertSocialAccount({
         provider,
         providerUserId: profile.id,
@@ -1902,14 +1954,18 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
   // Valida o CSRF state — protege contra ataques de redirecionamento forjado
   // O state pode estar ausente em deploys antigos (retrocompatibilidade) — apenas loga o aviso
+  let stateEntry = null;
   if (state) {
     try {
-      readOAuthState(state, 'microsoft');
+      stateEntry = readOAuthState(state, 'microsoft');
     } catch (stateErr) {
       console.warn('[microsoft/callback] State inválido:', stateErr.message);
       return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=microsoft&oauth_err=${encodeURIComponent('Sessão de autenticação expirada. Tente novamente.')}`);
     }
   }
+
+  // linkUserId presente → fluxo de vinculação (usuário já logado na account.html)
+  const linkUserId = stateEntry?.linkUserId || null;
 
   try {
     // ── Passo 1: Tokens Microsoft ────────────────────────────────────────────
@@ -1976,6 +2032,57 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
     // ── Passo 6: Upsert do usuário e integração ───────────────────────────────
 
     let userRow;
+
+    // ── FLUXO DE VINCULAÇÃO (link_token fornecido pela account.html) ─────────
+    if (linkUserId) {
+      // Usuário já está logado — apenas vincula o Xbox à conta existente
+      const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE id = $1', [linkUserId]);
+      if (!existingUser[0]) throw new Error('Conta não encontrada para vinculação.');
+      userRow = existingUser[0];
+
+      // Atualiza o nick de Minecraft se ainda não estava definido, ou sempre atualiza
+      await pool.query(
+        'UPDATE users SET minecraft_name = $1 WHERE id = $2',
+        [nick, userRow.id]
+      );
+
+      // Upsert da integração
+      await pool.query(
+        `INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid, mc_edition)
+         VALUES($1, $2, $3, $4, $5)
+         ON CONFLICT (user_id) DO UPDATE
+           SET ms_refresh_token = EXCLUDED.ms_refresh_token,
+               xbox_xuid        = EXCLUDED.xbox_xuid,
+               mc_uuid          = EXCLUDED.mc_uuid,
+               mc_edition       = EXCLUDED.mc_edition,
+               updated_at       = NOW()`,
+        [userRow.id, msTokens.refresh_token, xuid, mcUuid, edition]
+      );
+
+      // Também adiciona à whitelist se Java e ainda não está
+      if (edition === 'java') {
+        await pool.query(
+          `INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [nick, userRow.id]
+        );
+      }
+
+      const editionLabel = edition === 'bedrock' ? 'Bedrock' : 'Java';
+      await audit({
+        actorId: userRow.id, actorName: userRow.username,
+        type: 'update', severity: 'info',
+        message: `Xbox vinculado via account.html (${editionLabel}): ${nick}`,
+        metadata: { edition, nick, xuid, mcUuid },
+      });
+
+      // Redireciona para login.html — o popup vai detectar isso e fechar com postMessage
+      return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(
+        jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' })
+      )}&oauth_provider=microsoft`);
+    }
+
+    // ── FLUXO NORMAL DE LOGIN ────────────────────────────────────────────────
 
     // 6a. Já existe integração salva com esse XUID? → usuário retornante
     const { rows: existingByXuid } = await pool.query(
@@ -2700,7 +2807,7 @@ const DEFAULT_PREFERENCES = Object.freeze({
   public_profile: true,
   show_online: true,
   public_history: false,
-  theme: 'auto',
+  theme: 'light',
 });
 const ALLOWED_THEMES = new Set(['light', 'dark', 'auto']);
 
