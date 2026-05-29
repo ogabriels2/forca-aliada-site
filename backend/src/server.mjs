@@ -2617,6 +2617,66 @@ res.json({ ok: true });
 });
 
 // ─────────────────────────────────────────────
+// HELPER: Renova o access_token Microsoft com o refresh_token salvo no banco.
+// Verifica erros, salva o novo refresh_token e retorna o access_token pronto para uso.
+// Lança erro descritivo se o refresh_token estiver expirado/ausente.
+// ─────────────────────────────────────────────
+async function refreshMsAccessToken(userId) {
+  const { rows } = await pool.query(
+    'SELECT ms_refresh_token FROM user_integrations WHERE user_id = $1',
+    [userId]
+  );
+  if (!rows.length || !rows[0].ms_refresh_token) {
+    throw new Error('Conta não vinculada à Microsoft. Vincule sua conta Xbox nas configurações.');
+  }
+
+  const params = new URLSearchParams({
+    client_id:     requireEnv('MS_CLIENT_ID'),
+    client_secret: requireEnv('MS_CLIENT_SECRET'),
+    refresh_token: rows[0].ms_refresh_token,
+    grant_type:    'refresh_token',
+    scope:         'XboxLive.signin XboxLive.offline_access offline_access',
+  });
+
+  const msRes = await fetch('https://login.live.com/oauth20_token.srf', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    params.toString(),
+  });
+
+  const msData = await msRes.json();
+
+  if (!msRes.ok || !msData.access_token) {
+    // Refresh token expirado ou revogado — limpa do banco para evitar loops
+    const errCode = msData.error || 'unknown';
+    if (['invalid_grant', 'unauthorized_client', 'interaction_required'].includes(errCode)) {
+      // Token revogado: remove a integração para forçar nova vinculação
+      await pool.query(
+        'UPDATE user_integrations SET ms_refresh_token = NULL WHERE user_id = $1',
+        [userId]
+      );
+      throw new Error(
+        'Sua sessão Microsoft expirou ou foi revogada. ' +
+        'Acesse Conta → Conexões e vincule o Xbox novamente.'
+      );
+    }
+    throw new Error(
+      `Falha ao renovar autenticação Microsoft (${errCode}). Tente novamente mais tarde.`
+    );
+  }
+
+  // Salva o novo refresh_token (rotação de tokens)
+  if (msData.refresh_token) {
+    await pool.query(
+      'UPDATE user_integrations SET ms_refresh_token = $1, updated_at = NOW() WHERE user_id = $2',
+      [msData.refresh_token, userId]
+    );
+  }
+
+  return msData.access_token;
+}
+
+// ─────────────────────────────────────────────
 // ME – Contas sociais vinculadas
 // ─────────────────────────────────────────────
 app.get('/api/me/social-accounts', auth, async (req, res) => {
@@ -2719,41 +2779,37 @@ activeSession: active.rows[0]?.entered_at || null,
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
 app.get('/api/me/xbox/friends', auth, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT ms_refresh_token FROM user_integrations WHERE user_id = $1', [req.user.sub]);
-    if (!rows.length || !rows[0].ms_refresh_token) throw new Error('Conta não vinculada ao Xbox.');
+    // 1. Renova token MS com verificação de erros robusta
+    const accessToken = await refreshMsAccessToken(req.user.sub);
 
-    // 1. Renova o token da MS
-    const params = new URLSearchParams({
-      client_id: process.env.MS_CLIENT_ID, client_secret: process.env.MS_CLIENT_SECRET,
-      refresh_token: rows[0].ms_refresh_token, grant_type: 'refresh_token',
-    });
-    const msRes = await fetch('https://login.live.com/oauth20_token.srf', { method: 'POST', body: params.toString() });
-    const msData = await msRes.json();
-    await pool.query('UPDATE user_integrations SET ms_refresh_token = $1 WHERE user_id = $2', [msData.refresh_token, req.user.sub]);
+    // 2. Autentica no Xbox Live
+    const xblData  = await getXboxLiveToken(accessToken);
+    const uhs      = xblData.DisplayClaims.xui[0].uhs;
+    const xstsXbox = await getXSTSToken(xblData.Token, 'http://xboxlive.com');
 
-    // 2. Busca lista no Xbox Live
-    const xblData = await getXboxLiveToken(msData.access_token);
-    const uhs = xblData.DisplayClaims.xui[0].uhs;
-    const xstsXbox = await getXSTSToken(xblData.Token, "http://xboxlive.com");
-
-    const friendsRes = await fetch('https://peoplehub.xboxlive.com/users/me/people/social/decoration/detail', {
-      headers: { 'Authorization': `XBL3.0 x=${uhs};${xstsXbox.Token}`, 'x-xbl-contract-version': '2', 'Accept-Language': 'pt-BR' }
-    });
+    // 3. Busca amigos do Xbox Live
+    const friendsRes = await fetch(
+      'https://peoplehub.xboxlive.com/users/me/people/social/decoration/detail',
+      { headers: { 'Authorization': `XBL3.0 x=${uhs};${xstsXbox.Token}`, 'x-xbl-contract-version': '2', 'Accept-Language': 'pt-BR' } }
+    );
+    if (!friendsRes.ok) throw new Error('Não foi possível obter a lista de amigos do Xbox Live.');
     const friendsData = await friendsRes.json();
-    
-    // 3. Cruza com o banco do Servidor
+
+    // 4. Cruza com o banco do Servidor
     const xuids = (friendsData.people || []).map(p => p.xuid);
     let commonFriends = [];
     if (xuids.length > 0) {
-        const { rows: matched } = await pool.query(`
-          SELECT u.username, u.minecraft_name 
-          FROM user_integrations ui JOIN users u ON ui.user_id = u.id 
-          WHERE ui.xbox_xuid = ANY($1)
-        `, [xuids]);
-        commonFriends = matched;
+      const { rows: matched } = await pool.query(
+        `SELECT u.username, u.minecraft_name
+         FROM user_integrations ui JOIN users u ON ui.user_id = u.id
+         WHERE ui.xbox_xuid = ANY($1)`,
+        [xuids]
+      );
+      commonFriends = matched;
     }
     res.json({ xboxFriendsTotal: (friendsData.people || []).length, serverFriends: commonFriends });
   } catch (err) {
+    console.error('[xbox/friends]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2763,36 +2819,29 @@ app.post('/api/me/minecraft/skin', auth, async (req, res) => {
   if (!skinUrl) return res.status(400).json({ error: 'URL da skin obrigatória' });
 
   try {
-    const { rows } = await pool.query('SELECT ms_refresh_token FROM user_integrations WHERE user_id = $1', [req.user.sub]);
-    if (!rows.length || !rows[0].ms_refresh_token) throw new Error('Conta não vinculada à Microsoft.');
+    // Renova token MS com verificação de erros robusta
+    const accessToken = await refreshMsAccessToken(req.user.sub);
 
-    const params = new URLSearchParams({
-      client_id: process.env.MS_CLIENT_ID, client_secret: process.env.MS_CLIENT_SECRET,
-      refresh_token: rows[0].ms_refresh_token, grant_type: 'refresh_token',
-    });
-    const msRes = await fetch('https://login.live.com/oauth20_token.srf', { method: 'POST', body: params.toString() });
-    const msData = await msRes.json();
-    await pool.query('UPDATE user_integrations SET ms_refresh_token = $1 WHERE user_id = $2', [msData.refresh_token, req.user.sub]);
-
-    const xblData = await getXboxLiveToken(msData.access_token);
-    const xstsMC = await getXSTSToken(xblData.Token, "rp://api.minecraftservices.com/");
+    const xblData = await getXboxLiveToken(accessToken);
+    const xstsMC  = await getXSTSToken(xblData.Token, 'rp://api.minecraftservices.com/');
     const mcToken = await getMinecraftAccessToken(xblData.DisplayClaims.xui[0].uhs, xstsMC.Token);
 
     const skinPost = await fetch('https://api.minecraftservices.com/minecraft/profile/skins', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Authorization': `Bearer ${mcToken.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ variant: "classic", url: skinUrl })
+      body:    JSON.stringify({ variant: 'classic', url: skinUrl }),
     });
 
     if (!skinPost.ok) throw new Error('Mojang rejeitou a troca (Verifique URL ou Rate Limit)');
-    
+
     await audit({
       actorId: req.user.sub, actorName: req.user.username, type: 'update',
-      message: `${req.user.username} alterou a skin oficial via Painel.`
+      message: `${req.user.username} alterou a skin oficial via Painel.`,
     });
-    
+
     res.json({ ok: true });
   } catch (err) {
+    console.error('[minecraft/skin]', err.message);
     res.status(500).json({ error: err.message });
   }
 });
