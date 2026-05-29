@@ -310,6 +310,15 @@ const authLimiter  = rateLimit({
 });
 const emailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 3,  standardHeaders: true, legacyHeaders: false, message: { error: 'Muitas tentativas. Tente novamente mais tarde.' } });
 
+// Limitador rigoroso para APIs externas (Xbox / Mojang) para evitar banimento do App ID
+const xboxApiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutos de janela
+  limit: 3, // Máximo de 3 sincronizações por usuário a cada 5 minutos
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite atingido. Para proteger sua conta e o servidor, aguarde 5 minutos antes de sincronizar novamente.' }
+});
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
@@ -1739,9 +1748,13 @@ async function linkMicrosoftIntegration({ userId, msRefreshToken, xuid, mcUuid, 
     }
 
     if (cleanEdition === 'java') {
+      // Arquitetura defensiva: Só insere na fila se o jogador já não estiver lá
       await client.query(
-        `INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)
-         ON CONFLICT DO NOTHING`,
+        `INSERT INTO whitelist_queue(minecraft_name, user_id) 
+         SELECT $1, $2 
+         WHERE NOT EXISTS (
+           SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
+         )`,
         [cleanNick, userId]
       );
     }
@@ -2323,12 +2336,15 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         );
         userRow = newUser[0];
 
-        // Enfileira whitelist apenas para Java Edition (Bedrock usa Geyser/BedrockConnect)
-        // Para Bedrock, o nick no servidor já usa o prefixo "." ou o Gamertag diretamente
-        // conforme configuração do Geyser — a whitelist manual é feita pelo admin se necessário
-        if (false && edition === 'java') {
+        // Enfileira na whitelist automaticamente para jogadores de Java Edition
+        if (edition === 'java') {
+          // Arquitetura defensiva: Só insere na fila se o jogador já não estiver lá
           await pool.query(
-            'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
+            `INSERT INTO whitelist_queue(minecraft_name, user_id) 
+             SELECT $1, $2 
+             WHERE NOT EXISTS (
+               SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
+             )`,
             [nick, userRow.id]
           );
         }
@@ -2491,8 +2507,13 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
   // ── Enqueue whitelist addition for the desktop app ──
   if (user.minecraft_name) {
     try {
+      // Arquitetura defensiva para evitar duplicidade na fila
       await pool.query(
-        'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
+        `INSERT INTO whitelist_queue(minecraft_name, user_id) 
+         SELECT $1, $2 
+         WHERE NOT EXISTS (
+           SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
+         )`,
         [user.minecraft_name, user.id]
       );
     } catch (e) {
@@ -3099,7 +3120,7 @@ activeSession: active.rows[0]?.entered_at || null,
 });
 
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
-app.get('/api/me/xbox/friends', auth, async (req, res) => {
+app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
   try {
     const requestedIntegrationId = req.query.integration_id ? Number(req.query.integration_id) : null;
     if (req.query.integration_id && (!Number.isInteger(requestedIntegrationId) || requestedIntegrationId <= 0)) {
@@ -3238,7 +3259,7 @@ app.get('/api/me/xbox/friends-legacy', auth, async (req, res) => {
   }
 });
 
-app.post('/api/me/minecraft/skin', auth, async (req, res) => {
+app.post('/api/me/minecraft/skin', auth, xboxApiLimiter, async (req, res) => {
   const { skinUrl } = req.body;
   if (!skinUrl) return res.status(400).json({ error: 'URL da skin obrigatória' });
 
