@@ -1018,25 +1018,15 @@ if (urlParams.has('oauth_onboard')) {
   oauthOnboardToken    = urlParams.get('oauth_onboard');
   oauthOnboardProvider = urlParams.get('oauth_provider') || 'social';
   window.history.replaceState({}, document.title, window.location.pathname);
-  // ⚠️ NÃO salvar o token no localStorage aqui — a conta ainda não foi confirmada
-  // pelo usuário (etapa de vinculação Xbox). O token só é persistido ao completar
-  // o onboarding (goToSuccess) ou ao pular a vinculação (confirmSkipMs).
-  // Salvar antes causava: (1) o index.html mostrar o usuário como logado antes de
-  // terminar o cadastro; (2) se o onboarding falhasse, a conta ficava "fantasma" logada.
-  //
-  // Usamos DOMContentLoaded com fallback para readyState, evitando race condition
-  // quando o script roda depois do evento já ter disparado.
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', initOnboardingPostOAuth);
-  } else {
-    initOnboardingPostOAuth();
-  }
+  localStorage.setItem(TOKEN_KEY, oauthOnboardToken);
+  // Após carregar, inicializa o onboarding (mostra etapa 3 com banner explicativo)
+  window.addEventListener('DOMContentLoaded', initOnboardingPostOAuth);
 }
 
 function showView(name) {
   ['loggedin','signup','verify','ms-link','success'].forEach(v => {
     const el = document.getElementById('view-' + v);
-    if (el) el.style.display = v === name ? '' : 'none';
+    if (el) el.style.display = v === name ? 'block' : 'none';
   });
 }
 
@@ -1209,42 +1199,38 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-      if (res.status === 409 || data.error === 'username/email already exists') throw new Error('ACCOUNT_EXISTS');
       const serverErrors = {
-        'invalid username':'Nome de usuário inválido — use apenas letras, números e _.',
-        'invalid email':'Endereço de e-mail inválido.',
-        'invalid password':'Senha inválida — mínimo 8 caracteres.',
-        'username taken':'Este nome de usuário já está em uso. Tente outro.',
-        'email taken':'Este e-mail já possui uma conta. Tente fazer login.',
+        'username taken':        'Este nome de usuário já está em uso. Tente outro.',
+        'email_verified_exists': null, // tratado abaixo
+        'Dados inválidos.':      'Dados inválidos. Verifique os campos e tente novamente.',
       };
+
+      if (data.error === 'email_verified_exists') {
+        // E-mail já tem conta verificada — orienta para login sem tentar logar com a senha atual
+        // (pode ser uma senha diferente da conta real)
+        showAlert(
+          'Este e-mail já possui uma conta ativa. <a href="login.html" style="color:inherit;text-decoration:underline;font-weight:700;">Fazer login →</a>',
+          'error', true
+        );
+        shakeCard();
+        btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = 'Criar Conta';
+        return;
+      }
+
       throw new Error(serverErrors[data.error] || data.error || 'Erro ao criar conta. Tente novamente.');
     }
 
+    // Sucesso: conta criada ou retomada (conta não verificada atualizada)
     pendingEmail = data.email || email;
     document.getElementById('verify-email-display').textContent = pendingEmail;
     showView('verify');
+    if (data.resumed) {
+      showAlert('Código reenviado para o seu e-mail — você pode usar esta nova senha ao verificar.', 'info', false, 'verify-alert');
+    }
     startResendTimer();
   } catch (err) {
     clearTimeout(slowTimer);
-    if (err.message === 'ACCOUNT_EXISTS') {
-      try {
-        const loginRes  = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ login: email, password }),
-        });
-        const loginData = await loginRes.json();
-        if (loginRes.status === 403 && loginData.error === 'unverified_email') {
-          pendingEmail = loginData.email || email;
-          document.getElementById('verify-email-display').textContent = pendingEmail;
-          showView('verify');
-          showAlert('Enviamos um novo código para o seu e-mail.','success',false,'verify-alert');
-          startResendTimer(); return;
-        }
-        if (loginRes.ok) { localStorage.setItem(TOKEN_KEY, loginData.token); localStorage.setItem(SESSION_KEY, JSON.stringify(loginData.user)); location.href = 'dashboard.html'; return; }
-      } catch (_) {}
-      showAlert('Este e-mail ou nome de usuário já está registado. <a href="login.html" style="color:inherit;text-decoration:underline;font-weight:700;">Fazer login →</a>','error',true);
-      shakeCard();
-    } else { showAlert(err.message,'error'); shakeCard(); }
+    showAlert(err.message, 'error'); shakeCard();
     btn.disabled = false; spinner.style.display = 'none'; btnText.textContent = 'Criar Conta';
   }
 });
@@ -1350,25 +1336,19 @@ function forceLogout() {
 
 // ── Funções de onboarding pós-OAuth social ──────────────
 function initOnboardingPostOAuth() {
-  // Mostra um estado de loading enquanto valida o token com o backend
-  showView('ms-link');
   fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${oauthOnboardToken}` } })
-    .then(r => r.ok ? r.json() : Promise.reject(new Error('token_invalid')))
+    .then(r => r.ok ? r.json() : Promise.reject())
     .then(me => {
-      // Só agora o token é válido e a conta existe — salva no localStorage
-      localStorage.setItem(TOKEN_KEY, oauthOnboardToken);
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         username: me.username, email: me.email,
         minecraftName: me.minecraft_name, role: me.role
       }));
+      showView('ms-link');
       injectOnboardBanner(me.username, oauthOnboardProvider);
     })
     .catch(() => {
-      // Token inválido ou expirado: descarta e manda para o login com aviso
-      oauthOnboardToken = null;
       localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(SESSION_KEY);
-      window.location.href = 'login.html?oauth_err=' + encodeURIComponent('Sessão de cadastro expirada. Tente entrar com o Google novamente.');
+      showView('signup');
     });
 }
 
@@ -1409,37 +1389,8 @@ function confirmSkipMs() {
   goToSuccess(false);
 }
 
-async function goToSuccess(msLinked) {
+function goToSuccess(msLinked) {
   showView('success');
-
-  // Troca o token temporário de onboarding por uma sessão permanente de 7 dias.
-  // Isso garante que a sessão no banco só é criada quando o usuário REALMENTE conclui
-  // o cadastro (seja vinculando Xbox ou pulando a etapa).
-  if (oauthOnboardToken) {
-    try {
-      const r = await fetch(`${API_BASE}/api/auth/oauth/complete-onboarding`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${oauthOnboardToken}` },
-      });
-      if (r.ok) {
-        const d = await r.json();
-        localStorage.setItem(TOKEN_KEY, d.token);
-        localStorage.setItem(SESSION_KEY, JSON.stringify({
-          username: d.user.username, email: d.user.email,
-          minecraftName: d.user.minecraftName, role: d.user.role,
-        }));
-      } else {
-        // Falhou (token expirou?) — o token temporário já estava no localStorage
-        // então o usuário ainda pode navegar, mas a sessão de longa duração não foi criada.
-        // Não bloqueamos o fluxo — apenas logamos.
-        console.warn('[onboarding] Falha ao criar sessão permanente:', await r.text());
-      }
-    } catch (e) {
-      console.warn('[onboarding] Erro de rede ao confirmar onboarding:', e);
-    }
-    oauthOnboardToken = null;
-  }
-
   if (msLinked) {
     const badge = document.getElementById('ms-linked-badge');
     if (badge) badge.style.display = 'inline-flex';
