@@ -1571,22 +1571,29 @@ function oauthRedirectError(res, message, provider = 'oauth') {
 }
 
 async function createSessionAndRedirect(res, req, userRow, provider = 'oauth', isNew = false) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+
+  // Para contas novas via OAuth social (não-Microsoft): emite um token temporário de onboarding
+  // com expiração curta (2h) e SEM criar sessão no banco ainda.
+  // A sessão permanente só é criada quando o usuário conclui o onboarding no signup.html.
+  // Isso evita que o usuário apareça como "logado" no site antes de terminar o cadastro.
+  if (isNew && provider !== 'microsoft') {
+    const onboardToken = jwt.sign({ sub: userRow.id, role: userRow.role, onboarding: true }, JWT_SECRET, { expiresIn: '2h' });
+    await audit({ actorId: userRow.id, actorName: userRow.username, type: 'create', message: `Cadastro via OAuth social (${provider}) — onboarding pendente` });
+    return res.redirect(
+      `${FRONTEND_BASE_URL}/signup.html?oauth_onboard=${encodeURIComponent(onboardToken)}&oauth_provider=${encodeURIComponent(provider)}`
+    );
+  }
+
+  // Para logins normais (conta existente ou Microsoft): cria sessão completa de 7 dias
   const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
   await pool.query(
     `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
     [userRow.id, tokenHash, req.headers['user-agent'], ip]
   );
   const actionLabel = isNew ? `Cadastro + login social (${provider})` : `Login social (${provider})`;
   await audit({ actorId: userRow.id, actorName: userRow.username, type: isNew ? 'create' : 'login', message: actionLabel });
-  // Se é conta nova via OAuth social (não Microsoft), redireciona para onboarding de cadastro
-  // O onboarding guia o usuário pela vinculação da conta Microsoft e cópia do IP
-  if (isNew && provider !== 'microsoft') {
-    return res.redirect(
-      `${FRONTEND_BASE_URL}/signup.html?oauth_onboard=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`
-    );
-  }
   return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
 }
 
@@ -1719,6 +1726,61 @@ app.get('/api/auth/microsoft/login', (req, res) => {
     state,
   });
   res.redirect(`https://login.live.com/oauth20_authorize.srf?${params.toString()}`);
+});
+
+/**
+ * POST /api/auth/oauth/complete-onboarding
+ * Converte o token temporário de onboarding (2h, sem sessão no banco) em uma sessão
+ * permanente de 7 dias. Chamado pelo signup.html quando o usuário conclui (ou pula)
+ * a etapa de vinculação Xbox.
+ *
+ * Isso garante que a sessão só é criada DEPOIS que o usuário confirmou o cadastro,
+ * evitando que ele apareça "logado" no site antes de terminar o onboarding.
+ */
+app.post('/api/auth/oauth/complete-onboarding', authLimiter, async (req, res) => {
+  try {
+    const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!rawToken) return res.status(401).json({ error: 'missing token' });
+
+    let payload;
+    try {
+      payload = jwt.verify(rawToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: 'invalid or expired onboarding token' });
+    }
+
+    // Garante que é um token de onboarding (não um token de sessão normal reutilizado)
+    if (!payload.onboarding) {
+      return res.status(400).json({ error: 'not an onboarding token' });
+    }
+
+    const { rows } = await pool.query('SELECT * FROM users WHERE id=$1 LIMIT 1', [payload.sub]);
+    if (!rows.length) return res.status(404).json({ error: 'user not found' });
+    const user = rows[0];
+
+    // Cria a sessão permanente de 7 dias
+    const sessionToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    const tokenHash = crypto.createHash('sha256').update(sessionToken).digest('hex');
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+
+    await pool.query(
+      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
+      [user.id, tokenHash, req.headers['user-agent'] || null, ip]
+    );
+
+    await audit({
+      actorId: user.id, actorName: user.username,
+      type: 'login', message: `Onboarding OAuth concluído — sessão criada`,
+    });
+
+    res.json({
+      token: sessionToken,
+      user: { username: user.username, email: user.email, role: user.role, minecraftName: user.minecraft_name },
+    });
+  } catch (err) {
+    console.error('[complete-onboarding]', err?.message || err);
+    res.status(500).json({ error: 'internal error' });
+  }
 });
 
 app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
