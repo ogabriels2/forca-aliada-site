@@ -325,12 +325,28 @@ async function sendSystemEmail(email, username, code, type = 'verify') {
 const key = process.env.RESEND_API_KEY;
 if (!key) { return; }
 const from    = process.env.EMAIL_FROM || 'no-reply@ogabriels.com';
-const subject = type === 'verify' ? 'Verifique sua conta' : 'Código de Recuperação';
-const title   = type === 'verify' ? 'Bem-vindo à Força Aliada!' : 'Força Aliada';
-const sub     = type === 'verify'
-? 'Use o código abaixo para ativar o seu cadastro:'
-: 'Utilize o código de 6 dígitos abaixo no site:';
-const html = ` <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e5e5ea;border-radius:12px;"> <h2 style="color:#1d1d1f;">${title}</h2> <p style="color:#1d1d1f;">Olá <strong>${username}</strong>,</p> <p style="color:#86868b;">${sub}</p> <div style="background:#f2f2f7;padding:16px;border-radius:8px;text-align:center;margin:24px 0;"> <strong style="font-size:32px;letter-spacing:4px;color:#0071e3;">${code}</strong> </div> <p style="color:#86868b;font-size:13px;">Este código expira em 15 minutos.</p> </div>`;
+
+let subject, title, sub, accentColor, extraWarning = '';
+
+if (type === 'verify') {
+  subject = 'Verifique sua conta';
+  title   = 'Bem-vindo à Força Aliada!';
+  sub     = 'Use o código abaixo para ativar o seu cadastro:';
+  accentColor = '#0071e3';
+} else if (type === 'delete_account') {
+  subject = '⚠️ Confirmação de exclusão de conta';
+  title   = 'Solicitação de exclusão de conta';
+  sub     = 'Recebemos uma solicitação para excluir permanentemente sua conta. Use o código abaixo para confirmar:';
+  accentColor = '#ff3b30';
+  extraWarning = '<p style="color:#ff3b30;font-size:13px;font-weight:600;margin-top:8px;">⚠️ Esta ação é irreversível. Se você não solicitou isso, ignore este e-mail — sua conta continuará segura.</p>';
+} else {
+  subject = 'Código de Recuperação';
+  title   = 'Força Aliada';
+  sub     = 'Utilize o código de 6 dígitos abaixo no site:';
+  accentColor = '#0071e3';
+}
+
+const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e5e5ea;border-radius:12px;"> <h2 style="color:#1d1d1f;">${title}</h2> <p style="color:#1d1d1f;">Olá <strong>${username}</strong>,</p> <p style="color:#86868b;">${sub}</p> <div style="background:#f2f2f7;padding:16px;border-radius:8px;text-align:center;margin:24px 0;"> <strong style="font-size:32px;letter-spacing:4px;color:${accentColor};">${code}</strong> </div> <p style="color:#86868b;font-size:13px;">Este código expira em 15 minutos.</p>${extraWarning} </div>`;
 try {
 await fetch('https://api.resend.com/emails', {
 method: 'POST',
@@ -562,6 +578,18 @@ CREATE TABLE IF NOT EXISTS social_accounts (
 );
 CREATE INDEX IF NOT EXISTS idx_social_accounts_user ON social_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_social_accounts_provider_email ON social_accounts(provider, provider_email);
+
+-- Tabela para verificação por e-mail na exclusão de conta
+-- Separada de email_verifications para evitar conflito de tipos/propósito
+CREATE TABLE IF NOT EXISTS delete_account_verifications (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code       VARCHAR(6) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_delete_verify_user ON delete_account_verifications(user_id);
 `;
 await pool.query(featureSchemaSql);
 
@@ -2402,9 +2430,54 @@ res.json({ ok: true });
 app.post('/api/me/password', auth, changeMyPassword);
 app.put('/api/me/password',  auth, changeMyPassword);
 
+// ─────────────────────────────────────────────
+// ME – Solicitar exclusão de conta (envia código por e-mail)
+// ─────────────────────────────────────────────
+app.post('/api/me/delete-request', auth, emailLimiter, async (req, res) => {
+  const password = req.body?.password || '';
+
+  try {
+    const { rows } = await pool.query('SELECT email, password_hash, username FROM users WHERE id=$1', [req.user.sub]);
+    if (!rows.length) return res.status(404).json({ error: 'user not found' });
+
+    // Valida senha antes de enviar o código
+    if (!(await bcrypt.compare(password, rows[0].password_hash))) {
+      return res.status(401).json({ error: 'invalid password' });
+    }
+
+    const user = rows[0];
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Upsert: se já existe uma solicitação pendente, substitui
+    await pool.query(
+      `INSERT INTO delete_account_verifications(user_id, code, expires_at)
+       VALUES($1, $2, $3)
+       ON CONFLICT(user_id) DO UPDATE SET code=$2, expires_at=$3, created_at=NOW()`,
+      [req.user.sub, code, expiresAt]
+    );
+
+    await sendSystemEmail(user.email, user.username, code, 'delete_account');
+
+    await auditFromReq(req, {
+      actorId: req.user.sub, actorName: user.username,
+      type: 'security', severity: 'warning',
+      message: `Código de exclusão de conta enviado para ${user.email}`,
+    });
+
+    // Retorna os últimos 4 caracteres do e-mail para exibir no frontend (ex: "...@gmail.com")
+    const emailMasked = user.email.replace(/(.{2}).+(@.+)/, '$1***$2');
+    res.json({ ok: true, emailMasked });
+  } catch (e) {
+    console.error('[POST /api/me/delete-request]', e);
+    res.status(500).json({ error: 'Erro ao enviar código de verificação.' });
+  }
+});
+
 app.delete('/api/me', auth, async (req, res) => {
 const email    = sanitize(req.body?.email).toLowerCase();
 const password = req.body?.password || '';
+const emailCode = sanitize(req.body?.emailCode || '');
 
 const { rows } = await pool.query('SELECT email, password_hash, username FROM users WHERE id=$1', [req.user.sub]);
 if (!rows.length) return res.status(404).json({ error: 'user not found' });
@@ -2412,14 +2485,108 @@ if (rows[0].email !== email) return res.status(400).json({ error: 'email mismatc
 if (!(await bcrypt.compare(password, rows[0].password_hash)))
 return res.status(401).json({ error: 'invalid password' });
 
+// Etapa 2: verificar código de e-mail
+if (!emailCode) return res.status(400).json({ error: 'email_code_required' });
+
+const { rows: verRows } = await pool.query(
+  'SELECT code, expires_at FROM delete_account_verifications WHERE user_id=$1',
+  [req.user.sub]
+);
+if (!verRows.length) return res.status(400).json({ error: 'code_not_requested' });
+if (new Date(verRows[0].expires_at) < new Date()) return res.status(400).json({ error: 'code_expired' });
+if (verRows[0].code !== emailCode) return res.status(400).json({ error: 'invalid_code' });
+
+// Remove o código usado
+await pool.query('DELETE FROM delete_account_verifications WHERE user_id=$1', [req.user.sub]);
+
 await audit({
 actorId: req.user.sub, actorName: rows[0].username,
-type: 'delete', targetId: req.user.sub, targetName: rows[0].username,
-message: `Conta excluída: ${rows[0].username}`,
+type: 'delete', severity: 'critical', targetId: req.user.sub, targetName: rows[0].username,
+message: `Conta excluída pelo próprio usuário (verificação por e-mail confirmada): ${rows[0].username}`,
 });
 
 await pool.query('DELETE FROM users WHERE id=$1', [req.user.sub]);
 res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────
+// ME – Contas sociais vinculadas
+// ─────────────────────────────────────────────
+app.get('/api/me/social-accounts', auth, async (req, res) => {
+  try {
+    // Busca social_accounts (Google, Facebook, Discord)
+    const { rows: social } = await pool.query(
+      `SELECT provider, provider_email, created_at, updated_at FROM social_accounts WHERE user_id=$1`,
+      [req.user.sub]
+    );
+
+    // Busca integração Microsoft/Xbox separadamente (tabela user_integrations)
+    const { rows: msRows } = await pool.query(
+      `SELECT xbox_xuid, mc_uuid, mc_edition, updated_at FROM user_integrations WHERE user_id=$1`,
+      [req.user.sub]
+    );
+
+    // Monta lista de provedores disponíveis + status de vinculação
+    const linked = {};
+    social.forEach(s => {
+      linked[s.provider] = {
+        provider: s.provider,
+        provider_email: s.provider_email,
+        linked_at: s.updated_at || s.created_at,
+        linked: true,
+      };
+    });
+
+    if (msRows.length > 0 && msRows[0].xbox_xuid) {
+      linked['microsoft'] = {
+        provider: 'microsoft',
+        provider_email: null,
+        xbox_xuid: msRows[0].xbox_xuid,
+        mc_edition: msRows[0].mc_edition,
+        linked_at: msRows[0].updated_at,
+        linked: true,
+      };
+    }
+
+    res.json({ accounts: linked });
+  } catch (e) {
+    console.error('[GET /api/me/social-accounts]', e);
+    res.status(500).json({ error: 'internal error' });
+  }
+});
+
+app.delete('/api/me/social-accounts/:provider', auth, async (req, res) => {
+  const provider = sanitize(req.params.provider).toLowerCase();
+  const allowed = ['google', 'facebook', 'discord', 'microsoft'];
+  if (!allowed.includes(provider)) return res.status(400).json({ error: 'invalid provider' });
+
+  try {
+    if (provider === 'microsoft') {
+      // Remove integração Microsoft/Xbox — NÃO remove minecraft_name do usuário (pode ter sido vinculado manualmente)
+      const { rowCount } = await pool.query(
+        'DELETE FROM user_integrations WHERE user_id=$1',
+        [req.user.sub]
+      );
+      if (!rowCount) return res.status(404).json({ error: 'not linked' });
+    } else {
+      const { rowCount } = await pool.query(
+        'DELETE FROM social_accounts WHERE user_id=$1 AND provider=$2',
+        [req.user.sub, provider]
+      );
+      if (!rowCount) return res.status(404).json({ error: 'not linked' });
+    }
+
+    await auditFromReq(req, {
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'update', targetId: req.user.sub,
+      message: `Vínculo social removido: ${provider}`,
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/me/social-accounts/:provider]', e);
+    res.status(500).json({ error: 'internal error' });
+  }
 });
 
 app.get('/api/me/history', auth, async (req, res) => {
