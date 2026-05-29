@@ -1950,6 +1950,7 @@ app.get('/api/auth/microsoft/login', (req, res) => {
     scope:         'XboxLive.signin XboxLive.offline_access offline_access openid email profile',
     response_mode: 'query',
     state,
+    prompt:        'select_account', // <-- A MÁGICA AQUI: Força a MS a perguntar qual conta usar
   });
   res.redirect(`https://login.live.com/oauth20_authorize.srf?${params.toString()}`);
 });
@@ -3128,21 +3129,21 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
     }
 
     const params = [req.user.sub];
-    let where = 'WHERE user_id=$1 AND ms_refresh_token IS NOT NULL';
+    let where = 'WHERE user_id=$1 AND xbox_xuid IS NOT NULL'; // Busca TODAS as contas
     if (requestedIntegrationId) {
       params.push(requestedIntegrationId);
       where += ` AND id=$${params.length}`;
     }
 
     const { rows: integrations } = await pool.query(
-      `SELECT id, mc_name, mc_edition, is_primary
+      `SELECT id, mc_name, mc_edition, is_primary, ms_refresh_token
        FROM user_integrations
        ${where}
        ORDER BY is_primary DESC, updated_at DESC NULLS LAST, id ASC`,
       params
     );
     if (!integrations.length) {
-      throw new Error('Conta Microsoft não vinculada ou sessão expirada. Vincule seu Xbox em Conexões.');
+      throw new Error('Nenhuma conta Microsoft vinculada encontrada.');
     }
 
     const friendXuids = new Set();
@@ -3150,6 +3151,16 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
     const warnings = [];
 
     for (const integration of integrations) {
+      // Se o token foi revogado pela MS, gera um aviso pro usuário invés de quebrar
+      if (!integration.ms_refresh_token) {
+        warnings.push({
+          integrationId: integration.id,
+          mc_name: integration.mc_name,
+          message: 'Sessão expirada. Por favor, clique em "Vincular Xbox" novamente para reconectar esta conta.'
+        });
+        continue; // Pula para a próxima conta do loop
+      }
+
       try {
         const accessToken = await refreshMsAccessToken(req.user.sub, integration.id);
         const xblData  = await getXboxLiveToken(accessToken);
