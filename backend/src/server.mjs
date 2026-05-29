@@ -1570,7 +1570,7 @@ function oauthRedirectError(res, message, provider = 'oauth') {
   return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${encodeURIComponent(provider)}&oauth_err=${encodeURIComponent(message)}`);
 }
 
-async function createSessionAndRedirect(res, req, userRow, provider = 'oauth') {
+async function createSessionAndRedirect(res, req, userRow, provider = 'oauth', isNew = false) {
   const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
@@ -1578,7 +1578,15 @@ async function createSessionAndRedirect(res, req, userRow, provider = 'oauth') {
     `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
     [userRow.id, tokenHash, req.headers['user-agent'], ip]
   );
-  await audit({ actorId: userRow.id, actorName: userRow.username, type: 'login', message: `Login social (${provider})` });
+  const actionLabel = isNew ? `Cadastro + login social (${provider})` : `Login social (${provider})`;
+  await audit({ actorId: userRow.id, actorName: userRow.username, type: isNew ? 'create' : 'login', message: actionLabel });
+  // Se é conta nova via OAuth social (não Microsoft), redireciona para onboarding de cadastro
+  // O onboarding guia o usuário pela vinculação da conta Microsoft e cópia do IP
+  if (isNew && provider !== 'microsoft') {
+    return res.redirect(
+      `${FRONTEND_BASE_URL}/signup.html?oauth_onboard=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`
+    );
+  }
   return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
 }
 
@@ -1691,7 +1699,7 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
     `INSERT INTO social_accounts(user_id,provider,provider_user_id,provider_email,refresh_token) VALUES($1,$2,$3,$4,$5)`,
     [created[0].id, provider, providerId, normalizedEmail, refreshToken || null]
   );
-  return { status: 'ok', user: created[0] };
+  return { status: 'ok', user: created[0], isNew: true };
 }
 
 app.get('/api/auth/microsoft/login', (req, res) => {
@@ -1790,7 +1798,7 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
       if (outcome.status === 'needs_confirmation') {
         return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${provider}&oauth_link_token=${encodeURIComponent(outcome.linkToken)}&oauth_email=${encodeURIComponent(outcome.email)}`);
       }
-      return createSessionAndRedirect(res, req, outcome.user, provider);
+      return createSessionAndRedirect(res, req, outcome.user, provider, outcome.isNew === true);
     } catch (err) {
       return oauthRedirectError(res, err.message || 'Falha no login social', provider);
     }
