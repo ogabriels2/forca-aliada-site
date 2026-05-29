@@ -1751,7 +1751,7 @@ async function linkMicrosoftIntegration({ userId, msRefreshToken, xuid, mcUuid, 
       // Arquitetura defensiva: Só insere na fila se o jogador já não estiver lá
       await client.query(
         `INSERT INTO whitelist_queue(minecraft_name, user_id) 
-         SELECT $1, $2 
+         SELECT $1::varchar, $2::int 
          WHERE NOT EXISTS (
            SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
          )`,
@@ -2341,7 +2341,7 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
           // Arquitetura defensiva: Só insere na fila se o jogador já não estiver lá
           await pool.query(
             `INSERT INTO whitelist_queue(minecraft_name, user_id) 
-             SELECT $1, $2 
+             SELECT $1::varchar, $2::int 
              WHERE NOT EXISTS (
                SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
              )`,
@@ -2510,7 +2510,7 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
       // Arquitetura defensiva para evitar duplicidade na fila
       await pool.query(
         `INSERT INTO whitelist_queue(minecraft_name, user_id) 
-         SELECT $1, $2 
+         SELECT $1::varchar, $2::int 
          WHERE NOT EXISTS (
            SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
          )`,
