@@ -1119,6 +1119,70 @@ async function handleLinkConfirm(linkToken, provider, email) {
   });
 }
 
+// Versão popup de handleLinkConfirm: usado quando a página corre num popup da account.html.
+// Em vez de redirecionar para dashboard, notifica a janela pai e fecha o popup.
+async function handleLinkConfirmPopup(linkToken, provider, email) {
+  showLinkModal(provider, email);
+
+  return new Promise((resolve) => {
+    const btnConfirm   = document.getElementById('btn-modal-confirm');
+    const btnCancel    = document.getElementById('btn-modal-cancel');
+    const modalSpinner = document.getElementById('modal-spinner');
+    const btnText      = document.getElementById('btn-modal-confirm-text');
+
+    async function onConfirm() {
+      btnConfirm.disabled = true;
+      btnCancel.disabled  = true;
+      modalSpinner.style.display = 'block';
+      btnText.textContent = 'Vinculando…';
+
+      try {
+        const rr = await fetch(`${API_BASE}/api/auth/oauth/confirm-link`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ linkToken, confirm: true }),
+        });
+        const data = await rr.json();
+        if (!rr.ok || !data.token) throw new Error(data.error || 'Falha ao vincular conta');
+
+        hideLinkModal();
+        // Notifica a janela pai e fecha o popup
+        try { window.opener.postMessage({ source: 'fa_oauth', status: 'linked', provider }, '*'); } catch (_) {}
+        window.close();
+        resolve(true);
+      } catch (err) {
+        hideLinkModal();
+        // Notifica erro para a janela pai e fecha
+        try { window.opener.postMessage({ source: 'fa_oauth', status: 'error', provider, message: err.message }, '*'); } catch (_) {}
+        window.close();
+        resolve(false);
+      } finally {
+        cleanup();
+      }
+    }
+
+    function onCancel() {
+      hideLinkModal();
+      try { window.opener.postMessage({ source: 'fa_oauth', status: 'cancelled', provider }, '*'); } catch (_) {}
+      window.close();
+      cleanup();
+      resolve(false);
+    }
+
+    function cleanup() {
+      btnConfirm.removeEventListener('click', onConfirm);
+      btnCancel.removeEventListener('click', onCancel);
+      btnConfirm.disabled = false;
+      btnCancel.disabled  = false;
+      modalSpinner.style.display = 'none';
+      document.getElementById('btn-modal-confirm-text').textContent = 'Sim, conectar e entrar';
+    }
+
+    btnConfirm.addEventListener('click', onConfirm);
+    btnCancel.addEventListener('click', onCancel);
+  });
+}
+
 // ── DOMContentLoaded: handle OAuth redirects ──────
 window.addEventListener('DOMContentLoaded', async () => {
   const urlParams  = new URLSearchParams(window.location.search);
@@ -1130,15 +1194,35 @@ window.addEventListener('DOMContentLoaded', async () => {
   const linkToken     = urlParams.get('oauth_link_token');
   const linkEmail     = urlParams.get('oauth_email');
 
+  // Detect popup context — se esta página foi aberta como popup pela account.html
+  // window.opener existe e não está bloqueado
+  const isPopup = !!(window.opener && window.opener !== window);
+
   // Always clean URL params immediately to avoid re-triggering on refresh
   if (oauthErr || oauthToken || linkToken) {
     window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // Helper: fechar popup e notificar janela pai
+  function closePopupWithResult(status, extra = {}) {
+    if (isPopup) {
+      try {
+        window.opener.postMessage({ source: 'fa_oauth', status, ...extra }, '*');
+      } catch (_) {}
+      window.close();
+    }
   }
 
   // ── Case 1: OAuth error ──────────────────────────
   if (oauthErr) {
     const providerStr = oauthProvider ? providerLabel(oauthProvider) : 'social';
     const decodedErr  = decodeURIComponent(oauthErr);
+
+    if (isPopup) {
+      closePopupWithResult('error', { provider: oauthProvider, message: decodedErr || 'Tente novamente.' });
+      return;
+    }
+
     showAlert(
       `Falha ao entrar com ${providerStr}. ${decodedErr || 'Tente novamente.'}`,
       'error'
@@ -1152,6 +1236,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (i.e., the provider was not yet associated with any account).
   // If already linked, the backend returns oauth_token directly → Case 3.
   if (linkToken) {
+    if (isPopup) {
+      // No popup, mostra confirmação e fecha ao terminar
+      showView('login');
+      setTimeout(() => handleLinkConfirmPopup(linkToken, oauthProvider, linkEmail), 120);
+      return;
+    }
     showView('login');
     // Small delay so the page is visible before the modal opens
     setTimeout(() => handleLinkConfirm(linkToken, oauthProvider, linkEmail), 120);
@@ -1171,6 +1261,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   //   completes, they land here. We redirect to signup.html?ms_linked=1 instead.
   if (oauthToken) {
     const isSignupMsReturn = sessionStorage.getItem('fa_ms_signup_return') === '1';
+
+    // Se estamos num popup (fluxo de vinculação da account.html):
+    // Não fazemos login — simplesmente notificamos e fechamos
+    if (isPopup && !isSignupMsReturn) {
+      // Salva o token novo se for o mesmo usuário (Microsoft pode retornar token renovado)
+      // Mas na vinculação, a janela pai já tem o token. Só notificamos o sucesso.
+      closePopupWithResult('linked', { provider: oauthProvider });
+      return;
+    }
 
     showOAuthLoading(
       oauthProvider ? `Entrando com ${providerLabel(oauthProvider)}…` : 'Autenticando…',
