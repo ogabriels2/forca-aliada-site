@@ -243,7 +243,7 @@ const pool = new Pool({
   ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
-const DEPLOY_SCHEMA_VERSION = 'audit-schema-v4-full-fields';
+const DEPLOY_SCHEMA_VERSION = 'oauth-microsoft-multi-account-v5';
 const AUDIT_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS audit_logs (
     id           SERIAL PRIMARY KEY,
@@ -551,18 +551,65 @@ CREATE INDEX IF NOT EXISTS idx_server_status_checked ON server_status_checks(che
 -- NOVA TABELA: INTEGRAÇÕES (MICROSOFT / XBOX)
 -- ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS user_integrations (
-  user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  id               BIGSERIAL PRIMARY KEY,
+  user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   ms_refresh_token TEXT,
   xbox_xuid        VARCHAR(255),
   mc_uuid          VARCHAR(64) UNIQUE,
   mc_edition       VARCHAR(10) DEFAULT 'java',
+  mc_name          VARCHAR(255),
+  xbox_gamertag    VARCHAR(255),
+  is_primary       BOOLEAN DEFAULT FALSE,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 -- Altera o tipo da coluna mc_uuid para suportar IDs sintéticos Bedrock ('bedrock_' + xuid)
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS ms_refresh_token TEXT;
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS xbox_xuid VARCHAR(255);
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS mc_uuid VARCHAR(64);
 ALTER TABLE user_integrations ALTER COLUMN mc_uuid TYPE VARCHAR(64);
 -- Adiciona coluna mc_edition se ainda não existir (migração idempotente)
 ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS mc_edition VARCHAR(10) DEFAULT 'java';
+-- Migra a versao antiga da tabela (user_id era PRIMARY KEY) para multiplas contas Microsoft.
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS id BIGSERIAL;
+ALTER TABLE user_integrations DROP CONSTRAINT IF EXISTS user_integrations_pkey;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'user_integrations'::regclass
+      AND conname = 'user_integrations_pkey'
+  ) THEN
+    ALTER TABLE user_integrations ADD CONSTRAINT user_integrations_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
+ALTER TABLE user_integrations ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS mc_name VARCHAR(255);
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS xbox_gamertag VARCHAR(255);
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE user_integrations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+UPDATE user_integrations ui
+SET mc_name = COALESCE(ui.mc_name, u.minecraft_name),
+    is_primary = COALESCE(ui.is_primary, TRUE)
+FROM users u
+WHERE ui.user_id = u.id;
+WITH ranked_integrations AS (
+  SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY COALESCE(updated_at, created_at) DESC, id ASC) AS rn
+  FROM user_integrations
+)
+UPDATE user_integrations ui
+SET is_primary = (ri.rn = 1)
+FROM ranked_integrations ri
+WHERE ui.id = ri.id
+  AND NOT EXISTS (
+    SELECT 1 FROM user_integrations ui2
+    WHERE ui2.user_id = ui.user_id
+      AND ui2.is_primary = TRUE
+  );
 CREATE INDEX IF NOT EXISTS idx_integrations_xuid ON user_integrations(xbox_xuid);
+CREATE INDEX IF NOT EXISTS idx_integrations_user ON user_integrations(user_id);
+CREATE INDEX IF NOT EXISTS idx_integrations_primary ON user_integrations(user_id, is_primary);
 
 CREATE TABLE IF NOT EXISTS social_accounts (
   id                 SERIAL PRIMARY KEY,
@@ -1594,6 +1641,121 @@ async function getXboxGamertag(uhs, xstsXboxToken) {
   }
 }
 
+function microsoftEditionLabel(edition) {
+  return edition === 'bedrock' ? 'Bedrock' : 'Java';
+}
+
+async function linkMicrosoftIntegration({ userId, msRefreshToken, xuid, mcUuid, edition, nick, gamertag = null }) {
+  const cleanXuid = sanitize(xuid);
+  const cleanUuid = sanitize(mcUuid);
+  const cleanEdition = edition === 'bedrock' ? 'bedrock' : 'java';
+  const cleanNick = sanitize(nick);
+  const cleanGamertag = sanitize(gamertag || nick) || null;
+
+  if (!userId || !cleanXuid || !cleanUuid || !cleanNick) {
+    throw new Error('Dados Microsoft/Xbox incompletos para vincular a conta.');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: userRows } = await client.query('SELECT * FROM users WHERE id=$1', [userId]);
+    if (!userRows[0]) throw new Error('Conta nÃ£o encontrada para vinculaÃ§Ã£o.');
+
+    const { rows: primaryRows } = await client.query(
+      'SELECT id FROM user_integrations WHERE user_id=$1 AND is_primary=TRUE LIMIT 1',
+      [userId]
+    );
+
+    const { rows: existingRows } = await client.query(
+      `SELECT * FROM user_integrations
+       WHERE xbox_xuid=$1 OR mc_uuid=$2
+       ORDER BY CASE WHEN user_id=$3 THEN 0 ELSE 1 END, updated_at DESC NULLS LAST, id ASC
+       LIMIT 1`,
+      [cleanXuid, cleanUuid, userId]
+    );
+
+    const existing = existingRows[0] || null;
+    const previousUserId = existing && Number(existing.user_id) !== Number(userId) ? existing.user_id : null;
+    const shouldBePrimary = primaryRows.length === 0 || existing?.is_primary === true;
+
+    if (shouldBePrimary) {
+      await client.query('UPDATE user_integrations SET is_primary=FALSE WHERE user_id=$1', [userId]);
+    }
+
+    let integration;
+    if (existing) {
+      const { rows } = await client.query(
+        `UPDATE user_integrations
+         SET user_id=$1,
+             ms_refresh_token=COALESCE($2, ms_refresh_token),
+             xbox_xuid=$3,
+             mc_uuid=$4,
+             mc_edition=$5,
+             mc_name=$6,
+             xbox_gamertag=$7,
+             is_primary=$8,
+             updated_at=NOW()
+         WHERE id=$9
+         RETURNING *`,
+        [userId, msRefreshToken || null, cleanXuid, cleanUuid, cleanEdition, cleanNick, cleanGamertag, shouldBePrimary, existing.id]
+      );
+      integration = rows[0];
+    } else {
+      const { rows } = await client.query(
+        `INSERT INTO user_integrations
+           (user_id, ms_refresh_token, xbox_xuid, mc_uuid, mc_edition, mc_name, xbox_gamertag, is_primary)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING *`,
+        [userId, msRefreshToken || null, cleanXuid, cleanUuid, cleanEdition, cleanNick, cleanGamertag, shouldBePrimary]
+      );
+      integration = rows[0];
+    }
+
+    if (previousUserId) {
+      const { rows: oldPrimary } = await client.query(
+        'SELECT id FROM user_integrations WHERE user_id=$1 AND is_primary=TRUE LIMIT 1',
+        [previousUserId]
+      );
+      if (!oldPrimary.length) {
+        await client.query(
+          `UPDATE user_integrations
+           SET is_primary=TRUE
+           WHERE id = (
+             SELECT id FROM user_integrations
+             WHERE user_id=$1
+             ORDER BY updated_at DESC NULLS LAST, id ASC
+             LIMIT 1
+           )`,
+          [previousUserId]
+        );
+      }
+    }
+
+    if (!userRows[0].minecraft_name || shouldBePrimary) {
+      await client.query('UPDATE users SET minecraft_name=$1 WHERE id=$2', [cleanNick, userId]);
+      userRows[0].minecraft_name = cleanNick;
+    }
+
+    if (cleanEdition === 'java') {
+      await client.query(
+        `INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [cleanNick, userId]
+      );
+    }
+
+    await client.query('COMMIT');
+    return { user: userRows[0], integration, transferredFromUserId: previousUserId };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 function oauthRedirectError(res, message, provider = 'oauth') {
   return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${encodeURIComponent(provider)}&oauth_err=${encodeURIComponent(message)}`);
 }
@@ -1637,11 +1799,13 @@ function randomBase64Url(n = 16) {
  */
 const _oauthStates = new Map();
 
-function buildOAuthState(provider, linkUserId = null) {
+function buildOAuthState(provider, linkUserId = null, meta = {}) {
   const state = randomBase64Url(24);
   _oauthStates.set(state, {
     provider,
     linkUserId,  // se fornecido, o callback deve vincular ao usuário existente em vez de fazer login
+    popup: meta.popup === true,
+    flowId: meta.flowId ? sanitize(meta.flowId).slice(0, 80) : null,
     expiresAt: Date.now() + 10 * 60 * 1000,
   });
   // Housekeeping leve: remove states expirados a cada chamada
@@ -1662,6 +1826,16 @@ function readOAuthState(state, provider) {
   if (entry.provider !== provider) throw new Error('State OAuth de provider diferente');
   _oauthStates.delete(state); // one-use: consumido após validação
   return entry;
+}
+
+function oauthFrontendUrl(path, params = {}, stateEntry = null) {
+  const url = new URL(path, FRONTEND_BASE_URL + '/');
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+  }
+  if (stateEntry?.popup) url.searchParams.set('oauth_popup', '1');
+  if (stateEntry?.flowId) url.searchParams.set('oauth_flow', stateEntry.flowId);
+  return url.toString();
 }
 
 async function upsertSocialAccount({ provider, providerUserId, providerEmail, refreshToken, profileName }) {
@@ -1748,7 +1922,10 @@ app.get('/api/auth/microsoft/login', (req, res) => {
     }
   }
 
-  const state = buildOAuthState('microsoft', linkUserId);
+  const state = buildOAuthState('microsoft', linkUserId, {
+    popup: req.query.popup === '1' || req.query.oauth_popup === '1',
+    flowId: req.query.flow_id || req.query.oauth_flow || null,
+  });
 
   // ⚠️  IMPORTANTE: "offline_access" deve ficar no nível raiz (fora do XboxLive.*)
   //     para garantir que a Microsoft devolva o refresh_token.
@@ -1813,7 +1990,10 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
       } catch (_) { /* token inválido — ignora */ }
     }
 
-    const state = buildOAuthState(provider, linkUserId);
+    const state = buildOAuthState(provider, linkUserId, {
+      popup: req.query.popup === '1' || req.query.oauth_popup === '1',
+      flowId: req.query.flow_id || req.query.oauth_flow || null,
+    });
     const params = new URLSearchParams({
       client_id: requireEnv(`${provider.toUpperCase()}_CLIENT_ID`),
       redirect_uri: requireEnv(`${provider.toUpperCase()}_REDIRECT_URI`),
@@ -1826,10 +2006,17 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
   });
 
   app.get(`/api/auth/${provider}/callback`, async (req, res) => {
+    let stateEntry = null;
     try {
       const { code, state } = req.query;
-      if (!code || !state) return oauthRedirectError(res, 'Acesso negado', provider);
-      const stateEntry = readOAuthState(state, provider);
+      if (state) stateEntry = readOAuthState(state, provider);
+      if (!code) {
+        return res.redirect(oauthFrontendUrl('login.html', {
+          oauth_provider: provider,
+          oauth_err: 'Acesso negado',
+        }, stateEntry));
+      }
+      if (!stateEntry) throw new Error('State OAuth inválido ou expirado');
       const linkUserId = stateEntry?.linkUserId || null;
 
       const tParams = new URLSearchParams({
@@ -1864,7 +2051,10 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
 
         // Redireciona para login.html — o popup detecta e fecha com postMessage
         const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
-        return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
+        return res.redirect(oauthFrontendUrl('login.html', {
+          oauth_token: token,
+          oauth_provider: provider,
+        }, stateEntry));
       }
 
       // Fluxo normal de login
@@ -1876,11 +2066,18 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
         profileName: profile.name
       });
       if (outcome.status === 'needs_confirmation') {
-        return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${provider}&oauth_link_token=${encodeURIComponent(outcome.linkToken)}&oauth_email=${encodeURIComponent(outcome.email)}`);
+        return res.redirect(oauthFrontendUrl('login.html', {
+          oauth_provider: provider,
+          oauth_link_token: outcome.linkToken,
+          oauth_email: outcome.email,
+        }, stateEntry));
       }
       return createSessionAndRedirect(res, req, outcome.user, provider, outcome.isNew === true);
     } catch (err) {
-      return oauthRedirectError(res, err.message || 'Falha no login social', provider);
+      return res.redirect(oauthFrontendUrl('login.html', {
+        oauth_provider: provider,
+        oauth_err: err.message || 'Falha no login social',
+      }, stateEntry));
     }
   });
 }
@@ -1950,7 +2147,6 @@ registerGenericOAuth({
  */
 app.get('/api/auth/microsoft/callback', async (req, res) => {
   const { code, state } = req.query;
-  if (!code) return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=microsoft&oauth_err=Acesso+negado`);
 
   // Valida o CSRF state — protege contra ataques de redirecionamento forjado
   // O state pode estar ausente em deploys antigos (retrocompatibilidade) — apenas loga o aviso
@@ -1965,6 +2161,13 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
   }
 
   // linkUserId presente → fluxo de vinculação (usuário já logado na account.html)
+  if (!code) {
+    return res.redirect(oauthFrontendUrl('login.html', {
+      oauth_provider: 'microsoft',
+      oauth_err: 'Acesso negado',
+    }, stateEntry));
+  }
+
   const linkUserId = stateEntry?.linkUserId || null;
 
   try {
@@ -2035,6 +2238,29 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
     // ── FLUXO DE VINCULAÇÃO (link_token fornecido pela account.html) ─────────
     if (linkUserId) {
+      const linked = await linkMicrosoftIntegration({
+        userId: linkUserId,
+        msRefreshToken: msTokens.refresh_token,
+        xuid,
+        mcUuid,
+        edition,
+        nick,
+        gamertag: edition === 'bedrock' ? nick : null,
+      });
+      userRow = linked.user;
+
+      const editionLabelNew = microsoftEditionLabel(edition);
+      await audit({
+        actorId: userRow.id, actorName: userRow.username,
+        type: 'update', severity: 'info',
+        message: `Xbox vinculado via account.html (${editionLabelNew}): ${nick}`,
+        metadata: { edition, nick, xuid, mcUuid, integrationId: linked.integration?.id, transferredFromUserId: linked.transferredFromUserId },
+      });
+
+      return res.redirect(oauthFrontendUrl('login.html', {
+        oauth_token: jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' }),
+        oauth_provider: 'microsoft',
+      }, stateEntry));
       // Usuário já está logado — apenas vincula o Xbox à conta existente
       const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE id = $1', [linkUserId]);
       if (!existingUser[0]) throw new Error('Conta não encontrada para vinculação.');
@@ -2042,7 +2268,7 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
       // Atualiza o nick de Minecraft se ainda não estava definido, ou sempre atualiza
       await pool.query(
-        'UPDATE users SET minecraft_name = $1 WHERE id = $2',
+        "UPDATE users SET minecraft_name = $1 WHERE id = $2 AND (minecraft_name IS NULL OR minecraft_name = '')",
         [nick, userRow.id]
       );
 
@@ -2086,23 +2312,26 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
     // 6a. Já existe integração salva com esse XUID? → usuário retornante
     const { rows: existingByXuid } = await pool.query(
-      'SELECT user_id FROM user_integrations WHERE xbox_xuid = $1 LIMIT 1',
-      [xuid]
+      'SELECT user_id FROM user_integrations WHERE xbox_xuid = $1 OR mc_uuid = $2 ORDER BY updated_at DESC NULLS LAST, id ASC LIMIT 1',
+      [xuid, mcUuid]
     );
 
     if (existingByXuid.length > 0) {
       const { rows: u } = await pool.query('SELECT * FROM users WHERE id = $1', [existingByXuid[0].user_id]);
       userRow = u[0];
       // Atualiza refresh token e mc_uuid (pode ter mudado de Java→Bedrock ou vice-versa)
-      await pool.query(
-        `UPDATE user_integrations
-         SET ms_refresh_token = $1, mc_uuid = $2, mc_edition = $3, updated_at = NOW()
-         WHERE user_id = $4`,
-        [msTokens.refresh_token, mcUuid, edition, userRow.id]
-      );
+      await linkMicrosoftIntegration({
+        userId: userRow.id,
+        msRefreshToken: msTokens.refresh_token,
+        xuid,
+        mcUuid,
+        edition,
+        nick,
+        gamertag: edition === 'bedrock' ? nick : null,
+      });
       // Garante que minecraft_name está atualizado (Gamertag pode mudar no Xbox)
       await pool.query(
-        'UPDATE users SET minecraft_name = $1 WHERE id = $2',
+        "UPDATE users SET minecraft_name = $1 WHERE id = $2 AND (minecraft_name IS NULL OR minecraft_name = '')",
         [nick, userRow.id]
       );
     } else {
@@ -2136,7 +2365,7 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         // Enfileira whitelist apenas para Java Edition (Bedrock usa Geyser/BedrockConnect)
         // Para Bedrock, o nick no servidor já usa o prefixo "." ou o Gamertag diretamente
         // conforme configuração do Geyser — a whitelist manual é feita pelo admin se necessário
-        if (edition === 'java') {
+        if (false && edition === 'java') {
           await pool.query(
             'INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)',
             [nick, userRow.id]
@@ -2150,18 +2379,15 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         [nick, userRow.id]
       );
 
-      // ON CONFLICT no XUID para cobrir race conditions
-      await pool.query(
-        `INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid, mc_edition)
-         VALUES($1, $2, $3, $4, $5)
-         ON CONFLICT (user_id) DO UPDATE
-           SET ms_refresh_token = EXCLUDED.ms_refresh_token,
-               xbox_xuid        = EXCLUDED.xbox_xuid,
-               mc_uuid          = EXCLUDED.mc_uuid,
-               mc_edition       = EXCLUDED.mc_edition,
-               updated_at       = NOW()`,
-        [userRow.id, msTokens.refresh_token, xuid, mcUuid, edition]
-      );
+      await linkMicrosoftIntegration({
+        userId: userRow.id,
+        msRefreshToken: msTokens.refresh_token,
+        xuid,
+        mcUuid,
+        edition,
+        nick,
+        gamertag: edition === 'bedrock' ? nick : null,
+      });
     }
 
     // ── Passo 7: Cria sessão JWT e redireciona ────────────────────────────────
@@ -2188,7 +2414,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
   } catch (err) {
     console.error('[microsoft/callback]', err?.message || err);
-    res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=microsoft&oauth_err=${encodeURIComponent(err.message || 'Erro ao autenticar com a Microsoft')}`);
+    res.redirect(oauthFrontendUrl('login.html', {
+      oauth_provider: 'microsoft',
+      oauth_err: err.message || 'Erro ao autenticar com a Microsoft',
+    }, stateEntry));
   }
 });
 
@@ -2621,10 +2850,17 @@ res.json({ ok: true });
 // Verifica erros, salva o novo refresh_token e retorna o access_token pronto para uso.
 // Lança erro descritivo se o refresh_token estiver expirado/ausente.
 // ─────────────────────────────────────────────
-async function refreshMsAccessToken(userId) {
+async function refreshMsAccessToken(userId, integrationId = null, edition = null) {
   const { rows } = await pool.query(
-    'SELECT ms_refresh_token FROM user_integrations WHERE user_id = $1',
-    [userId]
+    `SELECT id, ms_refresh_token
+     FROM user_integrations
+     WHERE user_id = $1
+       AND ($2::bigint IS NULL OR id = $2::bigint)
+       AND ($3::text IS NULL OR mc_edition = $3::text)
+       AND ms_refresh_token IS NOT NULL
+     ORDER BY is_primary DESC, updated_at DESC NULLS LAST, id ASC
+     LIMIT 1`,
+    [userId, integrationId, edition]
   );
   if (!rows.length || !rows[0].ms_refresh_token) {
     throw new Error('Conta não vinculada à Microsoft. Vincule sua conta Xbox nas configurações.');
@@ -2652,8 +2888,8 @@ async function refreshMsAccessToken(userId) {
     if (['invalid_grant', 'unauthorized_client', 'interaction_required'].includes(errCode)) {
       // Token revogado: remove a integração para forçar nova vinculação
       await pool.query(
-        'UPDATE user_integrations SET ms_refresh_token = NULL WHERE user_id = $1',
-        [userId]
+        'UPDATE user_integrations SET ms_refresh_token = NULL, updated_at = NOW() WHERE id = $1',
+        [rows[0].id]
       );
       throw new Error(
         'Sua sessão Microsoft expirou ou foi revogada. ' +
@@ -2668,8 +2904,8 @@ async function refreshMsAccessToken(userId) {
   // Salva o novo refresh_token (rotação de tokens)
   if (msData.refresh_token) {
     await pool.query(
-      'UPDATE user_integrations SET ms_refresh_token = $1, updated_at = NOW() WHERE user_id = $2',
-      [msData.refresh_token, userId]
+      'UPDATE user_integrations SET ms_refresh_token = $1, updated_at = NOW() WHERE id = $2',
+      [msData.refresh_token, rows[0].id]
     );
   }
 
@@ -2689,7 +2925,10 @@ app.get('/api/me/social-accounts', auth, async (req, res) => {
 
     // Busca integração Microsoft/Xbox separadamente (tabela user_integrations)
     const { rows: msRows } = await pool.query(
-      `SELECT xbox_xuid, mc_uuid, mc_edition, updated_at FROM user_integrations WHERE user_id=$1`,
+      `SELECT id, xbox_xuid, mc_uuid, mc_edition, mc_name, xbox_gamertag, is_primary, created_at, updated_at
+       FROM user_integrations
+       WHERE user_id=$1
+       ORDER BY is_primary DESC, updated_at DESC NULLS LAST, id ASC`,
       [req.user.sub]
     );
 
@@ -2704,20 +2943,135 @@ app.get('/api/me/social-accounts', auth, async (req, res) => {
       };
     });
 
-    if (msRows.length > 0 && msRows[0].xbox_xuid) {
+    const microsoftAccounts = msRows.filter(row => row.xbox_xuid);
+    if (microsoftAccounts.length > 0) {
+      const primary = microsoftAccounts.find(row => row.is_primary) || microsoftAccounts[0];
       linked['microsoft'] = {
         provider: 'microsoft',
         provider_email: null,
-        xbox_xuid: msRows[0].xbox_xuid,
-        mc_edition: msRows[0].mc_edition,
-        linked_at: msRows[0].updated_at,
+        xbox_xuid: primary.xbox_xuid,
+        mc_uuid: primary.mc_uuid,
+        mc_edition: primary.mc_edition,
+        mc_name: primary.mc_name,
+        xbox_gamertag: primary.xbox_gamertag,
+        linked_at: primary.updated_at || primary.created_at,
         linked: true,
+        accounts: microsoftAccounts.map(row => ({
+          id: row.id,
+          provider: 'microsoft',
+          xbox_xuid: row.xbox_xuid,
+          mc_uuid: row.mc_uuid,
+          mc_edition: row.mc_edition || 'java',
+          mc_name: row.mc_name || row.xbox_gamertag || null,
+          xbox_gamertag: row.xbox_gamertag || null,
+          is_primary: row.is_primary === true,
+          linked_at: row.updated_at || row.created_at,
+          linked: true,
+        })),
       };
     }
 
     res.json({ accounts: linked });
   } catch (e) {
     console.error('[GET /api/me/social-accounts]', e);
+    res.status(500).json({ error: 'internal error' });
+  }
+});
+
+app.patch('/api/me/social-accounts/microsoft/:integrationId/primary', auth, async (req, res) => {
+  const integrationId = Number(req.params.integrationId);
+  if (!Number.isInteger(integrationId) || integrationId <= 0) {
+    return res.status(400).json({ error: 'invalid integration id' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT id, mc_name, xbox_gamertag
+       FROM user_integrations
+       WHERE id=$1 AND user_id=$2
+       LIMIT 1`,
+      [integrationId, req.user.sub]
+    );
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'not linked' });
+    }
+
+    await client.query('UPDATE user_integrations SET is_primary=FALSE WHERE user_id=$1', [req.user.sub]);
+    await client.query(
+      'UPDATE user_integrations SET is_primary=TRUE, updated_at=NOW() WHERE id=$1 AND user_id=$2',
+      [integrationId, req.user.sub]
+    );
+
+    const nextMinecraftName = rows[0].mc_name || rows[0].xbox_gamertag || null;
+    if (nextMinecraftName) {
+      await client.query('UPDATE users SET minecraft_name=$1 WHERE id=$2', [nextMinecraftName, req.user.sub]);
+    }
+    await client.query('COMMIT');
+
+    await auditFromReq(req, {
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'update', targetId: req.user.sub,
+      message: `Conta Microsoft principal atualizada: ${nextMinecraftName || integrationId}`,
+    });
+
+    res.json({ ok: true, minecraftName: nextMinecraftName });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[PATCH /api/me/social-accounts/microsoft/:integrationId/primary]', e);
+    res.status(500).json({ error: 'internal error' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/me/social-accounts/microsoft/:integrationId', auth, async (req, res) => {
+  const integrationId = Number(req.params.integrationId);
+  if (!Number.isInteger(integrationId) || integrationId <= 0) {
+    return res.status(400).json({ error: 'invalid integration id' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      'DELETE FROM user_integrations WHERE id=$1 AND user_id=$2 RETURNING id, mc_name, is_primary',
+      [integrationId, req.user.sub]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'not linked' });
+
+    if (rows[0].is_primary) {
+      const { rows: nextRows } = await pool.query(
+        `UPDATE user_integrations
+         SET is_primary=TRUE
+         WHERE id = (
+           SELECT id FROM user_integrations
+           WHERE user_id=$1
+           ORDER BY updated_at DESC NULLS LAST, id ASC
+           LIMIT 1
+         )
+         RETURNING mc_name`,
+        [req.user.sub]
+      );
+      if (nextRows[0]?.mc_name) {
+        await pool.query('UPDATE users SET minecraft_name=$1 WHERE id=$2', [nextRows[0].mc_name, req.user.sub]);
+      } else if (rows[0].mc_name) {
+        await pool.query(
+          'UPDATE users SET minecraft_name=NULL WHERE id=$1 AND minecraft_name=$2',
+          [req.user.sub, rows[0].mc_name]
+        );
+      }
+    }
+
+    await auditFromReq(req, {
+      actorId: req.user.sub, actorName: req.user.username,
+      type: 'update', targetId: req.user.sub,
+      message: `Vinculo Microsoft removido: ${rows[0].mc_name || integrationId}`,
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/me/social-accounts/microsoft/:integrationId]', e);
     res.status(500).json({ error: 'internal error' });
   }
 });
@@ -2730,11 +3084,18 @@ app.delete('/api/me/social-accounts/:provider', auth, async (req, res) => {
   try {
     if (provider === 'microsoft') {
       // Remove integração Microsoft/Xbox — NÃO remove minecraft_name do usuário (pode ter sido vinculado manualmente)
-      const { rowCount } = await pool.query(
-        'DELETE FROM user_integrations WHERE user_id=$1',
+      const { rows } = await pool.query(
+        'DELETE FROM user_integrations WHERE user_id=$1 RETURNING mc_name',
         [req.user.sub]
       );
-      if (!rowCount) return res.status(404).json({ error: 'not linked' });
+      if (!rows.length) return res.status(404).json({ error: 'not linked' });
+      const removedNames = rows.map(row => row.mc_name).filter(Boolean);
+      if (removedNames.length) {
+        await pool.query(
+          'UPDATE users SET minecraft_name=NULL WHERE id=$1 AND minecraft_name = ANY($2)',
+          [req.user.sub, removedNames]
+        );
+      }
     } else {
       const { rowCount } = await pool.query(
         'DELETE FROM social_accounts WHERE user_id=$1 AND provider=$2',
@@ -2779,8 +3140,110 @@ activeSession: active.rows[0]?.entered_at || null,
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
 app.get('/api/me/xbox/friends', auth, async (req, res) => {
   try {
+    const requestedIntegrationId = req.query.integration_id ? Number(req.query.integration_id) : null;
+    if (req.query.integration_id && (!Number.isInteger(requestedIntegrationId) || requestedIntegrationId <= 0)) {
+      return res.status(400).json({ error: 'invalid integration id' });
+    }
+
+    const params = [req.user.sub];
+    let where = 'WHERE user_id=$1 AND ms_refresh_token IS NOT NULL';
+    if (requestedIntegrationId) {
+      params.push(requestedIntegrationId);
+      where += ` AND id=$${params.length}`;
+    }
+
+    const { rows: integrations } = await pool.query(
+      `SELECT id, mc_name, mc_edition, is_primary
+       FROM user_integrations
+       ${where}
+       ORDER BY is_primary DESC, updated_at DESC NULLS LAST, id ASC`,
+      params
+    );
+    if (!integrations.length) {
+      throw new Error('Conta Microsoft não vinculada ou sessão expirada. Vincule seu Xbox em Conexões.');
+    }
+
+    const friendXuids = new Set();
+    const checkedAccounts = [];
+    const warnings = [];
+
+    for (const integration of integrations) {
+      try {
+        const accessToken = await refreshMsAccessToken(req.user.sub, integration.id);
+        const xblData  = await getXboxLiveToken(accessToken);
+        const xstsXbox = await getXSTSToken(xblData.Token, 'http://xboxlive.com');
+        const uhs = xstsXbox.DisplayClaims?.xui?.[0]?.uhs || xblData.DisplayClaims?.xui?.[0]?.uhs;
+
+        const friendsRes = await fetch(
+          'https://peoplehub.xboxlive.com/users/me/people/social/decoration/detail',
+          {
+            headers: {
+              'Authorization': `XBL3.0 x=${uhs};${xstsXbox.Token}`,
+              'x-xbl-contract-version': '2',
+              'Accept-Language': 'pt-BR',
+            },
+            signal: AbortSignal.timeout(10000),
+          }
+        );
+        if (!friendsRes.ok) throw new Error('Não foi possível obter a lista de amigos do Xbox Live.');
+        const friendsData = await friendsRes.json();
+        const people = Array.isArray(friendsData.people) ? friendsData.people : [];
+        people.map(p => p?.xuid).filter(Boolean).forEach(xuid => friendXuids.add(String(xuid)));
+        checkedAccounts.push({
+          id: integration.id,
+          mc_name: integration.mc_name,
+          mc_edition: integration.mc_edition || 'java',
+          friendsTotal: people.length,
+        });
+      } catch (accountErr) {
+        warnings.push({
+          integrationId: integration.id,
+          mc_name: integration.mc_name,
+          message: accountErr.message || 'Falha ao consultar esta conta Microsoft.',
+        });
+      }
+    }
+
+    if (!checkedAccounts.length && warnings.length) {
+      throw new Error(warnings[0].message);
+    }
+
+    let commonFriends = [];
+    const xuids = Array.from(friendXuids);
+    if (xuids.length > 0) {
+      const { rows: matched } = await pool.query(
+        `SELECT DISTINCT ON (u.id)
+                u.username,
+                u.minecraft_name,
+                ui.xbox_xuid,
+                ui.mc_edition,
+                ui.mc_name
+         FROM user_integrations ui
+         JOIN users u ON ui.user_id = u.id
+         WHERE ui.xbox_xuid = ANY($1)
+           AND u.id <> $2
+         ORDER BY u.id, ui.is_primary DESC, ui.updated_at DESC NULLS LAST`,
+        [xuids, req.user.sub]
+      );
+      commonFriends = matched;
+    }
+
+    return res.json({
+      xboxFriendsTotal: xuids.length,
+      serverFriends: commonFriends,
+      accountsChecked: checkedAccounts,
+      warnings,
+    });
+  } catch (err) {
+    console.error('[xbox/friends]', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/me/xbox/friends-legacy', auth, async (req, res) => {
+  try {
     // 1. Renova token MS com verificação de erros robusta
-    const accessToken = await refreshMsAccessToken(req.user.sub);
+    const accessToken = await refreshMsAccessToken(req.user.sub, null, 'java');
 
     // 2. Autentica no Xbox Live
     const xblData  = await getXboxLiveToken(accessToken);
@@ -2820,7 +3283,7 @@ app.post('/api/me/minecraft/skin', auth, async (req, res) => {
 
   try {
     // Renova token MS com verificação de erros robusta
-    const accessToken = await refreshMsAccessToken(req.user.sub);
+    const accessToken = await refreshMsAccessToken(req.user.sub, null, 'java');
 
     const xblData = await getXboxLiveToken(accessToken);
     const xstsMC  = await getXSTSToken(xblData.Token, 'rp://api.minecraftservices.com/');
