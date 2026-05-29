@@ -2177,13 +2177,13 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
     // ── Passo 2: Token Xbox Live (XBL) — compartilhado Java + Bedrock ───────
     const xblData = await getXboxLiveToken(msTokens.access_token);
     const uhs     = xblData.DisplayClaims.xui[0].uhs;
+    const xuid    = xblData.DisplayClaims.xui[0].xid; // XUID extraído do token raiz do Xbox Live
 
     // ── Passo 3: XSTS para Minecraft Services (necessário para Java) ─────────
-    // Obtemos o XUID aqui via rp Minecraft; se a conta for infantil, xstsMC lança.
-    let xstsMC, xuid;
+    // Se a conta for infantil, xstsMC lança erro automaticamente e bloqueia o acesso.
+    let xstsMC;
     try {
       xstsMC = await getXSTSToken(xblData.Token, 'rp://api.minecraftservices.com/');
-      xuid   = xstsMC.DisplayClaims.xui[0].xid;
     } catch (xstsErr) {
       // Erros de conta infantil (2148916238) ou conta sem configuração (2148916233)
       // são relançados com a mensagem amigável já definida em getXSTSToken.
@@ -2258,55 +2258,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
       });
 
       return res.redirect(oauthFrontendUrl('login.html', {
-        oauth_token: jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' }),
-        oauth_provider: 'microsoft',
-      }, stateEntry));
-      // Usuário já está logado — apenas vincula o Xbox à conta existente
-      const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE id = $1', [linkUserId]);
-      if (!existingUser[0]) throw new Error('Conta não encontrada para vinculação.');
-      userRow = existingUser[0];
-
-      // Atualiza o nick de Minecraft se ainda não estava definido, ou sempre atualiza
-      await pool.query(
-        "UPDATE users SET minecraft_name = $1 WHERE id = $2 AND (minecraft_name IS NULL OR minecraft_name = '')",
-        [nick, userRow.id]
-      );
-
-      // Upsert da integração
-      await pool.query(
-        `INSERT INTO user_integrations(user_id, ms_refresh_token, xbox_xuid, mc_uuid, mc_edition)
-         VALUES($1, $2, $3, $4, $5)
-         ON CONFLICT (user_id) DO UPDATE
-           SET ms_refresh_token = EXCLUDED.ms_refresh_token,
-               xbox_xuid        = EXCLUDED.xbox_xuid,
-               mc_uuid          = EXCLUDED.mc_uuid,
-               mc_edition       = EXCLUDED.mc_edition,
-               updated_at       = NOW()`,
-        [userRow.id, msTokens.refresh_token, xuid, mcUuid, edition]
-      );
-
-      // Também adiciona à whitelist se Java e ainda não está
-      if (edition === 'java') {
-        await pool.query(
-          `INSERT INTO whitelist_queue(minecraft_name, user_id) VALUES($1, $2)
-           ON CONFLICT DO NOTHING`,
-          [nick, userRow.id]
-        );
-      }
-
-      const editionLabel = edition === 'bedrock' ? 'Bedrock' : 'Java';
-      await audit({
-        actorId: userRow.id, actorName: userRow.username,
-        type: 'update', severity: 'info',
-        message: `Xbox vinculado via account.html (${editionLabel}): ${nick}`,
-        metadata: { edition, nick, xuid, mcUuid },
-      });
-
-      // Redireciona para login.html — o popup vai detectar isso e fechar com postMessage
-      return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(
-        jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' })
-      )}&oauth_provider=microsoft`);
-    }
+            oauth_token: jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' }),
+            oauth_provider: 'microsoft',
+          }, stateEntry));
+        }
 
     // ── FLUXO NORMAL DE LOGIN ────────────────────────────────────────────────
 
