@@ -1018,9 +1018,19 @@ if (urlParams.has('oauth_onboard')) {
   oauthOnboardToken    = urlParams.get('oauth_onboard');
   oauthOnboardProvider = urlParams.get('oauth_provider') || 'social';
   window.history.replaceState({}, document.title, window.location.pathname);
-  localStorage.setItem(TOKEN_KEY, oauthOnboardToken);
-  // Após carregar, inicializa o onboarding (mostra etapa 3 com banner explicativo)
-  window.addEventListener('DOMContentLoaded', initOnboardingPostOAuth);
+  // ⚠️ NÃO salvar o token no localStorage aqui — a conta ainda não foi confirmada
+  // pelo usuário (etapa de vinculação Xbox). O token só é persistido ao completar
+  // o onboarding (goToSuccess) ou ao pular a vinculação (confirmSkipMs).
+  // Salvar antes causava: (1) o index.html mostrar o usuário como logado antes de
+  // terminar o cadastro; (2) se o onboarding falhasse, a conta ficava "fantasma" logada.
+  //
+  // Usamos DOMContentLoaded com fallback para readyState, evitando race condition
+  // quando o script roda depois do evento já ter disparado.
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initOnboardingPostOAuth);
+  } else {
+    initOnboardingPostOAuth();
+  }
 }
 
 function showView(name) {
@@ -1340,19 +1350,25 @@ function forceLogout() {
 
 // ── Funções de onboarding pós-OAuth social ──────────────
 function initOnboardingPostOAuth() {
+  // Mostra um estado de loading enquanto valida o token com o backend
+  showView('ms-link');
   fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${oauthOnboardToken}` } })
-    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('token_invalid')))
     .then(me => {
+      // Só agora o token é válido e a conta existe — salva no localStorage
+      localStorage.setItem(TOKEN_KEY, oauthOnboardToken);
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         username: me.username, email: me.email,
         minecraftName: me.minecraft_name, role: me.role
       }));
-      showView('ms-link');
       injectOnboardBanner(me.username, oauthOnboardProvider);
     })
     .catch(() => {
+      // Token inválido ou expirado: descarta e manda para o login com aviso
+      oauthOnboardToken = null;
       localStorage.removeItem(TOKEN_KEY);
-      showView('signup');
+      localStorage.removeItem(SESSION_KEY);
+      window.location.href = 'login.html?oauth_err=' + encodeURIComponent('Sessão de cadastro expirada. Tente entrar com o Google novamente.');
     });
 }
 
@@ -1393,8 +1409,37 @@ function confirmSkipMs() {
   goToSuccess(false);
 }
 
-function goToSuccess(msLinked) {
+async function goToSuccess(msLinked) {
   showView('success');
+
+  // Troca o token temporário de onboarding por uma sessão permanente de 7 dias.
+  // Isso garante que a sessão no banco só é criada quando o usuário REALMENTE conclui
+  // o cadastro (seja vinculando Xbox ou pulando a etapa).
+  if (oauthOnboardToken) {
+    try {
+      const r = await fetch(`${API_BASE}/api/auth/oauth/complete-onboarding`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${oauthOnboardToken}` },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        localStorage.setItem(TOKEN_KEY, d.token);
+        localStorage.setItem(SESSION_KEY, JSON.stringify({
+          username: d.user.username, email: d.user.email,
+          minecraftName: d.user.minecraftName, role: d.user.role,
+        }));
+      } else {
+        // Falhou (token expirou?) — o token temporário já estava no localStorage
+        // então o usuário ainda pode navegar, mas a sessão de longa duração não foi criada.
+        // Não bloqueamos o fluxo — apenas logamos.
+        console.warn('[onboarding] Falha ao criar sessão permanente:', await r.text());
+      }
+    } catch (e) {
+      console.warn('[onboarding] Erro de rede ao confirmar onboarding:', e);
+    }
+    oauthOnboardToken = null;
+  }
+
   if (msLinked) {
     const badge = document.getElementById('ms-linked-badge');
     if (badge) badge.style.display = 'inline-flex';
