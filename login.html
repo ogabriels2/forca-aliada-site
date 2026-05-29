@@ -1292,6 +1292,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (isSignupMsReturn) {
         sessionStorage.removeItem('fa_ms_signup_return');
         // Redireciona para signup com flag de Xbox vinculado (etapa 4 — IP)
+        // Nota: o token já foi salvo acima — se veio com link_token, é do usuário original
         window.location.href = 'signup.html?ms_linked=1';
         return;
       }
