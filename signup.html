@@ -473,6 +473,123 @@ header {
 .ip-copy { font-size: 17px; transition: transform .2s; }
 .ip-hint { font-size: 11.5px; color: var(--text-3); text-align: center; margin-bottom: 4px; }
 
+
+/* ── Step progress bar (4 steps) ────────────────── */
+#view-ms-link { display: none; }
+.step-progress { margin-bottom: 22px; }
+.step-track {
+  display: flex; align-items: center;
+  position: relative;
+}
+.step-item {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 1; position: relative; z-index: 1;
+}
+.step-circle {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+  border: 2px solid var(--border);
+  background: var(--surface); color: var(--text-3);
+  transition: all .3s; position: relative; z-index: 2;
+  flex-shrink: 0;
+}
+.step-circle.active { border-color: var(--accent); background: var(--accent); color: #fff; box-shadow: 0 0 0 4px var(--accent-glow); }
+.step-circle.done   { border-color: var(--success); background: var(--success); color: #fff; font-size: 13px; }
+.step-circle.done::after { content: '✓'; }
+.step-circle.done > .step-num { display: none; }
+.step-label {
+  font-size: 10px; font-weight: 700; color: var(--text-3);
+  margin-top: 5px; text-align: center; letter-spacing: .01em; white-space: nowrap;
+}
+.step-item.active .step-label { color: var(--accent); }
+.step-item.done   .step-label { color: var(--success); }
+.step-connector {
+  flex: 1; height: 2px; background: var(--border);
+  margin: 0 -1px; position: relative; top: -12px; z-index: 0;
+  transition: background .3s;
+}
+.step-connector.done { background: var(--success); }
+
+/* ── MS Link card ────────────────────────────────── */
+.ms-link-card {
+  border-radius: 14px; padding: 20px;
+  background: linear-gradient(135deg, rgba(16,124,16,0.07), rgba(0,120,212,0.05));
+  border: 1.5px solid rgba(16,124,16,0.22);
+  margin-bottom: 16px;
+}
+[data-theme="dark"] .ms-link-card {
+  background: linear-gradient(135deg, rgba(16,124,16,0.10), rgba(0,120,212,0.07));
+  border-color: rgba(16,124,16,0.28);
+}
+.ms-link-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ms-link-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, #107C10, #00a4ef);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.ms-link-title { font-size: 16px; font-weight: 800; letter-spacing: -.02em; }
+.ms-link-sub   { font-size: 12.5px; color: var(--text-2); line-height: 1.5; margin-top: 2px; }
+.ms-benefit-list { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+.ms-benefit-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+.ms-benefit-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Skip notice & button ────────────────────────── */
+.skip-notice {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 13px;
+  background: var(--warning-soft);
+  border: 1px solid rgba(217,119,6,.25);
+  border-radius: var(--radius-sm);
+  margin-top: 10px;
+  font-size: 12px; color: var(--warning); line-height: 1.5;
+}
+.skip-notice-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.btn-skip-link {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  color: var(--text-3); text-align: center; width: 100%;
+  padding: 10px 4px;
+  transition: color var(--t), opacity var(--t);
+}
+.btn-skip-link:hover { color: var(--text-2); }
+
+/* ── Success page extras ─────────────────────────── */
+.ms-linked-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: var(--radius-pill);
+  background: rgba(16,124,16,0.12);
+  color: #107C10; font-size: 12px; font-weight: 700;
+  margin-bottom: 16px;
+}
+[data-theme="dark"] .ms-linked-badge { color: #4ade80; background: rgba(74,222,128,0.12); }
+
+/* ── Onboard banner ──────────────────────────────── */
+.onboard-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--accent-soft), rgba(124,79,255,0.08));
+  border: 1.5px solid var(--accent-soft);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 12.5px; color: var(--text-2); line-height: 1.55;
+}
+.onboard-banner-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.onboard-banner-body strong { color: var(--text-1); }
+
+/* ── Secondary button ────────────────────────────── */
+.btn-secondary {
+  width: 100%; padding: 12px;
+  font-family: var(--font); font-size: 14px; font-weight: 700; color: var(--text-2);
+  background: transparent;
+  border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: border-color var(--t), color var(--t), transform var(--t);
+  margin-top: 10px;
+}
+.btn-secondary:hover { border-color: var(--border-focus); color: var(--text-1); transform: translateY(-1px); }
+
 /* ── Shake ───────────────────────────────────────── */
 @keyframes shake {
   0%,100% { transform: translateX(0); }
@@ -514,10 +631,28 @@ header {
       <h1 class="card-title">Criar sua conta</h1>
       <p class="card-sub">Acesso ao painel da Staff Força Aliada</p>
 
-      <div class="steps" aria-hidden="true">
-        <div class="step-dot active" id="dot-1"></div>
-        <div class="step-dot" id="dot-2"></div>
-        <div class="step-dot" id="dot-3"></div>
+      <div class="step-progress" aria-hidden="true">
+        <div class="step-track">
+          <div class="step-item active" id="step-item-1">
+            <div class="step-circle active" id="step-1"><span class="step-num">1</span></div>
+            <div class="step-label">Dados</div>
+          </div>
+          <div class="step-connector" id="conn-1-2"></div>
+          <div class="step-item" id="step-item-2">
+            <div class="step-circle" id="step-2"><span class="step-num">2</span></div>
+            <div class="step-label">E-mail</div>
+          </div>
+          <div class="step-connector" id="conn-2-3"></div>
+          <div class="step-item" id="step-item-3">
+            <div class="step-circle" id="step-3"><span class="step-num">3</span></div>
+            <div class="step-label">Xbox</div>
+          </div>
+          <div class="step-connector" id="conn-3-4"></div>
+          <div class="step-item" id="step-item-4">
+            <div class="step-circle" id="step-4"><span class="step-num">4</span></div>
+            <div class="step-label">IP</div>
+          </div>
+        </div>
       </div>
 
       <!-- ── OAuth ACIMA do formulário ─────────── -->
@@ -649,7 +784,7 @@ header {
         <!-- Aviso nick Minecraft -->
         <div class="hint-box">
           <span class="hint-box-icon">🎮</span>
-          <span>Seu nick no Minecraft será vinculado <strong>após o cadastro</strong>, conectando sua conta Xbox/Microsoft no painel.</span>
+          <span>Seu nick no Minecraft será vinculado na <strong>próxima etapa</strong>, conectando sua conta Xbox/Microsoft ao painel.</span>
         </div>
 
         <div class="alert" id="signup-alert" role="alert" aria-live="assertive"></div>
@@ -674,10 +809,28 @@ header {
         <strong id="verify-email-display" style="color:var(--text-1);"></strong>
       </p>
 
-      <div class="steps" aria-hidden="true">
-        <div class="step-dot done"></div>
-        <div class="step-dot active" style="width:22px;border-radius:4px;background:var(--accent);"></div>
-        <div class="step-dot"></div>
+      <div class="step-progress" aria-hidden="true">
+        <div class="step-track">
+          <div class="step-item done">
+            <div class="step-circle done"><span class="step-num">1</span></div>
+            <div class="step-label">Dados</div>
+          </div>
+          <div class="step-connector done"></div>
+          <div class="step-item active">
+            <div class="step-circle active"><span class="step-num">2</span></div>
+            <div class="step-label">E-mail</div>
+          </div>
+          <div class="step-connector"></div>
+          <div class="step-item">
+            <div class="step-circle"><span class="step-num">3</span></div>
+            <div class="step-label">Xbox</div>
+          </div>
+          <div class="step-connector"></div>
+          <div class="step-item">
+            <div class="step-circle"><span class="step-num">4</span></div>
+            <div class="step-label">IP</div>
+          </div>
+        </div>
       </div>
 
       <form id="verify-form" autocomplete="off" novalidate>
@@ -705,19 +858,107 @@ header {
       </div>
     </div>
 
-    <!-- ── View: sucesso ──────────────────────── -->
-    <div id="view-success">
-      <div class="view-icon">🎉</div>
-      <h1 class="card-title">Conta ativada!</h1>
-      <p class="card-sub">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist.</p>
+    <!-- ── View: vincular Microsoft (etapa 3, pulável) ── -->
+    <div id="view-ms-link">
 
-      <div class="steps" aria-hidden="true">
-        <div class="step-dot done"></div>
-        <div class="step-dot done"></div>
-        <div class="step-dot active" style="width:22px;border-radius:4px;background:var(--accent);"></div>
+      <div class="step-progress" aria-hidden="true">
+        <div class="step-track">
+          <div class="step-item done">
+            <div class="step-circle done"><span class="step-num">1</span></div>
+            <div class="step-label">Dados</div>
+          </div>
+          <div class="step-connector done"></div>
+          <div class="step-item done">
+            <div class="step-circle done"><span class="step-num">2</span></div>
+            <div class="step-label">E-mail</div>
+          </div>
+          <div class="step-connector done"></div>
+          <div class="step-item active">
+            <div class="step-circle active"><span class="step-num">3</span></div>
+            <div class="step-label">Xbox</div>
+          </div>
+          <div class="step-connector"></div>
+          <div class="step-item">
+            <div class="step-circle"><span class="step-num">4</span></div>
+            <div class="step-label">IP</div>
+          </div>
+        </div>
       </div>
 
-      <div class="server-ips">
+      <div class="ms-link-card">
+        <div class="ms-link-header">
+          <div class="ms-link-icon">🎮</div>
+          <div>
+            <div class="ms-link-title">Vincular conta Xbox / Minecraft</div>
+            <div class="ms-link-sub">Necessário para entrar no servidor</div>
+          </div>
+        </div>
+        <ul class="ms-benefit-list">
+          <li class="ms-benefit-item"><span class="ms-benefit-icon">✅</span>Seu nick do Minecraft é detectado automaticamente</li>
+          <li class="ms-benefit-item"><span class="ms-benefit-icon">🔐</span>Você é adicionado à whitelist instantaneamente</li>
+          <li class="ms-benefit-item"><span class="ms-benefit-icon">🎯</span>Acesso garantido ao servidor sem passos extras</li>
+        </ul>
+        <button id="btn-ms-link" class="btn-submit"
+          onclick="sessionStorage.setItem('fa_ms_signup_return','1'); window.location.href='https://forca-aliada-site.onrender.com/api/auth/microsoft/login'">
+          <svg viewBox="0 0 21 21" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+          </svg>
+          Vincular conta Xbox / Microsoft
+        </button>
+      </div>
+
+      <div class="skip-notice" id="skip-notice" style="display:none;">
+        <span class="skip-notice-icon">⚠️</span>
+        <span>Sem a vinculação, <strong>você não poderá entrar no servidor Minecraft</strong> até vincular a conta Xbox nas configurações do painel.</span>
+      </div>
+
+      <button class="btn-skip-link" id="btn-skip-ms" onclick="handleSkipMs()">
+        Vincular depois → acessar sem Minecraft por enquanto
+      </button>
+
+    </div><!-- /view-ms-link -->
+
+    <!-- ── View: sucesso / IP ──────────────────── -->
+    <div id="view-success">
+
+      <div class="step-progress" aria-hidden="true">
+        <div class="step-track">
+          <div class="step-item done">
+            <div class="step-circle done"><span class="step-num">1</span></div>
+            <div class="step-label">Dados</div>
+          </div>
+          <div class="step-connector done"></div>
+          <div class="step-item done">
+            <div class="step-circle done"><span class="step-num">2</span></div>
+            <div class="step-label">E-mail</div>
+          </div>
+          <div class="step-connector done"></div>
+          <div class="step-item done" id="step3-success-item">
+            <div class="step-circle done" id="step3-success-circle"><span class="step-num">3</span></div>
+            <div class="step-label">Xbox</div>
+          </div>
+          <div class="step-connector done" id="conn3-success"></div>
+          <div class="step-item active">
+            <div class="step-circle active"><span class="step-num">4</span></div>
+            <div class="step-label">IP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-icon">🎉</div>
+      <h1 class="card-title">Conta criada!</h1>
+      <p class="card-sub" id="success-sub">Bem-vindo à Força Aliada! Você já foi adicionado à whitelist.</p>
+
+      <div class="ms-linked-badge" id="ms-linked-badge" style="display:none;">
+        <span>✅</span> Xbox vinculado · whitelist ativada
+      </div>
+
+      <div class="alert alert-warning" id="success-no-ms-alert" style="display:none;">
+        <strong>⚠️ Ainda sem acesso ao servidor.</strong> Para jogar, vincule sua conta Xbox em <strong>Configurações → Integrações</strong> no painel.
+      </div>
+
+      <div class="server-ips" id="server-ips-section">
         <div class="ip-label">Java Edition</div>
         <div class="ip-box java" onclick="copyIp('fa.ogabriels.com')" id="ip-box-java" role="button" tabindex="0">
           <span class="ip-mono">fa.ogabriels.com</span>
@@ -748,10 +989,14 @@ const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 
-let pendingEmail    = '';
-let resendCountdown = null;
+let pendingEmail         = '';
+let resendCountdown      = null;
+let oauthOnboardToken    = null;   // JWT de conta criada via OAuth social (Google/Discord/Facebook)
+let oauthOnboardProvider = null;
 
 const urlParams = new URLSearchParams(window.location.search);
+
+// Modo A: retorno de verificação de e-mail pendente
 if (urlParams.has('verify')) {
   pendingEmail = urlParams.get('verify');
   showView('verify');
@@ -759,9 +1004,29 @@ if (urlParams.has('verify')) {
   startResendTimer();
 }
 
+// Modo B: retorno do Microsoft OAuth durante etapa 3 do signup
+// O login.html detecta a flag fa_ms_signup_return e redireciona aqui com ?ms_linked=1
+if (urlParams.has('ms_linked')) {
+  window.history.replaceState({}, document.title, window.location.pathname);
+  // Pequeno delay para garantir que goToSuccess está definido
+  setTimeout(() => goToSuccess(true), 80);
+}
+
+// Modo C: onboarding pós-OAuth social (Google/Discord/Facebook criou conta nova)
+// O backend redireciona para signup.html?oauth_onboard=TOKEN&oauth_provider=google
+if (urlParams.has('oauth_onboard')) {
+  oauthOnboardToken    = urlParams.get('oauth_onboard');
+  oauthOnboardProvider = urlParams.get('oauth_provider') || 'social';
+  window.history.replaceState({}, document.title, window.location.pathname);
+  localStorage.setItem(TOKEN_KEY, oauthOnboardToken);
+  // Após carregar, inicializa o onboarding (mostra etapa 3 com banner explicativo)
+  window.addEventListener('DOMContentLoaded', initOnboardingPostOAuth);
+}
+
 function showView(name) {
-  ['loggedin','signup','verify','success'].forEach(v => {
-    document.getElementById('view-' + v).style.display = v === name ? '' : 'none';
+  ['loggedin','signup','verify','ms-link','success'].forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.style.display = v === name ? '' : 'none';
   });
 }
 
@@ -1022,7 +1287,8 @@ async function submitVerify(code) {
       throw new Error(serverErrors[data.error] || data.error || 'Código inválido ou expirado.');
     }
     localStorage.setItem(TOKEN_KEY, data.token); localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
-    showView('success');
+    // Vai para etapa 3 — vincular Xbox
+    showView('ms-link');
   } catch (err) {
     showAlert(err.message,'error',false,'verify-alert'); shakeCard();
     pinDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
@@ -1071,7 +1337,92 @@ function forceLogout() {
   localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); showView('signup');
 }
 
+
+// ── Funções de onboarding pós-OAuth social ──────────────
+function initOnboardingPostOAuth() {
+  fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${oauthOnboardToken}` } })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(me => {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        username: me.username, email: me.email,
+        minecraftName: me.minecraft_name, role: me.role
+      }));
+      showView('ms-link');
+      injectOnboardBanner(me.username, oauthOnboardProvider);
+    })
+    .catch(() => {
+      localStorage.removeItem(TOKEN_KEY);
+      showView('signup');
+    });
+}
+
+function injectOnboardBanner(username, provider) {
+  const msView = document.getElementById('view-ms-link');
+  if (!msView || msView.querySelector('.onboard-banner')) return;
+  const banner = document.createElement('div');
+  banner.className = 'onboard-banner';
+  const providerNames = { google: 'Google', discord: 'Discord', facebook: 'Facebook', social: 'sua conta social' };
+  const providerLabel = providerNames[provider] || 'sua conta social';
+  banner.innerHTML = `
+    <span class="onboard-banner-icon">🆕</span>
+    <div class="onboard-banner-body">
+      <strong>Você está criando uma conta nova!</strong><br>
+      Você usou o <strong>${providerLabel}</strong> mas <em>ainda não tinha conta na Força Aliada</em>.
+      Seu perfil foi criado como <strong>@${username}</strong>. Agora vincule seu Xbox para entrar no servidor.
+    </div>`;
+  msView.insertBefore(banner, msView.querySelector('.ms-link-card'));
+}
+
+// ── Skip Microsoft (etapa 3 → etapa 4 sem Xbox) ──────────
+function handleSkipMs() {
+  const notice  = document.getElementById('skip-notice');
+  const skipBtn = document.getElementById('btn-skip-ms');
+  if (notice.style.display === 'none' || notice.style.display === '') {
+    // Primeira vez: mostra aviso e pede confirmação
+    notice.style.display = 'flex';
+    notice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    skipBtn.textContent  = 'Entendi — vincular depois mesmo';
+    skipBtn.style.color  = 'var(--danger)';
+    skipBtn.onclick      = confirmSkipMs;
+    return;
+  }
+  confirmSkipMs();
+}
+
+function confirmSkipMs() {
+  goToSuccess(false);
+}
+
+function goToSuccess(msLinked) {
+  showView('success');
+  if (msLinked) {
+    const badge = document.getElementById('ms-linked-badge');
+    if (badge) badge.style.display = 'inline-flex';
+    const noMsAlert = document.getElementById('success-no-ms-alert');
+    if (noMsAlert) noMsAlert.style.display = 'none';
+    document.getElementById('success-sub').textContent = 'Bem-vindo à Força Aliada! Você já foi adicionado à whitelist.';
+  } else {
+    const badge = document.getElementById('ms-linked-badge');
+    if (badge) badge.style.display = 'none';
+    const noMsAlert = document.getElementById('success-no-ms-alert');
+    if (noMsAlert) noMsAlert.style.display = 'block';
+    document.getElementById('success-sub').textContent = 'Sua conta foi criada com sucesso!';
+    // Esconde IPs quando não há whitelist ativa
+    const ipsSection = document.getElementById('server-ips-section');
+    if (ipsSection) ipsSection.style.display = 'none';
+    // Reverte etapa 3 para "não concluída" (apenas visual)
+    const step3item = document.getElementById('step3-success-item');
+    const step3circ = document.getElementById('step3-success-circle');
+    const conn3     = document.getElementById('conn3-success');
+    if (step3item) { step3item.className = 'step-item'; }
+    if (step3circ) { step3circ.className = 'step-circle'; step3circ.innerHTML = '<span class="step-num">3</span>'; }
+    if (conn3)     { conn3.className = 'step-connector'; }
+  }
+}
+
 (async () => {
+  // Se estamos em modo onboarding pós-OAuth, já tratamos acima
+  if (oauthOnboardToken) return;
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token || pendingEmail) return;
   try {

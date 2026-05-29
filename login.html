@@ -1162,11 +1162,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   // The backend issues oauth_token when:
   //   a) the provider was already linked (returning user) — login directly
   //   b) a brand new account was created via OAuth — login directly
-  // No re-authorization or confirmation needed in either case.
+  //   c) a new social (non-Microsoft) account was created — redirect to signup onboarding
+  //      (backend already redirects to signup.html?oauth_onboard=... in this case,
+  //       but if it lands here anyway, we handle it gracefully)
+  //
+  // Special case: if the user was in the signup flow step 3 (linking Xbox),
+  //   they have fa_ms_signup_return in sessionStorage. After the Microsoft OAuth
+  //   completes, they land here. We redirect to signup.html?ms_linked=1 instead.
   if (oauthToken) {
+    const isSignupMsReturn = sessionStorage.getItem('fa_ms_signup_return') === '1';
+
     showOAuthLoading(
       oauthProvider ? `Entrando com ${providerLabel(oauthProvider)}…` : 'Autenticando…',
-      'Verificando sua conta'
+      isSignupMsReturn ? 'Vinculando conta Xbox…' : 'Verificando sua conta'
     );
 
     try {
@@ -1180,9 +1188,20 @@ window.addEventListener('DOMContentLoaded', async () => {
         username: me.username, email: me.email,
         minecraftName: me.minecraft_name, role: me.role,
       }));
+
+      // Retorno do OAuth Microsoft durante etapa 3 do signup
+      if (isSignupMsReturn) {
+        sessionStorage.removeItem('fa_ms_signup_return');
+        // Redireciona para signup com flag de Xbox vinculado (etapa 4 — IP)
+        window.location.href = 'signup.html?ms_linked=1';
+        return;
+      }
+
+      sessionStorage.removeItem('fa_ms_signup_return');
       window.location.href = 'dashboard.html';
     } catch {
       hideOAuthLoading();
+      sessionStorage.removeItem('fa_ms_signup_return');
       localStorage.removeItem(TOKEN_KEY);
       showAlert(
         'A sessão expirou ou houve uma falha de conexão. Tente entrar novamente.',
