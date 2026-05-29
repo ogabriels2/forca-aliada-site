@@ -376,10 +376,12 @@ header {
 .rank-progress-label { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
 
 /* ── CONEXÕES ─────────────────────────────────── */
-.connection-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1.5px solid var(--border); border-radius: var(--radius-md); margin-bottom: 10px; transition: all 0.2s; }
+.connection-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1.5px solid var(--border); border-radius: var(--radius-md); margin-bottom: 10px; transition: all 0.2s; gap: 12px; }
 .connection-item:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.06); }
+.connection-item.is-linked { border-color: rgba(52,199,89,0.3); background: rgba(52,199,89,0.02); }
+[data-theme="dark"] .connection-item.is-linked { border-color: rgba(48,209,88,0.25); background: rgba(48,209,88,0.04); }
 .connection-item:last-child { margin-bottom: 0; }
-.connection-info { display: flex; align-items: center; gap: 14px; }
+.connection-info { display: flex; align-items: flex-start; gap: 14px; flex: 1; min-width: 0; }
 .connection-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; flex-shrink: 0; }
 .connection-icon svg { width: 22px; height: 22px; }
 .connection-icon.discord { background: #5865F2; }
@@ -388,7 +390,8 @@ header {
 .connection-icon.apple { background: #000; }
 .connection-icon.facebook { background: #1877F2; }
 .connection-text h4 { margin: 0 0 3px; font-size: 15px; font-weight: 600; }
-.connection-text p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.connection-text p { margin: 0 0 6px; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+.connection-actions { display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; gap: 8px; }
 .connection-status { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--success); }
 .connection-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
@@ -589,6 +592,132 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 /* Tag novo */
 .new-tag { background: var(--accent); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* ── DELETE CODE DIGITS ──────────────────────── */
+.delete-code-grid {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 0 0 6px;
+}
+.delete-code-digit {
+  width: 44px; height: 54px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  caret-color: var(--danger);
+}
+.delete-code-digit:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px rgba(255,59,48,0.12);
+}
+.delete-code-digit.filled {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.delete-code-digit.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px rgba(255,59,48,0.12);
+  animation: shakeInput 0.35s ease;
+}
+.btn-link-danger {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-family: inherit;
+  text-decoration: underline;
+  opacity: 0.8;
+  transition: opacity 0.18s;
+}
+.btn-link-danger:hover { opacity: 1; }
+.btn-link-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── CONEXÕES LINKED STATE ───────────────────── */
+.connection-item.is-linked .connection-status-badge {
+  display: flex;
+}
+.connection-status-badge {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+  background: rgba(52,199,89,0.1);
+  border: 1px solid rgba(52,199,89,0.25);
+  padding: 4px 10px;
+  border-radius: 980px;
+  white-space: nowrap;
+}
+.connection-status-badge svg {
+  width: 12px; height: 12px;
+  flex-shrink: 0;
+}
+.connection-item.is-linked .connection-actions-linked { display: flex; }
+.connection-item .connection-actions-linked {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.connection-linked-email {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-unlink {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.btn-unlink:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(255,59,48,0.05);
+}
+.connection-item .btn-connect { display: flex; }
+.connection-item.is-linked .btn-connect { display: none; }
+.connection-item .connection-loading {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.connection-item.loading .connection-loading { display: flex; }
+.connection-item.loading .btn-connect,
+.connection-item.loading .connection-actions-linked { display: none !important; }
+.conn-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Preferência de tema sincronizada com a conta */
 [data-theme="dark"] {
@@ -1563,35 +1692,123 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         </div>
 
         <div class="card">
-          <h3 class="card-title">Contas Vinculadas</h3>
-          <div class="connection-item">
-            <div class="connection-info">
-              <div class="connection-icon discord"><svg role="img" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></div>
-              <div class="connection-text"><h4>Discord</h4><p>Ganhe cargos automáticos no servidor oficial.</p></div>
+          <h3 class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+              Contas Vinculadas
             </div>
-            <button class="btn-outline" onclick="showToast('info', 'Em desenvolvimento', 'Vinculação de Discord estará disponível em breve!')">Vincular</button>
-          </div>
-          <div class="connection-item">
+            <span style="font-size:12px;font-weight:500;color:var(--text-secondary);" id="social-linked-count">Carregando...</span>
+          </h3>
+          <p style="margin:-8px 0 18px;font-size:13px;color:var(--text-secondary);">Faça login com um clique e acesse recursos exclusivos conectando suas redes sociais.</p>
+
+          <!-- Microsoft / Xbox -->
+          <div class="connection-item" id="conn-microsoft" data-provider="microsoft">
             <div class="connection-info">
-              <div class="connection-icon xbox" style="padding:9px;"><svg role="img" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg></div>
-              <div class="connection-text"><h4>Xbox / Microsoft</h4><p>Facilite o login com sua conta Microsoft original.</p></div>
+              <div class="connection-icon" style="background:#107C10;padding:9px;">
+                <svg role="img" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M11.5 2.5h-9v9h9v-9zm1 0v9h9v-9h-9zm-1 10h-9v9h9v-9zm1 0v9h9v-9h-9z"/></svg>
+              </div>
+              <div class="connection-text">
+                <h4>Xbox / Microsoft</h4>
+                <p>Vincula sua conta Minecraft (Java ou Bedrock) e permite login rápido.</p>
+                <div class="connection-status-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Vinculada
+                </div>
+              </div>
             </div>
-            <button class="btn-outline" onclick="showToast('info', 'Em desenvolvimento', 'Vinculação de Xbox estará disponível em breve!')">Vincular</button>
+            <div class="connection-actions">
+              <div class="connection-loading"><div class="conn-spinner"></div></div>
+              <div class="connection-actions-linked">
+                <div>
+                  <div class="connection-linked-email" id="conn-microsoft-detail">Xbox vinculado</div>
+                </div>
+                <button class="btn-unlink" onclick="unlinkAccount('microsoft')">Remover</button>
+              </div>
+              <a class="btn-outline btn-connect" id="btn-connect-microsoft" href="javascript:void(0)" onclick="connectOAuth('microsoft')">Vincular</a>
+            </div>
           </div>
-          <div class="connection-item">
+
+          <!-- Google -->
+          <div class="connection-item" id="conn-google" data-provider="google">
             <div class="connection-info">
-              <div class="connection-icon google"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></div>
-              <div class="connection-text"><h4>Google</h4><p>Acesse o painel com apenas um clique.</p></div>
+              <div class="connection-icon google">
+                <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              </div>
+              <div class="connection-text">
+                <h4>Google</h4>
+                <p>Acesse o painel com apenas um clique usando sua conta Google.</p>
+                <div class="connection-status-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Vinculada
+                </div>
+              </div>
             </div>
-            <button class="btn-outline" onclick="showToast('info', 'Em desenvolvimento', 'Vinculação de Google estará disponível em breve!')">Vincular</button>
+            <div class="connection-actions">
+              <div class="connection-loading"><div class="conn-spinner"></div></div>
+              <div class="connection-actions-linked">
+                <div>
+                  <div class="connection-linked-email" id="conn-google-detail"></div>
+                </div>
+                <button class="btn-unlink" onclick="unlinkAccount('google')">Remover</button>
+              </div>
+              <a class="btn-outline btn-connect" id="btn-connect-google" href="javascript:void(0)" onclick="connectOAuth('google')">Vincular</a>
+            </div>
           </div>
-          <div class="connection-item">
+
+          <!-- Discord -->
+          <div class="connection-item" id="conn-discord" data-provider="discord">
             <div class="connection-info">
-              <div class="connection-icon apple"><svg role="img" viewBox="0 0 814 1000" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.8-.5 663.8-.5 542.3c0-213.2 139.1-325.5 275.3-325.5 70.8 0 129.7 46.4 173.3 46.4 41.4 0 106.9-49 187.4-49 30.2 0 116.4 2.6 173.3 76.1zm-180.3-162.8c31.4-37.8 53.8-90.7 53.8-143.7 0-7.7-.6-15.5-1.9-22.6-50.9 1.9-110.8 33.9-147.2 76.8-28.3 32.7-55.9 85.6-55.9 139.2 0 8.3 1.3 16.7 1.9 19.2 3.2.6 8.4 1.3 13.6 1.3 45.3 0 102.3-30.7 135.7-70.2z"/></svg></div>
-              <div class="connection-text"><h4>Apple</h4><p>Use sua conta Apple para fazer login com segurança.</p></div>
+              <div class="connection-icon discord">
+                <svg role="img" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+              </div>
+              <div class="connection-text">
+                <h4>Discord</h4>
+                <p>Ganhe cargos automáticos no servidor Discord oficial da FA.</p>
+                <div class="connection-status-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Vinculada
+                </div>
+              </div>
             </div>
-            <button class="btn-outline" onclick="showToast('info', 'Em desenvolvimento', 'Vinculação de Apple estará disponível em breve!')">Vincular</button>
+            <div class="connection-actions">
+              <div class="connection-loading"><div class="conn-spinner"></div></div>
+              <div class="connection-actions-linked">
+                <div>
+                  <div class="connection-linked-email" id="conn-discord-detail"></div>
+                </div>
+                <button class="btn-unlink" onclick="unlinkAccount('discord')">Remover</button>
+              </div>
+              <a class="btn-outline btn-connect" id="btn-connect-discord" href="javascript:void(0)" onclick="connectOAuth('discord')">Vincular</a>
+            </div>
           </div>
+
+          <!-- Facebook -->
+          <div class="connection-item" id="conn-facebook" data-provider="facebook">
+            <div class="connection-info">
+              <div class="connection-icon" style="background:#1877F2;">
+                <svg role="img" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              </div>
+              <div class="connection-text">
+                <h4>Facebook</h4>
+                <p>Login simplificado com sua conta do Facebook.</p>
+                <div class="connection-status-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Vinculada
+                </div>
+              </div>
+            </div>
+            <div class="connection-actions">
+              <div class="connection-loading"><div class="conn-spinner"></div></div>
+              <div class="connection-actions-linked">
+                <div>
+                  <div class="connection-linked-email" id="conn-facebook-detail"></div>
+                </div>
+                <button class="btn-unlink" onclick="unlinkAccount('facebook')">Remover</button>
+              </div>
+              <a class="btn-outline btn-connect" id="btn-connect-facebook" href="javascript:void(0)" onclick="connectOAuth('facebook')">Vincular</a>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -1841,6 +2058,58 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       <button class="confirm-pw-btn-cancel" onclick="closeConfirmPw()">Cancelar</button>
       <button class="confirm-pw-btn-confirm" id="confirm-pw-submit-btn" onclick="confirmPwSubmit()">Confirmar</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal de Exclusão de Conta (multi-step) -->
+<div class="confirm-pw-overlay" id="delete-account-overlay" onclick="deleteAccountOverlayClick(event)">
+  <div class="confirm-pw-sheet" role="dialog" aria-modal="true" id="delete-account-sheet">
+
+    <!-- Step 1: Senha + E-mail -->
+    <div id="delete-step-1">
+      <div class="confirm-pw-icon danger">🗑️</div>
+      <h4>Excluir conta permanentemente</h4>
+      <p style="margin:0 0 20px;font-size:14px;color:var(--text-secondary);text-align:center;line-height:1.5;">Esta ação é irreversível. Confirme sua identidade para continuar.</p>
+      <div class="pw-field-wrap" style="margin-bottom:10px;">
+        <input type="email" id="del-email-input" placeholder="Seu e-mail cadastrado" autocomplete="email">
+      </div>
+      <div class="pw-field-wrap">
+        <input type="password" id="del-pw-input" placeholder="Sua senha atual" autocomplete="current-password" onkeydown="if(event.key==='Enter')deleteStep1Submit()">
+        <button class="pw-toggle-btn" type="button" onclick="toggleDelPwVisibility()">
+          <svg id="del-pw-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="confirm-pw-error-msg" id="delete-step1-error"></div>
+      <div class="confirm-pw-actions">
+        <button class="confirm-pw-btn-cancel" onclick="closeDeleteModal()">Cancelar</button>
+        <button class="confirm-pw-btn-confirm btn-danger" id="delete-step1-btn" onclick="deleteStep1Submit()">Continuar</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Código de e-mail -->
+    <div id="delete-step-2" style="display:none;">
+      <div class="confirm-pw-icon danger" style="background:rgba(255,59,48,0.12);">📧</div>
+      <h4>Verifique seu e-mail</h4>
+      <p style="margin:0 0 6px;font-size:14px;color:var(--text-secondary);text-align:center;line-height:1.5;">Enviamos um código de 6 dígitos para <strong id="delete-masked-email">seu e-mail</strong>.</p>
+      <p style="margin:0 0 20px;font-size:12px;color:var(--text-secondary);text-align:center;">Este código expira em 15 minutos.</p>
+      <div class="delete-code-grid" id="delete-code-grid">
+        <input class="delete-code-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="delete-code-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="delete-code-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="delete-code-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="delete-code-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="delete-code-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      </div>
+      <div class="confirm-pw-error-msg" id="delete-step2-error"></div>
+      <div style="text-align:center;margin-bottom:16px;">
+        <button class="btn-link-danger" id="delete-resend-btn" onclick="deleteResendCode()">Reenviar código</button>
+      </div>
+      <div class="confirm-pw-actions">
+        <button class="confirm-pw-btn-cancel" onclick="deleteGoBackStep1()">← Voltar</button>
+        <button class="confirm-pw-btn-confirm btn-danger" id="delete-step2-btn" onclick="deleteStep2Submit()">Excluir Definitivamente</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2704,6 +2973,8 @@ function switchTab(tabId, btnElement) {
   if (tabId !== 'perfil') toggleEditMode(false);
   // Lazy-load merit data when tab is first opened
   if (tabId === 'merito') loadMeritData();
+  // Load social accounts when conexoes tab is opened
+  if (tabId === 'conexoes') loadSocialAccounts();
 }
 
 function toggleMobileSidebar(e) {
@@ -2844,40 +3115,384 @@ async function changePass() {
   }
 }
 
-// ── EXCLUIR CONTA ──────────────────────────────────────────────
+// ── EXCLUIR CONTA (Multi-step com verificação de e-mail) ────────
+let _deleteAccountData = {};
+
 function showDeleteAccountModal() {
-  requirePassword({
-    title: 'Excluir Conta Permanentemente', desc: 'Digite seu e-mail e senha para confirmar. Esta ação NÃO pode ser desfeita.', btnText: 'Excluir Definitivamente', danger: true, requireEmail: true,
-    onConfirm: async (password, email) => {
-      const btn = document.getElementById('confirm-pw-submit-btn');
-      const input = document.getElementById('confirm-pw-input');
-      const emInput = document.getElementById('confirm-email-input');
-      const errEl = document.getElementById('confirm-pw-error');
-      try {
-        const res = await fetch(`${API_BASE}/api/me`, {
-          method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ email, password })
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          if (data.error === 'invalid password') throw new Error('Senha incorreta.');
-          if (data.error === 'email mismatch') throw new Error('E-mail não corresponde a esta conta.');
-          throw new Error('Erro ao excluir conta.');
-        }
-        logout();
-      } catch (e) {
-        if (e.message === 'Senha incorreta.') {
-          errEl.textContent = e.message; input.value = ''; input.classList.add('pw-error'); setTimeout(() => input.classList.remove('pw-error'), 400);
-          btn.disabled = false; btn.textContent = 'Excluir Definitivamente'; input.focus();
-        } else if (e.message === 'E-mail não corresponde a esta conta.') {
-          errEl.textContent = e.message; emInput.classList.add('pw-error'); setTimeout(() => emInput.classList.remove('pw-error'), 400);
-          btn.disabled = false; btn.textContent = 'Excluir Definitivamente'; emInput.focus();
-        } else {
-          errEl.textContent = e.message; btn.disabled = false; btn.textContent = 'Excluir Definitivamente';
-        }
+  _deleteAccountData = {};
+  document.getElementById('delete-step-1').style.display = 'block';
+  document.getElementById('delete-step-2').style.display = 'none';
+  document.getElementById('del-email-input').value = session.email || '';
+  document.getElementById('del-pw-input').value = '';
+  document.getElementById('delete-step1-error').textContent = '';
+  document.getElementById('delete-step1-btn').disabled = false;
+  document.getElementById('delete-step1-btn').textContent = 'Continuar';
+  document.getElementById('delete-account-overlay').classList.add('active');
+  setTimeout(() => document.getElementById('del-email-input').focus(), 120);
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-account-overlay').classList.remove('active');
+  _deleteAccountData = {};
+}
+
+function deleteAccountOverlayClick(e) {
+  if (e.target.id === 'delete-account-overlay') closeDeleteModal();
+}
+
+function toggleDelPwVisibility() {
+  const input = document.getElementById('del-pw-input');
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  document.getElementById('del-pw-eye').innerHTML = isHidden
+    ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+}
+
+async function deleteStep1Submit() {
+  const emailVal = document.getElementById('del-email-input').value.trim().toLowerCase();
+  const pwVal = document.getElementById('del-pw-input').value;
+  const errEl = document.getElementById('delete-step1-error');
+  const btn = document.getElementById('delete-step1-btn');
+
+  if (!emailVal) { errEl.textContent = 'Digite seu e-mail cadastrado.'; return; }
+  if (!pwVal) { errEl.textContent = 'Digite sua senha para continuar.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Verificando...';
+  errEl.textContent = '';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/delete-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ password: pwVal })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      if (data.error === 'email mismatch') {
+        errEl.textContent = 'E-mail não corresponde à sua conta.';
+        document.getElementById('del-email-input').classList.add('pw-error');
+        setTimeout(() => document.getElementById('del-email-input').classList.remove('pw-error'), 400);
+      } else if (data.error === 'invalid password') {
+        errEl.textContent = 'Senha incorreta. Tente novamente.';
+        document.getElementById('del-pw-input').value = '';
+        document.getElementById('del-pw-input').classList.add('pw-error');
+        setTimeout(() => document.getElementById('del-pw-input').classList.remove('pw-error'), 400);
+      } else {
+        errEl.textContent = data.error || 'Erro ao enviar código.';
       }
+      btn.disabled = false;
+      btn.textContent = 'Continuar';
+      return;
     }
+
+    // Guarda dados para etapa 2
+    _deleteAccountData = { email: emailVal, password: pwVal, emailMasked: data.emailMasked };
+
+    // Vai para step 2
+    document.getElementById('delete-masked-email').textContent = data.emailMasked || emailVal;
+    document.getElementById('delete-step-1').style.display = 'none';
+    document.getElementById('delete-step-2').style.display = 'block';
+    document.getElementById('delete-step2-error').textContent = '';
+    document.getElementById('delete-step2-btn').disabled = false;
+    document.getElementById('delete-step2-btn').textContent = 'Excluir Definitivamente';
+
+    // Limpa e foca no primeiro dígito
+    const digits = document.querySelectorAll('.delete-code-digit');
+    digits.forEach(d => { d.value = ''; d.classList.remove('filled', 'error'); });
+    initDeleteCodeDigits();
+    setTimeout(() => digits[0]?.focus(), 120);
+
+    // Reset do botão reenviar
+    startDeleteResendCooldown();
+
+  } catch (e) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    btn.disabled = false;
+    btn.textContent = 'Continuar';
+  }
+}
+
+function deleteGoBackStep1() {
+  document.getElementById('delete-step-2').style.display = 'none';
+  document.getElementById('delete-step-1').style.display = 'block';
+  document.getElementById('delete-step1-error').textContent = '';
+  document.getElementById('delete-step1-btn').disabled = false;
+  document.getElementById('delete-step1-btn').textContent = 'Continuar';
+}
+
+let _deleteResendTimer = null;
+function startDeleteResendCooldown(seconds = 60) {
+  const btn = document.getElementById('delete-resend-btn');
+  let remaining = seconds;
+  btn.disabled = true;
+  btn.textContent = `Reenviar (${remaining}s)`;
+  clearInterval(_deleteResendTimer);
+  _deleteResendTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(_deleteResendTimer);
+      btn.disabled = false;
+      btn.textContent = 'Reenviar código';
+    } else {
+      btn.textContent = `Reenviar (${remaining}s)`;
+    }
+  }, 1000);
+}
+
+async function deleteResendCode() {
+  const btn = document.getElementById('delete-resend-btn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    const res = await fetch(`${API_BASE}/api/me/delete-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ password: _deleteAccountData.password })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Erro ao reenviar');
+    showToast('success', 'Código reenviado', `Confira seu e-mail ${data.emailMasked || ''}`);
+    const digits = document.querySelectorAll('.delete-code-digit');
+    digits.forEach(d => { d.value = ''; d.classList.remove('filled', 'error'); });
+    digits[0]?.focus();
+    startDeleteResendCooldown();
+  } catch (e) {
+    showToast('error', 'Falha ao reenviar', e.message);
+    btn.disabled = false;
+    btn.textContent = 'Reenviar código';
+  }
+}
+
+function initDeleteCodeDigits() {
+  const digits = document.querySelectorAll('.delete-code-digit');
+  digits.forEach((el, i) => {
+    el.oninput = (e) => {
+      const v = e.target.value.replace(/[^0-9]/g, '');
+      el.value = v ? v[v.length - 1] : '';
+      el.classList.toggle('filled', !!el.value);
+      if (el.value && i < digits.length - 1) digits[i + 1].focus();
+      // Auto-submit when all filled
+      if ([...digits].every(d => d.value)) deleteStep2Submit();
+    };
+    el.onkeydown = (e) => {
+      if (e.key === 'Backspace' && !el.value && i > 0) {
+        digits[i - 1].value = '';
+        digits[i - 1].classList.remove('filled');
+        digits[i - 1].focus();
+      }
+      if (e.key === 'Enter') deleteStep2Submit();
+    };
+    el.onpaste = (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      pasted.split('').slice(0, 6).forEach((ch, idx) => {
+        if (digits[idx]) { digits[idx].value = ch; digits[idx].classList.add('filled'); }
+      });
+      const lastFilled = Math.min(pasted.length, 5);
+      digits[lastFilled]?.focus();
+      if (pasted.length >= 6) deleteStep2Submit();
+    };
   });
+}
+
+async function deleteStep2Submit() {
+  const digits = document.querySelectorAll('.delete-code-digit');
+  const code = [...digits].map(d => d.value).join('');
+  const errEl = document.getElementById('delete-step2-error');
+  const btn = document.getElementById('delete-step2-btn');
+
+  if (code.length < 6) {
+    errEl.textContent = 'Digite todos os 6 dígitos do código.';
+    digits.forEach(d => { if (!d.value) { d.classList.add('error'); setTimeout(() => d.classList.remove('error'), 400); } });
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Excluindo...';
+  errEl.textContent = '';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        email: _deleteAccountData.email,
+        password: _deleteAccountData.password,
+        emailCode: code
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      let msg = 'Erro ao excluir conta.';
+      if (data.error === 'invalid_code' || data.error === 'invalid password') {
+        msg = 'Código inválido. Verifique seu e-mail e tente novamente.';
+        digits.forEach(d => { d.classList.add('error'); setTimeout(() => d.classList.remove('error'), 400); });
+        digits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+        setTimeout(() => digits[0]?.focus(), 100);
+      } else if (data.error === 'code_expired') {
+        msg = 'Código expirado. Solicite um novo código.';
+        digits.forEach(d => { d.value = ''; d.classList.remove('filled', 'error'); });
+      } else if (data.error === 'code_not_requested') {
+        msg = 'Nenhuma solicitação de exclusão encontrada. Volte e tente novamente.';
+      }
+      errEl.textContent = msg;
+      btn.disabled = false;
+      btn.textContent = 'Excluir Definitivamente';
+      return;
+    }
+
+    closeDeleteModal();
+    logout();
+  } catch (e) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    btn.disabled = false;
+    btn.textContent = 'Excluir Definitivamente';
+  }
+}
+
+// ── CONTAS SOCIAIS VINCULADAS ──────────────────────────────────
+let _socialAccounts = {};
+
+async function loadSocialAccounts() {
+  const providers = ['microsoft', 'google', 'discord', 'facebook'];
+  // Mostra loading em todos
+  providers.forEach(p => {
+    const el = document.getElementById(`conn-${p}`);
+    if (el) el.classList.add('loading');
+  });
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/social-accounts`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Falha ao carregar contas');
+    const data = await res.json();
+    _socialAccounts = data.accounts || {};
+
+    let linkedCount = 0;
+    providers.forEach(provider => {
+      const el = document.getElementById(`conn-${provider}`);
+      if (!el) return;
+      el.classList.remove('loading');
+      const account = _socialAccounts[provider];
+      if (account && account.linked) {
+        el.classList.add('is-linked');
+        linkedCount++;
+        // Preenche detalhe
+        const detailEl = document.getElementById(`conn-${provider}-detail`);
+        if (detailEl) {
+          if (provider === 'microsoft') {
+            const edition = account.mc_edition === 'bedrock' ? 'Bedrock' : 'Java Edition';
+            detailEl.textContent = `Xbox vinculado · ${edition}`;
+          } else {
+            detailEl.textContent = account.provider_email || 'Conta vinculada';
+          }
+        }
+      } else {
+        el.classList.remove('is-linked');
+        const detailEl = document.getElementById(`conn-${provider}-detail`);
+        if (detailEl) detailEl.textContent = '';
+      }
+    });
+
+    const countEl = document.getElementById('social-linked-count');
+    if (countEl) {
+      countEl.textContent = linkedCount > 0
+        ? `${linkedCount} conta${linkedCount > 1 ? 's' : ''} vinculada${linkedCount > 1 ? 's' : ''}`
+        : 'Nenhuma conta vinculada';
+    }
+  } catch (e) {
+    providers.forEach(p => {
+      const el = document.getElementById(`conn-${p}`);
+      if (el) el.classList.remove('loading');
+    });
+    console.error('[social accounts]', e);
+  }
+}
+
+function connectOAuth(provider) {
+  const endpoints = {
+    microsoft: `${API_BASE}/api/auth/microsoft/login`,
+    google:    `${API_BASE}/api/auth/google/login`,
+    discord:   `${API_BASE}/api/auth/discord/login`,
+    facebook:  `${API_BASE}/api/auth/facebook/login`,
+  };
+  const url = endpoints[provider];
+  if (!url) { showToast('error', 'Provedor inválido', 'Este provedor ainda não está disponível.'); return; }
+  // Abre em popup para não perder a sessão atual
+  const w = 520, h = 640;
+  const left = Math.round((screen.width - w) / 2);
+  const top  = Math.round((screen.height - h) / 2);
+  const popup = window.open(url, `oauth_${provider}`, `width=${w},height=${h},top=${top},left=${left},scrollbars=yes`);
+
+  // Escuta mensagem do popup (após redirecionamento de volta)
+  // O login.html ou signup.html pode enviar postMessage ao fechar
+  // Fallback: poll enquanto popup está aberto, recarrega contas ao fechar
+  const poll = setInterval(() => {
+    if (!popup || popup.closed) {
+      clearInterval(poll);
+      setTimeout(() => loadSocialAccounts(), 800);
+    }
+  }, 600);
+}
+
+async function unlinkAccount(provider) {
+  const providerLabels = {
+    microsoft: 'Xbox / Microsoft',
+    google:    'Google',
+    discord:   'Discord',
+    facebook:  'Facebook',
+  };
+  const label = providerLabels[provider] || provider;
+
+  // Confirmação inline
+  const el = document.getElementById(`conn-${provider}`);
+  if (!el) return;
+
+  // Bloqueia UI temporariamente
+  el.classList.add('loading');
+
+  // Pequeno atraso para UX (evita click duplo acidental)
+  await new Promise(r => setTimeout(r, 300));
+
+  // Confirma com o usuário
+  if (!confirm(`Tem certeza que deseja remover o vínculo com ${label}?\n\nVocê ainda poderá reconectar quando quiser.`)) {
+    el.classList.remove('loading');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/social-accounts/${encodeURIComponent(provider)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Erro ao remover vínculo');
+
+    el.classList.remove('loading', 'is-linked');
+    delete _socialAccounts[provider];
+
+    const detailEl = document.getElementById(`conn-${provider}-detail`);
+    if (detailEl) detailEl.textContent = '';
+
+    // Atualiza contador
+    const linkedCount = Object.values(_socialAccounts).filter(a => a.linked).length;
+    const countEl = document.getElementById('social-linked-count');
+    if (countEl) {
+      countEl.textContent = linkedCount > 0
+        ? `${linkedCount} conta${linkedCount > 1 ? 's' : ''} vinculada${linkedCount > 1 ? 's' : ''}`
+        : 'Nenhuma conta vinculada';
+    }
+
+    showToast('success', 'Vínculo removido', `${label} foi desvinculada da sua conta.`);
+  } catch (e) {
+    el.classList.remove('loading');
+    showToast('error', 'Falha ao remover', e.message);
+  }
 }
 
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
