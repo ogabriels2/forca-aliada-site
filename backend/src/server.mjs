@@ -2177,7 +2177,19 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
     // ── Passo 2: Token Xbox Live (XBL) — compartilhado Java + Bedrock ───────
     const xblData = await getXboxLiveToken(msTokens.access_token);
     const uhs     = xblData.DisplayClaims.xui[0].uhs;
-    const xuid    = xblData.DisplayClaims.xui[0].xid; // XUID extraído do token raiz do Xbox Live
+
+    // ── Passo 2.5: XSTS para Xbox Live (Obrigatório para obter o XUID) ──────
+    // O token XBL primário não possui o 'xid'. Precisamos do token XSTS do Xbox.
+    let xstsXbox;
+    try {
+      xstsXbox = await getXSTSToken(xblData.Token, 'http://xboxlive.com');
+    } catch (xboxErr) {
+      throw new Error('Falha ao autenticar no Xbox Live. Verifique sua configuração do Xbox.');
+    }
+    
+    // Agora sim o XUID e o Gamertag são garantidos!
+    const xuid = xstsXbox.DisplayClaims.xui[0].xid;
+    let gamertag = xstsXbox.DisplayClaims.xui[0].gtg || null;
 
     // ── Passo 3: XSTS para Minecraft Services (necessário para Java) ─────────
     // Se a conta for infantil, xstsMC lança erro automaticamente e bloqueia o acesso.
@@ -2214,15 +2226,9 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
     // ── Passo 5: Fallback Bedrock (sem Java Edition) ─────────────────────────
     if (edition === 'bedrock') {
-      // Precisamos de XSTS para xboxlive.com (diferente do rp Minecraft) para o Gamertag
-      let xstsXbox;
-      try {
-        xstsXbox = await getXSTSToken(xblData.Token, 'http://xboxlive.com');
-      } catch (xboxErr) {
-        throw new Error('Falha ao autenticar no Xbox Live. Verifique se sua conta Xbox está configurada corretamente.');
+      if (!gamertag) {
+        gamertag = await getXboxGamertag(uhs, xstsXbox.Token);
       }
-
-      const gamertag = await getXboxGamertag(uhs, xstsXbox.Token);
       if (!gamertag) {
         throw new Error('Não foi possível obter seu Gamertag Xbox. Verifique se sua conta Xbox está configurada e tente novamente.');
       }
