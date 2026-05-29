@@ -704,6 +704,66 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.connection-actions-linked--stacked {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+.connection-item.allow-multiple.is-linked .btn-connect { display: flex; }
+.ms-linked-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.ms-account-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 390px;
+}
+.ms-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 190px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 11px;
+  line-height: 1.2;
+}
+.ms-account-chip strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ms-account-tag {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+.ms-account-primary {
+  color: var(--success);
+}
+.ms-chip-action {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 1px 2px;
+}
+.ms-chip-action:hover { color: var(--accent); }
+.ms-chip-remove:hover { color: var(--danger); }
 .btn-unlink {
   background: none;
   border: 1.5px solid var(--border);
@@ -1726,7 +1786,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <p style="margin:-8px 0 18px;font-size:13px;color:var(--text-secondary);">Faça login com um clique e acesse recursos exclusivos conectando suas redes sociais.</p>
 
           <!-- Microsoft / Xbox -->
-          <div class="connection-item" id="conn-microsoft" data-provider="microsoft">
+          <div class="connection-item allow-multiple" id="conn-microsoft" data-provider="microsoft">
             <div class="connection-info">
               <div class="connection-icon connection-icon--microsoft">
                 <svg viewBox="0 0 21 21" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -1749,9 +1809,12 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
             </div>
             <div class="connection-actions">
               <div class="connection-loading"><div class="conn-spinner"></div></div>
-              <div class="connection-actions-linked">
-                <div class="connection-linked-email" id="conn-microsoft-detail">Xbox vinculado</div>
-                <button class="btn-unlink" onclick="unlinkAccount('microsoft')">Remover</button>
+              <div class="connection-actions-linked connection-actions-linked--stacked">
+                <div class="ms-linked-top">
+                  <div class="connection-linked-email" id="conn-microsoft-detail">Xbox vinculado</div>
+                  <button class="btn-unlink" id="btn-unlink-microsoft-all" onclick="unlinkAccount('microsoft')">Remover</button>
+                </div>
+                <div class="ms-account-list" id="conn-microsoft-accounts"></div>
               </div>
               <a class="btn-outline btn-connect" id="btn-connect-microsoft" href="javascript:void(0)" onclick="connectOAuth('microsoft')">Vincular</a>
             </div>
@@ -2919,7 +2982,7 @@ function initAccount() {
   }
 })();
 
-function renderData() {
+function renderData(options = {}) {
   const mcName = session.minecraftName || 'Steve';
   const skinUrl = `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`;
 
@@ -2968,7 +3031,7 @@ function renderData() {
   }
 
   // Alerta vinculação minecraft
-  if (!session.minecraftName) {
+  if (!session.minecraftName && !options.suppressMinecraftToast) {
     showToast('warning', 'Minecraft não vinculado', 'Edite seu perfil para vincular sua conta Minecraft e desbloquear estatísticas.');
   }
 
@@ -3389,6 +3452,88 @@ async function deleteStep2Submit() {
 // ── CONTAS SOCIAIS VINCULADAS ──────────────────────────────────
 let _socialAccounts = {};
 
+function microsoftAccountsFrom(account) {
+  if (!account) return [];
+  const accounts = Array.isArray(account.accounts) && account.accounts.length
+    ? account.accounts
+    : (account.linked ? [account] : []);
+  return accounts
+    .filter(Boolean)
+    .slice()
+    .sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)));
+}
+
+function microsoftEditionLabel(edition) {
+  return edition === 'bedrock' ? 'Bedrock' : 'Java';
+}
+
+function microsoftAccountName(account) {
+  return account?.mc_name || account?.xbox_gamertag || (account?.xbox_xuid ? `XUID ${String(account.xbox_xuid).slice(-6)}` : 'Xbox');
+}
+
+function renderMicrosoftAccounts(account) {
+  const listEl = document.getElementById('conn-microsoft-accounts');
+  const detailEl = document.getElementById('conn-microsoft-detail');
+  const connectBtn = document.getElementById('btn-connect-microsoft');
+  const unlinkAllBtn = document.getElementById('btn-unlink-microsoft-all');
+  const accounts = microsoftAccountsFrom(account);
+
+  if (connectBtn) connectBtn.textContent = accounts.length ? 'Adicionar' : 'Vincular';
+  if (unlinkAllBtn) unlinkAllBtn.textContent = accounts.length > 1 ? 'Remover todas' : 'Remover';
+
+  if (!accounts.length) {
+    if (detailEl) detailEl.textContent = '';
+    if (listEl) listEl.innerHTML = '';
+    return;
+  }
+
+  const primary = accounts.find(a => a.is_primary) || accounts[0];
+  if (detailEl) {
+    const prefix = accounts.length > 1 ? `${accounts.length} contas` : '1 conta';
+    detailEl.textContent = `${prefix} · principal: ${microsoftAccountName(primary)}`;
+  }
+
+  if (!listEl) return;
+  listEl.innerHTML = accounts.map(acc => {
+    const id = Number(acc.id);
+    const safeName = escapeHTML(microsoftAccountName(acc));
+    const edition = microsoftEditionLabel(acc.mc_edition);
+    const primaryTag = acc.is_primary
+      ? '<span class="ms-account-tag ms-account-primary">Principal</span>'
+      : `<button type="button" class="ms-chip-action" onclick="setPrimaryMicrosoftAccount(${id})">Usar</button>`;
+    const removeAction = accounts.length > 1
+      ? `<button type="button" class="ms-chip-action ms-chip-remove" onclick="unlinkMicrosoftAccount(${id})" aria-label="Remover ${safeName}">Remover</button>`
+      : '';
+    return `
+      <span class="ms-account-chip">
+        <strong title="${safeName}">${safeName}</strong>
+        <span class="ms-account-tag">${edition}</span>
+        ${primaryTag}
+        ${removeAction}
+      </span>`;
+  }).join('');
+}
+
+async function refreshSessionFromServer() {
+  try {
+    const res = await fetch(`${API_BASE}/api/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const me = await res.json();
+    session = {
+      username: me.username,
+      email: me.email,
+      minecraftName: me.minecraft_name,
+      role: me.role,
+      createdAt: me.created_at,
+      isVerified: me.is_verified !== false
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    renderData({ suppressMinecraftToast: true });
+  } catch (_) {}
+}
+
 async function loadSocialAccounts() {
   const providers = ['microsoft', 'google', 'discord', 'facebook'];
   // Mostra loading em todos
@@ -3411,9 +3556,11 @@ async function loadSocialAccounts() {
       if (!el) return;
       el.classList.remove('loading');
       const account = _socialAccounts[provider];
-      if (account && account.linked) {
+      const msAccounts = provider === 'microsoft' ? microsoftAccountsFrom(account) : [];
+      const isLinked = provider === 'microsoft' ? msAccounts.length > 0 : Boolean(account && account.linked);
+      if (isLinked) {
         el.classList.add('is-linked');
-        linkedCount++;
+        linkedCount += provider === 'microsoft' ? msAccounts.length : 1;
         // Preenche detalhe
         const detailEl = document.getElementById(`conn-${provider}-detail`);
         if (detailEl) {
@@ -3424,10 +3571,12 @@ async function loadSocialAccounts() {
             detailEl.textContent = account.provider_email || 'Conta vinculada';
           }
         }
+        if (provider === 'microsoft') renderMicrosoftAccounts(account);
       } else {
         el.classList.remove('is-linked');
         const detailEl = document.getElementById(`conn-${provider}-detail`);
         if (detailEl) detailEl.textContent = '';
+        if (provider === 'microsoft') renderMicrosoftAccounts(null);
       }
     });
 
@@ -3446,7 +3595,7 @@ async function loadSocialAccounts() {
   }
 }
 
-function connectOAuth(provider) {
+function connectOAuthLegacy(provider) {
   const currentToken = localStorage.getItem(TOKEN_KEY);
   const endpoints = {
     microsoft: `${API_BASE}/api/auth/microsoft/login`,
@@ -3496,9 +3645,151 @@ function connectOAuth(provider) {
   }, 600);
 }
 
+function connectOAuth(provider) {
+  const currentToken = localStorage.getItem(TOKEN_KEY);
+  const endpoints = {
+    microsoft: `${API_BASE}/api/auth/microsoft/login`,
+    google:    `${API_BASE}/api/auth/google/login`,
+    discord:   `${API_BASE}/api/auth/discord/login`,
+    facebook:  `${API_BASE}/api/auth/facebook/login`,
+  };
+  const base = endpoints[provider];
+  if (!base) { showToast('error', 'Provedor inválido', 'Este provedor ainda não está disponível.'); return; }
+
+  const flowId = `${provider}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const resultKey = `fa_oauth_result_${flowId}`;
+  const params = new URLSearchParams({ popup: '1', flow_id: flowId });
+  if (currentToken) params.set('link_token', currentToken);
+  const url = `${base}?${params.toString()}`;
+  const el = document.getElementById(`conn-${provider}`);
+  if (el) el.classList.add('loading');
+
+  const w = 520, h = 660;
+  const left = Math.round((screen.width - w) / 2);
+  const top  = Math.round((screen.height - h) / 2);
+  const popup = window.open(url, `oauth_${provider}`, `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,resizable=yes`);
+
+  if (!popup) {
+    if (el) el.classList.remove('loading');
+    showToast('error', 'Popup bloqueado', 'Permita popups para este site e tente novamente.');
+    return;
+  }
+
+  let handled = false;
+
+  async function finish(result, options = {}) {
+    if (handled) return;
+    handled = true;
+    clearInterval(poll);
+    window.removeEventListener('message', onMessage);
+    window.removeEventListener('storage', onStorage);
+    try { localStorage.removeItem(resultKey); } catch (_) {}
+    if (el) el.classList.remove('loading');
+
+    if (result?.status === 'linked' || result?.status === 'ok') {
+      await loadSocialAccounts();
+      await refreshSessionFromServer();
+      if (provider === 'microsoft') {
+        const friends = document.getElementById('xbox-friends-list');
+        if (friends) friends.innerHTML = '';
+      }
+      showToast('success', 'Conta vinculada!', `${providerLabel(result.provider || provider)} foi vinculada com sucesso.`);
+    } else if (result?.status === 'error') {
+      await loadSocialAccounts();
+      showToast('error', 'Falha na vinculação', result.message || 'Tente novamente.');
+    } else if (options.reload) {
+      await loadSocialAccounts();
+      await refreshSessionFromServer();
+    }
+  }
+
+  function readStoredResult() {
+    try {
+      const raw = localStorage.getItem(resultKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function onMessage(e) {
+    if (!e.data || e.data.source !== 'fa_oauth') return;
+    if (e.data.flowId && e.data.flowId !== flowId) return;
+    finish(e.data);
+  }
+
+  function onStorage(e) {
+    if (e.key !== resultKey || !e.newValue) return;
+    finish(readStoredResult());
+  }
+
+  window.addEventListener('message', onMessage);
+  window.addEventListener('storage', onStorage);
+
+  const poll = setInterval(() => {
+    const stored = readStoredResult();
+    if (stored) {
+      try { popup.close(); } catch (_) {}
+      finish(stored);
+      return;
+    }
+    if (!popup || popup.closed) {
+      setTimeout(() => finish({ status: 'closed', provider }, { reload: true }), 600);
+    }
+  }, 600);
+}
+
 function providerLabel(p) {
   const map = { microsoft: 'Xbox / Microsoft', google: 'Google', discord: 'Discord', facebook: 'Facebook' };
   return map[p] || p;
+}
+
+async function setPrimaryMicrosoftAccount(integrationId) {
+  const id = Number(integrationId);
+  if (!Number.isInteger(id) || id <= 0) return;
+  const el = document.getElementById('conn-microsoft');
+  if (el) el.classList.add('loading');
+  try {
+    const res = await fetch(`${API_BASE}/api/me/social-accounts/microsoft/${encodeURIComponent(id)}/primary`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Erro ao definir conta principal');
+    await loadSocialAccounts();
+    await refreshSessionFromServer();
+    showToast('success', 'Conta principal atualizada', 'Essa conta agora define o Minecraft exibido no seu perfil.');
+  } catch (e) {
+    showToast('error', 'Falha ao atualizar', e.message);
+  } finally {
+    if (el) el.classList.remove('loading');
+  }
+}
+
+async function unlinkMicrosoftAccount(integrationId) {
+  const id = Number(integrationId);
+  if (!Number.isInteger(id) || id <= 0) return;
+  const account = microsoftAccountsFrom(_socialAccounts.microsoft).find(acc => Number(acc.id) === id);
+  const label = microsoftAccountName(account);
+  if (!confirm(`Remover a conta Xbox / Microsoft "${label}"?\n\nAs outras contas Microsoft vinculadas continuarão na sua conta Força Aliada.`)) return;
+
+  const el = document.getElementById('conn-microsoft');
+  if (el) el.classList.add('loading');
+  try {
+    const res = await fetch(`${API_BASE}/api/me/social-accounts/microsoft/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Erro ao remover vínculo');
+    await loadSocialAccounts();
+    await refreshSessionFromServer();
+    showToast('success', 'Vínculo removido', `${label} foi desvinculada da sua conta.`);
+  } catch (e) {
+    showToast('error', 'Falha ao remover', e.message);
+  } finally {
+    if (el) el.classList.remove('loading');
+  }
 }
 
 async function unlinkAccount(provider) {
@@ -3533,6 +3824,11 @@ async function unlinkAccount(provider) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Erro ao remover vínculo');
+
+    await loadSocialAccounts();
+    await refreshSessionFromServer();
+    showToast('success', 'Vínculo removido', `${label} foi desvinculada da sua conta.`);
+    return;
 
     el.classList.remove('loading', 'is-linked');
     delete _socialAccounts[provider];

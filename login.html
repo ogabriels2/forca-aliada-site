@@ -1121,7 +1121,7 @@ async function handleLinkConfirm(linkToken, provider, email) {
 
 // Versão popup de handleLinkConfirm: usado quando a página corre num popup da account.html.
 // Em vez de redirecionar para dashboard, notifica a janela pai e fecha o popup.
-async function handleLinkConfirmPopup(linkToken, provider, email) {
+async function handleLinkConfirmPopup(linkToken, provider, email, flowId = null) {
   showLinkModal(provider, email);
 
   return new Promise((resolve) => {
@@ -1129,6 +1129,17 @@ async function handleLinkConfirmPopup(linkToken, provider, email) {
     const btnCancel    = document.getElementById('btn-modal-cancel');
     const modalSpinner = document.getElementById('modal-spinner');
     const btnText      = document.getElementById('btn-modal-confirm-text');
+
+    function finishPopup(status, extra = {}) {
+      const payload = { source: 'fa_oauth', status, provider, flowId, ...extra };
+      if (flowId) {
+        try {
+          localStorage.setItem(`fa_oauth_result_${flowId}`, JSON.stringify({ ...payload, createdAt: Date.now() }));
+        } catch (_) {}
+      }
+      try { window.opener?.postMessage(payload, '*'); } catch (_) {}
+      setTimeout(() => window.close(), 60);
+    }
 
     async function onConfirm() {
       btnConfirm.disabled = true;
@@ -1146,15 +1157,11 @@ async function handleLinkConfirmPopup(linkToken, provider, email) {
         if (!rr.ok || !data.token) throw new Error(data.error || 'Falha ao vincular conta');
 
         hideLinkModal();
-        // Notifica a janela pai e fecha o popup
-        try { window.opener.postMessage({ source: 'fa_oauth', status: 'linked', provider }, '*'); } catch (_) {}
-        window.close();
+        finishPopup('linked');
         resolve(true);
       } catch (err) {
         hideLinkModal();
-        // Notifica erro para a janela pai e fecha
-        try { window.opener.postMessage({ source: 'fa_oauth', status: 'error', provider, message: err.message }, '*'); } catch (_) {}
-        window.close();
+        finishPopup('error', { message: err.message });
         resolve(false);
       } finally {
         cleanup();
@@ -1163,8 +1170,7 @@ async function handleLinkConfirmPopup(linkToken, provider, email) {
 
     function onCancel() {
       hideLinkModal();
-      try { window.opener.postMessage({ source: 'fa_oauth', status: 'cancelled', provider }, '*'); } catch (_) {}
-      window.close();
+      finishPopup('cancelled');
       cleanup();
       resolve(false);
     }
@@ -1193,23 +1199,31 @@ window.addEventListener('DOMContentLoaded', async () => {
   const oauthToken    = urlParams.get('oauth_token') || urlParams.get('ms_token');
   const linkToken     = urlParams.get('oauth_link_token');
   const linkEmail     = urlParams.get('oauth_email');
+  const oauthPopup    = urlParams.get('oauth_popup') === '1';
+  const oauthFlow     = urlParams.get('oauth_flow') || null;
 
   // Detect popup context — se esta página foi aberta como popup pela account.html
   // window.opener existe e não está bloqueado
-  const isPopup = !!(window.opener && window.opener !== window);
+  const isPopup = oauthPopup || !!(window.opener && window.opener !== window);
 
   // Always clean URL params immediately to avoid re-triggering on refresh
-  if (oauthErr || oauthToken || linkToken) {
+  if (oauthErr || oauthToken || linkToken || oauthPopup || oauthFlow) {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
   // Helper: fechar popup e notificar janela pai
   function closePopupWithResult(status, extra = {}) {
     if (isPopup) {
+      const payload = { source: 'fa_oauth', status, provider: oauthProvider, flowId: oauthFlow, ...extra };
+      if (oauthFlow) {
+        try {
+          localStorage.setItem(`fa_oauth_result_${oauthFlow}`, JSON.stringify({ ...payload, createdAt: Date.now() }));
+        } catch (_) {}
+      }
       try {
-        window.opener.postMessage({ source: 'fa_oauth', status, ...extra }, '*');
+        window.opener?.postMessage(payload, '*');
       } catch (_) {}
-      window.close();
+      setTimeout(() => window.close(), 60);
     }
   }
 
@@ -1239,7 +1253,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (isPopup) {
       // No popup, mostra confirmação e fecha ao terminar
       showView('login');
-      setTimeout(() => handleLinkConfirmPopup(linkToken, oauthProvider, linkEmail), 120);
+      setTimeout(() => handleLinkConfirmPopup(linkToken, oauthProvider, linkEmail, oauthFlow), 120);
       return;
     }
     showView('login');
