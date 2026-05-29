@@ -3,1575 +3,2040 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Força Aliada – Comunidade: acompanhe seus amigos, publique conquistas e conecte-se com o Xbox.">
 <title>Comunidade | Força Aliada</title>
-<link rel="icon" type="image/jpeg" href="assets/images/logo.JPG">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<meta name="description" content="Feed social gamificado da comunidade Força Aliada.">
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
-
 <script>
-(function(){
-  const key='fa_theme';
-  const token=localStorage.getItem('fa_token');
-  const API_BASE = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
-    ? 'http://localhost:3000' : 'https://forca-aliada-site.onrender.com';
-  function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';}
-  function apply(t){document.documentElement.setAttribute('data-theme',effective(t||localStorage.getItem(key)||'auto'));}
+(function () {
+  const key = 'fa_theme';
+  const token = localStorage.getItem('fa_token');
+  const base = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://forca-aliada-site.onrender.com';
+  const effective = theme => theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  const apply = theme => document.documentElement.setAttribute('data-theme', effective(theme || localStorage.getItem(key) || 'light'));
   apply();
-  if(token){
-    const syncTheme=()=>{
-      fetch(`${API_BASE}/api/me/preferences`,{headers:{Authorization:'Bearer '+token}})
-        .then(r=>r.ok?r.json():null)
-        .then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}})
-        .catch(()=>{});
+  if (token) {
+    const sync = () => {
+      fetch(`${base}/api/me/preferences`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.ok ? res.json() : null)
+        .then(prefs => {
+          if (prefs?.theme) {
+            localStorage.setItem(key, prefs.theme);
+            apply(prefs.theme);
+          }
+        })
+        .catch(() => {});
     };
-    (typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);
+    (typeof requestIdleCallback === 'function') ? requestIdleCallback(sync, { timeout: 2500 }) : setTimeout(sync, 500);
   }
-  matchMedia('(prefers-color-scheme:dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'light'));
 })();
 </script>
-
 <style>
-/* ═══════════════════════════════════════════════════════
-   FORÇA ALIADA — COMUNIDADE
-   Design: Dynamic Social Feed · Three-Column Layout
-   Font: Outfit · Palette: Indigo/Violet · Warm Neutrals
-   ═══════════════════════════════════════════════════════ */
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { -webkit-text-size-adjust: 100%; }
-
 :root {
-  --font:        'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --mono:        'JetBrains Mono', monospace;
-  --t:           0.18s cubic-bezier(.4,0,.2,1);
-  --t-slow:      0.38s cubic-bezier(.16,1,.3,1);
-
-  /* Layout */
-  --header-h:    60px;
-  --sb-w:        280px;
-  --aside-w:     260px;
-
-  /* Surfaces */
-  --bg:          #f4f5fb;
-  --surface:     #ffffff;
-  --surface-2:   #f0f1f9;
-  --border:      rgba(0,0,0,0.07);
-  --border-focus:#6366f1;
-
-  /* Ink */
-  --ink-1:       #0f1022;
-  --ink-2:       #4b5272;
-  --ink-3:       #9199b8;
-
-  /* Accent */
-  --accent:      #6366f1;
-  --accent-h:    #4f46e5;
-  --accent-soft: rgba(99,102,241,0.10);
-  --accent-glow: rgba(99,102,241,0.20);
-
-  /* Semantic */
-  --success:     #10b981;
-  --success-soft:rgba(16,185,129,0.10);
-  --danger:      #ef4444;
-  --danger-soft: rgba(239,68,68,0.10);
-  --warning:     #f59e0b;
-  --xbox-green:  #107C10;
-
-  /* Shadows */
-  --sh-xs:  0 1px 3px rgba(15,23,42,0.06);
-  --sh-sm:  0 4px 16px rgba(15,23,42,0.07);
-  --sh-md:  0 8px 28px rgba(15,23,42,0.09);
-  --sh-lg:  0 20px 56px rgba(15,23,42,0.12);
-
-  /* Radius */
-  --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-xl: 22px; --r-pill: 999px;
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --bg-2: #eaf0f8;
+  --surface: rgba(255,255,255,0.86);
+  --surface-solid: #ffffff;
+  --surface-soft: #f8fafc;
+  --ink: #101828;
+  --ink-2: #475467;
+  --ink-3: #98a2b3;
+  --line: rgba(16,24,40,0.10);
+  --line-strong: rgba(16,24,40,0.16);
+  --accent: #1761f0;
+  --accent-2: #0e9384;
+  --accent-soft: rgba(23,97,240,0.10);
+  --success: #148f54;
+  --success-soft: rgba(20,143,84,0.10);
+  --danger: #d92d20;
+  --danger-soft: rgba(217,45,32,0.10);
+  --warning: #dc7f00;
+  --warning-soft: rgba(220,127,0,0.12);
+  --gold: #b7791f;
+  --purple: #7c3aed;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05), 0 1px 0 rgba(255,255,255,0.72) inset;
+  --shadow-md: 0 10px 28px rgba(16,24,40,0.09), 0 1px 0 rgba(255,255,255,0.82) inset;
+  --shadow-lg: 0 24px 70px rgba(16,24,40,0.16);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 0.14s;
+  --t-med: 0.24s;
 }
 
 [data-theme="dark"] {
-  --bg:          #0d0e1a;
-  --surface:     #141527;
-  --surface-2:   #1a1c30;
-  --border:      rgba(255,255,255,0.08);
-  --ink-1:       #e8eaf6;
-  --ink-2:       #8b91b8;
-  --ink-3:       #484e72;
-  --accent:      #818cf8;
-  --accent-h:    #6366f1;
-  --accent-soft: rgba(129,140,248,0.13);
-  --accent-glow: rgba(129,140,248,0.25);
-  --success:     #34d399;
-  --success-soft:rgba(52,211,153,0.12);
-  --danger:      #f87171;
-  --danger-soft: rgba(248,113,113,0.12);
-  --sh-xs: 0 1px 3px rgba(0,0,0,0.3);
-  --sh-sm: 0 4px 16px rgba(0,0,0,0.35);
-  --sh-md: 0 8px 28px rgba(0,0,0,0.4);
-  --sh-lg: 0 20px 56px rgba(0,0,0,0.5);
+  color-scheme: dark;
+  --bg: #090d14;
+  --bg-2: #101826;
+  --surface: rgba(18,25,38,0.84);
+  --surface-solid: #121926;
+  --surface-soft: #172033;
+  --ink: #f4f7fb;
+  --ink-2: #c4cedb;
+  --ink-3: #8b98aa;
+  --line: rgba(255,255,255,0.11);
+  --line-strong: rgba(255,255,255,0.18);
+  --accent: #6ea8ff;
+  --accent-2: #46c3b2;
+  --accent-soft: rgba(110,168,255,0.14);
+  --success: #47c982;
+  --success-soft: rgba(71,201,130,0.14);
+  --danger: #ff6b60;
+  --danger-soft: rgba(255,107,96,0.14);
+  --warning: #ffb454;
+  --warning-soft: rgba(255,180,84,0.14);
+  --gold: #f6c66b;
+  --purple: #b692ff;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.28);
+  --shadow-md: 0 14px 34px rgba(0,0,0,0.34);
+  --shadow-lg: 0 28px 80px rgba(0,0,0,0.46);
 }
 
+* { box-sizing: border-box; }
+html { min-height: 100%; scroll-behavior: smooth; }
 body {
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--ink-1);
+  margin: 0;
+  min-height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background:
+    linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 310px, var(--bg) 100%);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
-  min-height: 100dvh;
-  visibility: hidden;
+  text-rendering: optimizeLegibility;
 }
-body.ready { visibility: visible; animation: fadeIn .25s ease forwards; }
-@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+body.modal-open { overflow: hidden; }
+a { color: inherit; text-decoration: none; }
+button, textarea, input { font: inherit; }
+button { border: 0; }
+button:disabled { cursor: not-allowed; opacity: 0.58; }
+svg { display: block; }
 
-a { text-decoration: none; color: inherit; }
-button { font-family: inherit; cursor: pointer; border: none; background: none; }
-img { display: block; }
-
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-
-/* ══════════════════════════════════════════
-   TOAST
-   ══════════════════════════════════════════ */
-#toast-root {
-  position: fixed; bottom: 24px; right: 24px;
-  display: flex; flex-direction: column; gap: 10px;
-  z-index: 9000; pointer-events: none;
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 68px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+  backdrop-filter: blur(22px) saturate(170%);
 }
-.toast {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-md); padding: 12px 16px;
-  display: flex; align-items: center; gap: 10px;
-  box-shadow: var(--sh-md); pointer-events: auto;
-  min-width: 220px; max-width: 320px;
-  animation: toastIn .3s var(--t-slow) both;
-}
-.toast.out { animation: toastOut .25s ease forwards; }
-.toast.success { border-left: 3px solid var(--success); }
-.toast.error   { border-left: 3px solid var(--danger); }
-.toast.info    { border-left: 3px solid var(--accent); }
-.toast-icon { font-size: 17px; flex-shrink: 0; }
-.toast-msg { font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--ink-1); }
-@keyframes toastIn  { from { opacity:0; transform: translateX(14px) scale(.95); } to { opacity:1; transform: none; } }
-@keyframes toastOut { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(14px) scale(.95); } }
-
-/* ══════════════════════════════════════════
-   SKELETON
-   ══════════════════════════════════════════ */
-.skel {
-  background: linear-gradient(90deg, var(--border) 25%, rgba(128,128,128,0.07) 50%, var(--border) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.6s infinite;
-  border-radius: 6px;
-}
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-/* ══════════════════════════════════════════
-   HEADER
-   ══════════════════════════════════════════ */
-header {
-  position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
-  background: rgba(255,255,255,0.80);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 20px; z-index: 500;
-  transition: background var(--t);
-}
-[data-theme="dark"] header { background: rgba(13,14,26,0.80); }
-
-.brand-link { display: flex; align-items: center; gap: 10px; }
-.logo-img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
-.logo-text { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
-
-.header-center {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 4px;
-}
-.header-center a {
-  font-size: 13.5px; font-weight: 500; color: var(--ink-2);
-  padding: 6px 14px; border-radius: var(--r-pill);
-  transition: color var(--t), background var(--t);
-}
-.header-center a:hover { color: var(--ink-1); background: var(--surface-2); }
-.header-center a.active { color: var(--accent); background: var(--accent-soft); }
-
-.header-right { display: flex; align-items: center; gap: 10px; }
-
-/* User button */
-.user-menu-wrapper { position: relative; }
-.user-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 12px 4px 4px; border-radius: var(--r-pill);
-  background: var(--surface-2); border: 1px solid transparent;
-  transition: var(--t); user-select: none; cursor: pointer;
-}
-.user-btn:hover { background: var(--border); }
-.user-btn.open { background: var(--surface); border-color: var(--border); box-shadow: var(--sh-sm); }
-.user-btn img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
-.user-btn span { font-size: 13.5px; font-weight: 600; color: var(--ink-1); }
-.user-btn svg { width: 13px; height: 13px; color: var(--ink-3); transition: transform .25s; }
-.user-btn.open svg { transform: rotate(180deg); }
-
-.user-dropdown {
-  position: absolute; right: 0; top: calc(100% + 10px);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); box-shadow: var(--sh-lg);
-  padding: 8px; min-width: 240px;
-  opacity: 0; visibility: hidden; transform: translateY(-8px);
-  transition: var(--t); z-index: 600;
-}
-.user-dropdown.show { opacity: 1; visibility: visible; transform: none; }
-.dd-head { padding: 10px 8px; display: flex; align-items: center; gap: 10px; }
-.dd-head img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-.dd-head-info { overflow: hidden; }
-.dd-head-info strong { font-size: 14px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dd-head-info span { font-size: 12px; color: var(--ink-2); }
-.dd-sep { height: 1px; background: var(--border); margin: 6px 0; }
-.dd-item {
-  display: flex; align-items: center; gap: 9px;
-  padding: 9px 10px; border-radius: var(--r-sm);
-  font-size: 13.5px; font-weight: 500; color: var(--ink-1);
-  transition: background var(--t); width: 100%; text-align: left;
-}
-.dd-item svg { width: 15px; height: 15px; color: var(--ink-3); flex-shrink: 0; }
-.dd-item:hover { background: var(--surface-2); }
-.dd-item.danger { color: var(--danger); }
-.dd-item.danger svg { color: var(--danger); }
-.dd-item.danger:hover { background: var(--danger-soft); }
-
-.btn-login {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: var(--accent); color: #fff;
-  padding: 7px 18px; border-radius: var(--r-pill);
-  font-size: 13.5px; font-weight: 600;
-  transition: background var(--t), transform var(--t);
-}
-.btn-login:hover { background: var(--accent-h); transform: scale(1.02); }
-
-/* ══════════════════════════════════════════
-   MAIN 3-COLUMN LAYOUT
-   ══════════════════════════════════════════ */
-.community-layout {
-  display: grid;
-  grid-template-columns: var(--sb-w) 1fr var(--aside-w);
-  gap: 24px;
-  max-width: 1180px;
+.topbar-inner {
+  width: min(1240px, calc(100% - 32px));
+  height: 100%;
   margin: 0 auto;
-  padding: calc(var(--header-h) + 28px) 20px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.brand-link img {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-text strong { font-size: 15px; }
+.brand-text span { color: var(--ink-3); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.top-link,
+.icon-btn,
+.user-chip {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease), border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+}
+.top-link { padding: 0 14px; font-size: 13px; font-weight: 750; }
+.icon-btn { width: 38px; padding: 0; }
+.icon-btn svg,
+.top-link svg,
+.user-chip svg { width: 17px; height: 17px; }
+.top-link:hover,
+.icon-btn:hover,
+.user-chip:hover { transform: translateY(-1px); border-color: var(--line-strong); color: var(--accent); background: var(--surface-solid); }
+.user-chip { padding: 4px 12px 4px 4px; font-weight: 750; color: var(--ink); }
+.user-chip img { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; }
+.user-chip span { max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+
+.community-shell {
+  width: min(1240px, calc(100% - 32px));
+  margin: 28px auto 56px;
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr) 310px;
+  gap: 22px;
+  align-items: start;
+}
+.rail,
+.side-panel {
+  position: sticky;
+  top: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.panel,
+.composer-card,
+.post-card,
+.empty-state,
+.modal-sheet {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--shadow-md);
+}
+.panel,
+.composer-card,
+.empty-state { border-radius: var(--r-lg); }
+.post-card { border-radius: var(--r-md); }
+.panel { padding: 16px; }
+.profile-mini {
+  overflow: hidden;
+  padding: 0;
+}
+.mini-cover {
+  height: 76px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 78%, #ffffff 0%), color-mix(in srgb, var(--accent-2) 72%, #ffffff 0%));
+  border-bottom: 1px solid var(--line);
+}
+.mini-body {
+  padding: 0 16px 16px;
+}
+.mini-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  margin-top: -34px;
+  border: 4px solid var(--surface-solid);
+  object-fit: cover;
+  background: var(--surface-soft);
+  box-shadow: var(--shadow-md);
+}
+.mini-name {
+  margin: 10px 0 2px;
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+.mini-handle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+.mini-stat {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 10px;
+  background: var(--surface-soft);
+}
+.mini-stat strong { display: block; font-size: 16px; }
+.mini-stat span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.05em; }
+.rail-nav {
+  display: grid;
+  gap: 6px;
+}
+.rail-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast) var(--ease);
+}
+.rail-link svg { width: 18px; height: 18px; }
+.rail-link:hover { background: var(--accent-soft); color: var(--accent); transform: translateX(2px); }
+.rail-link.active { background: var(--accent-soft); color: var(--accent); }
+.season-card {
+  display: grid;
+  gap: 12px;
+}
+.season-eyebrow,
+.panel-eyebrow {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.season-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 850;
+}
+.season-copy {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.progress-fill {
+  width: 36%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 
-/* ══════════════════════════════════════════
-   LEFT SIDEBAR
-   ══════════════════════════════════════════ */
-.sidebar-left {
-  position: sticky; top: calc(var(--header-h) + 20px);
-  height: fit-content; display: flex; flex-direction: column; gap: 16px;
+.feed-column {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
 }
-
-.profile-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-xl); padding: 20px; box-shadow: var(--sh-xs);
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  padding: 4px 2px 2px;
 }
-.profile-card-banner {
-  height: 60px; border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 60%, #ec4899 100%);
-  margin-bottom: -28px; position: relative;
+.page-head h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: 0;
 }
-.profile-card-avatar {
-  width: 52px; height: 52px; border-radius: 12px;
-  border: 3px solid var(--surface); object-fit: cover;
-  position: relative; margin-left: 12px; z-index: 1;
+.page-head p {
+  margin: 7px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.45;
 }
-.profile-card-avatar-skel {
-  width: 52px; height: 52px; border-radius: 12px;
-  border: 3px solid var(--surface);
-  position: relative; margin-left: 12px; z-index: 1;
-}
-.profile-card-info { padding: 8px 0 0; }
-.profile-card-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
-.profile-card-sub { font-size: 12px; color: var(--ink-2); }
-.profile-card-stats {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 8px; margin-top: 14px;
-}
-.profile-stat {
-  background: var(--surface-2); border-radius: var(--r-sm);
-  padding: 10px; text-align: center;
-}
-.profile-stat-val { font-size: 17px; font-weight: 700; color: var(--accent); }
-.profile-stat-lbl { font-size: 10px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
-
-.sidebar-nav { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 8px; box-shadow: var(--sh-xs); }
-.sidebar-nav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: var(--r-md);
-  font-size: 14px; font-weight: 500; color: var(--ink-2);
-  transition: var(--t); cursor: pointer; width: 100%; text-align: left;
-}
-.sidebar-nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
-.sidebar-nav-item:hover { background: var(--surface-2); color: var(--ink-1); }
-.sidebar-nav-item.active { background: var(--accent-soft); color: var(--accent); }
-.sidebar-nav-item .badge {
-  margin-left: auto; background: var(--accent); color: #fff;
-  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: var(--r-pill);
-  min-width: 20px; text-align: center;
-}
-
-/* ══════════════════════════════════════════
-   CENTER FEED
-   ══════════════════════════════════════════ */
-.feed-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-
-/* Compose Box */
-.compose-box {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-xl); padding: 18px; box-shadow: var(--sh-xs);
-}
-.compose-row { display: flex; align-items: flex-start; gap: 12px; }
-.compose-avatar { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
-.compose-avatar-skel { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; }
-.compose-inner { flex: 1; min-width: 0; }
-.compose-textarea {
-  width: 100%; border: 1.5px solid var(--border); border-radius: var(--r-md);
-  padding: 11px 14px; font-family: var(--font); font-size: 14px;
-  color: var(--ink-1); background: var(--surface-2);
-  resize: none; min-height: 72px; outline: none;
-  transition: border-color var(--t), box-shadow var(--t);
-  line-height: 1.5;
-}
-.compose-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-.compose-textarea::placeholder { color: var(--ink-3); }
-.compose-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-.compose-counter { font-size: 12px; color: var(--ink-3); font-family: var(--mono); }
-.compose-counter.warn { color: var(--warning); }
-.compose-counter.over { color: var(--danger); }
-.btn-post {
-  background: var(--accent); color: #fff;
-  padding: 8px 22px; border-radius: var(--r-pill);
-  font-size: 13.5px; font-weight: 600;
-  transition: background var(--t), transform var(--t), opacity var(--t);
-}
-.btn-post:hover:not(:disabled) { background: var(--accent-h); transform: scale(1.03); }
-.btn-post:disabled { opacity: .5; cursor: not-allowed; }
-
-/* Feed Tabs */
-.feed-tabs { display: flex; gap: 4px; }
-.feed-tab {
-  padding: 7px 18px; border-radius: var(--r-pill);
-  font-size: 13.5px; font-weight: 600; color: var(--ink-2);
-  transition: var(--t); cursor: pointer;
-}
-.feed-tab:hover { background: var(--surface-2); color: var(--ink-1); }
-.feed-tab.active { background: var(--accent-soft); color: var(--accent); }
-
-/* Post Card */
-.post-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-xl); padding: 18px; box-shadow: var(--sh-xs);
-  transition: box-shadow var(--t), border-color var(--t);
-  animation: cardIn .35s var(--t-slow) both;
-}
-.post-card:hover { box-shadow: var(--sh-sm); border-color: rgba(99,102,241,0.15); }
-@keyframes cardIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: none; } }
-
-.post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.post-avatar { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
-.post-author-info { flex: 1; min-width: 0; }
-.post-author-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.post-author-sub  { font-size: 12px; color: var(--ink-2); }
-.post-time { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
-.post-menu-btn {
-  width: 28px; height: 28px; border-radius: var(--r-sm);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--ink-3); transition: background var(--t), color var(--t);
-}
-.post-menu-btn:hover { background: var(--surface-2); color: var(--ink-1); }
-
-.post-content {
-  font-size: 14.5px; line-height: 1.6; color: var(--ink-1);
-  margin-bottom: 14px; word-break: break-word;
-  white-space: pre-line;
-}
-.post-content .mention { color: var(--accent); font-weight: 600; }
-
-.post-actions { display: flex; align-items: center; gap: 4px; }
-.post-action-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 14px; border-radius: var(--r-pill);
-  font-size: 13px; font-weight: 500; color: var(--ink-2);
-  transition: var(--t); cursor: pointer;
-}
-.post-action-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
-.post-action-btn:hover { background: var(--surface-2); color: var(--ink-1); }
-.post-action-btn.liked { color: #ef4444; background: rgba(239,68,68,0.08); }
-.post-action-btn.liked svg { fill: #ef4444; color: #ef4444; }
-.post-action-btn.comment-active { color: var(--accent); background: var(--accent-soft); }
-
-/* Skeleton post */
-.post-skel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 18px; box-shadow: var(--sh-xs); }
-.post-skel-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-
-/* Comment section */
-.comment-section { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
-.comment-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
-.comment-item { display: flex; align-items: flex-start; gap: 9px; }
-.comment-avatar { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
-.comment-body { background: var(--surface-2); border-radius: 0 var(--r-md) var(--r-md) var(--r-md); padding: 9px 12px; flex: 1; }
-.comment-author { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
-.comment-text { font-size: 13px; color: var(--ink-2); line-height: 1.5; word-break: break-word; }
-.comment-time { font-size: 10.5px; color: var(--ink-3); margin-top: 4px; }
-.comment-input-row { display: flex; align-items: center; gap: 8px; }
-.comment-input-avatar { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
-.comment-input {
-  flex: 1; border: 1.5px solid var(--border); border-radius: var(--r-pill);
-  padding: 7px 14px; font-family: var(--font); font-size: 13px;
-  background: var(--surface-2); color: var(--ink-1); outline: none;
-  transition: border-color var(--t), box-shadow var(--t);
-}
-.comment-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-.comment-input::placeholder { color: var(--ink-3); }
-.btn-comment-send {
-  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-  background: var(--accent); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  transition: background var(--t), transform var(--t);
-}
-.btn-comment-send:hover { background: var(--accent-h); transform: scale(1.08); }
-.btn-comment-send svg { width: 14px; height: 14px; }
-
-/* Load more */
-.btn-load-more {
-  width: 100%; padding: 11px; border-radius: var(--r-lg);
-  background: var(--surface); border: 1px solid var(--border);
-  font-size: 13.5px; font-weight: 600; color: var(--accent);
-  transition: var(--t); cursor: pointer;
-}
-.btn-load-more:hover { background: var(--accent-soft); }
-.btn-load-more:disabled { opacity: .5; cursor: not-allowed; }
-
-/* Empty state */
-.feed-empty {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-xl); padding: 48px 24px; text-align: center;
-  box-shadow: var(--sh-xs);
-}
-.feed-empty-icon { font-size: 40px; margin-bottom: 12px; }
-.feed-empty h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
-.feed-empty p { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
-
-/* Login prompt */
-.login-prompt {
-  background: linear-gradient(135deg, var(--accent-soft) 0%, rgba(139,92,246,0.08) 100%);
-  border: 1px solid rgba(99,102,241,0.2);
-  border-radius: var(--r-xl); padding: 28px 24px; text-align: center;
-  box-shadow: var(--sh-xs);
-}
-.login-prompt h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-.login-prompt p { font-size: 14px; color: var(--ink-2); margin-bottom: 18px; line-height: 1.5; }
-
-/* ══════════════════════════════════════════
-   RIGHT SIDEBAR
-   ══════════════════════════════════════════ */
-.sidebar-right {
-  position: sticky; top: calc(var(--header-h) + 20px);
-  height: fit-content; display: flex; flex-direction: column; gap: 16px;
-}
-
-.side-widget {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-xl); padding: 18px; box-shadow: var(--sh-xs);
-}
-.side-widget-title {
-  font-size: 13px; font-weight: 700; color: var(--ink-2);
-  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px;
-  display: flex; align-items: center; gap: 7px;
-}
-.side-widget-title svg { width: 14px; height: 14px; }
-
-/* Player row (community players widget) */
-.player-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--r-md);
-  transition: background var(--t); cursor: pointer;
-  text-decoration: none;
-}
-.player-row:hover { background: var(--surface-2); }
-.player-row-avatar { width: 34px; height: 34px; border-radius: 9px; object-fit: cover; flex-shrink: 0; }
-.player-row-info { flex: 1; min-width: 0; }
-.player-row-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player-row-sub  { font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player-row-follow {
-  font-size: 11px; font-weight: 700; padding: 3px 10px;
-  border-radius: var(--r-pill); border: 1.5px solid var(--accent);
-  color: var(--accent); transition: var(--t); white-space: nowrap;
-}
-.player-row-follow:hover { background: var(--accent); color: #fff; }
-.player-row-follow.following { background: var(--accent-soft); border-color: transparent; }
-
-/* Xbox widget */
-.xbox-widget { }
-.xbox-friends-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.xbox-friend-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 10px; border-radius: var(--r-md);
-  background: var(--surface-2); border: 1px solid var(--border);
-  transition: border-color var(--t);
-}
-.xbox-friend-row:hover { border-color: var(--accent); }
-.xbox-friend-avatar { width: 36px; height: 36px; border-radius: 9px; object-fit: cover; flex-shrink: 0; }
-.xbox-friend-info { flex: 1; min-width: 0; }
-.xbox-friend-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.xbox-friend-status { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
-.xbox-badge-following {
-  font-size: 10px; background: var(--success-soft); color: var(--success);
-  padding: 3px 8px; border-radius: var(--r-pill); font-weight: 700; white-space: nowrap;
+.feed-tabs {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }
-.xbox-badge-connect {
-  font-size: 10px; background: rgba(16,124,16,0.10); color: var(--xbox-green);
-  padding: 3px 8px; border-radius: var(--r-pill); font-weight: 700; white-space: nowrap;
-  flex-shrink: 0; cursor: pointer; border: 1px solid rgba(16,124,16,0.2);
-  transition: background var(--t);
+.tab-btn {
+  min-width: 98px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
 }
-.xbox-badge-connect:hover { background: rgba(16,124,16,0.18); }
-.btn-xbox-sync {
-  width: 100%; margin-top: 12px; padding: 9px; border-radius: var(--r-md);
-  font-size: 13px; font-weight: 600; color: #fff;
-  background: #107C10;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: opacity var(--t), transform var(--t);
+.tab-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent), #0d4fc7);
+  box-shadow: 0 8px 18px rgba(23,97,240,0.24);
 }
-.btn-xbox-sync:hover:not(:disabled) { opacity: .88; transform: scale(1.01); }
-.btn-xbox-sync:disabled { opacity: .5; cursor: not-allowed; }
 
-/* Modal overlay */
-.modal-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
-  z-index: 800; align-items: center; justify-content: center; padding: 20px;
+.composer-card {
+  padding: 16px;
 }
-.modal-overlay.open { display: flex; }
-.modal {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-xl); padding: 24px; width: 100%; max-width: 520px;
-  box-shadow: var(--sh-lg); max-height: 90dvh; overflow-y: auto;
-  animation: modalIn .3s var(--t-slow) both;
+.composer-main {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
 }
-@keyframes modalIn { from { opacity:0; transform: scale(.95) translateY(12px); } to { opacity:1; transform: none; } }
-.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.modal-title { font-size: 17px; font-weight: 700; }
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+.composer-body { min-width: 0; }
+.composer-editor {
+  position: relative;
+  min-height: 112px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-soft);
+  overflow: hidden;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.composer-editor:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.mention-layer,
+.composer-input {
+  width: 100%;
+  min-height: 112px;
+  padding: 13px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mention-layer {
+  position: absolute;
+  inset: 0;
+  color: var(--ink);
+  pointer-events: none;
+}
+.mention-layer .is-placeholder { color: var(--ink-3); }
+.mention-token {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 7px;
+  padding: 1px 4px;
+  font-weight: 800;
+}
+.composer-input {
+  position: relative;
+  z-index: 1;
+  display: block;
+  border: 0;
+  resize: none;
+  outline: none;
+  color: transparent;
+  caret-color: var(--ink);
+  background: transparent;
+}
+.composer-input::selection { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+.composer-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.composer-hint {
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.char-ring {
+  width: 38px;
+  height: 38px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  font-size: 10px;
+  font-weight: 850;
+}
+.char-ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.char-ring circle { fill: none; stroke-width: 3.5; }
+.char-ring .ring-bg { stroke: var(--line); }
+.char-ring .ring-fg {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset var(--t-med), stroke var(--t-fast);
+}
+.char-ring.warning .ring-fg { stroke: var(--warning); }
+.char-ring.danger .ring-fg { stroke: var(--danger); }
+.primary-btn,
+.secondary-btn,
+.ghost-btn,
+.danger-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast), background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.primary-btn {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #0d4fc7);
+  box-shadow: 0 12px 24px rgba(23,97,240,0.26);
+}
+.primary-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(23,97,240,0.32); }
+.secondary-btn,
+.ghost-btn {
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+  color: var(--ink-2);
+}
+.secondary-btn:hover:not(:disabled),
+.ghost-btn:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--line-strong); color: var(--accent); }
+.danger-btn {
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, transparent);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.danger-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.36);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: spin 0.7s linear infinite;
+}
+.secondary-btn .btn-spinner,
+.ghost-btn .btn-spinner {
+  border-color: var(--line);
+  border-top-color: var(--accent);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.feed-list {
+  display: grid;
+  gap: 12px;
+}
+.post-card {
+  padding: 15px;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease), border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+}
+.post-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-md);
+}
+.post-layout {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+}
+.post-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.post-author {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.post-author strong {
+  font-size: 14px;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-author span {
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+.rank-pill {
+  --rank: var(--ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--rank);
+  background: color-mix(in srgb, var(--rank) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rank) 22%, transparent);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: capitalize;
+}
+.post-time {
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.post-content {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.post-action {
+  height: 34px;
+  min-width: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast) var(--ease);
+}
+.post-action svg { width: 17px; height: 17px; }
+.post-action:hover { transform: translateY(-1px); background: var(--surface-soft); color: var(--accent); }
+.post-action.like.is-active {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.post-action.like.is-popping svg { animation: likePop 0.38s var(--ease); }
+@keyframes likePop {
+  0% { transform: scale(0.82); }
+  54% { transform: scale(1.24) rotate(-8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.post-action.delete:hover { color: var(--danger); background: var(--danger-soft); }
+.load-more-wrap {
+  display: grid;
+  place-items: center;
+  padding: 6px 0 0;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-solid) 70%, transparent), transparent);
+  animation: shimmer 1.35s infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+.post-skeleton { height: 148px; border-radius: var(--r-md); border: 1px solid var(--line); }
+.empty-state {
+  padding: 34px 24px;
+  text-align: center;
+}
+.empty-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.empty-icon svg { width: 25px; height: 25px; }
+.empty-state h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.empty-state p {
+  max-width: 420px;
+  margin: 0 auto;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.side-panel .panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.side-panel h2,
+.panel h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 850;
+}
+.search-box {
+  position: relative;
+  margin-bottom: 12px;
+}
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+  transform: translateY(-50%);
+}
+.search-box input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  outline: none;
+  background: var(--surface-soft);
+  color: var(--ink);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+}
+.search-box input:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  background: var(--surface-solid);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.player-list {
+  display: grid;
+  gap: 9px;
+}
+.player-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-soft);
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease), border-color var(--t-fast), background var(--t-fast);
+}
+.player-row:hover { transform: translateY(-1px); border-color: var(--line-strong); background: var(--surface-solid); }
+.player-row img { width: 40px; height: 40px; border-radius: 11px; object-fit: cover; }
+.player-row strong,
+.relation-row strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 850;
+}
+.player-row span,
+.relation-row span {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+.mini-follow {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.mini-follow.is-following {
+  color: var(--ink-2);
+  background: var(--surface-solid);
+  border: 1px solid var(--line);
+}
+.xbox-card {
+  display: grid;
+  gap: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--success) 12%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)),
+    var(--surface);
+}
+.xbox-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.xbox-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 13px;
+  color: #fff;
+  background: #107c10;
+  box-shadow: 0 10px 20px rgba(16,124,16,0.22);
+}
+.xbox-card h2 { font-size: 15px; }
+.xbox-card p {
+  margin: 3px 0 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6,12,22,0.56);
+  backdrop-filter: blur(14px);
+}
+.modal-backdrop.show { display: flex; animation: fadeIn var(--t-med) var(--ease); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-sheet {
+  width: min(680px, 100%);
+  max-height: min(820px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface-solid);
+  animation: sheetIn var(--t-med) var(--ease);
+}
+.modal-sheet.profile-sheet { width: min(720px, 100%); }
+.modal-sheet.list-sheet { width: min(520px, 100%); }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.modal-header {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-header h2 { margin: 0; font-size: 16px; font-weight: 850; }
 .modal-close {
-  width: 32px; height: 32px; border-radius: var(--r-sm);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--ink-2); transition: background var(--t);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--ink-2);
+  cursor: pointer;
 }
-.modal-close:hover { background: var(--surface-2); }
+.modal-close:hover { color: var(--danger); }
+.modal-content {
+  overflow: auto;
+  padding: 16px;
+}
+.thread-root { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.comments-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.comment-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-soft);
+}
+.comment-row img { width: 38px; height: 38px; border-radius: 11px; object-fit: cover; }
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 750;
+}
+.comment-meta strong { color: var(--ink); font-size: 13px; }
+.comment-row p {
+  margin: 5px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.comment-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.comment-form textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 130px;
+  resize: none;
+  outline: none;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-soft);
+  color: var(--ink);
+  line-height: 1.45;
+}
+.comment-form textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
 
-/* Rank badge */
-.rank-badge {
-  font-size: 10px; font-weight: 700; padding: 2px 7px;
-  border-radius: var(--r-pill); letter-spacing: .04em;
+.profile-cover {
+  height: 150px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 76%, #ffffff 0%), color-mix(in srgb, var(--gold) 66%, #ffffff 0%));
 }
-.rank-ferro     { background: rgba(122,136,153,0.15); color: #7a8899; }
-.rank-ouro      { background: rgba(224,135,0,0.15);   color: #b87800; }
-.rank-diamante  { background: rgba(24,165,88,0.15);   color: #18a558; }
-.rank-netherite { background: rgba(139,92,246,0.15);  color: #8b5cf6; }
-.rank-adm       { background: rgba(239,68,68,0.15);   color: #ef4444; }
+.profile-main {
+  padding: 0 18px 18px;
+}
+.profile-topline {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: -46px;
+}
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  border: 5px solid var(--surface-solid);
+  background: var(--surface-soft);
+  object-fit: cover;
+  box-shadow: var(--shadow-lg);
+}
+.profile-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0 4px;
+}
+.profile-name h3 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+}
+.profile-handle {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.profile-bio {
+  margin: 14px 0 0;
+  color: var(--ink-2);
+  line-height: 1.55;
+  font-size: 14px;
+}
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+.profile-stat {
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-soft);
+  text-align: left;
+}
+button.profile-stat { cursor: pointer; }
+button.profile-stat:hover { border-color: var(--accent); }
+.profile-stat strong { display: block; font-size: 18px; }
+.profile-stat span { display: block; margin-top: 4px; color: var(--ink-3); font-size: 11px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; }
+.relation-list {
+  display: grid;
+  gap: 9px;
+}
+.relation-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-soft);
+}
+.relation-row img { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; }
 
-/* ══════════════════════════════════════════
-   RESPONSIVE
-   ══════════════════════════════════════════ */
-@media (max-width: 1100px) {
-  .community-layout { grid-template-columns: var(--sb-w) 1fr; }
-  .sidebar-right { display: none; }
+#toast-stack {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 500;
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
 }
-@media (max-width: 780px) {
-  :root { --sb-w: 0px; }
-  .community-layout { grid-template-columns: 1fr; padding-left: 12px; padding-right: 12px; }
-  .sidebar-left { display: none; }
-  .header-center { display: none; }
+.toast {
+  width: min(360px, calc(100vw - 44px));
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toastIn var(--t-med) var(--ease);
+}
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+.toast-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.toast.success .toast-icon { color: var(--success); background: var(--success-soft); }
+.toast.error .toast-icon { color: var(--danger); background: var(--danger-soft); }
+.toast.warning .toast-icon { color: var(--warning); background: var(--warning-soft); }
+.toast strong { display: block; font-size: 13px; }
+.toast span { display: block; margin-top: 2px; color: var(--ink-2); font-size: 12px; line-height: 1.35; }
+.toast button {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.toast.removing { animation: toastOut var(--t-med) var(--ease) forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
+
+@media (max-width: 1080px) {
+  .community-shell { grid-template-columns: minmax(0, 1fr) 300px; }
+  .rail { display: none; }
+}
+@media (max-width: 820px) {
+  .topbar { height: auto; }
+  .topbar-inner {
+    min-height: 64px;
+    width: min(100% - 24px, 1240px);
+  }
+  .brand-text span,
+  .top-link.hide-mobile,
+  .user-chip span { display: none; }
+  .community-shell {
+    width: min(100% - 24px, 680px);
+    grid-template-columns: 1fr;
+    margin-top: 18px;
+  }
+  .side-panel { position: static; order: 3; }
+  .page-head { display: grid; align-items: start; }
+  .feed-tabs { width: 100%; }
+  .tab-btn { flex: 1; min-width: 0; }
+  .composer-main,
+  .post-layout { grid-template-columns: 42px minmax(0, 1fr); }
+  .avatar { width: 42px; height: 42px; border-radius: 12px; }
+  .composer-footer { align-items: flex-end; }
+  .composer-hint { display: none; }
+  .post-head { display: grid; gap: 4px; }
+  .post-time { white-space: normal; }
+  .profile-stats { grid-template-columns: repeat(2, 1fr); }
+  .modal-backdrop { padding: 10px; align-items: end; }
+  .modal-sheet { max-height: calc(100vh - 20px); border-radius: 18px 18px 0 0; }
+}
+@media (max-width: 480px) {
+  .top-actions { gap: 6px; }
+  .top-link { padding: 0 10px; }
+  .composer-card,
+  .post-card,
+  .panel { padding: 12px; }
+  .composer-tools { gap: 7px; }
+  .primary-btn,
+  .secondary-btn,
+  .ghost-btn,
+  .danger-btn { padding: 0 12px; }
+  .post-actions { justify-content: space-between; }
+  .comment-form { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
+<div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-<!-- ── TOAST ROOT ────────────────────── -->
-<div id="toast-root" aria-live="polite"></div>
-
-<!-- ══════════════════════════════════════
-     HEADER
-     ══════════════════════════════════════ -->
-<header>
-  <a class="brand-link" href="index.html">
-    <img class="logo-img" src="assets/images/logo.JPG" alt="Força Aliada">
-    <span class="logo-text">Força Aliada</span>
-  </a>
-  <nav class="header-center">
-    <a href="index.html">Início</a>
-    <a href="community.html" class="active">Comunidade</a>
-    <a href="account.html">Conta</a>
-  </nav>
-  <div class="header-right" id="header-auth-area">
-    <!-- rendered by JS -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand-link" href="index.html" aria-label="Voltar para o inicio">
+      <img src="assets/images/logo.JPG" alt="Força Aliada" width="76" height="76">
+      <span class="brand-text">
+        <strong>Força Aliada</strong>
+        <span>Comunidade</span>
+      </span>
+    </a>
+    <nav class="top-actions" aria-label="Atalhos">
+      <a class="top-link hide-mobile" href="account.html?tab=amigos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M9 12l2 2 4-5"/></svg>
+        Xbox
+      </a>
+      <a class="top-link hide-mobile" href="account.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
+        Conta
+      </a>
+      <button class="icon-btn" type="button" id="theme-toggle" aria-label="Alternar tema">
+        <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"/></svg>
+      </button>
+      <button class="user-chip" type="button" id="user-chip" aria-label="Abrir sua conta">
+        <img id="top-avatar" src="https://minotar.net/helm/Steve/50.png" alt="Avatar" width="50" height="50">
+        <span id="top-name">Carregando</span>
+      </button>
+    </nav>
   </div>
 </header>
 
-<!-- ══════════════════════════════════════
-     3-COLUMN LAYOUT
-     ══════════════════════════════════════ -->
-<div class="community-layout">
-
-  <!-- LEFT SIDEBAR -->
-  <aside class="sidebar-left">
-    <!-- Profile Card -->
-    <div class="profile-card" id="sb-profile-card">
-      <div class="profile-card-banner"></div>
-      <!-- populated by JS -->
-    </div>
-
-    <!-- Nav -->
-    <div class="sidebar-nav">
-      <button class="sidebar-nav-item active" onclick="switchFeedTab('all', this)">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 000 2h14a1 1 0 000-2H3zm0 4a1 1 0 000 2h14a1 1 0 000-2H3zm0 4a1 1 0 000 2h8a1 1 0 000-2H3z"/></svg>
-        Feed Global
+<main class="community-shell">
+  <aside class="rail" aria-label="Navegacao da comunidade">
+    <section class="panel profile-mini">
+      <div class="mini-cover"></div>
+      <div class="mini-body">
+        <img class="mini-avatar" id="mini-avatar" src="https://minotar.net/helm/Steve/100.png" alt="Seu avatar" width="100" height="100">
+        <h2 class="mini-name" id="mini-name">Sua conta</h2>
+        <p class="mini-handle" id="mini-handle">@minecraft</p>
+        <div class="mini-actions">
+          <div class="mini-stat">
+            <strong id="mini-posts">0</strong>
+            <span>posts</span>
+          </div>
+          <div class="mini-stat">
+            <strong id="mini-likes">0</strong>
+            <span>likes</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="panel rail-nav">
+      <button class="rail-link active" type="button" data-rail-filter="all">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>
+        Feed geral
       </button>
-      <button class="sidebar-nav-item" id="following-tab-btn" onclick="switchFeedTab('following', this)">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+      <button class="rail-link" type="button" data-rail-filter="following">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg>
         Seguindo
       </button>
-      <button class="sidebar-nav-item" onclick="openXboxModal()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.998 0C5.372 0 0 5.373 0 12s5.372 12 11.998 12C18.626 24 24 18.627 24 12S18.626 0 11.998 0zM4.31 7.28c0-.001 2.393-2.698 6.054-1.933l1.654 1.665 1.656-1.665c3.659-.765 6.052 1.932 6.052 1.932.888 2.695-.217 7.193-.217 7.193-1.006 1.12-2.767 2.966-4.136 2.966-1.371 0-1.98-.693-3.355-.693-1.374 0-1.983.693-3.354.693-1.371 0-3.13-1.846-4.137-2.966 0 0-1.105-4.498-.217-7.192z"/></svg>
-        Amigos Xbox
+      <a class="rail-link" href="account.html?tab=notificacoes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Notificacoes
+      </a>
+      <a class="rail-link" href="account.html?tab=amigos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+        Xbox sync
+      </a>
+    </section>
+    <section class="panel season-card">
+      <div class="season-eyebrow">Temporada social</div>
+      <h2 class="season-title">Aumente seu alcance</h2>
+      <p class="season-copy">Posts com mencoes e comentarios aproximam jogadores ativos do seu perfil.</p>
+      <div class="progress-track" aria-hidden="true"><div class="progress-fill"></div></div>
+    </section>
+  </aside>
+
+  <section class="feed-column" aria-label="Feed da comunidade">
+    <div class="page-head">
+      <div>
+        <h1>Praça da Comunidade</h1>
+        <p>Publique updates curtos, marque jogadores e transforme o feed no ponto vivo do servidor.</p>
+      </div>
+      <div class="feed-tabs" role="tablist" aria-label="Filtro do feed">
+        <button class="tab-btn active" type="button" data-filter="all" role="tab" aria-selected="true">Geral</button>
+        <button class="tab-btn" type="button" data-filter="following" role="tab" aria-selected="false">Seguindo</button>
+      </div>
+    </div>
+
+    <section class="composer-card" aria-label="Novo post">
+      <div class="composer-main">
+        <img class="avatar" id="composer-avatar" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar" width="50" height="50">
+        <div class="composer-body">
+          <div class="composer-editor">
+            <div class="mention-layer" id="composer-highlight"><span class="is-placeholder">O que aconteceu no servidor?</span></div>
+            <textarea class="composer-input" id="post-content" maxlength="320" spellcheck="true" aria-label="Conteudo do post"></textarea>
+          </div>
+          <div class="composer-footer">
+            <div class="composer-hint">Use @nome para chamar alguem para a conversa.</div>
+            <div class="composer-tools">
+              <div class="char-ring" id="post-char-ring" aria-label="Caracteres restantes">
+                <svg viewBox="0 0 38 38" aria-hidden="true">
+                  <circle class="ring-bg" cx="19" cy="19" r="16"></circle>
+                  <circle class="ring-fg" cx="19" cy="19" r="16"></circle>
+                </svg>
+                <span id="post-char-count">280</span>
+              </div>
+              <button class="primary-btn" type="button" id="publish-btn" disabled>Publicar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="feed-list" id="feed-list" aria-live="polite"></div>
+    <div class="load-more-wrap">
+      <button class="secondary-btn" type="button" id="load-more-btn" hidden>Carregar mais</button>
+    </div>
+    <div id="feed-sentinel" aria-hidden="true"></div>
+  </section>
+
+  <aside class="side-panel">
+    <section class="panel">
+      <div class="panel-title">
+        <div>
+          <div class="panel-eyebrow">Discovery</div>
+          <h2>Jogadores em alta</h2>
+        </div>
+        <button class="icon-btn" type="button" id="refresh-players" aria-label="Atualizar jogadores">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+      </div>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="player-search" type="search" placeholder="Buscar jogador">
+      </div>
+      <div class="player-list" id="player-list"></div>
+    </section>
+
+    <section class="panel xbox-card">
+      <div class="xbox-top">
+        <div class="xbox-mark">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 16 16"/><path d="M20 4 4 20"/><circle cx="12" cy="12" r="9"/></svg>
+        </div>
+        <div>
+          <h2>Amigos do Xbox</h2>
+          <p>Encontre quem já joga na Força Aliada e siga em lote pela conta.</p>
+        </div>
+      </div>
+      <a class="primary-btn" href="account.html?tab=amigos">Abrir sincronia</a>
+    </section>
+  </aside>
+</main>
+
+<div class="modal-backdrop" id="comments-modal" aria-hidden="true">
+  <section class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="comments-title">
+    <header class="modal-header">
+      <h2 id="comments-title">Thread</h2>
+      <button class="modal-close" type="button" data-close-modal="comments-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
-      <a class="sidebar-nav-item" href="account.html">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-        Meu Perfil
-      </a>
+    </header>
+    <div class="modal-content">
+      <div id="thread-root" class="thread-root"></div>
+      <div id="comments-list" class="comments-list"></div>
     </div>
-  </aside>
-
-  <!-- CENTER FEED -->
-  <main class="feed-column">
-
-    <!-- Compose Box -->
-    <div class="compose-box" id="compose-box" style="display:none">
-      <div class="compose-row">
-        <img id="compose-avatar" class="compose-avatar" src="" alt="">
-        <div class="compose-inner">
-          <textarea id="compose-textarea" class="compose-textarea"
-            placeholder="O que está acontecendo no servidor?"
-            maxlength="280" oninput="updateComposeCounter(this)"></textarea>
-          <div class="compose-footer">
-            <span id="compose-counter" class="compose-counter">0 / 280</span>
-            <button class="btn-post" id="btn-publish" onclick="publishPost()">Publicar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Login prompt for guests -->
-    <div class="login-prompt" id="login-prompt" style="display:none">
-      <div style="font-size:36px;margin-bottom:10px;">⛏️</div>
-      <h3>Entre para participar da comunidade</h3>
-      <p>Publique conquistas, interaja com outros jogadores e conecte-se com seus amigos do Xbox.</p>
-      <a href="login.html" class="btn-post" style="display:inline-flex;align-items:center;gap:8px;font-size:14px;padding:10px 28px;">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-        Entrar na Conta
-      </a>
-    </div>
-
-    <!-- Feed Tabs -->
-    <div class="feed-tabs" id="feed-tabs" style="display:none">
-      <button class="feed-tab active" id="ft-all" onclick="switchFeedTab('all', this)">🌍 Global</button>
-      <button class="feed-tab" id="ft-following" onclick="switchFeedTab('following', this)">👥 Seguindo</button>
-    </div>
-
-    <!-- Post skeletons -->
-    <div id="feed-skeletons">
-      <div class="post-skel" style="margin-bottom:16px">
-        <div class="post-skel-header">
-          <div class="skel" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"></div>
-          <div style="flex:1">
-            <div class="skel" style="height:14px;width:60%;margin-bottom:6px"></div>
-            <div class="skel" style="height:12px;width:35%"></div>
-          </div>
-        </div>
-        <div class="skel" style="height:13px;width:95%;margin-bottom:6px"></div>
-        <div class="skel" style="height:13px;width:80%;margin-bottom:6px"></div>
-        <div class="skel" style="height:13px;width:50%"></div>
-      </div>
-      <div class="post-skel" style="margin-bottom:16px">
-        <div class="post-skel-header">
-          <div class="skel" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"></div>
-          <div style="flex:1">
-            <div class="skel" style="height:14px;width:55%;margin-bottom:6px"></div>
-            <div class="skel" style="height:12px;width:30%"></div>
-          </div>
-        </div>
-        <div class="skel" style="height:13px;width:85%;margin-bottom:6px"></div>
-        <div class="skel" style="height:13px;width:60%"></div>
-      </div>
-      <div class="post-skel">
-        <div class="post-skel-header">
-          <div class="skel" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"></div>
-          <div style="flex:1">
-            <div class="skel" style="height:14px;width:45%;margin-bottom:6px"></div>
-            <div class="skel" style="height:12px;width:28%"></div>
-          </div>
-        </div>
-        <div class="skel" style="height:13px;width:90%;margin-bottom:6px"></div>
-        <div class="skel" style="height:13px;width:70%"></div>
-      </div>
-    </div>
-
-    <!-- Feed container -->
-    <div id="feed-container" style="display:none;flex-direction:column;gap:16px"></div>
-
-    <!-- Load more -->
-    <button class="btn-load-more" id="btn-load-more" style="display:none" onclick="loadMorePosts()">
-      Carregar mais posts
-    </button>
-  </main>
-
-  <!-- RIGHT SIDEBAR -->
-  <aside class="sidebar-right">
-
-    <!-- Community Players -->
-    <div class="side-widget">
-      <div class="side-widget-title">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-        Jogadores
-      </div>
-      <div id="players-list">
-        <div class="skel" style="height:40px;border-radius:10px;margin-bottom:8px"></div>
-        <div class="skel" style="height:40px;border-radius:10px;margin-bottom:8px"></div>
-        <div class="skel" style="height:40px;border-radius:10px"></div>
-      </div>
-    </div>
-
-    <!-- Xbox Widget -->
-    <div class="side-widget xbox-widget" id="xbox-widget" style="display:none">
-      <div class="side-widget-title" style="color:#107C10">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.998 0C5.372 0 0 5.373 0 12s5.372 12 11.998 12C18.626 24 24 18.627 24 12S18.626 0 11.998 0zM4.31 7.28c0-.001 2.393-2.698 6.054-1.933l1.654 1.665 1.656-1.665c3.659-.765 6.052 1.932 6.052 1.932.888 2.695-.217 7.193-.217 7.193-1.006 1.12-2.767 2.966-4.136 2.966-1.371 0-1.98-.693-3.355-.693-1.374 0-1.983.693-3.354.693-1.371 0-3.13-1.846-4.137-2.966 0 0-1.105-4.498-.217-7.192z"/></svg>
-        Amigos Xbox na FA
-      </div>
-      <div id="xbox-friends-preview" class="xbox-friends-list"></div>
-    </div>
-
-  </aside>
+    <form class="comment-form" id="comment-form">
+      <textarea id="comment-content" maxlength="280" placeholder="Responder com ate 280 caracteres" aria-label="Comentario"></textarea>
+      <button class="primary-btn" type="submit" id="comment-submit">Comentar</button>
+    </form>
+  </section>
 </div>
 
-<!-- ══════════════════════════════════════
-     XBOX MODAL
-     ══════════════════════════════════════ -->
-<div class="modal-overlay" id="xbox-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" style="display:flex;align-items:center;gap:8px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#107C10"><path d="M11.998 0C5.372 0 0 5.373 0 12s5.372 12 11.998 12C18.626 24 24 18.627 24 12S18.626 0 11.998 0zM4.31 7.28c0-.001 2.393-2.698 6.054-1.933l1.654 1.665 1.656-1.665c3.659-.765 6.052 1.932 6.052 1.932.888 2.695-.217 7.193-.217 7.193-1.006 1.12-2.767 2.966-4.136 2.966-1.371 0-1.98-.693-3.355-.693-1.374 0-1.983.693-3.354.693-1.371 0-3.13-1.846-4.137-2.966 0 0-1.105-4.498-.217-7.192z"/></svg>
-        Amigos do Xbox na Força Aliada
-      </span>
-      <button class="modal-close" onclick="closeXboxModal()">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+<div class="modal-backdrop" id="profile-modal" aria-hidden="true">
+  <section class="modal-sheet profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+    <header class="modal-header">
+      <h2 id="profile-title">Perfil</h2>
+      <button class="modal-close" type="button" data-close-modal="profile-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
-    </div>
-    <p style="font-size:13.5px;color:var(--ink-2);margin-bottom:16px;line-height:1.6;">
-      Sincronize seus amigos do Xbox Live e veja quais deles já estão no servidor. Requer conta Xbox vinculada.
-    </p>
-    <div id="xbox-modal-content">
-      <button class="btn-xbox-sync" id="btn-sync-xbox" onclick="syncXboxFriends()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.998 0C5.372 0 0 5.373 0 12s5.372 12 11.998 12C18.626 24 24 18.627 24 12S18.626 0 11.998 0zM4.31 7.28c0-.001 2.393-2.698 6.054-1.933l1.654 1.665 1.656-1.665c3.659-.765 6.052 1.932 6.052 1.932.888 2.695-.217 7.193-.217 7.193-1.006 1.12-2.767 2.966-4.136 2.966-1.371 0-1.98-.693-3.355-.693-1.374 0-1.983.693-3.354.693-1.371 0-3.13-1.846-4.137-2.966 0 0-1.105-4.498-.217-7.192z"/></svg>
-        Sincronizar Amigos Xbox
+    </header>
+    <div id="profile-content"></div>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="relation-modal" aria-hidden="true">
+  <section class="modal-sheet list-sheet" role="dialog" aria-modal="true" aria-labelledby="relation-title">
+    <header class="modal-header">
+      <h2 id="relation-title">Jogadores</h2>
+      <button class="modal-close" type="button" data-close-modal="relation-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
+    </header>
+    <div class="modal-content">
+      <div class="relation-list" id="relation-list"></div>
     </div>
-  </div>
+  </section>
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════════════
-   FORÇA ALIADA – COMMUNITY PAGE
-   API Integration: strictly mapped to backend routes
-   ═══════════════════════════════════════════════════════ */
-
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const PROD_API_BASE = 'https://forca-aliada-site.onrender.com';
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:3000'
-  : 'https://forca-aliada-site.onrender.com';
-
-const TOKEN_KEY   = 'fa_token';
+  : PROD_API_BASE;
+const API_BASES = Array.from(new Set([localStorage.getItem('fa_api_base'), API_BASE, PROD_API_BASE].filter(Boolean)));
+const TOKEN_KEY = 'fa_token';
 const SESSION_KEY = 'fa_session';
+const THEME_KEY = 'fa_theme';
+const token = localStorage.getItem(TOKEN_KEY);
 
-// ── Helpers ─────────────────────────────────────────────
-function getToken() { return localStorage.getItem(TOKEN_KEY); }
+const state = {
+  me: null,
+  posts: [],
+  filter: 'all',
+  cursor: null,
+  hasMore: true,
+  loadingFeed: false,
+  players: [],
+  activePostId: null,
+  postStats: { own: 0, likes: 0 },
+};
 
-async function api(path, opts = {}) {
-  const token = getToken();
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
-  return res;
+const $ = selector => document.querySelector(selector);
+const $$ = selector => Array.from(document.querySelectorAll(selector));
+const icons = {
+  check: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>',
+  error: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>',
+  info: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
+  comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>',
+  empty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h7"/><path d="M17 15l2 2 4-4"/></svg>'
+};
+
+if (!token) location.replace('login.html');
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
 }
 
-function escapeHTML(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function mentionHTML(text) {
+  const safe = escapeHTML(text || '');
+  return safe.replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi, '$1<span class="mention-token">@$2</span>');
 }
 
-function linkMentions(text) {
-  return escapeHTML(text).replace(/@([a-z0-9_]{3,32})/gi,
-    '<span class="mention">@$1</span>');
+function skinUrl(name, size = 50) {
+  const mc = (name || 'Steve').trim() || 'Steve';
+  return `https://minotar.net/helm/${encodeURIComponent(mc)}/${size}.png`;
 }
 
-function timeAgo(dateStr) {
-  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-  if (diff < 60)   return 'agora';
-  if (diff < 3600) return `${Math.floor(diff/60)}m`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}h`;
-  return `${Math.floor(diff/86400)}d`;
+function normalizeUser(raw = {}) {
+  return {
+    id: raw.id,
+    username: raw.username || 'jogador',
+    minecraft_name: raw.minecraft_name || raw.minecraftName || raw.username || 'Steve',
+    email: raw.email || '',
+    role: raw.role || 'limited',
+    photo_url: raw.photo_url || raw.photoUrl || '',
+  };
 }
 
-function rankClass(rank) {
-  const map = { ferro:'rank-ferro', ouro:'rank-ouro', diamante:'rank-diamante', netherite:'rank-netherite', adm:'rank-adm', owner:'rank-adm', full:'rank-adm', limited:'rank-ferro' };
-  return map[rank] || 'rank-ferro';
+function rankInfo(rank, merit = 0) {
+  const id = String(rank || '').toLowerCase();
+  if (id.includes('owner')) return { label: 'Owner', color: '#d92d20' };
+  if (id.includes('full') || id.includes('admin')) return { label: 'Staff', color: '#1761f0' };
+  if (id.includes('netherite')) return { label: 'Netherite', color: '#7c3aed' };
+  if (id.includes('diamante')) return { label: 'Diamante', color: '#0e9384' };
+  if (id.includes('ouro')) return { label: 'Ouro', color: '#b7791f' };
+  if (id.includes('ferro')) return { label: 'Ferro', color: '#667085' };
+  if (merit >= 900) return { label: 'Netherite', color: '#7c3aed' };
+  if (merit >= 450) return { label: 'Diamante', color: '#0e9384' };
+  if (merit >= 150) return { label: 'Ouro', color: '#b7791f' };
+  return { label: rank || 'Ferro', color: '#667085' };
 }
 
-function rankLabel(rank) {
-  const map = { ferro:'Ferro', ouro:'Ouro', diamante:'Diamante', netherite:'Netherite', adm:'Staff', owner:'Owner', full:'Staff', limited:'Staff' };
-  return map[rank] || 'Ferro';
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString('pt-BR');
 }
 
-// ── Toast ────────────────────────────────────────────────
-function toast(type, msg) {
-  const icons = { success:'✅', error:'❌', info:'💬' };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span class="toast-icon">${icons[type]||'💬'}</span><span class="toast-msg">${escapeHTML(msg)}</span>`;
-  document.getElementById('toast-root').appendChild(el);
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 300);
-  }, 3500);
+function formatTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const diff = Math.max(0, (Date.now() - date.getTime()) / 1000);
+  if (diff < 45) return 'agora';
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 172800) return 'ontem';
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
-// ── Session / Auth ───────────────────────────────────────
-let currentSession = null; // holds the /api/me response
+async function apiFetch(path, options = {}) {
+  const urlPath = path.startsWith('/') ? path : `/${path}`;
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  let lastError;
 
-/* ─────────────────────────────────────────────────────────
-   ERROR 1 FIX:
-   loadSession() now calls `/api/me` (not `/api/me/profile`).
-   The route GET /api/me returns:
-     { id, username, email, minecraft_name, photo_url, role, is_verified, created_at }
-   If the token is invalid/absent we gracefully render as guest.
-   ───────────────────────────────────────────────────────── */
-async function loadSession() {
-  const token = getToken();
-  if (!token) return null;
-
-  try {
-    const res = await api('/api/me');   // ← CORRETO: rota que existe no backend
-    if (!res.ok) {
-      // Token inválido ou expirado — limpa e retorna null SEM lançar erro
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(SESSION_KEY);
-      return null;
+  for (const base of API_BASES) {
+    try {
+      const response = await fetch(`${base}${urlPath}`, { ...options, headers });
+      if (response.status === 401 || response.status === 403) {
+        logout();
+        throw new Error('Sessao expirada.');
+      }
+      if (response.status !== 404 || base === PROD_API_BASE || !urlPath.startsWith('/api/')) {
+        localStorage.setItem('fa_api_base', base);
+        return response;
+      }
+    } catch (err) {
+      lastError = err;
     }
-    const user = await res.json();
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    return user;
-  } catch {
-    return null;
   }
+  throw lastError || new Error('API indisponivel.');
 }
 
-// ── Header auth render ───────────────────────────────────
-function renderHeader(user) {
-  const area = document.getElementById('header-auth-area');
-  if (!area) return;
+async function apiJson(path, options = {}) {
+  const response = await apiFetch(path, options);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!response.ok) throw new Error(data.error || data.message || `Erro ${response.status}`);
+  return data;
+}
 
-  if (user) {
-    const displayName = user.minecraft_name || user.username || 'Jogador';
-    const photoSrc = user.photo_url
-      ? user.photo_url
-      : user.minecraft_name
-        ? `https://minotar.net/helm/${encodeURIComponent(user.minecraft_name)}/56.png`
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff&size=56&bold=true`;
+function showToast(type, title, message, duration = 4200) {
+  const stack = $('#toast-stack');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type || 'info'}`;
+  toast.innerHTML = `
+    <div class="toast-icon">${type === 'success' ? icons.check : type === 'error' ? icons.error : icons.info}</div>
+    <div><strong>${escapeHTML(title)}</strong><span>${escapeHTML(message)}</span></div>
+    <button type="button" aria-label="Fechar toast">×</button>
+  `;
+  toast.querySelector('button').addEventListener('click', () => removeToast(toast));
+  stack.appendChild(toast);
+  setTimeout(() => removeToast(toast), duration);
+}
 
-    area.innerHTML = `
-      <div class="user-menu-wrapper">
-        <div class="user-btn" id="user-btn-hdr" onclick="toggleHeader(this)">
-          <img src="${escapeHTML(photoSrc)}" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
-          <span>${escapeHTML(displayName)}</span>
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        </div>
-        <div class="user-dropdown" id="hdr-dd">
-          <div class="dd-head">
-            <img src="${escapeHTML(photoSrc)}" onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-            <div class="dd-head-info">
-              <strong>${escapeHTML(displayName)}</strong>
-              <span>${escapeHTML(user.email || '')}</span>
-            </div>
-          </div>
-          <div class="dd-sep"></div>
-          <a class="dd-item" href="account.html">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-            Minha Conta
-          </a>
-          <button class="dd-item danger" onclick="doLogout()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
-            Sair
-          </button>
-        </div>
-      </div>`;
+function removeToast(toast) {
+  if (!toast?.parentElement) return;
+  toast.classList.add('removing');
+  setTimeout(() => toast.remove(), 220);
+}
+
+function setButtonLoading(button, loading, text) {
+  if (!button) return;
+  if (loading) {
+    button.dataset.label = button.textContent.trim();
+    button.disabled = true;
+    button.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span>${escapeHTML(text || 'Carregando')}`;
   } else {
-    area.innerHTML = `
-      <a class="btn-login" href="login.html">
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-        Entrar
-      </a>`;
+    button.disabled = false;
+    button.textContent = button.dataset.label || text || button.textContent;
   }
 }
 
-function toggleHeader(btn) {
-  btn.classList.toggle('open');
-  document.getElementById('hdr-dd')?.classList.toggle('show');
-}
-
-document.addEventListener('click', e => {
-  const btn = document.getElementById('user-btn-hdr');
-  const dd  = document.getElementById('hdr-dd');
-  if (btn && dd && !btn.contains(e.target) && !dd.contains(e.target)) {
-    btn.classList.remove('open');
-    dd.classList.remove('show');
-  }
-});
-
-function doLogout() {
-  api('/api/auth/logout', { method: 'POST' }).catch(() => {});
+function logout() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
-  window.location.href = 'index.html';
+  location.href = 'login.html';
 }
 
-// ── Left sidebar profile card ────────────────────────────
-function renderProfileCard(user) {
-  const card = document.getElementById('sb-profile-card');
-  if (!card) return;
-
-  if (!user) {
-    card.innerHTML = `
-      <div class="profile-card-banner"></div>
-      <div style="margin-top:16px;text-align:center;padding:8px">
-        <p style="font-size:13px;color:var(--ink-2);margin-bottom:12px">Entre para ver seu perfil</p>
-        <a href="login.html" class="btn-post" style="font-size:13px;padding:8px 20px;display:inline-flex;align-items:center;gap:6px;">Entrar</a>
-      </div>`;
-    return;
-  }
-
-  const displayName = user.minecraft_name || user.username || 'Jogador';
-  const photoSrc = user.photo_url
-    ? user.photo_url
-    : user.minecraft_name
-      ? `https://minotar.net/helm/${encodeURIComponent(user.minecraft_name)}/56.png`
-      : `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff&size=56&bold=true`;
-
-  card.innerHTML = `
-    <div class="profile-card-banner"></div>
-    <img class="profile-card-avatar" src="${escapeHTML(photoSrc)}"
-         onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
-    <div class="profile-card-info">
-      <div class="profile-card-name">${escapeHTML(displayName)}</div>
-      <div class="profile-card-sub">@${escapeHTML(user.username || '')}</div>
-      <div class="profile-card-stats">
-        <div class="profile-stat">
-          <div class="profile-stat-val" id="sb-posts-count">—</div>
-          <div class="profile-stat-lbl">Posts</div>
-        </div>
-        <div class="profile-stat">
-          <span class="rank-badge ${rankClass(user.role || 'ferro')}">${rankLabel(user.role || 'ferro')}</span>
-          <div class="profile-stat-lbl" style="margin-top:4px">Cargo</div>
-        </div>
-      </div>
-    </div>`;
+function applyUser(user) {
+  state.me = normalizeUser(user);
+  const name = state.me.minecraft_name || state.me.username || 'Steve';
+  const avatar = skinUrl(name, 100);
+  $('#top-avatar').src = avatar;
+  $('#top-name').textContent = state.me.username || name;
+  $('#mini-avatar').src = avatar;
+  $('#mini-name').textContent = name;
+  $('#mini-handle').textContent = `@${state.me.username || name}`;
+  $('#composer-avatar').src = skinUrl(name, 50);
 }
 
-// ── Community Players (right sidebar) ───────────────────
-async function loadCommunityPlayers() {
-  if (!getToken()) {
-    document.getElementById('players-list').innerHTML =
-      '<p style="font-size:12px;color:var(--ink-3);text-align:center">Entre para ver jogadores</p>';
-    return;
-  }
-  try {
-    const res = await api('/api/community/players?limit=6');
-    if (!res.ok) throw new Error();
-    const players = await res.json();
-
-    if (!players.length) {
-      document.getElementById('players-list').innerHTML =
-        '<p style="font-size:12px;color:var(--ink-3)">Nenhum jogador encontrado</p>';
-      return;
-    }
-
-    document.getElementById('players-list').innerHTML = players.map(p => {
-      const name = p.minecraft_name || p.username || 'Jogador';
-      const photo = p.photo_url
-        ? p.photo_url
-        : `https://minotar.net/helm/${encodeURIComponent(name)}/50.png`;
-      return `
-        <div class="player-row">
-          <img class="player-row-avatar" src="${escapeHTML(photo)}"
-               onerror="this.src='https://minotar.net/helm/Steve/50.png'" alt="">
-          <div class="player-row-info">
-            <div class="player-row-name">${escapeHTML(name)}</div>
-            <div class="player-row-sub">@${escapeHTML(p.username || '')}</div>
-          </div>
-        </div>`;
-    }).join('');
-  } catch {
-    document.getElementById('players-list').innerHTML =
-      '<p style="font-size:12px;color:var(--ink-3)">Erro ao carregar</p>';
-  }
+async function loadMe() {
+  const cached = (() => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
+  })();
+  if (cached) applyUser(cached.user || cached);
+  const me = await apiJson('/api/me');
+  const normalized = normalizeUser(me);
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ user: {
+    id: normalized.id,
+    username: normalized.username,
+    email: normalized.email,
+    minecraftName: normalized.minecraft_name,
+    photoUrl: normalized.photo_url,
+    role: normalized.role,
+  }}));
+  applyUser(normalized);
 }
 
-// ── Feed ─────────────────────────────────────────────────
-let feedFilter   = 'all';
-let nextCursor   = null;
-let feedLoading  = false;
-
-function switchFeedTab(filter, el) {
-  if (feedLoading) return;
-  feedFilter = filter;
-  nextCursor = null;
-
-  // Update sidebar nav
-  document.querySelectorAll('.sidebar-nav-item').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
-
-  if (el.classList.contains('sidebar-nav-item')) el.classList.add('active');
-  if (el.classList.contains('feed-tab')) el.classList.add('active');
-
-  const sideBtn = filter === 'all'
-    ? document.querySelector('.sidebar-nav-item:first-child')
-    : document.getElementById('following-tab-btn');
-  if (sideBtn) sideBtn.classList.add('active');
-
-  const tabBtn = document.getElementById(`ft-${filter}`);
-  if (tabBtn) tabBtn.classList.add('active');
-
-  document.getElementById('feed-container').innerHTML = '';
-  document.getElementById('feed-container').style.display = 'flex';
-  document.getElementById('btn-load-more').style.display  = 'none';
-  loadFeed();
+function updateComposer() {
+  const input = $('#post-content');
+  const value = input.value;
+  const remaining = 280 - value.length;
+  const pct = Math.min(1, value.length / 280);
+  const ring = $('#post-char-ring');
+  const fg = ring.querySelector('.ring-fg');
+  $('#composer-highlight').innerHTML = value ? mentionHTML(value) : '<span class="is-placeholder">O que aconteceu no servidor?</span>';
+  $('#post-char-count').textContent = remaining;
+  fg.style.strokeDashoffset = String(100 - (pct * 100));
+  ring.classList.toggle('warning', remaining <= 40 && remaining >= 0);
+  ring.classList.toggle('danger', remaining < 0);
+  $('#publish-btn').disabled = value.trim().length < 2 || value.length > 280 || state.loadingFeed;
 }
 
-/* ─────────────────────────────────────────────────────────
-   ERROR 3 FIX (partial):
-   The feed now correctly maps:
-   - Author name: prefers u.minecraft_name, falls back to u.username
-   - Both fields are returned by GET /api/community/posts
-   ───────────────────────────────────────────────────────── */
-function buildPostCard(p) {
-  // Author display: prefer minecraft_name (the in-game identity), fall back to username
-  const authorDisplayName = p.minecraft_name || p.username || 'Jogador';
-  const authorSub = p.username ? `@${p.username}` : '';
+function renderSkeletons(target, count = 3) {
+  target.innerHTML = Array.from({ length: count }, () => '<div class="skeleton post-skeleton"></div>').join('');
+}
 
-  const photoSrc = p.photo_url
-    ? p.photo_url
-    : p.minecraft_name
-      ? `https://minotar.net/helm/${encodeURIComponent(p.minecraft_name)}/56.png`
-      : `https://ui-avatars.com/api/?name=${encodeURIComponent(authorDisplayName)}&background=6366f1&color=fff&size=56&bold=true`;
-
-  const isOwn = currentSession && p.author_id === currentSession.id;
-
+function emptyFeedHTML() {
+  const isFollowing = state.filter === 'following';
   return `
-    <div class="post-card" id="post-${p.id}">
-      <div class="post-header">
-        <img class="post-avatar" src="${escapeHTML(photoSrc)}"
-             onerror="this.src='https://minotar.net/helm/Steve/56.png'" alt="">
-        <div class="post-author-info">
-          <div class="post-author-name">${escapeHTML(authorDisplayName)}</div>
-          <div class="post-author-sub">${escapeHTML(authorSub)}</div>
+    <section class="empty-state">
+      <div class="empty-icon">${icons.empty}</div>
+      <h3>${isFollowing ? 'Seu feed seguindo esta quieto' : 'Nenhum post por aqui ainda'}</h3>
+      <p>${isFollowing ? 'Siga jogadores no Discovery para montar uma linha do tempo so com a sua rede.' : 'Publique o primeiro update da comunidade e puxe a conversa.'}</p>
+    </section>
+  `;
+}
+
+function postHTML(post) {
+  const mcName = post.minecraft_name || post.username || 'Steve';
+  const rank = rankInfo(post.rank || post.role, post.merit);
+  const isOwner = state.me && Number(post.author_id) === Number(state.me.id);
+  return `
+    <article class="post-card" data-post-id="${post.id}" tabindex="0">
+      <div class="post-layout">
+        <img class="avatar js-open-profile" data-mc-name="${escapeHTML(mcName)}" src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
+        <div>
+          <div class="post-head">
+            <div class="post-author">
+              <strong class="js-open-profile" data-mc-name="${escapeHTML(mcName)}">${escapeHTML(mcName)}</strong>
+              <span>@${escapeHTML(post.username || mcName)}</span>
+              <span class="rank-pill" style="--rank:${rank.color}">${escapeHTML(rank.label)}</span>
+            </div>
+            <time class="post-time" datetime="${escapeHTML(post.created_at)}">${escapeHTML(formatTime(post.created_at))}</time>
+          </div>
+          <div class="post-content">${mentionHTML(post.content)}</div>
+          <div class="post-actions">
+            <button class="post-action like ${post.liked_by_me ? 'is-active' : ''}" type="button" data-action="like" aria-label="Curtir post">
+              ${icons.heart}<span>${formatNumber(post.likes_count)}</span>
+            </button>
+            <button class="post-action" type="button" data-action="comments" aria-label="Abrir comentarios">
+              ${icons.comment}<span>${formatNumber(post.comments_count)}</span>
+            </button>
+            ${isOwner ? `<button class="post-action delete" type="button" data-action="delete" aria-label="Excluir post">${icons.trash}<span>Excluir</span></button>` : ''}
+          </div>
         </div>
-        <span class="post-time">${timeAgo(p.created_at)}</span>
-        ${isOwn ? `<button class="post-menu-btn" onclick="deletePost(${p.id})" title="Excluir post">
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-        </button>` : ''}
       </div>
-      <div class="post-content">${linkMentions(p.content)}</div>
-      <div class="post-actions">
-        <button class="post-action-btn ${p.liked_by_me ? 'liked' : ''}" id="like-btn-${p.id}" onclick="toggleLike(${p.id}, ${p.liked_by_me})">
-          <svg viewBox="0 0 20 20" fill="${p.liked_by_me ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5">
-            <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"/>
-          </svg>
-          <span id="like-count-${p.id}">${p.likes_count || 0}</span>
-        </button>
-        <button class="post-action-btn" onclick="toggleComments(${p.id})">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-          </svg>
-          <span>${p.comments_count || 0}</span>
-        </button>
-      </div>
-      <div class="comment-section" id="comments-${p.id}" style="display:none"></div>
-    </div>`;
+    </article>
+  `;
 }
 
-async function loadFeed(append = false) {
-  if (feedLoading) return;
-  feedLoading = true;
-
-  const container = document.getElementById('feed-container');
-  const skel      = document.getElementById('feed-skeletons');
-  const btn       = document.getElementById('btn-load-more');
-
-  if (!append) {
-    skel.style.display = 'flex';
-    skel.style.flexDirection = 'column';
-    skel.style.gap = '16px';
-    container.style.display = 'none';
-    btn.style.display = 'none';
+function renderFeed({ append = false } = {}) {
+  const list = $('#feed-list');
+  if (!state.posts.length) {
+    list.innerHTML = emptyFeedHTML();
+  } else if (append) {
+    const existingIds = new Set($$('.post-card').map(el => Number(el.dataset.postId)));
+    const next = state.posts.filter(post => !existingIds.has(Number(post.id))).map(postHTML).join('');
+    if (next) list.insertAdjacentHTML('beforeend', next);
   } else {
-    btn.disabled = true;
-    btn.textContent = 'Carregando…';
+    list.innerHTML = state.posts.map(postHTML).join('');
   }
-
-  try {
-    let url = `/api/community/posts?limit=10&filter=${feedFilter}`;
-    if (append && nextCursor) url += `&cursor=${nextCursor}`;
-
-    const res = await api(url);
-
-    if (!res.ok) {
-      // Unauthenticated — show login prompt
-      skel.style.display = 'none';
-      document.getElementById('login-prompt').style.display = 'block';
-      container.style.display = 'none';
-      feedLoading = false;
-      return;
-    }
-
-    const data = await res.json();
-    const posts = data.posts || [];
-
-    skel.style.display = 'none';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.gap = '16px';
-
-    if (!posts.length && !append) {
-      container.innerHTML = `
-        <div class="feed-empty">
-          <div class="feed-empty-icon">${feedFilter === 'following' ? '👥' : '⛏️'}</div>
-          <h3>${feedFilter === 'following' ? 'Nada do pessoal que você segue ainda' : 'Sem posts ainda'}</h3>
-          <p>${feedFilter === 'following' ? 'Siga outros jogadores para ver o conteúdo deles aqui.' : 'Seja o primeiro a publicar algo!'}</p>
-        </div>`;
-      btn.style.display = 'none';
-      feedLoading = false;
-      return;
-    }
-
-    const html = posts.map(buildPostCard).join('');
-    if (append) {
-      container.insertAdjacentHTML('beforeend', html);
-    } else {
-      container.innerHTML = html;
-    }
-
-    nextCursor = data.next_cursor || null;
-    btn.style.display = data.has_more ? 'block' : 'none';
-    btn.disabled = false;
-    btn.textContent = 'Carregar mais posts';
-
-  } catch (e) {
-    skel.style.display = 'none';
-    if (!append) {
-      container.innerHTML = `<div class="feed-empty"><div class="feed-empty-icon">⚠️</div><h3>Erro ao carregar o feed</h3><p>Verifique sua conexão e tente novamente.</p></div>`;
-      container.style.display = 'flex';
-    }
-  }
-
-  feedLoading = false;
+  $('#load-more-btn').hidden = !state.hasMore || state.loadingFeed || !state.posts.length;
+  updateMiniStats();
 }
 
-function loadMorePosts() { loadFeed(true); }
+function updateMiniStats() {
+  const own = state.posts.filter(post => Number(post.author_id) === Number(state.me?.id)).length;
+  const likes = state.posts.reduce((sum, post) => sum + Number(post.likes_count || 0), 0);
+  $('#mini-posts').textContent = formatNumber(own);
+  $('#mini-likes').textContent = formatNumber(likes);
+}
 
-// ── Compose box ──────────────────────────────────────────
-function updateComposeCounter(ta) {
-  const len = ta.value.length;
-  const counter = document.getElementById('compose-counter');
-  counter.textContent = `${len} / 280`;
-  counter.className = 'compose-counter' + (len > 260 ? ' warn' : '') + (len >= 280 ? ' over' : '');
+async function loadFeed({ reset = false } = {}) {
+  if (state.loadingFeed || (!state.hasMore && !reset)) return;
+  state.loadingFeed = true;
+  const list = $('#feed-list');
+  if (reset) {
+    state.cursor = null;
+    state.hasMore = true;
+    state.posts = [];
+    renderSkeletons(list);
+  }
+  try {
+    const params = new URLSearchParams({ limit: '20', filter: state.filter });
+    if (state.cursor) params.set('cursor', state.cursor);
+    const data = await apiJson(`/api/community/posts?${params.toString()}`);
+    const incoming = Array.isArray(data.posts) ? data.posts : [];
+    state.posts = reset ? incoming : [...state.posts, ...incoming];
+    state.cursor = data.next_cursor || null;
+    state.hasMore = Boolean(data.next_cursor || data.has_more);
+    renderFeed({ append: !reset });
+  } catch (err) {
+    if (reset) {
+      list.innerHTML = `
+        <section class="empty-state">
+          <div class="empty-icon">${icons.error}</div>
+          <h3>Feed indisponivel</h3>
+          <p>${escapeHTML(err.message || 'Nao foi possivel carregar as postagens agora.')}</p>
+        </section>
+      `;
+    }
+    showToast('error', 'Erro no feed', err.message || 'Nao foi possivel carregar.');
+  } finally {
+    state.loadingFeed = false;
+    $('#load-more-btn').hidden = !state.hasMore || !state.posts.length;
+    updateComposer();
+  }
 }
 
 async function publishPost() {
-  const ta  = document.getElementById('compose-textarea');
-  const btn = document.getElementById('btn-publish');
-  const content = ta.value.trim();
-
-  if (!content || content.length < 2) { toast('error', 'Post muito curto.'); return; }
-  if (content.length > 280) { toast('error', 'Post excede 280 caracteres.'); return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Publicando…';
-
-  try {
-    const res = await api('/api/community/posts', {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro ao publicar.');
-
-    ta.value = '';
-    updateComposeCounter(ta);
-    toast('success', 'Post publicado!');
-    // Prepend the new post
-    loadFeed(false);
-  } catch (e) {
-    toast('error', e.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Publicar';
-  }
-}
-
-// ── Like / Unlike ────────────────────────────────────────
-async function toggleLike(postId, isLiked) {
-  if (!currentSession) { toast('info', 'Entre para curtir posts.'); return; }
-  const method = isLiked ? 'DELETE' : 'POST';
-  try {
-    const res = await api(`/api/community/posts/${postId}/like`, { method });
-    if (!res.ok) throw new Error();
-
-    const btn = document.getElementById(`like-btn-${postId}`);
-    const countEl = document.getElementById(`like-count-${postId}`);
-    const currentCount = parseInt(countEl?.textContent || '0');
-    const nowLiked = !isLiked;
-
-    if (btn) {
-      btn.className = `post-action-btn ${nowLiked ? 'liked' : ''}`;
-      btn.onclick = () => toggleLike(postId, nowLiked);
-      const svg = btn.querySelector('svg');
-      if (svg) svg.setAttribute('fill', nowLiked ? 'currentColor' : 'none');
-    }
-    if (countEl) countEl.textContent = currentCount + (nowLiked ? 1 : -1);
-  } catch {
-    toast('error', 'Falha ao reagir. Tente novamente.');
-  }
-}
-
-// ── Delete post ──────────────────────────────────────────
-async function deletePost(postId) {
-  if (!confirm('Excluir este post?')) return;
-  try {
-    const res = await api(`/api/community/posts/${postId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error();
-    const el = document.getElementById(`post-${postId}`);
-    if (el) { el.style.animation = 'toastOut .25s ease forwards'; setTimeout(() => el.remove(), 260); }
-    toast('success', 'Post excluído.');
-  } catch {
-    toast('error', 'Erro ao excluir.');
-  }
-}
-
-// ── Comments ─────────────────────────────────────────────
-async function toggleComments(postId) {
-  const section = document.getElementById(`comments-${postId}`);
-  if (!section) return;
-  if (section.style.display === 'block') { section.style.display = 'none'; return; }
-
-  section.style.display = 'block';
-  section.innerHTML = '<p style="font-size:12px;color:var(--ink-3)">Carregando…</p>';
-
-  try {
-    const res  = await api(`/api/community/posts/${postId}/comments`);
-    const rows = await res.json();
-    renderComments(section, postId, Array.isArray(rows) ? rows : []);
-  } catch {
-    section.innerHTML = '<p style="font-size:12px;color:var(--danger)">Erro ao carregar comentários.</p>';
-  }
-}
-
-function renderComments(section, postId, rows) {
-  const commentsList = rows.map(c => {
-    const cName = c.minecraft_name || c.username || 'Jogador';
-    const cPhoto = c.photo_url
-      ? c.photo_url
-      : c.minecraft_name
-        ? `https://minotar.net/helm/${encodeURIComponent(c.minecraft_name)}/50.png`
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(cName)}&background=6366f1&color=fff&size=50`;
-    return `
-      <div class="comment-item">
-        <img class="comment-avatar" src="${escapeHTML(cPhoto)}"
-             onerror="this.src='https://minotar.net/helm/Steve/50.png'" alt="">
-        <div class="comment-body">
-          <div class="comment-author">${escapeHTML(cName)}</div>
-          <div class="comment-text">${linkMentions(c.content)}</div>
-          <div class="comment-time">${timeAgo(c.created_at)}</div>
-        </div>
-      </div>`;
-  }).join('');
-
-  const inputAvatar = currentSession
-    ? (currentSession.photo_url || (currentSession.minecraft_name
-        ? `https://minotar.net/helm/${encodeURIComponent(currentSession.minecraft_name)}/50.png`
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(currentSession.username||'?')}&background=6366f1&color=fff&size=50`))
-    : '';
-
-  const inputRow = currentSession
-    ? `<div class="comment-input-row">
-         <img class="comment-input-avatar" src="${escapeHTML(inputAvatar)}"
-              onerror="this.src='https://minotar.net/helm/Steve/50.png'" alt="">
-         <input class="comment-input" id="comment-input-${postId}"
-                placeholder="Escreva um comentário…" maxlength="280"
-                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${postId});}">
-         <button class="btn-comment-send" onclick="submitComment(${postId})">
-           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-         </button>
-       </div>`
-    : `<p style="font-size:12px;color:var(--ink-3)"><a href="login.html" style="color:var(--accent)">Entre</a> para comentar.</p>`;
-
-  section.innerHTML = `
-    <div class="comment-list">${commentsList || '<p style="font-size:12px;color:var(--ink-3)">Seja o primeiro a comentar.</p>'}</div>
-    ${inputRow}`;
-}
-
-/* ─────────────────────────────────────────────────────────
-   ERROR 3 FIX (complete):
-   submitComment() reads the input by ID, sends it, clears
-   the field after success, and maps the response correctly.
-   ───────────────────────────────────────────────────────── */
-async function submitComment(postId) {
-  const input = document.getElementById(`comment-input-${postId}`);
-  if (!input) return;
+  const input = $('#post-content');
   const content = input.value.trim();
-  if (!content || content.length < 1) return;
-
+  if (content.length < 2 || content.length > 280) return;
+  const btn = $('#publish-btn');
+  setButtonLoading(btn, true, 'Publicando');
   try {
-    const res = await api(`/api/community/posts/${postId}/comments`, {
+    const created = await apiJson('/api/community/posts', {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro ao comentar.');
-
-    // Clear the input after successful submission
+    const post = {
+      ...created,
+      author_id: state.me.id,
+      username: state.me.username,
+      minecraft_name: state.me.minecraft_name,
+      photo_url: state.me.photo_url,
+      liked_by_me: false,
+      likes_count: 0,
+      comments_count: 0,
+    };
+    state.posts.unshift(post);
     input.value = '';
-
-    // Refresh comments
-    const section = document.getElementById(`comments-${postId}`);
-    if (section) {
-      const res2  = await api(`/api/community/posts/${postId}/comments`);
-      const rows  = await res2.json();
-      renderComments(section, postId, Array.isArray(rows) ? rows : []);
-    }
-  } catch (e) {
-    toast('error', e.message);
+    updateComposer();
+    renderFeed();
+    showToast('success', 'Post publicado', 'Sua mensagem entrou no feed.');
+  } catch (err) {
+    showToast('error', 'Falha ao publicar', err.message || 'Tente novamente.');
+  } finally {
+    setButtonLoading(btn, false, 'Publicar');
+    updateComposer();
   }
 }
 
-// ── Xbox Friends ─────────────────────────────────────────
-function openXboxModal() {
-  if (!currentSession) {
-    toast('info', 'Você precisa estar logado para usar esta função.');
+function findPost(id) {
+  return state.posts.find(post => Number(post.id) === Number(id));
+}
+
+async function toggleLike(id, button) {
+  const post = findPost(id);
+  if (!post) return;
+  const liked = Boolean(post.liked_by_me);
+  post.liked_by_me = !liked;
+  post.likes_count = Math.max(0, Number(post.likes_count || 0) + (liked ? -1 : 1));
+  button?.classList.toggle('is-active', post.liked_by_me);
+  button?.classList.add('is-popping');
+  button.querySelector('span').textContent = formatNumber(post.likes_count);
+  setTimeout(() => button?.classList.remove('is-popping'), 420);
+  updateMiniStats();
+  try {
+    await apiJson(`/api/community/posts/${encodeURIComponent(id)}/like`, { method: liked ? 'DELETE' : 'POST' });
+  } catch (err) {
+    post.liked_by_me = liked;
+    post.likes_count = Math.max(0, Number(post.likes_count || 0) + (liked ? 1 : -1));
+    renderFeed();
+    showToast('error', 'Like nao salvo', err.message || 'Tente novamente.');
+  }
+}
+
+async function deletePost(id) {
+  const ok = confirm('Excluir este post da comunidade?');
+  if (!ok) return;
+  try {
+    await apiJson(`/api/community/posts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    state.posts = state.posts.filter(post => Number(post.id) !== Number(id));
+    renderFeed();
+    closeModal('comments-modal');
+    showToast('success', 'Post excluido', 'A publicacao foi removida.');
+  } catch (err) {
+    showToast('error', 'Nao foi possivel excluir', err.message || 'Tente novamente.');
+  }
+}
+
+function openModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  if (!document.querySelector('.modal-backdrop.show')) document.body.classList.remove('modal-open');
+}
+
+async function openComments(id) {
+  const post = findPost(id);
+  if (!post) return;
+  state.activePostId = id;
+  $('#thread-root').innerHTML = postHTML(post);
+  $('#comments-list').innerHTML = '<div class="skeleton post-skeleton"></div>';
+  $('#comment-content').value = '';
+  openModal('comments-modal');
+  try {
+    const comments = await apiJson(`/api/community/posts/${encodeURIComponent(id)}/comments`);
+    renderComments(comments);
+  } catch (err) {
+    $('#comments-list').innerHTML = `
+      <section class="empty-state">
+        <div class="empty-icon">${icons.error}</div>
+        <h3>Comentarios indisponiveis</h3>
+        <p>${escapeHTML(err.message || 'Tente novamente em instantes.')}</p>
+      </section>
+    `;
+  }
+}
+
+function renderComments(comments) {
+  const list = $('#comments-list');
+  if (!Array.isArray(comments) || comments.length === 0) {
+    list.innerHTML = `
+      <section class="empty-state">
+        <div class="empty-icon">${icons.comment}</div>
+        <h3>Nenhuma resposta ainda</h3>
+        <p>Responda para iniciar a thread.</p>
+      </section>
+    `;
     return;
   }
-  document.getElementById('xbox-modal').classList.add('open');
-}
-
-function closeXboxModal() {
-  document.getElementById('xbox-modal').classList.remove('open');
-}
-
-document.getElementById('xbox-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeXboxModal();
-});
-
-/* ─────────────────────────────────────────────────────────
-   ERROR 2 FIX:
-   renderXboxFriends() no longer reads f.gamertag.
-   The route /api/me/xbox/friends returns serverFriends with:
-     id, username, minecraft_name, photo_url, xbox_xuid, is_following
-   We display minecraft_name (or username) as the primary name.
-   Status shows "✅ Seguindo" if is_following === true,
-   or a "Conectar" button/text if false.
-   ───────────────────────────────────────────────────────── */
-function renderXboxFriends(friends) {
-  if (!friends || friends.length === 0) return '';
-
-  return friends.map(f => {
-    // Primary display name: prefer minecraft_name, fall back to username
-    const displayName = f.minecraft_name || f.username || 'Jogador';
-    const photoSrc = f.photo_url
-      ? f.photo_url
-      : f.minecraft_name
-        ? `https://minotar.net/helm/${encodeURIComponent(f.minecraft_name)}/50.png`
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=107C10&color=fff&size=50`;
-
-    // Status: if already following show label; if not show connect action
-    const statusBadge = f.is_following
-      ? `<span class="xbox-badge-following">✅ Seguindo</span>`
-      : `<button class="xbox-badge-connect" onclick="followUser(${f.id})">Conectar</button>`;
-
+  list.innerHTML = comments.map(comment => {
+    const mcName = comment.minecraft_name || comment.username || 'Steve';
     return `
-      <div class="xbox-friend-row">
-        <img class="xbox-friend-avatar" src="${escapeHTML(photoSrc)}"
-             onerror="this.src='https://minotar.net/helm/Steve/50.png'" alt="">
-        <div class="xbox-friend-info">
-          <div class="xbox-friend-name">${escapeHTML(displayName)}</div>
-          <div class="xbox-friend-status">@${escapeHTML(f.username || '')}</div>
+      <article class="comment-row">
+        <img src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
+        <div>
+          <div class="comment-meta">
+            <strong class="js-open-profile" data-mc-name="${escapeHTML(mcName)}">${escapeHTML(mcName)}</strong>
+            <span>@${escapeHTML(comment.username || mcName)}</span>
+            <span>${escapeHTML(formatTime(comment.created_at))}</span>
+          </div>
+          <p>${mentionHTML(comment.content)}</p>
         </div>
-        ${statusBadge}
-      </div>`;
+      </article>
+    `;
   }).join('');
 }
 
-async function followUser(userId) {
+async function submitComment(event) {
+  event.preventDefault();
+  const content = $('#comment-content').value.trim();
+  if (!state.activePostId || !content || content.length > 280) return;
+  const button = $('#comment-submit');
+  setButtonLoading(button, true, 'Enviando');
   try {
-    const res = await api(`/api/me/follows/${userId}`, { method: 'POST' });
-    if (!res.ok) throw new Error();
-    toast('success', 'Agora você está seguindo este jogador!');
-    // Refresh the xbox sync result
-    syncXboxFriends();
-  } catch {
-    toast('error', 'Erro ao seguir. Tente novamente.');
+    await apiJson(`/api/community/posts/${encodeURIComponent(state.activePostId)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+    const post = findPost(state.activePostId);
+    if (post) post.comments_count = Number(post.comments_count || 0) + 1;
+    $('#comment-content').value = '';
+    const comments = await apiJson(`/api/community/posts/${encodeURIComponent(state.activePostId)}/comments`);
+    renderComments(comments);
+    $('#thread-root').innerHTML = post ? postHTML(post) : '';
+    renderFeed();
+  } catch (err) {
+    showToast('error', 'Comentario nao enviado', err.message || 'Tente novamente.');
+  } finally {
+    setButtonLoading(button, false, 'Comentar');
   }
 }
 
-async function syncXboxFriends() {
-  const btn     = document.getElementById('btn-sync-xbox');
-  const content = document.getElementById('xbox-modal-content');
+function renderPlayersSkeleton() {
+  $('#player-list').innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton" style="height:58px;border-radius:10px;"></div>').join('');
+}
 
-  btn.disabled = true;
-  btn.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="animation:spin 1s linear infinite">
-      <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-    </svg>
-    Sincronizando…`;
-
-  try {
-    const res  = await api('/api/me/xbox/friends');
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro ao acessar Xbox.');
-
-    const friends    = data.serverFriends || [];
-    const totalXbox  = data.xboxFriendsTotal ?? 0;
-    const warnings   = data.warnings || [];
-
-    let html = `<p style="font-size:12.5px;color:var(--ink-2);margin-bottom:14px;">
-      Você tem <strong>${totalXbox}</strong> amigo(s) no Xbox Live.
-      ${friends.length > 0 ? `<strong style="color:var(--success)">${friends.length}</strong> está(ão) registrado(s) na FA.` : 'Nenhum deles está cadastrado na FA ainda.'}
-    </p>`;
-
-    if (warnings.length) {
-      html += warnings.map(w => `
-        <div style="background:var(--danger-soft);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-sm);padding:9px 12px;font-size:12px;color:var(--danger);margin-bottom:10px;">
-          ⚠️ ${escapeHTML(w.mc_name || 'Conta')}: ${escapeHTML(w.message)}
-        </div>`).join('');
-    }
-
-    if (friends.length > 0) {
-      html += `<div class="xbox-friends-list" style="margin-bottom:14px;">${renderXboxFriends(friends)}</div>`;
-
-      // Update sidebar widget
-      const widget  = document.getElementById('xbox-widget');
-      const preview = document.getElementById('xbox-friends-preview');
-      if (widget && preview) {
-        widget.style.display = 'block';
-        preview.innerHTML = renderXboxFriends(friends.slice(0, 3));
-      }
-    } else {
-      html += `<div class="feed-empty" style="padding:24px;">
-        <div class="feed-empty-icon">🎮</div>
-        <p style="font-size:13px;color:var(--ink-2);">Nenhum dos seus amigos do Xbox está cadastrado na Força Aliada ainda.</p>
-      </div>`;
-    }
-
-    html += `<button class="btn-xbox-sync" id="btn-sync-xbox" onclick="syncXboxFriends()" style="margin-top:0">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.998 0C5.372 0 0 5.373 0 12s5.372 12 11.998 12C18.626 24 24 18.627 24 12S18.626 0 11.998 0z"/></svg>
-      Sincronizar Novamente
-    </button>`;
-
-    content.innerHTML = html;
-
-  } catch (e) {
-    content.innerHTML = `
-      <div style="background:var(--danger-soft);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-md);padding:16px;text-align:center;">
-        <div style="font-size:24px;margin-bottom:8px;">❌</div>
-        <p style="font-size:13.5px;color:var(--danger);font-weight:600;">${escapeHTML(e.message)}</p>
-        <p style="font-size:12px;color:var(--ink-2);margin-top:6px;">Certifique-se de que sua conta Xbox está vinculada em <a href="account.html" style="color:var(--accent)">Minha Conta</a>.</p>
+function playerRowHTML(player) {
+  const mcName = player.minecraft_name || player.username || 'Steve';
+  const rank = rankInfo(player.rank, player.merit);
+  const followed = Boolean(player.is_following || player.followed_by_me);
+  return `
+    <div class="player-row" data-mc-name="${escapeHTML(mcName)}" data-user-id="${escapeHTML(player.id)}">
+      <img src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
+      <div>
+        <strong>${escapeHTML(mcName)}</strong>
+        <span>${escapeHTML(rank.label)} · ${formatNumber(player.followers_count || 0)} seguidores</span>
       </div>
-      <button class="btn-xbox-sync" id="btn-sync-xbox" onclick="syncXboxFriends()" style="margin-top:12px">
-        Tentar Novamente
-      </button>`;
+      <button class="mini-follow ${followed ? 'is-following' : ''}" type="button" data-action="follow-player" data-following="${followed ? '1' : '0'}">${followed ? 'Seguindo' : 'Seguir'}</button>
+    </div>
+  `;
+}
+
+async function loadPlayers(search = '') {
+  renderPlayersSkeleton();
+  try {
+    const params = new URLSearchParams({ limit: '12' });
+    if (search) params.set('search', search);
+    const players = await apiJson(`/api/community/players?${params.toString()}`);
+    state.players = Array.isArray(players) ? players : [];
+    $('#player-list').innerHTML = state.players.length
+      ? state.players.map(playerRowHTML).join('')
+      : '<section class="empty-state" style="padding:22px 12px;"><p>Nenhum jogador encontrado.</p></section>';
+  } catch (err) {
+    $('#player-list').innerHTML = `<section class="empty-state" style="padding:22px 12px;"><p>${escapeHTML(err.message || 'Nao foi possivel carregar jogadores.')}</p></section>`;
   }
 }
 
-// ── Init ─────────────────────────────────────────────────
-@keyframes spin { to { transform: rotate(360deg); } }
-
-window.addEventListener('load', async () => {
-  // 1. Render immediately from cache so page feels fast
-  const cached = (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } })();
-  currentSession = cached;
-  renderHeader(cached);
-  renderProfileCard(cached);
-
-  // 2. Show compose box or login prompt
-  if (getToken()) {
-    document.getElementById('compose-box').style.display  = 'block';
-    document.getElementById('feed-tabs').style.display    = 'flex';
-    document.getElementById('login-prompt').style.display = 'none';
-    if (cached?.minecraft_name || cached?.photo_url) {
-      const av = document.getElementById('compose-avatar');
-      if (av) av.src = cached.photo_url
-        || (cached.minecraft_name
-          ? `https://minotar.net/helm/${encodeURIComponent(cached.minecraft_name)}/56.png`
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(cached.username||'?')}&background=6366f1&color=fff&size=56`);
-    }
-  } else {
-    document.getElementById('login-prompt').style.display = 'block';
-    document.getElementById('feed-skeletons').style.display = 'none';
-    document.getElementById('compose-box').style.display  = 'none';
+async function toggleFollow(targetId, currentlyFollowing, button) {
+  if (!targetId || Number(targetId) === Number(state.me?.id)) return;
+  const next = !currentlyFollowing;
+  if (button) {
+    button.disabled = true;
+    button.textContent = next ? 'Seguindo' : 'Seguir';
+    button.classList.toggle('is-following', next);
+    button.dataset.following = next ? '1' : '0';
   }
-
-  // 3. Load feed (works for guests too if posts are returned — will show login prompt on 401)
-  loadFeed();
-
-  // 4. Load community players widget
-  loadCommunityPlayers();
-
-  // 5. Fresh session revalidation — CORRECT ROUTE: /api/me
-  if (getToken()) {
-    const fresh = await loadSession();
-    if (fresh) {
-      currentSession = fresh;
-
-      // Update compose avatar with fresh data
-      const av = document.getElementById('compose-avatar');
-      if (av) av.src = fresh.photo_url
-        || (fresh.minecraft_name
-          ? `https://minotar.net/helm/${encodeURIComponent(fresh.minecraft_name)}/56.png`
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(fresh.username||'?')}&background=6366f1&color=fff&size=56`);
-
-      if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
-        renderHeader(fresh);
-        renderProfileCard(fresh);
-      }
+  try {
+    await apiJson(`/api/me/follows/${encodeURIComponent(targetId)}`, { method: next ? 'POST' : 'DELETE' });
+    showToast('success', next ? 'Jogador seguido' : 'Conexao removida', next ? 'O feed seguindo ficou mais interessante.' : 'Voce deixou de seguir este jogador.');
+  } catch (err) {
+    if (button) {
+      button.textContent = currentlyFollowing ? 'Seguindo' : 'Seguir';
+      button.classList.toggle('is-following', currentlyFollowing);
+      button.dataset.following = currentlyFollowing ? '1' : '0';
     }
+    showToast('error', 'Acao nao concluida', err.message || 'Tente novamente.');
+  } finally {
+    if (button) button.disabled = false;
   }
+}
 
-  // 6. Reveal page
-  document.body.classList.add('ready');
-});
+async function openProfile(mcName) {
+  if (!mcName) return;
+  $('#profile-content').innerHTML = '<div class="modal-content"><div class="skeleton post-skeleton"></div></div>';
+  openModal('profile-modal');
+  try {
+    const profile = await apiJson(`/api/community/player/${encodeURIComponent(mcName)}`);
+    renderProfile(profile);
+  } catch (err) {
+    $('#profile-content').innerHTML = `
+      <div class="modal-content">
+        <section class="empty-state">
+          <div class="empty-icon">${icons.error}</div>
+          <h3>Perfil indisponivel</h3>
+          <p>${escapeHTML(err.message || 'Nao foi possivel abrir este jogador.')}</p>
+        </section>
+      </div>
+    `;
+  }
+}
+
+function renderProfile(profile) {
+  const mcName = profile.minecraft_name || profile.username || 'Steve';
+  const rank = rankInfo(profile.rank, profile.merit);
+  const isMe = Number(profile.id) === Number(state.me?.id);
+  const capital = profile.capital ?? profile.capital_balance ?? profile.capitalBalance ?? 0;
+  $('#profile-title').textContent = mcName;
+  $('#profile-content').innerHTML = `
+    <div class="profile-cover"></div>
+    <div class="profile-main">
+      <div class="profile-topline">
+        <img class="profile-avatar" src="${skinUrl(mcName, 100)}" alt="Avatar de ${escapeHTML(mcName)}" width="100" height="100" onerror="this.src='${skinUrl('Steve', 100)}'">
+        ${isMe ? '<a class="secondary-btn" href="account.html">Editar perfil</a>' : `<button class="primary-btn" type="button" id="profile-follow-btn" data-following="${profile.is_following ? '1' : '0'}">${profile.is_following ? 'Deixar de seguir' : 'Seguir'}</button>`}
+      </div>
+      <div class="profile-name">
+        <h3>${escapeHTML(mcName)}</h3>
+        <span class="rank-pill" style="--rank:${rank.color}">${escapeHTML(rank.label)}</span>
+      </div>
+      <p class="profile-handle">@${escapeHTML(profile.username || mcName)}</p>
+      <p class="profile-bio">${escapeHTML(profile.bio || 'Sem bio publica por enquanto.')}</p>
+      <div class="profile-stats">
+        <div class="profile-stat"><strong>${formatNumber(profile.merit || 0)}</strong><span>Merito</span></div>
+        <div class="profile-stat"><strong>${formatNumber(capital)}</strong><span>Capital</span></div>
+        <button class="profile-stat" type="button" data-relation="followers" data-mc-name="${escapeHTML(mcName)}"><strong>${formatNumber(profile.followers_count || 0)}</strong><span>Seguidores</span></button>
+        <button class="profile-stat" type="button" data-relation="following" data-mc-name="${escapeHTML(mcName)}"><strong>${formatNumber(profile.following_count || 0)}</strong><span>Seguindo</span></button>
+      </div>
+    </div>
+  `;
+  const followButton = $('#profile-follow-btn');
+  if (followButton) {
+    followButton.addEventListener('click', () => {
+      const currently = followButton.dataset.following === '1';
+      followButton.dataset.following = currently ? '0' : '1';
+      followButton.textContent = currently ? 'Seguir' : 'Deixar de seguir';
+      toggleFollow(profile.id, currently, null);
+    });
+  }
+}
+
+async function openRelationList(type, mcName) {
+  const title = type === 'followers' ? 'Seguidores' : 'Seguindo';
+  $('#relation-title').textContent = `${title} de ${mcName}`;
+  $('#relation-list').innerHTML = Array.from({ length: 4 }, () => '<div class="skeleton" style="height:64px;border-radius:14px;"></div>').join('');
+  openModal('relation-modal');
+  try {
+    const rows = await apiJson(`/api/community/player/${encodeURIComponent(mcName)}/${type}`);
+    $('#relation-list').innerHTML = rows.length ? rows.map(player => {
+      const name = player.minecraft_name || player.username || 'Steve';
+      const rank = rankInfo(player.rank);
+      const followed = Boolean(player.followed_by_me);
+      const isMe = Number(player.id) === Number(state.me?.id);
+      return `
+        <div class="relation-row" data-mc-name="${escapeHTML(name)}" data-user-id="${escapeHTML(player.id)}">
+          <img src="${skinUrl(name, 50)}" alt="Avatar de ${escapeHTML(name)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
+          <div>
+            <strong>${escapeHTML(name)}</strong>
+            <span>${escapeHTML(rank.label)} · @${escapeHTML(player.username || name)}</span>
+          </div>
+          ${isMe ? '' : `<button class="mini-follow ${followed ? 'is-following' : ''}" type="button" data-action="follow-player" data-following="${followed ? '1' : '0'}">${followed ? 'Seguindo' : 'Seguir'}</button>`}
+        </div>
+      `;
+    }).join('') : '<section class="empty-state" style="padding:24px 12px;"><p>Nenhum jogador nesta lista.</p></section>';
+  } catch (err) {
+    $('#relation-list').innerHTML = `<section class="empty-state" style="padding:24px 12px;"><p>${escapeHTML(err.message || 'Nao foi possivel carregar.')}</p></section>`;
+  }
+}
+
+function switchFilter(filter) {
+  state.filter = filter;
+  $$('.tab-btn').forEach(btn => {
+    const active = btn.dataset.filter === filter;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  $$('[data-rail-filter]').forEach(btn => btn.classList.toggle('active', btn.dataset.railFilter === filter));
+  loadFeed({ reset: true });
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  document.documentElement.setAttribute('data-theme', next);
+}
+
+function bindEvents() {
+  $('#post-content').addEventListener('input', updateComposer);
+  $('#publish-btn').addEventListener('click', publishPost);
+  $('#load-more-btn').addEventListener('click', () => loadFeed({ reset: false }));
+  $('#comment-form').addEventListener('submit', submitComment);
+  $('#theme-toggle').addEventListener('click', toggleTheme);
+  $('#user-chip').addEventListener('click', () => location.href = 'account.html');
+  $('#refresh-players').addEventListener('click', () => loadPlayers($('#player-search').value.trim()));
+
+  let playerTimer = null;
+  $('#player-search').addEventListener('input', event => {
+    clearTimeout(playerTimer);
+    playerTimer = setTimeout(() => loadPlayers(event.target.value.trim()), 250);
+  });
+
+  $$('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchFilter(btn.dataset.filter)));
+  $$('[data-rail-filter]').forEach(btn => btn.addEventListener('click', () => switchFilter(btn.dataset.railFilter)));
+
+  document.addEventListener('click', event => {
+    const closeButton = event.target.closest('[data-close-modal]');
+    if (closeButton) closeModal(closeButton.dataset.closeModal);
+    if (event.target.classList.contains('modal-backdrop')) closeModal(event.target.id);
+
+    const profileTarget = event.target.closest('.js-open-profile, .player-row, .relation-row');
+    if (profileTarget && !event.target.closest('button')) {
+      const mcName = profileTarget.dataset.mcName || profileTarget.closest('[data-mc-name]')?.dataset.mcName;
+      if (mcName) openProfile(mcName);
+    }
+
+    const relation = event.target.closest('[data-relation]');
+    if (relation) openRelationList(relation.dataset.relation, relation.dataset.mcName);
+
+    const followButton = event.target.closest('[data-action="follow-player"]');
+    if (followButton) {
+      event.stopPropagation();
+      const row = followButton.closest('[data-user-id]');
+      toggleFollow(row?.dataset.userId, followButton.dataset.following === '1', followButton);
+    }
+
+    const postCard = event.target.closest('.post-card');
+    if (postCard && !event.target.closest('button') && !event.target.closest('.js-open-profile')) {
+      openComments(postCard.dataset.postId);
+    }
+
+    const action = event.target.closest('[data-action]');
+    if (action) {
+      const card = action.closest('.post-card');
+      if (!card) return;
+      event.stopPropagation();
+      const id = card.dataset.postId;
+      if (action.dataset.action === 'like') toggleLike(id, action);
+      if (action.dataset.action === 'comments') openComments(id);
+      if (action.dataset.action === 'delete') deletePost(id);
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') $$('.modal-backdrop.show').forEach(modal => closeModal(modal.id));
+  });
+
+  const observer = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) loadFeed({ reset: false });
+  }, { rootMargin: '500px 0px' });
+  observer.observe($('#feed-sentinel'));
+}
+
+async function boot() {
+  bindEvents();
+  updateComposer();
+  try {
+    await loadMe();
+  } catch (err) {
+    showToast('error', 'Sessao invalida', err.message || 'Faca login novamente.');
+    setTimeout(logout, 900);
+    return;
+  }
+  await Promise.allSettled([
+    loadFeed({ reset: true }),
+    loadPlayers(),
+  ]);
+}
+
+boot();
 </script>
-
-<style>
-/* Extra: CSS @keyframes can't be inside <script> — put spin here */
-@keyframes spin { to { transform: rotate(360deg); } }
-</style>
-
 </body>
 </html>
