@@ -646,6 +646,56 @@ CREATE TABLE IF NOT EXISTS delete_account_verifications (
   UNIQUE(user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_delete_verify_user ON delete_account_verifications(user_id);
+
+-- Tabela da Rede Social (Seguidores)
+CREATE TABLE IF NOT EXISTS user_follows (
+  follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  following_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (follower_id, following_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id);
+
+-- Adiciona a coluna Bio/Status nas preferências, se não existir
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT '';
+
+-- ─────────────────────────────────────────────
+-- REDE SOCIAL: POSTAGENS E CURTIDAS
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_posts (
+  id SERIAL PRIMARY KEY,
+  author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  likes_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_user_posts_author ON user_posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_user_posts_date ON user_posts(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS post_likes (
+  post_id INTEGER REFERENCES user_posts(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS post_comments (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER NOT NULL REFERENCES user_posts(id) ON DELETE CASCADE,
+  author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id);
+
+CREATE TABLE IF NOT EXISTS content_mentions (
+  id SERIAL PRIMARY KEY,
+  content_type VARCHAR(20) NOT NULL, -- 'post' | 'comment'
+  content_id INTEGER NOT NULL,
+  mentioned_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 await pool.query(featureSchemaSql);
 
@@ -3120,6 +3170,346 @@ activeSession: active.rows[0]?.entered_at || null,
 });
 });
 
+// ─────────────────────────────────────────────
+// SOCIAL / COMUNIDADE (Estilo Roblox/Twitter)
+// ─────────────────────────────────────────────
+
+// Lista pública de jogadores (Para a página Comunidade)
+app.get('/api/community/players', auth, async (req, res) => {
+  const limit = Math.min(50, parseInt(req.query.limit || 20));
+  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
+
+  let query = `
+    SELECT u.id, u.username, u.minecraft_name, u.photo_url, up.bio, 
+           COALESCE(pb.rank, 'ferro') AS rank, COALESCE(pb.merit_total, 0) AS merit,
+           (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) AS followers_count
+    FROM users u
+    JOIN user_preferences up ON u.id = up.user_id
+    LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+    WHERE up.public_profile = TRUE AND u.id != $1
+  `;
+  const params = [req.user.sub];
+
+  if (search) {
+    query += ` AND (LOWER(u.minecraft_name) LIKE $2 OR LOWER(u.username) LIKE $2)`;
+    params.push(search);
+  }
+
+  query += ` ORDER BY followers_count DESC, merit DESC LIMIT $${params.length + 1}`;
+  params.push(limit);
+
+  try {
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao buscar comunidade' });
+  }
+});
+
+// Ver perfil público de um jogador específico
+app.get('/api/community/player/:mc_name', auth, async (req, res) => {
+  const mcName = sanitize(req.params.mc_name).toLowerCase();
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, up.bio, up.public_profile,
+             COALESCE(pb.rank, 'ferro') AS rank, COALESCE(pb.merit_total, 0) AS merit,
+             (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) AS followers_count,
+             (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id) AS following_count,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS is_following
+      FROM users u
+      LEFT JOIN user_preferences up ON u.id = up.user_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE LOWER(u.minecraft_name) = $2 LIMIT 1
+    `, [req.user.sub, mcName]);
+
+    if (!rows.length) return res.status(404).json({ error: 'Jogador não encontrado' });
+    if (!rows[0].public_profile && rows[0].id !== req.user.sub) {
+      return res.status(403).json({ error: 'Este perfil é privado.' });
+    }
+    res.json(rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao buscar perfil' });
+  }
+});
+
+// Seguir um jogador
+app.post('/api/me/follows/:targetId', auth, async (req, res) => {
+  const targetId = parseInt(req.params.targetId);
+  if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    await pool.query('INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [req.user.sub, targetId]);
+    
+    // Notifica a pessoa que foi seguida
+    const { rows: target } = await pool.query('SELECT minecraft_name FROM users WHERE id=$1', [targetId]);
+    if (target[0]?.minecraft_name) {
+      await createMinecraftNotification({
+        minecraftName: target[0].minecraft_name,
+        title: 'Novo Seguidor!',
+        body: `${req.user.minecraft_name || req.user.username} começou a seguir você.`,
+        type: 'social', icon: '👤', createdBy: req.user.sub
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Erro ao seguir' }); }
+});
+
+// Parar de seguir
+app.delete('/api/me/follows/:targetId', auth, async (req, res) => {
+  const targetId = parseInt(req.params.targetId);
+  try {
+    await pool.query('DELETE FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, targetId]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Erro ao deixar de seguir' }); }
+});
+
+// ─────────────────────────────────────────────
+// FEED DE ATIVIDADES (Postagens locais do site)
+// ─────────────────────────────────────────────
+
+// Extrai usuários mencionados (ex: @joao_gamer)
+function extractMentions(text) {
+  const regex = /@([a-z0-9_]{3,32})/gi;
+  const matches = [...text.matchAll(regex)];
+  return [...new Set(matches.map(m => m[1].toLowerCase()))];
+}
+
+// Criar uma postagem com suporte a Menções (@)
+app.post('/api/community/posts', auth, authLimiter, async (req, res) => {
+  const content = sanitize(req.body?.content || '');
+  if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
+  if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' }); 
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'INSERT INTO user_posts(author_id, content) VALUES($1, $2) RETURNING id, content, created_at',
+      [req.user.sub, content]
+    );
+    const newPost = rows[0];
+
+    // Processa Menções
+    const mentions = extractMentions(content);
+    if (mentions.length > 0) {
+      const { rows: mentionedUsers } = await client.query(
+        'SELECT id, minecraft_name, username FROM users WHERE LOWER(username) = ANY($1) OR LOWER(minecraft_name) = ANY($1)',
+        [mentions]
+      );
+      for (const mUser of mentionedUsers) {
+        if (mUser.id === req.user.sub) continue; // Não notifica a si mesmo
+        await client.query(
+          "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('post', $1, $2)",
+          [newPost.id, mUser.id]
+        );
+        const targetName = mUser.minecraft_name || mUser.username;
+        const authorName = req.user.minecraft_name || req.user.username;
+        await createMinecraftNotification({
+          minecraftName: targetName,
+          title: 'Você foi mencionado!',
+          body: `${authorName} mencionou você em uma postagem: "${content.substring(0, 40)}..."`,
+          type: 'social', icon: '💬', createdBy: req.user.sub
+        });
+      }
+    }
+    await client.query('COMMIT');
+    res.status(201).json(newPost);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Erro ao publicar.' });
+  } finally {
+    client.release();
+  }
+});
+
+// Buscar o Feed (Geral ou Seguindo) - COM PAGINAÇÃO POR CURSOR (ID)
+app.get('/api/community/posts', auth, async (req, res) => {
+  const limit = Math.min(50, parseInt(req.query.limit || 20));
+  const filter = req.query.filter || 'all';
+  const cursor = parseInt(req.query.cursor) || null; // ID do último post carregado
+
+  const params = [req.user.sub, limit];
+  let conditions = [];
+
+  if (cursor) {
+    conditions.push(`p.id < $${params.length + 1}`);
+    params.push(cursor);
+  }
+  if (filter === 'following') {
+    conditions.push(`(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const query = `
+    SELECT p.id, p.content, p.likes_count, p.created_at,
+           u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
+           EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
+           (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id)::int AS comments_count
+    FROM user_posts p
+    JOIN users u ON p.author_id = u.id
+    ${whereClause}
+    ORDER BY p.id DESC LIMIT $2
+  `;
+
+  try {
+    const { rows } = await pool.query(query, params);
+    const hasMore = rows.length === limit;
+    const nextCursor = hasMore ? rows[rows.length - 1].id : null;
+    res.json({ posts: rows, next_cursor: nextCursor, has_more: hasMore });
+  } catch (e) { res.status(500).json({ error: 'Erro ao buscar o feed.' }); }
+});
+
+// ── SISTEMA DE COMENTÁRIOS ──
+app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
+  const postId = parseInt(req.params.id);
+  try {
+    const { rows } = await pool.query(`
+      SELECT c.id, c.content, c.created_at, u.id AS author_id, u.username, u.minecraft_name, u.photo_url
+      FROM post_comments c
+      JOIN users u ON c.author_id = u.id
+      WHERE c.post_id = $1 ORDER BY c.created_at ASC
+    `, [postId]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: 'Erro ao carregar comentários' }); }
+});
+
+// Criar um comentário com suporte a Menções (@)
+app.post('/api/community/posts/:id/comments', auth, authLimiter, async (req, res) => {
+  const postId = parseInt(req.params.id);
+  const content = sanitize(req.body?.content || '');
+  if (!content || content.length > 280) return res.status(400).json({ error: 'Comentário inválido' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'INSERT INTO post_comments(post_id, author_id, content) VALUES($1, $2, $3) RETURNING id',
+      [postId, req.user.sub, content]
+    );
+    const newComment = rows[0];
+
+    // Processa Menções no Comentário
+    const mentions = extractMentions(content);
+    if (mentions.length > 0) {
+      const { rows: mentionedUsers } = await client.query(
+        'SELECT id, minecraft_name, username FROM users WHERE LOWER(username) = ANY($1) OR LOWER(minecraft_name) = ANY($1)',
+        [mentions]
+      );
+      for (const mUser of mentionedUsers) {
+        if (mUser.id === req.user.sub) continue; // Não notifica a si mesmo
+        await client.query(
+          "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('comment', $1, $2)",
+          [newComment.id, mUser.id]
+        );
+        const targetName = mUser.minecraft_name || mUser.username;
+        const authorName = req.user.minecraft_name || req.user.username;
+        await createMinecraftNotification({
+          minecraftName: targetName,
+          title: 'Você foi mencionado!',
+          body: `${authorName} mencionou você em um comentário: "${content.substring(0, 40)}..."`,
+          type: 'social', icon: '💬', createdBy: req.user.sub
+        });
+      }
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, id: newComment.id });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Erro ao comentar' });
+  } finally {
+    client.release();
+  }
+});
+
+// ── LISTAS DE SEGUIDORES / SEGUINDO ──
+app.get('/api/community/player/:mc_name/followers', auth, async (req, res) => {
+  const mcName = sanitize(req.params.mc_name).toLowerCase();
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(pb.rank, 'ferro') AS rank,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
+      FROM user_follows uf
+      JOIN users u ON uf.follower_id = u.id
+      JOIN users target ON uf.following_id = target.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE LOWER(target.minecraft_name) = $2
+      ORDER BY uf.created_at DESC LIMIT 50
+    `, [req.user.sub, mcName]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: 'Erro ao listar' }); }
+});
+
+app.get('/api/community/player/:mc_name/following', auth, async (req, res) => {
+  const mcName = sanitize(req.params.mc_name).toLowerCase();
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(pb.rank, 'ferro') AS rank,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
+      FROM user_follows uf
+      JOIN users u ON uf.following_id = u.id
+      JOIN users target ON uf.follower_id = target.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE LOWER(target.minecraft_name) = $2
+      ORDER BY uf.created_at DESC LIMIT 50
+    `, [req.user.sub, mcName]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: 'Erro ao listar' }); }
+});
+
+// Curtir um post
+app.post('/api/community/posts/:id/like', auth, async (req, res) => {
+  const postId = parseInt(req.params.id);
+  if (!postId) return res.status(400).json({ error: 'ID inválido' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rowCount } = await client.query('INSERT INTO post_likes(post_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [postId, req.user.sub]);
+    if (rowCount > 0) {
+      await client.query('UPDATE user_posts SET likes_count = likes_count + 1 WHERE id = $1', [postId]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Erro ao curtir' });
+  } finally {
+    client.release();
+  }
+});
+
+// Descurtir um post
+app.delete('/api/community/posts/:id/like', auth, async (req, res) => {
+  const postId = parseInt(req.params.id);
+  if (!postId) return res.status(400).json({ error: 'ID inválido' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rowCount } = await client.query('DELETE FROM post_likes WHERE post_id=$1 AND user_id=$2', [postId, req.user.sub]);
+    if (rowCount > 0) {
+      await client.query('UPDATE user_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1', [postId]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Erro ao descurtir' });
+  } finally {
+    client.release();
+  }
+});
+
+// Apagar o próprio post
+app.delete('/api/community/posts/:id', auth, async (req, res) => {
+  const postId = parseInt(req.params.id);
+  try {
+    const { rowCount } = await pool.query('DELETE FROM user_posts WHERE id=$1 AND author_id=$2', [postId, req.user.sub]);
+    if (!rowCount) return res.status(404).json({ error: 'Post não encontrado ou não autorizado' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Erro ao excluir' }); }
+});
+
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
 app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
   try {
@@ -3129,7 +3519,7 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
     }
 
     const params = [req.user.sub];
-    let where = 'WHERE user_id=$1 AND xbox_xuid IS NOT NULL'; // Busca TODAS as contas
+    let where = 'WHERE user_id=$1 AND xbox_xuid IS NOT NULL'; 
     if (requestedIntegrationId) {
       params.push(requestedIntegrationId);
       where += ` AND id=$${params.length}`;
@@ -3151,14 +3541,13 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
     const warnings = [];
 
     for (const integration of integrations) {
-      // Se o token foi revogado pela MS, gera um aviso pro usuário invés de quebrar
       if (!integration.ms_refresh_token) {
         warnings.push({
           integrationId: integration.id,
           mc_name: integration.mc_name,
           message: 'Sessão expirada. Por favor, clique em "Vincular Xbox" novamente para reconectar esta conta.'
         });
-        continue; // Pula para a próxima conta do loop
+        continue; 
       }
 
       try {
@@ -3206,11 +3595,12 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
     if (xuids.length > 0) {
       const { rows: matched } = await pool.query(
         `SELECT DISTINCT ON (u.id)
+                u.id,
                 u.username,
                 u.minecraft_name,
+                u.photo_url,
                 ui.xbox_xuid,
-                ui.mc_edition,
-                ui.mc_name
+                EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $2 AND following_id = u.id) AS is_following
          FROM user_integrations ui
          JOIN users u ON ui.user_id = u.id
          WHERE ui.xbox_xuid = ANY($1)
@@ -3230,6 +3620,47 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
   } catch (err) {
     console.error('[xbox/friends]', err.message);
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── EFETIVA A CONEXÃO (Segue os amigos encontrados) ──
+app.post('/api/me/xbox/friends/sync', auth, async (req, res) => {
+  const { user_ids } = req.body;
+  if (!Array.isArray(user_ids)) return res.status(400).json({ error: 'Lista de IDs inválida' });
+
+  let newConnections = 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const targetId of user_ids) {
+      const parsedId = parseInt(targetId);
+      if (!parsedId || parsedId === req.user.sub) continue;
+
+      const { rowCount } = await client.query(
+        'INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING',
+        [req.user.sub, parsedId]
+      );
+
+      if (rowCount > 0) {
+        newConnections++;
+        const { rows: target } = await client.query('SELECT minecraft_name FROM users WHERE id=$1', [parsedId]);
+        if (target[0]?.minecraft_name) {
+          await createMinecraftNotification({
+            minecraftName: target[0].minecraft_name,
+            title: 'Sincronia do Xbox',
+            body: `${req.user.minecraft_name || req.user.username} encontrou seu perfil pelo Xbox e começou a seguir você!`,
+            type: 'social', icon: '🤝', createdBy: req.user.sub
+          });
+        }
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, newConnections });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Erro ao sincronizar contatos' });
+  } finally {
+    client.release();
   }
 });
 
@@ -3313,6 +3744,7 @@ const DEFAULT_PREFERENCES = Object.freeze({
   show_online: true,
   public_history: false,
   theme: 'light',
+  bio: '',
 });
 const ALLOWED_THEMES = new Set(['light', 'dark', 'auto']);
 
@@ -3322,14 +3754,15 @@ function normalizePreferences(input = {}) {
     if (Object.prototype.hasOwnProperty.call(input, key)) prefs[key] = Boolean(input[key]);
   }
   if (ALLOWED_THEMES.has(input.theme)) prefs.theme = input.theme;
+  if (input.bio !== undefined) prefs.bio = sanitize(input.bio).slice(0, 160);
   return prefs;
 }
 
 async function ensureUserPreferences(userId, overrides = {}) {
   const prefs = normalizePreferences(overrides);
   const { rows } = await pool.query(
-    `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,updated_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+    `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
      ON CONFLICT(user_id) DO UPDATE SET
        email_server=$2,
        email_events=$3,
@@ -3338,9 +3771,10 @@ async function ensureUserPreferences(userId, overrides = {}) {
        show_online=$6,
        public_history=$7,
        theme=$8,
+       bio=$9,
        updated_at=NOW()
-     RETURNING email_server,email_events,email_community,public_profile,show_online,public_history,theme,updated_at`,
-    [userId, prefs.email_server, prefs.email_events, prefs.email_community, prefs.public_profile, prefs.show_online, prefs.public_history, prefs.theme],
+     RETURNING email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,updated_at`,
+    [userId, prefs.email_server, prefs.email_events, prefs.email_community, prefs.public_profile, prefs.show_online, prefs.public_history, prefs.theme, prefs.bio],
   );
   return rows[0];
 }
