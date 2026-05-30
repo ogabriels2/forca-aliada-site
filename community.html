@@ -1007,10 +1007,6 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
 <!-- TOPBAR -->
-<button class="fab-post btn-primary" id="fab-post" aria-label="Criar novo post">
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-  <span class="fab-text">Postar</span>
-</button>
 
 <header class="topbar">
   <div class="topbar-inner">
@@ -1647,7 +1643,7 @@ function postCardHTML(p){
   const canEdit=!isRepost&&isMe&&((Date.now()-new Date(p.created_at))/60000)<=15;
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
   const postUrl=communityUrl({post:targetPostId});
-  return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
+  return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" data-card-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
     ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(reposter)} repostou</span></div>`:''}
     <div class="post-layout">
       <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">
@@ -1681,7 +1677,7 @@ function postCardHTML(p){
         <div class="post-actions">
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
-          <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
+          <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" data-repost-of="${targetPostId}" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
           <button class="pa pa-share" data-action="copy" aria-label="Compartilhar">${IC.share}</button>
         </div>
       </div>
@@ -1822,7 +1818,9 @@ async function toggleLike(id,btn){
   }
 }
 async function toggleRepost(id,btn){
-  const post=findPost(id)||state.posts.find(p=>Number(p.repost_of_id)===Number(id));
+  // id = targetPostId (original post id, from data-post-id or data-repost-of)
+  // find the post in state: could be the original post OR a repost-entry pointing to it
+  const post=state.posts.find(p=>Number(p.id)===Number(id))||state.posts.find(p=>Number(p.repost_of_id)===Number(id));
   const reposted=Boolean(post?.reposted_by_me);
   if(post){
     post.reposted_by_me=!reposted;
@@ -1831,9 +1829,13 @@ async function toggleRepost(id,btn){
   btn?.classList.toggle('is-on',!reposted);
   const span=btn?.querySelector('span'); if(span) span.textContent=num(post?.reposts_count||0);
   try{
-    await api(`/api/community/posts/${encodeURIComponent(id)}/repost`,{method:reposted?'DELETE':'POST',body:reposted?undefined:JSON.stringify({content:''})});
+    if(reposted){
+      await api(`/api/community/posts/${encodeURIComponent(id)}/repost`,{method:'DELETE'});
+    } else {
+      await api(`/api/community/posts/${encodeURIComponent(id)}/repost`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:''})});
+    }
     toast('success',reposted?'Repost removido':'Repost feito',reposted?'Saiu do seu feed.':'Agora aparece para quem segue você.');
-    if(!reposted) loadFeed({reset:true});
+    loadFeed({reset:true});
   }catch(e){
     if(post){
       post.reposted_by_me=reposted;
@@ -2529,7 +2531,7 @@ function bindEvents(){
         if(a==='menu'){const m=act.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
-        if(a==='repost'){toggleRepost(id,act.closest('.pa-repost'));return}
+        if(a==='repost'){const repostOf=act.dataset.repostOf||id;toggleRepost(repostOf,act.closest('.pa-repost'));return}
         if(a==='edit'){editPostInline(id,postCard);return}
         if(a==='delete'){deletePost(id);return}
         if(a==='report'){reportContent('post',id);return}
@@ -2541,13 +2543,6 @@ function bindEvents(){
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>closeModal(m.id))});
-
-  // Ativar modal de postagem (FAB)
-  $('#fab-post')?.addEventListener('click', () => {
-    if(state.routeActive) Router.navigate('/community');
-    openModal('post-modal');
-    setTimeout(() => $('#modal-ta')?.focus(), 100);
-  });
 
   // infinite scroll
   const sentinel=$('#feed-sentinel');
