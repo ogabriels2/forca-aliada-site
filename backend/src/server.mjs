@@ -681,9 +681,12 @@ ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS edit_count INTEGER DEFAULT 0;
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS repost_of_id INTEGER REFERENCES user_posts(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_user_posts_author ON user_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_user_posts_date ON user_posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_posts_pinned ON user_posts(is_pinned DESC, pinned_at DESC NULLS LAST, id DESC);
+CREATE INDEX IF NOT EXISTS idx_user_posts_repost_of ON user_posts(repost_of_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_posts_repost_once ON user_posts(author_id, repost_of_id) WHERE repost_of_id IS NOT NULL AND content = '';
 
 CREATE TABLE IF NOT EXISTS post_likes (
   post_id INTEGER REFERENCES user_posts(id) ON DELETE CASCADE,
@@ -786,6 +789,37 @@ CREATE TABLE IF NOT EXISTS direct_conversation_reads (
   last_read_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (conversation_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS chat_groups (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(80) NOT NULL,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_chat_groups_owner ON chat_groups(owner_id, last_message_at DESC);
+
+CREATE TABLE IF NOT EXISTS chat_group_members (
+  group_id BIGINT NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL DEFAULT 'member',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_read_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (group_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_group_members_user ON chat_group_members(user_id, group_id);
+
+CREATE TABLE IF NOT EXISTS chat_group_messages (
+  id BIGSERIAL PRIMARY KEY,
+  group_id BIGINT NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  edited_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_chat_group_messages_group ON chat_group_messages(group_id, id DESC);
 `;
 await pool.query(featureSchemaSql);
 
@@ -895,6 +929,7 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
   'mention_post',
   'mention_comment',
   'direct_message',
+  'repost',
   'friend_joined',
 ]);
 
@@ -3540,8 +3575,10 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
       pool.query(`
         SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
-               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me,
+               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '') AS reposted_by_me
         FROM user_posts p
         WHERE p.author_id=$2
         ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC
@@ -3941,14 +3978,23 @@ app.get('/api/me/friend-requests', auth, async (req, res) => {
 app.get('/api/me/messages/unread-count', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT COUNT(*)::int AS count
-      FROM direct_messages dm
-      JOIN direct_conversations c ON c.id = dm.conversation_id
-      LEFT JOIN direct_conversation_reads dcr ON dcr.conversation_id = c.id AND dcr.user_id = $1
-      WHERE (c.participant_a = $1 OR c.participant_b = $1)
-        AND dm.sender_id != $1
-        AND dm.is_deleted = FALSE
-        AND dm.created_at > COALESCE(dcr.last_read_at, 'epoch'::timestamptz)
+      SELECT (
+        SELECT COUNT(*)
+        FROM direct_messages dm
+        JOIN direct_conversations c ON c.id = dm.conversation_id
+        LEFT JOIN direct_conversation_reads dcr ON dcr.conversation_id = c.id AND dcr.user_id = $1
+        WHERE (c.participant_a = $1 OR c.participant_b = $1)
+          AND dm.sender_id != $1
+          AND dm.is_deleted = FALSE
+          AND dm.created_at > COALESCE(dcr.last_read_at, 'epoch'::timestamptz)
+      )::int + (
+        SELECT COUNT(*)
+        FROM chat_group_messages gm
+        JOIN chat_group_members member ON member.group_id = gm.group_id AND member.user_id = $1
+        WHERE gm.sender_id != $1
+          AND gm.is_deleted = FALSE
+          AND gm.created_at > COALESCE(member.last_read_at, 'epoch'::timestamptz)
+      )::int AS count
     `, [req.user.sub]);
     res.json({ count: rows[0]?.count || 0 });
   } catch (e) {
@@ -4177,6 +4223,158 @@ app.post('/api/me/conversations/:id/read', auth, async (req, res) => {
   }
 });
 
+app.get('/api/me/group-conversations', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 24, 1, 60);
+  try {
+    const { rows } = await pool.query(`
+      SELECT g.id, g.name, g.owner_id, g.created_at, g.last_message_at,
+             COUNT(gm.user_id)::int AS member_count,
+             last_msg.id AS last_message_id,
+             last_msg.body AS last_message_body,
+             last_msg.sender_id AS last_message_sender_id,
+             last_msg.created_at AS last_message_at,
+             COALESCE(sender.minecraft_name, sender.username) AS last_sender_name,
+             COALESCE(unread.count, 0)::int AS unread_count
+      FROM chat_groups g
+      JOIN chat_group_members me ON me.group_id = g.id AND me.user_id = $1
+      JOIN chat_group_members gm ON gm.group_id = g.id
+      LEFT JOIN LATERAL (
+        SELECT id, body, sender_id, created_at
+        FROM chat_group_messages
+        WHERE group_id = g.id AND is_deleted = FALSE
+        ORDER BY id DESC
+        LIMIT 1
+      ) last_msg ON TRUE
+      LEFT JOIN users sender ON sender.id = last_msg.sender_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS count
+        FROM chat_group_messages msg
+        WHERE msg.group_id = g.id
+          AND msg.sender_id != $1
+          AND msg.is_deleted = FALSE
+          AND msg.created_at > COALESCE(me.last_read_at, 'epoch'::timestamptz)
+      ) unread ON TRUE
+      GROUP BY g.id, last_msg.id, last_msg.body, last_msg.sender_id, last_msg.created_at, sender.minecraft_name, sender.username, unread.count
+      ORDER BY COALESCE(last_msg.created_at, g.last_message_at, g.created_at) DESC
+      LIMIT $2
+    `, [req.user.sub, limit]);
+    res.json({ rows });
+  } catch (e) {
+    console.error('[GET /api/me/group-conversations]', e);
+    res.status(500).json({ error: 'Erro ao listar grupos' });
+  }
+});
+
+app.post('/api/me/group-conversations', auth, async (req, res) => {
+  const name = sanitize(req.body?.name || '').slice(0, 80);
+  const memberIds = Array.isArray(req.body?.member_ids) ? req.body.member_ids.map(id => parseInt(id, 10)).filter(Boolean) : [];
+  const uniqueMemberIds = [...new Set([req.user.sub, ...memberIds])].slice(0, 20);
+  if (!name || name.length < 2) return res.status(400).json({ error: 'Nome do grupo invalido.' });
+  if (uniqueMemberIds.length < 2) return res.status(400).json({ error: 'Escolha pelo menos uma pessoa.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: allowedRows } = await client.query(
+      `SELECT u.id
+       FROM users u
+       LEFT JOIN user_preferences up ON up.user_id = u.id
+       WHERE u.id = ANY($2::int[])
+         AND (u.id = $1 OR COALESCE(up.public_profile, TRUE) = TRUE)
+         AND NOT EXISTS (
+           SELECT 1 FROM user_blocks ub
+           WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+              OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+         )`,
+      [req.user.sub, uniqueMemberIds],
+    );
+    const allowed = allowedRows.map(row => Number(row.id));
+    if (!allowed.includes(Number(req.user.sub)) || allowed.length < 2) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Nao foi possivel criar grupo com esses membros.' });
+    }
+    const { rows } = await client.query(
+      'INSERT INTO chat_groups(name, owner_id) VALUES($1, $2) RETURNING id, name, owner_id, created_at, last_message_at',
+      [name, req.user.sub],
+    );
+    const group = rows[0];
+    for (const userId of allowed) {
+      await client.query(
+        `INSERT INTO chat_group_members(group_id, user_id, role, last_read_at)
+         VALUES($1, $2, $3, NOW())
+         ON CONFLICT DO NOTHING`,
+        [group.id, userId, Number(userId) === Number(req.user.sub) ? 'owner' : 'member'],
+      );
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ...group, member_count: allowed.length, unread_count: 0 });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/me/group-conversations]', e);
+    res.status(500).json({ error: 'Erro ao criar grupo' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
+  const groupId = parseInt(req.params.id, 10);
+  const limit = clampInt(req.query.limit, 50, 1, 80);
+  if (!groupId) return res.status(400).json({ error: 'Grupo invalido' });
+  try {
+    const { rows: allowed } = await pool.query('SELECT 1 FROM chat_group_members WHERE group_id=$2 AND user_id=$1 LIMIT 1', [req.user.sub, groupId]);
+    if (!allowed.length) return res.status(404).json({ error: 'Grupo nao encontrado' });
+    const { rows } = await pool.query(`
+      SELECT msg.id, msg.group_id, msg.sender_id,
+             CASE WHEN msg.is_deleted THEN '[mensagem removida]' ELSE msg.body END AS body,
+             msg.created_at, msg.edited_at, msg.is_deleted,
+             u.username, u.minecraft_name, u.photo_url
+      FROM chat_group_messages msg
+      JOIN users u ON u.id = msg.sender_id
+      WHERE msg.group_id = $1
+      ORDER BY msg.id DESC
+      LIMIT $2
+    `, [groupId, limit]);
+    await pool.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
+    res.json({ rows: rows.reverse() });
+  } catch (e) {
+    console.error('[GET /api/me/group-conversations/:id/messages]', e);
+    res.status(500).json({ error: 'Erro ao carregar mensagens do grupo' });
+  }
+});
+
+app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
+  const groupId = parseInt(req.params.id, 10);
+  const body = sanitize(req.body?.body || '').slice(0, 500);
+  if (!groupId) return res.status(400).json({ error: 'Grupo invalido' });
+  if (!body) return res.status(400).json({ error: 'Mensagem invalida.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: allowed } = await client.query('SELECT 1 FROM chat_group_members WHERE group_id=$2 AND user_id=$1 LIMIT 1', [req.user.sub, groupId]);
+    if (!allowed.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Grupo nao encontrado' });
+    }
+    const { rows } = await client.query(
+      `INSERT INTO chat_group_messages(group_id, sender_id, body)
+       VALUES($1, $2, $3)
+       RETURNING id, group_id, sender_id, body, is_deleted, created_at, edited_at`,
+      [groupId, req.user.sub, body],
+    );
+    await client.query('UPDATE chat_groups SET last_message_at=NOW() WHERE id=$1', [groupId]);
+    await client.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
+    await client.query('COMMIT');
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/me/group-conversations/:id/messages]', e);
+    res.status(500).json({ error: 'Erro ao enviar mensagem no grupo' });
+  } finally {
+    client.release();
+  }
+});
+
 // FEED DE ATIVIDADES (Postagens locais do site)
 // ─────────────────────────────────────────────
 app.get('/api/community/trending-hashtags', auth, async (req, res) => {
@@ -4326,12 +4524,20 @@ app.get('/api/community/posts', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
   const filter = req.query.filter || 'all';
   const cursor = parseInt(req.query.cursor, 10) || null;
+  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
+  const hashtag = req.query.hashtag ? sanitize(req.query.hashtag).replace(/^#/, '').toLowerCase() : null;
   const params = [req.user.sub, limit];
   const conditions = [
     `NOT EXISTS (
       SELECT 1 FROM user_blocks ub
       WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
          OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+    )`,
+    `NOT EXISTS (
+      SELECT 1 FROM user_blocks oub
+      WHERE ou.id IS NOT NULL
+        AND ((oub.blocker_id = $1 AND oub.blocked_id = ou.id)
+          OR (oub.blocker_id = ou.id AND oub.blocked_id = $1))
     )`,
   ];
 
@@ -4342,24 +4548,44 @@ app.get('/api/community/posts', auth, async (req, res) => {
   if (filter === 'following') {
     conditions.push(`(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`);
   }
+  if (search) {
+    params.push(search);
+    conditions.push(`(LOWER(p.content) LIKE $${params.length} OR LOWER(COALESCE(op.content, '')) LIKE $${params.length} OR LOWER(COALESCE(u.minecraft_name, u.username, '')) LIKE $${params.length} OR LOWER(COALESCE(ou.minecraft_name, ou.username, '')) LIKE $${params.length})`);
+  }
+  if (hashtag) {
+    params.push(`%#${hashtag}%`);
+    conditions.push(`(LOWER(p.content) LIKE $${params.length} OR LOWER(COALESCE(op.content, '')) LIKE $${params.length})`);
+  }
 
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
   try {
     const { rows } = await pool.query(`
       SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
-             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             p.repost_of_id,
+             op.content AS repost_original_content,
+             op.created_at AS repost_original_created_at,
+             ou.id AS repost_original_author_id,
+             ou.username AS repost_original_username,
+             ou.minecraft_name AS repost_original_minecraft_name,
+             ou.photo_url AS repost_original_photo_url,
+             ou.role AS repost_original_role,
+             COALESCE(opb.rank, 'ferro') AS repost_original_rank,
+             COALESCE(opb.merit_total, 0) AS repost_original_merit,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
+             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
              COALESCE(pb.rank, 'ferro') AS rank,
              COALESCE(pb.merit_total, 0) AS merit,
-             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
-             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
+             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
+             EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me,
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
              COALESCE((
                SELECT json_agg(row_to_json(rc))
                FROM (
                  SELECT pc.id, pc.content, pc.created_at, cu.username, cu.minecraft_name
                  FROM post_comments pc
                  JOIN users cu ON cu.id = pc.author_id
-                 WHERE pc.post_id = p.id
+                 WHERE pc.post_id = COALESCE(p.repost_of_id, p.id)
                    AND pc.is_deleted = FALSE
                    AND NOT EXISTS (
                      SELECT 1 FROM user_blocks cub
@@ -4373,6 +4599,9 @@ app.get('/api/community/posts', auth, async (req, res) => {
       FROM user_posts p
       JOIN users u ON p.author_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      LEFT JOIN user_posts op ON op.id = p.repost_of_id
+      LEFT JOIN users ou ON ou.id = op.author_id
+      LEFT JOIN player_balances opb ON LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
       ${whereClause}
       ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
       LIMIT $2
@@ -4483,6 +4712,88 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
   } catch (e) {
     console.error('[GET /api/community/posts/:id/comments]', e);
     res.status(500).json({ error: 'Erro ao carregar comentarios' });
+  }
+});
+
+app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const quote = sanitize(req.body?.content || req.body?.quote || '').slice(0, 280);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  if (quote.length > 280) return res.status(400).json({ error: 'Repost excede 280 caracteres.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: targetRows } = await client.query(
+      `SELECT COALESCE(p.repost_of_id, p.id) AS target_id,
+              target.author_id,
+              target.content
+       FROM user_posts p
+       JOIN user_posts target ON target.id = COALESCE(p.repost_of_id, p.id)
+       JOIN users u ON u.id = target.author_id
+       WHERE p.id = $2
+         AND target.author_id != $1
+         AND NOT EXISTS (
+           SELECT 1 FROM user_blocks ub
+           WHERE (ub.blocker_id=$1 AND ub.blocked_id=u.id)
+              OR (ub.blocker_id=u.id AND ub.blocked_id=$1)
+         )
+       LIMIT 1`,
+      [req.user.sub, postId],
+    );
+    const target = targetRows[0];
+    if (!target) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Post nao encontrado para repost.' });
+    }
+
+    const { rows } = await client.query(
+      `INSERT INTO user_posts(author_id, content, repost_of_id)
+       VALUES($1, $2, $3)
+       ON CONFLICT DO NOTHING
+       RETURNING id, content, repost_of_id, created_at, updated_at, edit_count, is_pinned`,
+      [req.user.sub, quote, target.target_id],
+    );
+    if (!rows.length && !quote) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Voce ja repostou este post.' });
+    }
+    await createSocialNotification({
+      recipientId: target.author_id,
+      actorId: req.user.sub,
+      type: 'repost',
+      entityType: 'post',
+      entityId: target.target_id,
+      previewText: quote || target.content,
+    }, client);
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, repost: rows[0] });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/community/posts/:id/repost]', e);
+    res.status(500).json({ error: 'Erro ao repostar.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/community/posts/:id/repost', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM user_posts rp
+       USING user_posts p
+       WHERE rp.author_id = $1
+         AND rp.content = ''
+         AND rp.repost_of_id = COALESCE(p.repost_of_id, p.id)
+         AND p.id = $2`,
+      [req.user.sub, postId],
+    );
+    res.json({ ok: true, removed: rowCount });
+  } catch (e) {
+    console.error('[DELETE /api/community/posts/:id/repost]', e);
+    res.status(500).json({ error: 'Erro ao desfazer repost.' });
   }
 });
 
