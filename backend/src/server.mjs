@@ -4138,6 +4138,7 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
   if (!body || body.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
 
   const client = await pool.connect();
+  let committed = false;
   try {
     await client.query('BEGIN');
     const { rows: convRows } = await client.query(
@@ -4179,18 +4180,21 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
        DO UPDATE SET last_read_at = NOW()`,
       [conversationId, req.user.sub],
     );
-    await createSocialNotification({
+    await client.query('COMMIT');
+    committed = true;
+
+    createSocialNotification({
       recipientId: conv.recipient_id,
       actorId: req.user.sub,
       type: 'direct_message',
       entityType: 'direct_message',
       entityId: rows[0].id,
       previewText: body,
-    }, client);
-    await client.query('COMMIT');
+    }).catch(err => console.warn('[direct_message notification skipped]', err?.message || err));
+
     res.status(201).json(rows[0]);
   } catch (e) {
-    await client.query('ROLLBACK');
+    if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/me/conversations/:id/messages]', e);
     res.status(500).json({ error: 'Erro ao enviar mensagem' });
   } finally {
