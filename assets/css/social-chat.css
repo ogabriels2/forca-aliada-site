@@ -32,13 +32,15 @@
   position: fixed;
   right: 18px;
   bottom: 18px;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--fa-chat-accent), #0d4fc7);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 28% 24%, rgba(255,255,255,.32), transparent 28px),
+    linear-gradient(135deg, var(--fa-chat-accent), #0d4fc7 58%, #0b3ea8);
   color: #fff;
   box-shadow: 0 14px 32px rgba(23, 97, 240, 0.3);
   cursor: pointer;
@@ -51,8 +53,13 @@
 }
 
 .fa-chat-launcher svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+}
+
+.fa-chat-has-fab .fa-chat-launcher {
+  right: 166px;
+  bottom: 24px;
 }
 
 .fa-chat-badge {
@@ -75,14 +82,14 @@
 .fa-chat-panel {
   position: fixed;
   right: 18px;
-  bottom: 82px;
-  width: min(384px, calc(100vw - 28px));
-  height: min(620px, calc(100vh - 112px));
+  bottom: 90px;
+  width: min(408px, calc(100vw - 28px));
+  height: min(620px, calc(100vh - 116px));
   display: none;
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--fa-chat-line);
-  border-radius: 10px;
+  border-radius: 18px;
   background: var(--fa-chat-panel);
   box-shadow: var(--fa-chat-shadow);
 }
@@ -105,6 +112,9 @@
   gap: 10px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--fa-chat-line);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--fa-chat-accent) 9%, transparent), transparent 60%),
+    var(--fa-chat-panel);
 }
 
 .fa-chat-title {
@@ -166,14 +176,14 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border-bottom: 1px solid var(--fa-chat-line);
 }
 
 .fa-chat-tab {
   min-height: 34px;
   border: 1px solid var(--fa-chat-line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--fa-chat-soft);
   color: var(--fa-chat-muted);
   font-size: 12px;
@@ -229,9 +239,9 @@
   grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 9px;
   align-items: center;
-  padding: 8px;
+  padding: 9px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -356,7 +366,7 @@
   max-width: 78%;
   padding: 8px 10px;
   border: 1px solid var(--fa-chat-line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--fa-chat-soft);
   color: var(--fa-chat-ink);
   font-size: 13px;
@@ -395,7 +405,7 @@
   resize: none;
   padding: 9px 10px;
   border: 1px solid var(--fa-chat-line);
-  border-radius: 8px;
+  border-radius: 12px;
   outline: none;
   background: var(--fa-chat-bg);
   color: var(--fa-chat-ink);
@@ -415,7 +425,7 @@
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--fa-chat-accent);
   color: #fff;
   cursor: pointer;
@@ -437,10 +447,15 @@
     bottom: 14px;
   }
 
+  .fa-chat-has-fab .fa-chat-launcher {
+    right: 126px;
+    bottom: 24px;
+  }
+
   .fa-chat-panel {
     left: 10px;
     right: 10px;
-    bottom: 78px;
+    bottom: 92px;
     width: auto;
     height: min(620px, calc(100vh - 96px));
   }

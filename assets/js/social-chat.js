@@ -85,6 +85,7 @@
   }
 
   function render() {
+    root.classList.toggle('fa-chat-has-fab', Boolean(document.querySelector('.fab-post')));
     root.innerHTML = `
       <button class="fa-chat-launcher" type="button" data-chat-toggle aria-label="Mensagens" aria-expanded="${state.open ? 'true' : 'false'}">
         ${icons.chat}
@@ -100,6 +101,42 @@
         </div>
         ${state.current ? renderThread() : renderInbox()}
       </section>`;
+  }
+
+  function updateLauncherBadge() {
+    const launcher = root.querySelector('[data-chat-toggle]');
+    if (!launcher) {
+      render();
+      return;
+    }
+    launcher.setAttribute('aria-expanded', state.open ? 'true' : 'false');
+    const currentBadge = launcher.querySelector('.fa-chat-badge');
+    if (!state.unread) {
+      currentBadge?.remove();
+      return;
+    }
+    const text = state.unread > 99 ? '99+' : String(state.unread);
+    if (currentBadge) {
+      currentBadge.textContent = text;
+    } else {
+      launcher.insertAdjacentHTML('beforeend', `<span class="fa-chat-badge">${esc(text)}</span>`);
+    }
+  }
+
+  function updateConversationList() {
+    const list = root.querySelector('.fa-chat-list');
+    if (!list || state.current || state.tab !== 'conversations') return;
+    list.innerHTML = renderConversations();
+    updateLauncherBadge();
+  }
+
+  function updateMessagesList({ scroll = false } = {}) {
+    const list = root.querySelector('[data-chat-messages]');
+    if (!list || !state.current) return;
+    list.innerHTML = state.messages.length
+      ? state.messages.map(message => renderMessage(message)).join('')
+      : '<div class="fa-chat-empty"><strong>Comece a conversa</strong>Mensagens diretas ficam aqui.</div>';
+    if (scroll) updateScroll();
   }
 
   function renderInbox() {
@@ -209,7 +246,8 @@
     try {
       const data = await api('/api/me/messages/unread-count');
       state.unread = Number(data.count || 0);
-      render();
+      if (state.open) updateLauncherBadge();
+      else render();
     } catch {
       state.unread = 0;
     }
@@ -286,6 +324,25 @@
     }
   }
 
+  async function refreshCurrentMessages() {
+    if (!state.current || state.busy) return;
+    const data = await api(`/api/me/conversations/${encodeURIComponent(state.current.id)}/messages?limit=50`);
+    const nextMessages = Array.isArray(data.rows) ? data.rows : [];
+    const before = state.messages.map(item => item.id).join(',');
+    const after = nextMessages.map(item => item.id).join(',');
+    if (before !== after) {
+      const wasNearBottom = (() => {
+        const list = root.querySelector('[data-chat-messages]');
+        return !list || (list.scrollHeight - list.scrollTop - list.clientHeight) < 80;
+      })();
+      state.messages = nextMessages;
+      updateMessagesList({ scroll: wasNearBottom });
+    }
+    await loadConversations();
+    state.current = state.conversations.find(item => Number(item.id) === Number(state.current.id)) || state.current;
+    updateLauncherBadge();
+  }
+
   async function openWithUser(user) {
     if (!user?.id) return;
     state.open = true;
@@ -316,12 +373,12 @@
         minecraft_name: state.me?.minecraft_name,
       });
       await loadConversations();
-      render();
-      updateScroll();
+      updateMessagesList({ scroll: true });
+      updateLauncherBadge();
     } catch (e) {
       textarea.value = body;
       state.error = e.message;
-      render();
+      updateMessagesList({ scroll: true });
     } finally {
       state.busy = false;
     }
@@ -372,7 +429,9 @@
         await loadConversations();
         render();
       } else if (profile) {
-        location.href = `profile.html?id=id:${encodeURIComponent(profile.dataset.chatProfile)}`;
+        const target = `id:${profile.dataset.chatProfile}`;
+        if (typeof window.navigateProfile === 'function') window.navigateProfile(target);
+        else location.href = `profile.html?id=${encodeURIComponent(target)}`;
       }
     } catch (e) {
       state.error = e.message || 'Acao nao concluida.';
@@ -387,11 +446,10 @@
     clearTimeout(searchTimer);
     searchTimer = setTimeout(async () => {
       if (state.tab === 'friends') await searchPeople(state.search);
-      render();
-      const next = root.querySelector('[data-chat-search]');
-      if (next) {
-        next.focus();
-        next.selectionStart = next.selectionEnd = next.value.length;
+      const list = root.querySelector('.fa-chat-list');
+      if (list) {
+        list.innerHTML = state.tab === 'friends' ? renderFriends() : renderConversations();
+        updateLauncherBadge();
       }
     }, 180);
   });
@@ -417,15 +475,19 @@
   render();
   loadUnread();
   setInterval(async () => {
-    if (state.current) {
-      const draft = root.querySelector('[data-chat-input]')?.value || '';
-      if (draft.trim()) return;
-      await openConversation(state.current);
-    } else if (state.open) {
-      await loadConversations();
-      render();
-    } else {
-      await loadUnread();
+    try {
+      if (!state.open) {
+        await loadUnread();
+      } else if (state.current) {
+        const draft = root.querySelector('[data-chat-input]')?.value || '';
+        if (draft.trim()) return;
+        await refreshCurrentMessages();
+      } else if (state.open) {
+        await loadConversations();
+        updateConversationList();
+      }
+    } catch (e) {
+      state.error = e.message || 'Nao foi possivel atualizar o chat.';
     }
-  }, 15000);
+  }, 25000);
 })();
