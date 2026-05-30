@@ -489,9 +489,12 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
 <div class="toast-stack" id="toast-stack"></div>
 
 <script>
-const API_BASE = window.FA_API_BASE
-  || localStorage.getItem('fa_api_base')
-  || ((location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000' : 'https://forca-aliada-site.onrender.com');
+const PROD = 'https://forca-aliada-site.onrender.com';
+const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const LOCAL_API = 'http://localhost:3000';
+const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
+const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
+const API_BASES = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 const token = localStorage.getItem('fa_token');
 if (!token) location.replace('login.html');
 
@@ -555,11 +558,26 @@ async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', `Bearer ${token}`);
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!res.ok) throw new Error(data.error || 'Erro na API');
-  return data;
+  const timeoutMs = options.timeoutMs || 25000;
+  const fetchOptions = { ...options };
+  delete fetchOptions.timeoutMs;
+  let err;
+  for (const base of API_BASES) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${base}${path}`, { ...fetchOptions, headers, signal: controller.signal });
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
+      if (!res.ok) throw new Error(data.error || 'Erro na API');
+      return data;
+    } catch (e) {
+      err = e.name === 'AbortError' ? new Error('A API demorou para responder. Tente novamente em alguns segundos.') : e;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw err;
 }
 function toast(title, body = '', type = 'info') {
   const el = document.createElement('div');
