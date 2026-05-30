@@ -3392,8 +3392,8 @@ app.get('/api/community/players', auth, async (req, res) => {
       LEFT JOIN user_preferences up ON u.id = up.user_id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE ${conditions.join(' AND ')}
-      ORDER BY followers_count DESC, merit DESC, u.created_at DESC
-      LIMIT $${params.length}
+      ORDER BY is_online DESC, followers_count DESC, merit DESC, u.created_at DESC
+      LIMIT $${params.length}
     `, params);
     res.json(rows);
   } catch (e) {
@@ -3708,6 +3708,25 @@ app.post('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) => 
   try {
     await pool.query('INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [req.user.sub, targetId]);
     
+// Solicitações pendentes (Quem te segue, mas você não segue de volta)
+app.get('/api/me/friend-requests', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at, COALESCE(pb.rank, 'ferro') AS rank
+      FROM user_follows uf
+      JOIN users u ON uf.follower_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE uf.following_id = $1
+        AND NOT EXISTS ( SELECT 1 FROM user_follows uf2 WHERE uf2.follower_id = $1 AND uf2.following_id = u.id )
+        AND NOT EXISTS ( SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id) OR (ub.blocker_id = u.id AND ub.blocked_id = $1) )
+      ORDER BY uf.created_at DESC LIMIT 10
+    `, [req.user.sub]);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao buscar solicitações' });
+  }
+});
+
     // Notifica a pessoa que foi seguida
     const { rows: target } = await pool.query('SELECT minecraft_name FROM users WHERE id=$1', [targetId]);
     if (target[0]?.minecraft_name) {
@@ -3745,6 +3764,23 @@ app.delete('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) =
 // ─────────────────────────────────────────────
 // FEED DE ATIVIDADES (Postagens locais do site)
 // ─────────────────────────────────────────────
+app.get('/api/community/trending-hashtags', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT LOWER(tag_match[1]) AS tag, COUNT(*)::int AS count
+      FROM user_posts,
+           regexp_matches(content, '#([a-zA-Z0-9_À-ÿ]{2,32})', 'g') AS tag_match
+      WHERE created_at > NOW() - INTERVAL '14 days'
+      GROUP BY LOWER(tag_match[1])
+      ORDER BY count DESC, tag ASC
+      LIMIT 5
+    `);
+    res.json({ trends: rows });
+  } catch (e) {
+    console.error('[GET /api/community/trending-hashtags]', e);
+    res.status(500).json({ error: 'Erro ao buscar hashtags' });
+  }
+});
 
 // Extrai usuários mencionados (ex: @joao_gamer)
 function extractMentions(text) {
