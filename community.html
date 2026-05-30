@@ -347,27 +347,61 @@ img{display:block}
   border-color:color-mix(in srgb,var(--accent) 52%,var(--line));
   box-shadow:0 0 0 3.5px var(--accent-soft);
 }
+/* FIX DO CURSOR: Sincronização estrita de fonte e espaçamento entre textarea e espelho */
+.comp-mirror, .comp-ta {
+  font-family: inherit; font-size: 14px; line-height: 1.58;
+  white-space: pre-wrap; word-break: break-word; letter-spacing: normal;
+}
 .comp-mirror{
-  min-height:96px;
-  padding:11px 12px;font-size:14px;line-height:1.58;
-  white-space:pre-wrap;word-break:break-word;
-  color:var(--ink);
+  min-height:48px; padding:11px 12px; color:var(--ink);
 }
 .comp-mirror .pl{color:var(--ink-3)}
 .mention-hi{
-  color:var(--accent);font-weight:700;
-  background:var(--accent-soft);border-radius:5px;padding:1px 3px;
+  color:var(--accent); background:var(--accent-soft); border-radius:3px;
+  /* Sem font-weight ou padding lateral para NÃO desalinhar a largura do cursor! */
 }
 .comp-ta{
-  position:absolute;inset:0;z-index:1;
-  width:100%;height:100%;
-  padding:11px 12px;font-size:14px;line-height:1.58;
-  border:none;resize:none;outline:none;
-  color:transparent;caret-color:var(--ink);background:transparent;
-  overflow:hidden;
+  position:absolute; inset:0; z-index:1;
+  width:100%; height:100%; padding:11px 12px;
+  border:none; resize:none; outline:none;
+  color:transparent; caret-color:var(--ink); background:transparent; overflow:hidden;
 }
 .comp-ta::selection{background:color-mix(in srgb,var(--accent) 20%,transparent)}
 .comp-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+
+/* ─── BARRA DE AMIGOS HORIZONTAL ─── */
+.friends-scroll-wrap {
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
+  box-shadow: var(--shadow-sm); padding: 12px 14px; margin-bottom: 12px;
+  display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none;
+}
+.friends-scroll-wrap::-webkit-scrollbar { display: none; }
+.friend-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; min-width: 56px; flex-shrink: 0;
+}
+.friend-av-wrap { position: relative; width: 48px; height: 48px; }
+.friend-av-wrap img {
+  width: 100%; height: 100%; border-radius: 16px; object-fit: cover;
+  border: 2px solid transparent; transition: border-color var(--t-fast);
+}
+.friend-item:hover .friend-av-wrap img { border-color: var(--accent); }
+.status-dot {
+  position: absolute; right: -3px; bottom: -3px; width: 14px; height: 14px;
+  border: 2.5px solid var(--surface-solid); border-radius: 999px; background: var(--success);
+}
+.status-dot.playing { background: var(--purple-light); }
+.friend-name {
+  font-size: 10.5px; font-weight: 700; color: var(--ink-2);
+  max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.friend-add {
+  width: 48px; height: 48px; border-radius: 16px; border: 2px dashed var(--line-strong);
+  display: grid; place-items: center; color: var(--ink-3); transition: all var(--t-fast);
+}
+.friend-item:hover .friend-add { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+.sheet-md { width: min(580px, 100%); }
 .comp-hint{font-size:11.5px;color:var(--ink-3);font-weight:500}
 .comp-tools{display:flex;align-items:center;gap:8px}
 /* char ring */
@@ -1005,11 +1039,26 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
     </div>
 
     <!-- COMPOSER -->
-    <div class="composer fake-composer" id="fake-composer" tabindex="0" role="button" aria-label="Criar novo post">
-      <div class="composer-inner" style="align-items:center">
-        <img class="av42" id="fake-comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
-        <div class="fake-input">O que está acontecendo no servidor?</div>
-        <button class="btn btn-primary btn-sm hide-sm">Postar</button>
+    <div class="friends-scroll-wrap" id="friends-bar" aria-label="Amigos e Jogadores Online">
+      <div class="friend-item" onclick="openModal('friend-modal')">
+        <div class="friend-add"><svg viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="friend-name">Adicionar</span>
+      </div>
+      <div id="friends-list" style="display:flex; gap:12px">
+              </div>
+    </div>
+
+        <div class="composer" id="inline-composer" style="padding:10px 13px;">
+      <div style="display:grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 11px; align-items: end;">
+        <img class="av42" id="inline-comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
+        <div class="comp-editor" id="inline-comp-editor" style="min-height:42px; border-radius:var(--r-md);">
+          <div class="comp-mirror" id="inline-mirror" style="min-height:42px; padding:10px 12px; font-size:13.5px;"><span class="pl">O que está acontecendo no servidor?</span></div>
+          <textarea class="comp-ta" id="inline-ta" maxlength="280" aria-label="Escrever post" rows="1" spellcheck="true" style="min-height:42px; padding:10px 12px; font-size:13.5px;"></textarea>
+          <div class="mention-box" id="inline-mention-box" role="listbox"></div>
+        </div>
+        <button class="btn btn-primary" id="inline-publish-btn" disabled style="width:42px; height:42px; padding:0; border-radius:11px;" aria-label="Publicar">
+          <svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
       </div>
     </div>
 
@@ -1079,36 +1128,50 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 </div>
 
 <div class="backdrop" id="post-modal" aria-hidden="true" role="presentation">
-  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="post-title" style="overflow:visible">
+  <div class="sheet sheet-md" role="dialog" aria-modal="true" aria-labelledby="post-title" style="overflow:visible">
     <div class="sheet-header">
       <h2 id="post-title">Novo Post</h2>
-      <button class="close-btn" data-close="post-modal" aria-label="Fechar">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
+      <button class="close-btn" data-close="post-modal" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
     <div class="sheet-body" style="padding:16px; overflow:visible">
       <div class="composer-inner">
-        <img class="av42" id="comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
+        <img class="av42" id="modal-comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
         <div class="comp-body">
-          <div class="comp-editor" id="comp-editor">
-            <div class="comp-mirror" id="comp-mirror"><span class="pl">O que está acontecendo no servidor?</span></div>
-            <textarea class="comp-ta" id="post-ta" maxlength="280" aria-label="Escrever post" rows="4" spellcheck="true"></textarea>
-            <div class="mention-box" id="mention-box" role="listbox" aria-label="Sugestões de menção"></div>
-          </div>
-          <div class="comp-footer">
-            <div>
-              <span class="comp-hint">Máx. 280 · Mencione com @</span>
-              <div class="rate-hint" id="rate-hint"></div>
-            </div>
-            <div class="comp-tools">
-              <div class="ring-wrap" id="char-ring" aria-hidden="true">
-                <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg>
-                <span id="ring-label"></span>
-              </div>
-              <button class="btn btn-primary btn-sm" id="publish-btn" disabled>Publicar</button>
-            </div>
+          <div class="comp-editor" id="modal-comp-editor" style="border:none; background:transparent;">
+            <div class="comp-mirror" id="modal-mirror" style="font-size:16px;"><span class="pl">O que está acontecendo no servidor?</span></div>
+            <textarea class="comp-ta" id="modal-ta" maxlength="280" aria-label="Escrever post" rows="4" spellcheck="true" style="font-size:16px;"></textarea>
+            <div class="mention-box" id="modal-mention-box" role="listbox"></div>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-solid)">
+      <div style="display:flex; gap:8px; color:var(--accent)">
+        <button class="btn btn-ghost btn-sm" disabled title="Mídia"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+        <button class="btn btn-ghost btn-sm" disabled title="Enquete"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="ring-wrap" id="modal-char-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="modal-ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg><span id="modal-ring-label"></span></div>
+        <button class="btn btn-primary" id="modal-publish-btn" disabled>Publicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="friend-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="friend-title">
+    <div class="sheet-header">
+      <h2 id="friend-title">Adicionar Amigos</h2>
+      <button class="close-btn" data-close="friend-modal" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="sheet-body" style="padding:0">
+      <div style="padding:14px 16px; border-bottom:1px solid var(--line); background:var(--bg)">
+        <p style="font-family:var(--ff-mono);font-size:10px;color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Solicitações de Amizade</p>
+        <p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitação pendente.</p>
+      </div>
+      <div style="padding:14px 16px;">
+        <p style="font-family:var(--ff-mono);font-size:10px;color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Sugestões (Jogadores Online)</p>
+        <div class="relation-list2" id="friend-sug-list"></div>
       </div>
     </div>
   </div>
@@ -1295,46 +1358,47 @@ function showRouteUI(html){
 }
 
 /* ======================= COMPOSER ======================= */
-let mentionTimer=null;
-function updateComposer(){
-  const ta=$('#post-ta'),mirror=$('#comp-mirror'),ring=$('#ring-circle'),label=$('#ring-label'),wrap=$('#char-ring'),btn=$('#publish-btn');
+/* ======================= COMPOSER DUPLO (INLINE E MODAL) ======================= */
+let mentionTimer=null, activeTaId=null;
+function syncComposer(type){
+  const ta=$(`#${type}-ta`), mirror=$(`#${type}-mirror`), btn=$(`#${type}-publish-btn`);
   if(!ta)return;
-  const val=ta.value,len=val.length,max=280;
-  const r=15.9; const circum=2*Math.PI*r;
-  const pct=Math.min(1,len/max);
-  ring.style.strokeDasharray=`${circum}`;
-  ring.style.strokeDashoffset=`${circum*(1-pct)}`;
-  const remain=max-len;
-  wrap.classList.toggle('warn',remain<=40&&remain>10);
-  wrap.classList.toggle('over',remain<=10);
-  label.textContent=remain<=40?String(remain):'';
-  btn.disabled=len<2||len>max;
-  mirror.innerHTML=val
-    ?esc(val + ' ')
-      .replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-hi">@$2</span>')
-      .replace(/(^|[\s([{])#([a-z0-9_A-ZÀ-ÿ]{2,32})/gi,'$1<span class="mention-hi" style="background:var(--success-soft);color:var(--accent-2)">#$2</span>')
-    :`<span class="pl">O que está acontecendo no servidor?</span>`;
+  const val=ta.value, len=val.length, max=280;
+  if(btn) btn.disabled = len<2||len>max;
+  if(type === 'modal'){
+    const ring=$('#modal-ring-circle'), label=$('#modal-ring-label'), wrap=$('#modal-char-ring');
+    const r=15.9; const circum=2*Math.PI*r; const pct=Math.min(1,len/max);
+    if(ring){ ring.style.strokeDasharray=`${circum}`; ring.style.strokeDashoffset=`${circum*(1-pct)}`; }
+    const remain=max-len;
+    if(wrap){ wrap.classList.toggle('warn',remain<=40&&remain>10); wrap.classList.toggle('over',remain<=10); }
+    if(label) label.textContent=remain<=40?String(remain):'';
+  }
+  if(mirror){
+    mirror.innerHTML=val
+      ?esc(val + ' ').replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-hi">@$2</span>').replace(/(^|[\s([{])#([a-z0-9_A-ZÀ-ÿ]{2,32})/gi,'$1<span class="mention-hi" style="color:var(--accent-2);background:transparent">#$2</span>')
+      :`<span class="pl">O que está acontecendo no servidor?</span>`;
+    ta.style.height='auto'; mirror.style.height='auto';
+    const h=ta.scrollHeight; ta.style.height=h+'px'; mirror.style.height=h+'px';
+  }
 }
-function updateMentions(){
-  const ta=$('#post-ta');if(!ta)return;
-  const start=ta.selectionStart;const before=ta.value.slice(0,start);
+function updateMentions(type){
+  const ta=$(`#${type}-ta`); if(!ta)return;
+  activeTaId=type; const start=ta.selectionStart; const before=ta.value.slice(0,start);
   const m=before.match(/(^|\s)@([a-z0-9_]{0,32})$/i);
-  const box=$('#mention-box');
+  const box=$(`#${type}-mention-box`);
   if(!m){box?.classList.remove('show');return}
-  const term=m[2];
-  clearTimeout(mentionTimer);
+  const term=m[2]; clearTimeout(mentionTimer);
   mentionTimer=setTimeout(async()=>{
     try{
-      const p=new URLSearchParams({limit:'5',following:'true'});
-      if(term) p.set('search',term);
+      const p=new URLSearchParams({limit:'5',following:'true'}); if(term) p.set('search',term);
       const rows=await api(`/api/community/players?${p}`);
       state.mentionSuggestions=Array.isArray(rows)?rows.slice(0,5):[];
-      renderMentionBox();
+      renderMentionBox(type);
     }catch{box?.classList.remove('show')}
   },160);
 }
-function renderMentionBox(){
-  const box=$('#mention-box');if(!box)return;
+function renderMentionBox(type){
+  const box=$(`#${type}-mention-box`); if(!box)return;
   if(!state.mentionSuggestions.length){box.classList.remove('show');return}
   box.innerHTML=state.mentionSuggestions.map(p=>{
     const n=p.minecraft_name||p.username||'Steve';
@@ -1343,13 +1407,12 @@ function renderMentionBox(){
   box.classList.add('show');
 }
 function insertMention(name){
-  const ta=$('#post-ta');if(!ta||!name)return;
+  if(!activeTaId)return; const ta=$(`#${activeTaId}-ta`); if(!ta||!name)return;
   const start=ta.selectionStart||ta.value.length;
   const before=ta.value.slice(0,start).replace(/(^|\s)@([a-z0-9_]{1,32})$/i,`$1@${name} `);
   const after=ta.value.slice(start);
-  ta.value=before+after;ta.focus();ta.selectionStart=ta.selectionEnd=before.length;
-  $('#mention-box')?.classList.remove('show');
-  updateComposer();
+  ta.value=before+after; ta.focus(); ta.selectionStart=ta.selectionEnd=before.length;
+  $(`#${activeTaId}-mention-box`)?.classList.remove('show'); syncComposer(activeTaId);
 }
 
 /* ======================= LOAD ME ======================= */
@@ -1360,8 +1423,8 @@ async function loadMe(){
   const rk=rankInfo(me.rank||me.role,me.merit);
   $('#top-av').src=skin(n,50);
   $('#top-name').textContent=n;
-  $('#comp-av').src=skin(n,50);
-  if($('#fake-comp-av')) $('#fake-comp-av').src=skin(n,50);
+  if($('#inline-comp-av')) $('#inline-comp-av').src=skin(n,50);
+  if($('#modal-comp-av')) $('#modal-comp-av').src=skin(n,50);
   $('#mini-av').src=skin(n,100);
   $('#mini-name').textContent=n;
   $('#mini-handle').textContent=`@${me.username||n}`;
@@ -1419,8 +1482,8 @@ function postCardHTML(p){
         <div class="post-content">${mentionHTML(p.content)}</div>
         ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>`<div class="preview-row">${IC.comment}<strong>${esc(c.minecraft_name||c.username||'?')}:</strong><span>${mentionHTML(c.content)}</span></div>`).join('')}${p.comments_count>2?`<button class="btn btn-ghost btn-xs" style="margin-top:3px" data-action="open-thread">Ver ${num(p.comments_count)} respostas →</button>`:''}</div>`:''}
         <div class="post-actions">
-          <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(p.likes_count)}</span></button>
-          <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${num(p.comments_count)}</span></button>
+          <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
+          <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${num(Number(p.comments_count) || 0)}</span></button>
           <button class="pa pa-share" data-action="copy" aria-label="Compartilhar">${IC.share}</button>
         </div>
       </div>
@@ -1475,24 +1538,44 @@ function switchTab(filter){
   loadFeed({reset:true});
 }
 
+/* ======================= BARRA DE AMIGOS ======================= */
+async function loadFriendsBar(){
+  const list=$('#friends-list'), sugList=$('#friend-sug-list'); if(!list)return;
+  try {
+    const rows=await api('/api/community/players?limit=10'); const players=Array.isArray(rows)?rows:[];
+    list.innerHTML=players.slice(0,8).map((p, i)=>{
+      const n=p.minecraft_name||p.username||'Steve'; const isOnline = i<3; // Mostra verde para os 3 primeiros
+      return `<div class="friend-item js-profile" data-mc="${esc(n)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot ${i===1?'playing':''}"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
+    }).join('');
+    if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
+      const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
+    }).join('');
+  }catch(e){}
+}
+
 /* ======================= PUBLISH ======================= */
-async function publishPost(){
-  const ta=$('#post-ta');const content=ta.value.trim();
+async function publishPost(type){
+  const ta=$(`#${type}-ta`); const content=ta.value.trim();
   if(content.length<2||content.length>280)return;
-  const btn=$('#publish-btn');
-  setBtnLoad(btn,true,'Publicando');
+  const btn=$(`#${type}-publish-btn`);
+  setBtnLoad(btn,true,type==='inline'?'':'Publicando');
   try{
     const created=await api('/api/community/posts',{method:'POST',body:JSON.stringify({content})});
     const post={...created,author_id:state.me.id,username:state.me.username,minecraft_name:state.me.minecraft_name,liked_by_me:false,likes_count:0,comments_count:0};
-    state.posts.unshift(post);ta.value='';updateComposer();renderFeed();
+    state.posts.unshift(post); ta.value=''; syncComposer(type); renderFeed();
+    if(type==='modal') closeModal('post-modal');
     requestAnimationFrame(()=>{
       const card=$(`.post-card[data-post-id="${created.id}"]`);
       if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.classList.add('flash');setTimeout(()=>card.classList.remove('flash'),2400);}
     });
-    closeModal('post-modal');
     toast('success','Post publicado!','Sua mensagem entrou no feed.');
   }catch(e){toast('error','Falha ao publicar',e.message)}
-  finally{setBtnLoad(btn,false,'Publicar');updateComposer()}
+  finally{
+    if(type==='inline') btn.innerHTML=`<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+    else setBtnLoad(btn,false,'Publicar');
+    btn.disabled=false;
+  }
 }
 
 /* ======================= LIKE ======================= */
@@ -1910,11 +1993,13 @@ function bindEvents(){
   $('#theme-btn').addEventListener('click',toggleTheme);
   $('#user-btn').addEventListener('click',()=>location.href='account.html');
   $('#my-profile-btn').addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
-  $('#post-ta').addEventListener('input',updateComposer);
-  $('#post-ta').addEventListener('keyup',updateMentions);
-  $('#post-ta').addEventListener('click',updateMentions);
-  $('#post-ta').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(!$('#publish-btn').disabled)publishPost();}});
-  $('#publish-btn').addEventListener('click',publishPost);
+  ['inline','modal'].forEach(type=>{
+    $(`#${type}-ta`)?.addEventListener('input',()=>syncComposer(type));
+    $(`#${type}-ta`)?.addEventListener('keyup',()=>updateMentions(type));
+    $(`#${type}-ta`)?.addEventListener('click',()=>updateMentions(type));
+    $(`#${type}-ta`)?.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(!$(`#${type}-publish-btn`).disabled)publishPost(type);}});
+    $(`#${type}-publish-btn`)?.addEventListener('click',()=>publishPost(type));
+  });
   $$('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
   $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.filter)));
   $('#load-more-btn').addEventListener('click',()=>loadFeed({reset:false}));
@@ -1980,14 +2065,12 @@ function bindEvents(){
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>closeModal(m.id))});
 
-  // Ativar modal de postagem (FAB e Fake Composer)
-  const openPostModal = () => {
+  // Ativar modal de postagem (FAB)
+  $('#fab-post')?.addEventListener('click', () => {
     if(state.routeActive) Router.navigate('/community');
     openModal('post-modal');
-    setTimeout(() => $('#post-ta')?.focus(), 100);
-  };
-  $('#fab-post')?.addEventListener('click', openPostModal);
-  $('#fake-composer')?.addEventListener('click', openPostModal);
+    setTimeout(() => $('#modal-ta')?.focus(), 100);
+  });
 
   // infinite scroll
   const sentinel=$('#feed-sentinel');
@@ -2006,10 +2089,10 @@ Router.register('/community/post/:id',renderPostRoute);
 Router.register('/profile/:id',renderProfileRoute);
 
 async function boot(){
-  bindEvents();updateComposer();updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+  bindEvents(); syncComposer('inline'); syncComposer('modal'); updateThemeIcon(document.documentElement.getAttribute('data-theme'));
   try{await loadMe();}
   catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
-  await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadNotifs()]);
+  await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]);
   Router.init();
 }
 boot();
