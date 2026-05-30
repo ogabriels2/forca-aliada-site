@@ -870,12 +870,9 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   position: fixed; right: 20px; bottom: 20px; z-index: 100;
   width: 56px; height: 56px; border-radius: 999px; padding: 0;
   box-shadow: var(--shadow-lg);
-  display: none; /* Escondido por padrão no desktop se não quiser */
+  display: grid; place-items: center; /* Agora o botão aparece sempre! */
 }
-@media(max-width: 960px) {
-  .fab-post { display: grid; place-items: center; }
-  #toast-stack { bottom: 86px; } /* Sobe os alertas para não cobrir o botão */
-}
+#toast-stack { bottom: 86px; } /* Evita que as notificações cubram o botão */
 </style>
 </head>
 <body>
