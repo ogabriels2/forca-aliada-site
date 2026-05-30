@@ -974,7 +974,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .mbtn.is-active,.mbtn:hover{background:var(--accent-soft);color:var(--accent)}
   .mbtn-post{background:var(--accent);color:#fff}
   .mbtn-post:hover{background:var(--accent-h);color:#fff}
-  .fab-post{display:none}
+  .fab-post{display:none!important}
 }
 /* ─── BOTÃO FLUTUANTE E FALSO EDITOR ─── */
 .fab-post {
@@ -1851,6 +1851,14 @@ async function toggleRepost(originalId,btn){
           if(post){ post.reposted_by_me=true; }
           btn?.classList.add('is-on');
           toast('info','Já repostado','Este post já estava no seu feed.');
+          return;
+        }
+        // 403 = own post — revert silently with friendly message
+        if(msg.includes('próprio')||msg.includes('proprio')||msg.includes('403')){
+          if(post){ post.reposted_by_me=reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?1:-1)); }
+          btn?.classList.toggle('is-on',reposted);
+          const s3=btn?.querySelector('span'); if(s3) s3.textContent=num(post?.reposts_count||0);
+          toast('info','Não é possível repostar','Você não pode repostar seus próprios posts.');
           return;
         }
         throw err;
