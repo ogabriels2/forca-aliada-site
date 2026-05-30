@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minha Conta | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/css/social-chat.css">
 
 <script>
 (function(){
@@ -2852,6 +2853,7 @@ function socialNotifText(item) {
   const actor = item.actor_minecraft_name || item.actor_username || 'Alguem';
   const map = {
     new_follower: `${actor} comecou a seguir voce`,
+    direct_message: `${actor} enviou uma mensagem`,
     post_like: `${actor} curtiu seu post`,
     comment: `${actor} respondeu seu post`,
     mention_post: `${actor} mencionou voce em um post`,
@@ -5025,5 +5027,6 @@ async function syncSelectedXboxFriends() {
   }
 }
 </script>
+<script src="assets/js/social-chat.js" defer></script>
 </body>
 </html>

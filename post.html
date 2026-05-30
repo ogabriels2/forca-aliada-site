@@ -7,6 +7,7 @@
 <meta name="description" content="Thread de post da comunidade Forca Aliada.">
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
+<link rel="stylesheet" href="assets/css/social-chat.css">
 <script>
 (function(){const t=localStorage.getItem('fa_theme')||'light';const d=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light');})();
 </script>
@@ -58,5 +59,6 @@ document.addEventListener('submit',e=>{if(e.target.matches('#reply-form'))submit
 document.addEventListener('click',e=>{if(e.target.closest('[data-like]'))toggleLike();if(e.target.closest('[data-report]'))reportPost();if(e.target.closest('[data-copy]'))navigator.clipboard?.writeText(location.href).then(()=>toast('Link copiado.')).catch(()=>toast(location.href));if(e.target.closest('[data-edit]'))editPost();if(e.target.closest('[data-cancel-edit]'))$('#post-content-view').innerHTML=mentionHTML(state.post.content);if(e.target.closest('[data-save-edit]'))saveEdit();});
 (async()=>{try{await load();}catch(e){$('#app').innerHTML=`<section class="empty"><h1>Post indisponivel</h1><p>${escapeHTML(e.message)}</p><a class="btn primary" href="community.html">Voltar</a></section>`;}})();
 </script>
+<script src="assets/js/social-chat.js" defer></script>
 </body>
 </html>

@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/social-chat.css">
 <script>
 (function () {
   const key = 'fa_theme';
@@ -665,7 +666,7 @@ img{display:block}
 .profile-name{margin:13px 0 2px;font-size:26px;font-weight:900;letter-spacing:-0.03em;word-break:break-word}
 .profile-handle2{font-size:12.5px;color:var(--ink-2);font-weight:500}
 .profile-bio2{margin-top:10px;font-size:13px;color:var(--ink-2);line-height:1.55}
-.profile-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.profile-stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
 .pstat{
   border:1px solid var(--line);border-radius:var(--r-sm);
   padding:9px 10px;background:var(--bg);
@@ -1167,7 +1168,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
     <div class="sheet-body" style="padding:0">
       <div style="padding:14px 16px; border-bottom:1px solid var(--line); background:var(--bg)">
         <p style="font-family:var(--ff-mono);font-size:10px;color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Solicitações de Amizade</p>
-        <p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitação pendente.</p>
+        <div id="friend-requests-list"><p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p></div>
       </div>
       <div style="padding:14px 16px;">
         <p style="font-family:var(--ff-mono);font-size:10px;color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Sugestões (Jogadores Online)</p>
@@ -1540,14 +1541,26 @@ function switchTab(filter){
 
 /* ======================= BARRA DE AMIGOS ======================= */
 async function loadFriendsBar(){
-  const list=$('#friends-list'), sugList=$('#friend-sug-list'); if(!list)return;
+  const list=$('#friends-list'), sugList=$('#friend-sug-list'), reqList=$('#friend-requests-list'); if(!list)return;
   try {
-    const rows=await api('/api/community/players?limit=10'); const players=Array.isArray(rows)?rows:[];
-    list.innerHTML=players.slice(0,8).map((p)=>{
+    const [friendsPayload, requestsPayload, playersPayload]=await Promise.all([
+      api('/api/me/friends?limit=12'),
+      api('/api/me/friend-requests?limit=8'),
+      api('/api/community/players?limit=10')
+    ]);
+    const friends=Array.isArray(friendsPayload.rows)?friendsPayload.rows:[];
+    const requests=Array.isArray(requestsPayload.rows)?requestsPayload.rows:[];
+    const players=Array.isArray(playersPayload)?playersPayload:[];
+    const barRows=(friends.length?friends:players).slice(0,8);
+    list.innerHTML=barRows.map((p)=>{
       const n=p.minecraft_name||p.username||'Steve'; 
       const isOnline = p.is_online === true; // AGORA USA O DADO REAL DO BANCO!
       return `<div class="friend-item js-profile" data-mc="${esc(n)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
     }).join('');
+    if(reqList) reqList.innerHTML=requests.length?requests.map(p=>{
+      const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
+    }).join(''):'<p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p>';
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
       return`<div class="rel-row js-profile" data-mc="${esc(n)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
@@ -1807,6 +1820,8 @@ async function renderProfileRoute(identifier){
   const routeCol=$('#route-col');
   try{
     const data=await api(`/api/community/player/${encodeURIComponent(identifier)}/full-profile`);
+    state.profileIdentifier=identifier;
+    state.profileData=data;
     const prof=data.profile||{};const posts=Array.isArray(data.posts)?data.posts:[];
     const stats=data.game_stats;const badges=Array.isArray(data.badges)?data.badges:[];
     const mc=prof.minecraft_name||prof.username||'Steve';
@@ -1827,7 +1842,7 @@ async function renderProfileRoute(identifier){
           <div class="profile-topline">
             <img class="profile-av" src="${skin(mc,140)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',140)}'">
             <div class="profile-actions-row">
-              ${isMe?'<a class="btn btn-secondary" href="account.html">Editar conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_following?'Seguindo':'Seguir'}</button>`}
+              ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
               ${isMe?'':`<button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
             </div>
           </div>
@@ -1837,6 +1852,7 @@ async function renderProfileRoute(identifier){
           <div class="profile-stats-grid">
             <button class="pstat" data-rel="followers" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.followers_count||0)}</strong><small>Seguidores</small></button>
             <button class="pstat" data-rel="following" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.following_count||0)}</strong><small>Seguindo</small></button>
+            <div class="pstat"><strong>${num(prof.friends_count||0)}</strong><small>Amigos</small></div>
             <div class="pstat"><strong>${num(prof.posts_count||0)}</strong><small>Posts</small></div>
             <div class="pstat"><strong>${num(prof.merit||0)}</strong><small>Mérito</small></div>
           </div>
@@ -1867,6 +1883,9 @@ async function renderProfileRoute(identifier){
       const bt=e.target.closest('[data-post-id]');if(bt&&e.target.closest('.post-tile')){navigatePost(bt.dataset.postId);return}
       const rf=e.target.closest('[data-pf-follow]');
       if(rf){const on=rf.dataset.on==='1';rf.dataset.on=on?'0':'1';rf.innerHTML=on?'Seguir':'Seguindo';toggleFollowUser(rf.dataset.uid,on,null);return}
+      const msg=e.target.closest('[data-pf-message]');
+      if(msg){window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
+      if(e.target.closest('[data-profile-edit]')){openCommunityProfileEditor();return}
       const rr=e.target.closest('[data-pf-report]');if(rr){reportContent('user',rr.dataset.uid);return}
       const rb=e.target.closest('[data-pf-block]');
       if(rb){const unblock=rb.textContent.trim().toLowerCase().includes('desbloquear');blockUser(rb.dataset.uid,unblock);return}
@@ -1881,10 +1900,45 @@ async function renderProfileRoute(identifier){
   }
 }
 
+async function openCommunityProfileEditor(){
+  try{
+    const prefs=await api('/api/me/preferences');
+    const prof=state.profileData?.profile||{};
+    const back=document.createElement('div');
+    back.className='backdrop show';
+    back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title"><div class="sheet-header"><h2 id="edit-profile-title">Editar perfil publico</h2><button class="close-btn" data-edit-close aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div><div class="sheet-body" style="display:grid;gap:12px"><label style="display:grid;gap:7px;font-size:12px;font-weight:800;color:var(--ink-2)">Descricao<textarea class="sheet-ta" id="community-edit-bio" maxlength="160" style="min-height:96px" placeholder="Conte um pouco sobre voce na comunidade.">${esc(prefs.bio??prof.bio??'')}</textarea></label><label style="display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:13px;font-weight:800"><span>Perfil publico</span><input type="checkbox" id="community-edit-public" ${prefs.public_profile?'checked':''}></label><label style="display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:13px;font-weight:800"><span>Historico publico</span><input type="checkbox" id="community-edit-history" ${prefs.public_history?'checked':''}></label></div><div class="sheet-footer"><span style="font-size:12px;color:var(--ink-3);align-self:center">Aparece no seu perfil social.</span><button class="btn btn-primary" data-edit-save>Salvar</button></div></div>`;
+    const close=()=>{back.remove();document.body.classList.remove('modal-open')};
+    back.addEventListener('click',async e=>{
+      if(e.target===back||e.target.closest('[data-edit-close]')){close();return}
+      const save=e.target.closest('[data-edit-save]');
+      if(!save)return;
+      const bio=back.querySelector('#community-edit-bio').value.trim();
+      const publicProfile=back.querySelector('#community-edit-public').checked;
+      const publicHistory=back.querySelector('#community-edit-history').checked;
+      setBtnLoad(save,true,'Salvando');
+      try{
+        const current=await api('/api/me/preferences');
+        await api('/api/me/preferences',{method:'PUT',body:JSON.stringify({...current,bio,public_profile:publicProfile,public_history:publicHistory})});
+        close();
+        toast('success','Perfil atualizado','Suas informacoes publicas foram salvas.');
+        renderProfileRoute(state.profileIdentifier||state.me?.minecraft_name||`id:${state.me?.id}`);
+      }catch(err){
+        toast('error','Nao foi possivel salvar',err.message);
+        setBtnLoad(save,false,'Salvar');
+      }
+    });
+    document.body.appendChild(back);
+    document.body.classList.add('modal-open');
+    requestAnimationFrame(()=>back.querySelector('#community-edit-bio')?.focus());
+  }catch(e){
+    toast('error','Editor indisponivel',e.message);
+  }
+}
+
 /* ======================= FOLLOW / BLOCK / REPORT ======================= */
 async function toggleFollowUser(uid,currently,btn){
   try{
-    await api(`/api/me/following/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});
+    await api(`/api/me/follows/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});
     toast('success',currently?'Deixou de seguir':'Agora seguindo',currently?'Relação removida.':'');
   }catch(e){toast('error','Ação não concluída',e.message)}
 }
@@ -1925,7 +1979,7 @@ async function toggleFollowBtn(uid,currently,btn){
   const next=!currently;btn.dataset.on=next?'1':'0';btn.textContent=next?'Seguindo':'Seguir';
   btn.classList.toggle('is-on',next);btn.classList.add('popping');setTimeout(()=>btn.classList.remove('popping'),300);
   const player=state.players.find(p=>String(p.id)===String(uid));
-  try{await api(`/api/me/following/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});if(player)player.is_following=next;}
+  try{await api(`/api/me/follows/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});if(player)player.is_following=next;}
   catch(e){btn.dataset.on=currently?'1':'0';btn.textContent=currently?'Seguindo':'Seguir';btn.classList.toggle('is-on',currently);toast('error','Ação não concluída',e.message)}
 }
 
@@ -1963,7 +2017,7 @@ async function loadTrending(){
 /* ======================= NOTIFICATIONS ======================= */
 function notifText(n){
   const a=n.actor_minecraft_name||n.actor_username||'Alguém';
-  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,friend_joined:`${a} entrou na comunidade`};
+  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,friend_joined:`${a} entrou na comunidade`};
   return map[n.type]||'Nova notificação';
 }
 async function loadNotifs(){
@@ -2098,5 +2152,6 @@ async function boot(){
 }
 boot();
 </script>
+<script src="assets/js/social-chat.js" defer></script>
 </body>
 </html>
