@@ -754,6 +754,38 @@ CREATE TABLE IF NOT EXISTS social_notifications (
 );
 CREATE INDEX IF NOT EXISTS idx_social_notif_recipient ON social_notifications(recipient_id, is_read, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_social_notif_entity ON social_notifications(entity_type, entity_id);
+
+CREATE TABLE IF NOT EXISTS direct_conversations (
+  id BIGSERIAL PRIMARY KEY,
+  participant_a INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  participant_b INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (participant_a < participant_b),
+  UNIQUE (participant_a, participant_b)
+);
+CREATE INDEX IF NOT EXISTS idx_direct_conversations_a ON direct_conversations(participant_a, last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_direct_conversations_b ON direct_conversations(participant_b, last_message_at DESC);
+
+CREATE TABLE IF NOT EXISTS direct_messages (
+  id BIGSERIAL PRIMARY KEY,
+  conversation_id BIGINT NOT NULL REFERENCES direct_conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  edited_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_conversation ON direct_messages(conversation_id, id DESC);
+
+CREATE TABLE IF NOT EXISTS direct_conversation_reads (
+  conversation_id BIGINT NOT NULL REFERENCES direct_conversations(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  last_read_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (conversation_id, user_id)
+);
 `;
 await pool.query(featureSchemaSql);
 
@@ -862,6 +894,7 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
   'comment',
   'mention_post',
   'mention_comment',
+  'direct_message',
   'friend_joined',
 ]);
 
@@ -958,6 +991,58 @@ async function assertNoSocialBlock(viewerId, targetId) {
     [viewerId, targetId],
   );
   return rows.length === 0;
+}
+
+function directPair(userId, targetId) {
+  const a = Number(userId);
+  const b = Number(targetId);
+  return a < b ? [a, b] : [b, a];
+}
+
+function directConversationSelect(extraWhere = '') {
+  return `
+    SELECT c.id, c.created_at, c.last_message_at AS conversation_last_message_at,
+           other_u.id AS other_id,
+           other_u.username AS other_username,
+           other_u.minecraft_name AS other_minecraft_name,
+           other_u.photo_url AS other_photo_url,
+           COALESCE(pb.rank, 'ferro') AS other_rank,
+           COALESCE(pb.merit_total, 0) AS other_merit,
+           EXISTS(SELECT 1 FROM user_follows f1
+                  JOIN user_follows f2 ON f2.follower_id = other_u.id AND f2.following_id = $1
+                  WHERE f1.follower_id = $1 AND f1.following_id = other_u.id) AS is_friend,
+           last_msg.id AS last_message_id,
+           last_msg.body AS last_message_body,
+           last_msg.sender_id AS last_message_sender_id,
+           last_msg.created_at AS last_message_at,
+           COALESCE(unread.count, 0)::int AS unread_count
+    FROM direct_conversations c
+    JOIN users other_u ON other_u.id = CASE WHEN c.participant_a = $1 THEN c.participant_b ELSE c.participant_a END
+    LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(other_u.minecraft_name)
+    LEFT JOIN LATERAL (
+      SELECT id, body, sender_id, created_at
+      FROM direct_messages
+      WHERE conversation_id = c.id AND is_deleted = FALSE
+      ORDER BY id DESC
+      LIMIT 1
+    ) last_msg ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS count
+      FROM direct_messages dm
+      LEFT JOIN direct_conversation_reads dcr ON dcr.conversation_id = c.id AND dcr.user_id = $1
+      WHERE dm.conversation_id = c.id
+        AND dm.sender_id != $1
+        AND dm.is_deleted = FALSE
+        AND dm.created_at > COALESCE(dcr.last_read_at, 'epoch'::timestamptz)
+    ) unread ON TRUE
+    WHERE (c.participant_a = $1 OR c.participant_b = $1)
+      ${extraWhere}
+      AND NOT EXISTS (
+        SELECT 1 FROM user_blocks ub
+        WHERE (ub.blocker_id = $1 AND ub.blocked_id = other_u.id)
+           OR (ub.blocker_id = other_u.id AND ub.blocked_id = $1)
+      )
+  `;
 }
 
 // ─────────────────────────────────────────────
@@ -3384,7 +3469,13 @@ app.get('/api/community/players', auth, async (req, res) => {
              COALESCE(pb.merit_total, 0) AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
+             (SELECT COUNT(*) FROM user_follows f1
+              JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
+              WHERE f1.follower_id = u.id)::int AS friends_count,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS is_following,
+             EXISTS(SELECT 1 FROM user_follows f1
+                    JOIN user_follows f2 ON f2.follower_id = u.id AND f2.following_id = $1
+                    WHERE f1.follower_id = $1 AND f1.following_id = u.id) AS is_friend,
              EXISTS(SELECT 1 FROM player_sessions ps WHERE ps.left_at IS NULL AND LOWER(ps.player) = LOWER(u.minecraft_name)) AS is_online
       FROM users u
       LEFT JOIN user_preferences up ON u.id = up.user_id
@@ -3415,8 +3506,14 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
              COALESCE(pb.capital_balance, 0) AS capital,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
+             (SELECT COUNT(*) FROM user_follows f1
+              JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
+              WHERE f1.follower_id = u.id)::int AS friends_count,
              (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id)::int AS posts_count,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id) AS is_following,
+             EXISTS(SELECT 1 FROM user_follows f1
+                    JOIN user_follows f2 ON f2.follower_id = u.id AND f2.following_id = $1
+                    WHERE f1.follower_id = $1 AND f1.following_id = u.id) AS is_friend,
              EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=u.id) AS is_blocked_by_me,
              EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=u.id AND blocked_id=$1) AS has_blocked_me
       FROM users u
@@ -3496,7 +3593,13 @@ app.get('/api/community/player/:identifier', auth, async (req, res) => {
              COALESCE(pb.capital_balance, 0) AS capital,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
+             (SELECT COUNT(*) FROM user_follows f1
+              JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
+              WHERE f1.follower_id = u.id)::int AS friends_count,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS is_following,
+             EXISTS(SELECT 1 FROM user_follows f1
+                    JOIN user_follows f2 ON f2.follower_id = u.id AND f2.following_id = $1
+                    WHERE f1.follower_id = $1 AND f1.following_id = u.id) AS is_friend,
              EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=u.id) AS is_blocked_by_me,
              EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=u.id AND blocked_id=$1) AS has_blocked_me
       FROM users u
@@ -3760,6 +3863,320 @@ app.delete('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) =
 });
 
 // ─────────────────────────────────────────────
+app.get('/api/me/friends', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 24, 1, 80);
+  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
+  const params = [req.user.sub];
+  const conditions = [
+    'f1.follower_id = $1',
+    `NOT EXISTS (
+      SELECT 1 FROM user_blocks ub
+      WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+         OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+    )`,
+  ];
+
+  if (search) {
+    params.push(search);
+    conditions.push(`(LOWER(COALESCE(u.minecraft_name, '')) LIKE $${params.length} OR LOWER(u.username) LIKE $${params.length})`);
+  }
+  params.push(limit);
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, f1.created_at AS followed_at,
+             f2.created_at AS friend_since,
+             COALESCE(up.bio, '') AS bio,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
+             EXISTS(SELECT 1 FROM player_sessions ps WHERE ps.left_at IS NULL AND LOWER(ps.player) = LOWER(u.minecraft_name)) AS is_online
+      FROM user_follows f1
+      JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
+      JOIN users u ON u.id = f1.following_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY is_online DESC, f2.created_at DESC, followers_count DESC
+      LIMIT $${params.length}
+    `, params);
+    res.json({ rows });
+  } catch (e) {
+    console.error('[GET /api/me/friends]', e);
+    res.status(500).json({ error: 'Erro ao listar amigos' });
+  }
+});
+
+app.get('/api/me/friend-requests', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 20, 1, 50);
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count
+      FROM user_follows uf
+      JOIN users u ON uf.follower_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE uf.following_id = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM user_follows back
+          WHERE back.follower_id = $1 AND back.following_id = u.id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      ORDER BY uf.created_at DESC
+      LIMIT $2
+    `, [req.user.sub, limit]);
+    res.json({ rows });
+  } catch (e) {
+    console.error('[GET /api/me/friend-requests]', e);
+    res.status(500).json({ error: 'Erro ao buscar solicitacoes' });
+  }
+});
+
+app.get('/api/me/messages/unread-count', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT COUNT(*)::int AS count
+      FROM direct_messages dm
+      JOIN direct_conversations c ON c.id = dm.conversation_id
+      LEFT JOIN direct_conversation_reads dcr ON dcr.conversation_id = c.id AND dcr.user_id = $1
+      WHERE (c.participant_a = $1 OR c.participant_b = $1)
+        AND dm.sender_id != $1
+        AND dm.is_deleted = FALSE
+        AND dm.created_at > COALESCE(dcr.last_read_at, 'epoch'::timestamptz)
+    `, [req.user.sub]);
+    res.json({ count: rows[0]?.count || 0 });
+  } catch (e) {
+    console.error('[GET /api/me/messages/unread-count]', e);
+    res.status(500).json({ error: 'Erro ao contar mensagens' });
+  }
+});
+
+app.get('/api/me/conversations', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 24, 1, 60);
+  try {
+    const { rows } = await pool.query(`
+      ${directConversationSelect()}
+      ORDER BY COALESCE(last_msg.created_at, c.last_message_at, c.created_at) DESC
+      LIMIT $2
+    `, [req.user.sub, limit]);
+    res.json({ rows });
+  } catch (e) {
+    console.error('[GET /api/me/conversations]', e);
+    res.status(500).json({ error: 'Erro ao listar conversas' });
+  }
+});
+
+app.post('/api/me/conversations', auth, async (req, res) => {
+  const targetId = parseInt(req.body?.target_id ?? req.body?.user_id, 10);
+  if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'Usuario invalido' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: targetRows } = await client.query(
+      `SELECT u.id,
+              COALESCE(up.public_profile, TRUE) AS public_profile,
+              EXISTS(SELECT 1 FROM user_follows f1
+                     JOIN user_follows f2 ON f2.follower_id = u.id AND f2.following_id = $2
+                     WHERE f1.follower_id = $2 AND f1.following_id = u.id) AS is_friend
+       FROM users u
+       LEFT JOIN user_preferences up ON up.user_id = u.id
+       WHERE u.id = $1
+       LIMIT 1`,
+      [targetId, req.user.sub],
+    );
+    if (!targetRows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuario nao encontrado' });
+    }
+    if (!targetRows[0].public_profile && !targetRows[0].is_friend) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Este perfil recebe mensagens apenas de amigos.' });
+    }
+    const { rows: blocked } = await client.query(
+      `SELECT 1 FROM user_blocks
+       WHERE (blocker_id=$1 AND blocked_id=$2)
+          OR (blocker_id=$2 AND blocked_id=$1)
+       LIMIT 1`,
+      [req.user.sub, targetId],
+    );
+    if (blocked.length) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Nao e possivel enviar mensagem para este usuario.' });
+    }
+
+    const [participantA, participantB] = directPair(req.user.sub, targetId);
+    const { rows } = await client.query(
+      `INSERT INTO direct_conversations(participant_a, participant_b, created_by)
+       VALUES($1, $2, $3)
+       ON CONFLICT(participant_a, participant_b)
+       DO UPDATE SET last_message_at = direct_conversations.last_message_at
+       RETURNING id`,
+      [participantA, participantB, req.user.sub],
+    );
+    await client.query(
+      `INSERT INTO direct_conversation_reads(conversation_id, user_id, last_read_at)
+       VALUES($1, $2, NOW())
+       ON CONFLICT(conversation_id, user_id) DO NOTHING`,
+      [rows[0].id, req.user.sub],
+    );
+    await client.query('COMMIT');
+
+    const { rows: convRows } = await pool.query(`${directConversationSelect('AND c.id = $2')} LIMIT 1`, [req.user.sub, rows[0].id]);
+    res.status(201).json(convRows[0]);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/me/conversations]', e);
+    res.status(500).json({ error: 'Erro ao abrir conversa' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
+  const conversationId = parseInt(req.params.id, 10);
+  const limit = clampInt(req.query.limit, 40, 1, 80);
+  const beforeId = req.query.before ? parseInt(req.query.before, 10) : null;
+  if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
+  const params = [req.user.sub, conversationId, limit];
+  const cursorClause = beforeId ? 'AND dm.id < $4' : '';
+  if (beforeId) params.push(beforeId);
+
+  try {
+    const { rows: allowed } = await pool.query(
+      `SELECT 1 FROM direct_conversations
+       WHERE id=$2 AND (participant_a=$1 OR participant_b=$1)
+       LIMIT 1`,
+      [req.user.sub, conversationId],
+    );
+    if (!allowed.length) return res.status(404).json({ error: 'Conversa nao encontrada' });
+
+    const { rows } = await pool.query(`
+      SELECT dm.id, dm.conversation_id, dm.sender_id,
+             CASE WHEN dm.is_deleted THEN '[mensagem removida]' ELSE dm.body END AS body,
+             dm.is_deleted, dm.created_at, dm.edited_at,
+             u.username, u.minecraft_name, u.photo_url
+      FROM direct_messages dm
+      JOIN users u ON u.id = dm.sender_id
+      WHERE dm.conversation_id = $2
+        ${cursorClause}
+      ORDER BY dm.id DESC
+      LIMIT $3
+    `, params);
+
+    await pool.query(
+      `INSERT INTO direct_conversation_reads(conversation_id, user_id, last_read_at)
+       VALUES($1, $2, NOW())
+       ON CONFLICT(conversation_id, user_id)
+       DO UPDATE SET last_read_at = NOW()`,
+      [conversationId, req.user.sub],
+    );
+    const ordered = rows.reverse();
+    res.json({ rows: ordered, has_more: rows.length === limit, next_before: ordered[0]?.id || null });
+  } catch (e) {
+    console.error('[GET /api/me/conversations/:id/messages]', e);
+    res.status(500).json({ error: 'Erro ao carregar mensagens' });
+  }
+});
+
+app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
+  const conversationId = parseInt(req.params.id, 10);
+  const body = sanitize(req.body?.body || req.body?.content || '');
+  if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
+  if (!body || body.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: convRows } = await client.query(
+      `SELECT id, participant_a, participant_b,
+              CASE WHEN participant_a=$1 THEN participant_b ELSE participant_a END AS recipient_id
+       FROM direct_conversations
+       WHERE id=$2 AND (participant_a=$1 OR participant_b=$1)
+       FOR UPDATE`,
+      [req.user.sub, conversationId],
+    );
+    const conv = convRows[0];
+    if (!conv) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Conversa nao encontrada' });
+    }
+    const { rows: blocked } = await client.query(
+      `SELECT 1 FROM user_blocks
+       WHERE (blocker_id=$1 AND blocked_id=$2)
+          OR (blocker_id=$2 AND blocked_id=$1)
+       LIMIT 1`,
+      [req.user.sub, conv.recipient_id],
+    );
+    if (blocked.length) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Nao e possivel enviar mensagem nesta conversa.' });
+    }
+
+    const { rows } = await client.query(
+      `INSERT INTO direct_messages(conversation_id, sender_id, body)
+       VALUES($1, $2, $3)
+       RETURNING id, conversation_id, sender_id, body, is_deleted, created_at, edited_at`,
+      [conversationId, req.user.sub, body],
+    );
+    await client.query('UPDATE direct_conversations SET last_message_at=NOW() WHERE id=$1', [conversationId]);
+    await client.query(
+      `INSERT INTO direct_conversation_reads(conversation_id, user_id, last_read_at)
+       VALUES($1, $2, NOW())
+       ON CONFLICT(conversation_id, user_id)
+       DO UPDATE SET last_read_at = NOW()`,
+      [conversationId, req.user.sub],
+    );
+    await createSocialNotification({
+      recipientId: conv.recipient_id,
+      actorId: req.user.sub,
+      type: 'direct_message',
+      entityType: 'direct_message',
+      entityId: rows[0].id,
+      previewText: body,
+    }, client);
+    await client.query('COMMIT');
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/me/conversations/:id/messages]', e);
+    res.status(500).json({ error: 'Erro ao enviar mensagem' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/me/conversations/:id/read', auth, async (req, res) => {
+  const conversationId = parseInt(req.params.id, 10);
+  if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM direct_conversations
+       WHERE id=$2 AND (participant_a=$1 OR participant_b=$1)
+       LIMIT 1`,
+      [req.user.sub, conversationId],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Conversa nao encontrada' });
+    await pool.query(
+      `INSERT INTO direct_conversation_reads(conversation_id, user_id, last_read_at)
+       VALUES($1, $2, NOW())
+       ON CONFLICT(conversation_id, user_id)
+       DO UPDATE SET last_read_at = NOW()`,
+      [conversationId, req.user.sub],
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[POST /api/me/conversations/:id/read]', e);
+    res.status(500).json({ error: 'Erro ao marcar conversa como lida' });
+  }
+});
+
 // FEED DE ATIVIDADES (Postagens locais do site)
 // ─────────────────────────────────────────────
 app.get('/api/community/trending-hashtags', auth, async (req, res) => {
@@ -5038,7 +5455,7 @@ async function ensureUserPreferences(userId, overrides = {}) {
 
 app.get('/api/me/preferences', auth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,updated_at FROM user_preferences WHERE user_id=$1',
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,updated_at FROM user_preferences WHERE user_id=$1',
     [req.user.sub],
   );
   if (rows.length) return res.json(normalizePreferences(rows[0]));
@@ -5048,7 +5465,7 @@ app.get('/api/me/preferences', auth, async (req, res) => {
 
 app.put('/api/me/preferences', auth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme FROM user_preferences WHERE user_id=$1',
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio FROM user_preferences WHERE user_id=$1',
     [req.user.sub],
   );
   const prefs = await ensureUserPreferences(req.user.sub, { ...(rows[0] || {}), ...(req.body || {}) });
