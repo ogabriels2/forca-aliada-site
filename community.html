@@ -644,7 +644,7 @@ img{display:block}
   background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden;
 }
 .profile-cover{
-  height:160px;
+  height:190px;
   background:linear-gradient(135deg,var(--rk-iron),color-mix(in srgb,var(--rk-iron) 50%,#000));
 }
 .profile-cover.rk-ouro{background:linear-gradient(135deg,#78350f,#f59e0b 50%,#fef3c7)}
@@ -656,42 +656,48 @@ img{display:block}
   content:'';display:block;height:100%;
   background:url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.06'%3E%3Crect x='0' y='0' width='20' height='20'/%3E%3Crect x='20' y='20' width='20' height='20'/%3E%3C/g%3E%3C/svg%3E");
 }
-.profile-hero-body{padding:0 18px 18px}
-.profile-topline{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:-46px;position:relative;z-index:2}
+.profile-hero-body{padding:0 20px 20px}
+.profile-topline{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:-54px;position:relative;z-index:2}
 .profile-av{
-  width:92px;height:92px;border-radius:20px;border:4px solid var(--surface-solid);
+  width:108px;height:108px;border-radius:24px;border:5px solid var(--surface-solid);
   object-fit:cover;background:var(--bg);box-shadow:var(--shadow-md);
 }
 .profile-actions-row{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:4px}
-.profile-name{margin:13px 0 2px;font-size:26px;font-weight:900;letter-spacing:-0.03em;word-break:break-word}
-.profile-handle2{font-size:12.5px;color:var(--ink-2);font-weight:500}
-.profile-bio2{margin-top:10px;font-size:13px;color:var(--ink-2);line-height:1.55}
+.profile-name{margin:14px 0 3px;font-size:31px;font-weight:900;letter-spacing:-0.03em;word-break:break-word}
+.profile-handle2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);font-weight:650}
+.profile-bio2{max-width:680px;margin-top:12px;font-size:14.5px;color:var(--ink-2);line-height:1.55}
 .profile-stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
 .pstat{
   border:1px solid var(--line);border-radius:var(--r-sm);
-  padding:9px 10px;background:var(--bg);
+  padding:10px 11px;background:var(--bg);
 }
 button.pstat{cursor:pointer;transition:border-color var(--t-fast),background var(--t-fast)}
 button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .pstat strong{display:block;font-size:17px;font-weight:900;letter-spacing:-0.01em}
 .pstat small{display:block;font-family:var(--ff-mono);color:var(--ink-3);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}
-.profile-content-grid{display:grid;grid-template-columns:minmax(0,.65fr) minmax(0,1.35fr) minmax(180px,.65fr);gap:12px;margin-top:12px}
+.profile-content-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;margin-top:14px;align-items:start}
+.profile-main-feed,.profile-side{display:grid;gap:10px;min-width:0}
+.profile-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:0}
+.profile-section-title strong{font-size:14px;font-weight:900;letter-spacing:-0.01em}
+.profile-section-title span{font-family:var(--ff-mono);font-size:10px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em}
 .stat-block{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-xs);padding:11px}
 .stat-block .lbl{font-family:var(--ff-mono);font-size:9.5px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px}
 .stat-block .val{font-size:20px;font-weight:900;letter-spacing:-0.02em}
 .mini-bars2{display:flex;align-items:flex-end;gap:3px;height:44px;margin-top:9px}
 .mini-bars2 span{flex:1;min-height:3px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),var(--accent-2));opacity:.65;transition:opacity var(--t-fast)}
 .mini-bars2 span:hover{opacity:1}
-.posts-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.profile-about-card{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-xs);padding:12px}
+.profile-about-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.posts-mini-grid{display:grid;gap:9px}
 .post-tile{
   border:1px solid var(--line);border-radius:var(--r-md);
   background:var(--surface);box-shadow:var(--shadow-xs);
-  padding:11px;cursor:pointer;min-height:100px;
+  padding:13px;cursor:pointer;min-height:92px;
   transition:transform var(--t-fast) var(--ease),border-color var(--t-fast);
 }
 .post-tile:hover{transform:translateY(-2px);border-color:var(--accent)}
-.post-tile p{font-size:12.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-bottom:7px}
-.post-tile .tile-meta{display:flex;align-items:center;gap:4px;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.post-tile p{font-size:14px;line-height:1.5;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:8px}
+.post-tile .tile-meta{display:flex;align-items:center;gap:7px;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
 .post-tile .tile-meta svg{width:13px;height:13px;flex-shrink:0}
 .badge-mini{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);padding:9px 11px}
 .badge-mini strong{font-size:12.5px;font-weight:800}
@@ -1813,7 +1819,7 @@ async function renderProfileRoute(identifier){
       <span class="crumb-path">Perfil</span>
     </div>
     <div class="profile-hero">
-      <div class="profile-cover skel" style="height:160px"></div>
+      <div class="profile-cover skel"></div>
       <div class="profile-hero-body"><div class="skel" style="height:110px;border-radius:var(--r-md);margin-top:14px"></div></div>
     </div>
   `);
@@ -1859,26 +1865,34 @@ async function renderProfileRoute(identifier){
         </div>
       </div>
       <div class="profile-content-grid">
-        <aside style="display:grid;gap:10px">
-          <div class="stat-block"><div class="lbl">Horas no servidor</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'Privado'}</div><div class="mini-bars2">${bars}</div></div>
-          <div class="stat-block"><div class="lbl">Rank</div><div class="val" style="color:${rk.color}">${esc(rk.label)}</div><p style="font-size:12px;color:var(--ink-2);margin-top:4px">${esc((prof.rank_benefits||[]).join(' · '))}</p></div>
-          <div class="stat-block"><div class="lbl">Capital</div><div class="val">${num(prof.capital||0)}</div></div>
-        </aside>
-        <section>
-          <p style="font-family:var(--ff-mono);font-size:10px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:9px">Posts Recentes</p>
+        <section class="profile-main-feed">
+          <div class="profile-section-title"><strong>Posts recentes</strong><span>${num(posts.length)} visiveis</span></div>
           <div class="posts-mini-grid">
             ${posts.length?posts.map(p=>`<article class="post-tile" data-post-id="${p.id}"><p>${mentionHTML(p.content)}</p><div class="tile-meta">${IC.heart} ${num(p.likes_count)} · ${IC.comment} ${num(p.comments_count)}</div></article>`).join(''):'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhum post público.</p></div>'}
           </div>
         </section>
-        <aside>
-          <p style="font-family:var(--ff-mono);font-size:10px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:9px">Conquistas</p>
+        <aside class="profile-side">
+          <div class="profile-about-card">
+            <div class="profile-section-title"><strong>Servidor</strong><span>Status</span></div>
+            <div class="profile-about-grid" style="margin-top:10px">
+              <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'Privado'}</div></div>
+              <div class="stat-block"><div class="lbl">Capital</div><div class="val">${num(prof.capital||0)}</div></div>
+            </div>
+            <div class="mini-bars2">${bars}</div>
+          </div>
+          <div class="stat-block">
+            <div class="lbl">Rank atual</div>
+            <div class="val" style="color:${rk.color}">${esc(rk.label)}</div>
+            <p style="font-size:12px;color:var(--ink-2);margin-top:5px;line-height:1.35">${esc((prof.rank_benefits||[]).join(' · ')||'Progresso inicial da comunidade.')}</p>
+          </div>
+          <div class="profile-section-title"><strong>Conquistas</strong><span>${num(badges.length)}</span></div>
           <div class="badge-list">
             ${badges.map(b=>`<div class="badge-mini" title="${esc(b.description)}"><strong>${esc(b.label)}</strong><span>${esc(b.description)} · ${num(b.progress||0)}%</span></div>`).join('')||'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhuma conquista.</p></div>'}
           </div>
         </aside>
       </div>
     `;
-    routeCol.addEventListener('click',e=>{
+    routeCol.onclick=e=>{
       if(e.target.closest('[data-back]')){Router.navigate('/community');return}
       const bt=e.target.closest('[data-post-id]');if(bt&&e.target.closest('.post-tile')){navigatePost(bt.dataset.postId);return}
       const rf=e.target.closest('[data-pf-follow]');
@@ -1893,7 +1907,7 @@ async function renderProfileRoute(identifier){
       const jp=e.target.closest('.js-profile');
       if(jp&&!e.target.closest('button')){const mc2=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc2)navigateProfile(mc2);return}
       if(e.target.closest('.post-more-wrap')){const m=e.target.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
-    });
+    };
   }catch(e){
     showRouteUI(`<div class="route-top"><button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button></div><div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Perfil indisponível</h3><p>${esc(e.message)}</p></div>`);
     $('#route-col').addEventListener('click',ev=>{if(ev.target.closest('[data-back]'))Router.navigate('/community')},{once:true});
