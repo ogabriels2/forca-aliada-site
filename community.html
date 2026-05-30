@@ -108,6 +108,7 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 body.modal-open { overflow: hidden; }
 a { color: inherit; text-decoration: none; }
@@ -187,6 +188,7 @@ svg { display: block; }
 
 .community-shell {
   width: min(1240px, calc(100% - 32px));
+  max-width: 100%;
   margin: 28px auto 56px;
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr) 310px;
@@ -326,6 +328,7 @@ svg { display: block; }
 
 .feed-column {
   min-width: 0;
+  max-width: 100%;
   display: grid;
   gap: 14px;
 }
@@ -543,6 +546,8 @@ svg { display: block; }
 .post-card {
   padding: 15px;
   cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
   transition: transform var(--t-fast) var(--ease), border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
 }
 .post-card:hover {
@@ -1077,7 +1082,7 @@ button.profile-stat:hover { border-color: var(--accent); }
   .top-link.hide-mobile,
   .user-chip span { display: none; }
   .community-shell {
-    width: min(100% - 24px, 680px);
+    width: min(calc(100% - 24px), 680px);
     grid-template-columns: 1fr;
     margin-top: 18px;
   }
@@ -1098,7 +1103,9 @@ button.profile-stat:hover { border-color: var(--accent); }
 }
 @media (max-width: 480px) {
   .top-actions { gap: 6px; }
+  .topbar-inner { width: calc(100% - 20px); }
   .top-link { padding: 0 10px; }
+  .user-chip { width: 38px; padding: 4px; }
   .composer-card,
   .post-card,
   .panel { padding: 12px; }

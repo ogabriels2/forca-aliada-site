@@ -782,6 +782,260 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   color: var(--danger);
   background: rgba(255,59,48,0.05);
 }
+
+/* Xbox friends sync */
+.xbox-sync-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(16,124,16,0.18);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(16,124,16,0.10), rgba(0,113,227,0.08)),
+    var(--card-bg);
+  box-shadow: var(--shadow-md);
+}
+.xbox-sync-mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: #fff;
+  background: #107C10;
+  box-shadow: 0 14px 28px rgba(16,124,16,0.22);
+}
+.xbox-sync-copy h2 {
+  margin: 3px 0 5px;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.xbox-sync-copy p {
+  margin: 0;
+  max-width: 610px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.xbox-sync-eyebrow {
+  color: #107C10;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-theme="dark"] .xbox-sync-eyebrow { color: #30d158; }
+.xbox-sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.xbox-sync-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+.xbox-sync-card,
+.xbox-sync-side {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.xbox-sync-count {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.xbox-sync-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -6px 0 16px;
+}
+.xbox-friends-list {
+  display: grid;
+  gap: 10px;
+}
+.xbox-empty-state {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 28px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  text-align: center;
+}
+.xbox-empty-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #107C10;
+  background: rgba(16,124,16,0.10);
+}
+.xbox-empty-state h3 { margin: 0; font-size: 17px; }
+.xbox-empty-state p {
+  margin: 0;
+  max-width: 340px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.xbox-friend-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 70px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s, transform 0.18s;
+}
+.xbox-friend-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(16,124,16,0.32);
+  box-shadow: 0 8px 20px rgba(16,124,16,0.08);
+}
+.xbox-friend-card.selected {
+  border-color: #107C10;
+  background: rgba(16,124,16,0.07);
+}
+[data-theme="dark"] .xbox-friend-card.selected { background: rgba(48,209,88,0.08); }
+.xbox-friend-card.already-following {
+  cursor: default;
+  opacity: 0.72;
+}
+.xbox-friend-card img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--card-bg);
+}
+.xbox-friend-info {
+  min-width: 0;
+}
+.xbox-friend-info strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.xbox-friend-info span {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.xbox-friend-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 980px;
+  color: #107C10;
+  background: rgba(16,124,16,0.10);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.xbox-friend-status.following {
+  color: var(--text-secondary);
+  background: rgba(0,0,0,0.06);
+}
+[data-theme="dark"] .xbox-friend-status.following { background: rgba(255,255,255,0.08); }
+.xbox-sync-side {
+  position: sticky;
+  top: 96px;
+}
+.xbox-sync-side h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+}
+.xbox-sync-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.xbox-sync-stat span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.xbox-sync-stat strong {
+  font-size: 18px;
+}
+.xbox-sync-submit {
+  width: 100%;
+  margin-top: 18px;
+}
+.xbox-sync-note {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.xbox-skeleton {
+  height: 70px;
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .xbox-sync-hero,
+  .xbox-sync-grid {
+    grid-template-columns: 1fr;
+  }
+  .xbox-sync-actions {
+    justify-content: flex-start;
+  }
+  .xbox-sync-side {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .xbox-sync-hero {
+    padding: 20px;
+  }
+  .xbox-sync-card .card-title {
+    align-items: flex-start;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .xbox-sync-count {
+    width: 100%;
+  }
+  .xbox-friend-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+  .xbox-friend-status {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+}
 .connection-item .btn-connect { display: flex; }
 .connection-item.is-linked .btn-connect { display: none; }
 .connection-item .connection-loading {
@@ -1345,10 +1599,10 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
           Segurança
         </button>
-        <button class="nav-item" onclick="switchTab('amigos', this)">
+        <button class="nav-item" id="nav-btn-amigos" onclick="switchTab('amigos', this)">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           Amigos
-          <span class="new-tag" style="margin-left:auto;">Em breve</span>
+          <span class="new-tag" style="margin-left:auto;">Xbox</span>
         </button>
 
         <button class="nav-item highlight" id="nav-painel" style="display:none;" onclick="window.location.href='dashboard.html'">
@@ -1730,16 +1984,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <p style="color:var(--text-secondary);font-size:13px;margin:-8px 0 18px;line-height:1.6;">
             Descubra quais amigos da sua lista do Xbox Live também jogam no servidor.
           </p>
-          <button id="btn-load-friends"
-            onclick="loadXboxFriends()"
-            style="padding:10px 18px;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;
-                   border:1.5px solid var(--border);background:transparent;color:var(--text-primary);
-                   font-family:inherit;transition:border-color 0.18s,box-shadow 0.18s,background 0.18s;"
-            onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-light)'"
-            onmouseout="this.style.borderColor='var(--border)';this.style.background='transparent'">
-            Procurar Amigos
-          </button>
-          <div id="xbox-friends-list" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;"></div>
+          <a class="btn-primary" href="account.html?tab=amigos" style="width:fit-content;border-radius:var(--radius-md);">
+            Abrir Amigos do Xbox
+          </a>
         </div>
 
       </section>
@@ -2104,17 +2351,73 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
       ══════════════════════════════════════════ -->
       <section id="tab-amigos" class="tab-pane">
         <div class="page-header">
-          <h1>Amigos</h1>
-          <p>Sua rede de contatos e conexões dentro do servidor.</p>
+          <h1>Amigos do Xbox</h1>
+          <p>Encontre amigos do Xbox Live que também jogam na Força Aliada e siga todos em um fluxo só.</p>
         </div>
-        <div class="card" style="padding: 0;">
-          <div class="empty-state">
-            <div class="empty-icon">🤝</div>
-            <h3>Novidade a caminho!</h3>
-            <p>Em breve você poderá adicionar amigos, ver quem está online e comparar estatísticas de jogo.</p>
-            <button class="btn-secondary" disabled style="margin-top: 8px; opacity: 0.5;">Aguarde as novidades</button>
+
+        <div class="xbox-sync-hero">
+          <div class="xbox-sync-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="m5.8 5.8 12.4 12.4"></path>
+              <path d="m18.2 5.8-12.4 12.4"></path>
+            </svg>
+          </div>
+          <div class="xbox-sync-copy">
+            <span class="xbox-sync-eyebrow">Sincronia inteligente</span>
+            <h2>Transforme amigos do Xbox em conexões sociais</h2>
+            <p>A API cruza sua lista do Xbox com jogadores cadastrados no servidor. Você escolhe quem seguir e o backend notifica os novos contatos.</p>
+          </div>
+          <div class="xbox-sync-actions">
+            <button id="btn-load-friends" class="btn-primary" onclick="loadXboxFriends()">Buscar amigos</button>
+            <a class="btn-secondary" href="community.html">Abrir comunidade</a>
           </div>
         </div>
+
+        <div class="xbox-sync-grid">
+          <div class="card xbox-sync-card">
+            <div class="card-title">
+              <div class="card-title-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Amigos encontrados
+              </div>
+              <span class="xbox-sync-count" id="xbox-sync-count">0 selecionados</span>
+            </div>
+            <div class="xbox-sync-toolbar">
+              <button class="btn-outline btn-sm" id="btn-select-all-friends" onclick="selectAllXboxFriends()" disabled>Selecionar todos</button>
+              <button class="btn-outline btn-sm" id="btn-clear-friends" onclick="clearXboxFriendSelection()" disabled>Limpar</button>
+            </div>
+            <div id="xbox-friends-list" class="xbox-friends-list">
+              <div class="xbox-empty-state">
+                <div class="xbox-empty-icon">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v2"></path><path d="M8 20H6a2 2 0 0 1-2-2v-2"></path><path d="M20 16v2a2 2 0 0 1-2 2h-2"></path><path d="M4 8V6a2 2 0 0 1 2-2h2"></path><path d="M9 12l2 2 4-5"></path></svg>
+                </div>
+                <h3>Pronto para procurar</h3>
+                <p>Vincule a Microsoft em Conexões & Redes se a busca ainda não estiver disponível.</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="card xbox-sync-side">
+            <h3>Resumo</h3>
+            <div class="xbox-sync-stat">
+              <span>Amigos Xbox analisados</span>
+              <strong id="xbox-total-found">0</strong>
+            </div>
+            <div class="xbox-sync-stat">
+              <span>No servidor</span>
+              <strong id="xbox-server-found">0</strong>
+            </div>
+            <div class="xbox-sync-stat">
+              <span>Novas conexões</span>
+              <strong id="xbox-new-selected">0</strong>
+            </div>
+            <button id="btn-sync-selected-friends" class="btn-primary xbox-sync-submit" onclick="syncSelectedXboxFriends()" disabled>
+              Conectar com selecionados
+            </button>
+            <p class="xbox-sync-note" id="xbox-sync-note">Selecione amigos encontrados para liberar a conexão em lote.</p>
+          </aside>
+          </div>
       </section>
 
     </div>
@@ -2232,6 +2535,8 @@ let myChartInstance = null;
 let currentNotifFilter = 'all';
 let notifCache = [];
 let prefsSaveTimer = null;
+let xboxFriendsState = { friends: [], selected: new Set(), totalXbox: 0, warnings: [] };
+let initialTabApplied = false;
 
 // ── TOAST ──────────────────────────────────────────────────────
 function showToast(type, title, message, duration = 4500) {
@@ -2939,6 +3244,21 @@ function initAccount() {
   renderSessionInfo();
   // Render rank roadmap with 0 merit while real data loads
   renderRanksRoadmap(0);
+  applyInitialTabFromUrl();
+}
+
+function applyInitialTabFromUrl() {
+  if (initialTabApplied) return;
+  const tab = new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace(/^#/, '');
+  if (!tab) return;
+  const allowed = new Set(['perfil', 'notificacoes', 'atividade', 'merito', 'preferencias', 'conexoes', 'seguranca', 'amigos']);
+  if (!allowed.has(tab) || !document.getElementById(`tab-${tab}`)) return;
+  const idMap = { perfil: 'nav-btn-perfil', notificacoes: 'nav-btn-notif', merito: 'nav-btn-merito', amigos: 'nav-btn-amigos' };
+  const btn = document.getElementById(idMap[tab]) || Array.from(document.querySelectorAll('.nav-item')).find(el => (el.getAttribute('onclick') || '').includes(`'${tab}'`));
+  if (btn) {
+    switchTab(tab, btn);
+    initialTabApplied = true;
+  }
 }
 
 // BOOTSTRAP — cache-first: renderiza imediatamente com localStorage, revalida em background
@@ -2981,6 +3301,12 @@ function initAccount() {
     }
   }
 })();
+
+// Deep links como account.html?tab=amigos devem funcionar mesmo quando a sessao
+// e revalidada em momentos diferentes do ciclo de carregamento.
+if (new URLSearchParams(window.location.search).get('tab') || window.location.hash) {
+  [80, 350, 900].forEach(delay => setTimeout(applyInitialTabFromUrl, delay));
+}
 
 function renderData(options = {}) {
   const mcName = session.minecraftName || 'Steve';
@@ -3070,6 +3396,7 @@ function switchTab(tabId, btnElement) {
   if (tabId === 'merito') loadMeritData();
   // Load social accounts when conexoes tab is opened
   if (tabId === 'conexoes') loadSocialAccounts();
+  if (tabId === 'amigos') updateXboxFriendControls();
 }
 
 function toggleMobileSidebar(e) {
@@ -4297,53 +4624,203 @@ async function applyMinecraftSkin() {
   }
 }
 
-async function loadXboxFriends() {
+function renderXboxSkeletons() {
   const container = document.getElementById('xbox-friends-list');
-  const btn       = document.getElementById('btn-load-friends');
+  if (!container) return;
+  container.innerHTML = '<div class="skeleton xbox-skeleton"></div><div class="skeleton xbox-skeleton"></div><div class="skeleton xbox-skeleton"></div>';
+}
 
-  btn.innerText   = 'Sincronizando…';
-  btn.disabled    = true;
-  container.innerHTML = '<p style="font-size:13px;color:var(--text-secondary);">Comunicando com os servidores do Xbox…</p>';
+function xboxFriendAvatar(friend) {
+  const mc = friend?.minecraft_name || friend?.username || 'Steve';
+  return `https://minotar.net/helm/${encodeURIComponent(mc)}/50.png`;
+}
+
+function updateXboxFriendControls() {
+  const friends = xboxFriendsState.friends || [];
+  const selectable = friends.filter(friend => !friend.is_following);
+  const selectedCount = xboxFriendsState.selected.size;
+  const allSelected = selectable.length > 0 && selectable.every(friend => xboxFriendsState.selected.has(Number(friend.id)));
+
+  const countEl = document.getElementById('xbox-sync-count');
+  const selectAllBtn = document.getElementById('btn-select-all-friends');
+  const clearBtn = document.getElementById('btn-clear-friends');
+  const syncBtn = document.getElementById('btn-sync-selected-friends');
+  const totalEl = document.getElementById('xbox-total-found');
+  const serverEl = document.getElementById('xbox-server-found');
+  const selectedEl = document.getElementById('xbox-new-selected');
+  const noteEl = document.getElementById('xbox-sync-note');
+
+  if (countEl) countEl.textContent = `${selectedCount} selecionado${selectedCount === 1 ? '' : 's'}`;
+  if (selectAllBtn) {
+    selectAllBtn.disabled = selectable.length === 0;
+    selectAllBtn.textContent = allSelected ? 'Todos selecionados' : 'Selecionar todos';
+  }
+  if (clearBtn) clearBtn.disabled = selectedCount === 0;
+  if (syncBtn) syncBtn.disabled = selectedCount === 0;
+  if (totalEl) totalEl.textContent = Number(xboxFriendsState.totalXbox || 0).toLocaleString('pt-BR');
+  if (serverEl) serverEl.textContent = Number(friends.length || 0).toLocaleString('pt-BR');
+  if (selectedEl) selectedEl.textContent = Number(selectedCount || 0).toLocaleString('pt-BR');
+  if (noteEl) {
+    noteEl.textContent = selectedCount
+      ? `${selectedCount} jogador(es) serão seguidos e notificados pela sincronia.`
+      : selectable.length
+        ? 'Selecione amigos encontrados para liberar a conexão em lote.'
+        : friends.length
+          ? 'Todos os amigos encontrados já estão conectados.'
+          : 'Busque seus amigos do Xbox para começar.';
+  }
+}
+
+function renderXboxFriends() {
+  const container = document.getElementById('xbox-friends-list');
+  if (!container) return;
+  const friends = xboxFriendsState.friends || [];
+
+  if (!friends.length) {
+    const total = xboxFriendsState.totalXbox || 0;
+    container.innerHTML = `
+      <div class="xbox-empty-state">
+        <div class="xbox-empty-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8 12h8"></path></svg>
+        </div>
+        <h3>Nenhum amigo encontrado no servidor</h3>
+        <p>Foram analisados ${Number(total).toLocaleString('pt-BR')} amigo(s) do Xbox, mas nenhum apareceu com conta na Força Aliada.</p>
+      </div>
+    `;
+    updateXboxFriendControls();
+    return;
+  }
+
+  container.innerHTML = friends.map(friend => {
+    const id = Number(friend.id);
+    const selected = xboxFriendsState.selected.has(id);
+    const alreadyFollowing = Boolean(friend.is_following);
+    const mcName = friend.minecraft_name || friend.username || 'Steve';
+    return `
+      <label class="xbox-friend-card ${selected ? 'selected' : ''} ${alreadyFollowing ? 'already-following' : ''}" for="xbox-friend-${id}">
+        <img src="${xboxFriendAvatar(friend)}" width="50" height="50" alt="Avatar de ${escapeHTML(mcName)}" onerror="this.src='https://minotar.net/helm/Steve/50.png'">
+        <div class="xbox-friend-info">
+          <strong>${escapeHTML(mcName)}</strong>
+          <span>@${escapeHTML(friend.username || mcName)}</span>
+        </div>
+        <input id="xbox-friend-${id}" type="checkbox" ${selected ? 'checked' : ''} ${alreadyFollowing ? 'disabled' : ''} onchange="toggleXboxFriendSelection(${id}, this.checked)" style="position:absolute;opacity:0;pointer-events:none;">
+        <span class="xbox-friend-status ${alreadyFollowing ? 'following' : ''}">
+          ${alreadyFollowing ? 'Já seguindo' : selected ? 'Selecionado' : 'Xbox friend'}
+        </span>
+      </label>
+    `;
+  }).join('');
+  updateXboxFriendControls();
+}
+
+function toggleXboxFriendSelection(id, checked) {
+  const parsedId = Number(id);
+  const friend = xboxFriendsState.friends.find(item => Number(item.id) === parsedId);
+  if (!friend || friend.is_following) return;
+  if (checked) xboxFriendsState.selected.add(parsedId);
+  else xboxFriendsState.selected.delete(parsedId);
+  renderXboxFriends();
+}
+
+function selectAllXboxFriends() {
+  xboxFriendsState.friends
+    .filter(friend => !friend.is_following)
+    .forEach(friend => xboxFriendsState.selected.add(Number(friend.id)));
+  renderXboxFriends();
+}
+
+function clearXboxFriendSelection() {
+  xboxFriendsState.selected.clear();
+  renderXboxFriends();
+}
+
+async function loadXboxFriends() {
+  const btn = document.getElementById('btn-load-friends');
+  renderXboxSkeletons();
+  updateXboxFriendControls();
+  if (btn) {
+    btn.dataset.label = btn.textContent;
+    btn.innerHTML = '<span class="conn-spinner" style="border-top-color:#fff;border-color:rgba(255,255,255,.35);border-top-color:#fff;"></span> Buscando';
+    btn.disabled = true;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/api/me/xbox/friends`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}` }
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro na requisição');
 
-    if (!data.serverFriends || data.serverFriends.length === 0) {
-      container.innerHTML = `
-        <div style="background:var(--bg-color);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;font-size:13px;color:var(--text-secondary);">
-          Nenhum dos seus ${data.xboxFriendsTotal ?? 0} amigos do Xbox está registrado na Força Aliada ainda.
-        </div>`;
-    } else {
-      container.innerHTML = data.serverFriends.map(friend => `
-        <div style="display:flex;align-items:center;gap:14px;background:var(--bg-color);padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);transition:border-color 0.18s;"
-             onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-          <img src="https://minotar.net/helm/${encodeURIComponent(friend.minecraft_name)}/50.png"
-               width="40" height="40"
-               style="border-radius:10px;flex-shrink:0;"
-               onerror="this.src='https://minotar.net/helm/Steve/50.png'">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:14px;">${escapeHTML ? escapeHTML(friend.minecraft_name) : friend.minecraft_name}</div>
-            <div style="font-size:12px;color:var(--text-secondary);">@${escapeHTML ? escapeHTML(friend.username) : friend.username}</div>
-          </div>
-          <span style="font-size:11px;background:#107C10;color:#fff;padding:3px 10px;border-radius:980px;font-weight:700;white-space:nowrap;">
-            Xbox Friend
-          </span>
-        </div>
-      `).join('');
-    }
+    xboxFriendsState = {
+      friends: Array.isArray(data.serverFriends) ? data.serverFriends : [],
+      selected: new Set(),
+      totalXbox: data.xboxFriendsTotal || 0,
+      warnings: Array.isArray(data.warnings) ? data.warnings : []
+    };
+    renderXboxFriends();
 
-    showToast('success', 'Amigos sincronizados', `${data.serverFriends?.length ?? 0} amigo(s) encontrado(s) na FA.`);
+    if (xboxFriendsState.warnings.length) {
+      showToast('warning', 'Algumas contas falharam', xboxFriendsState.warnings[0].message || 'Revincule a Microsoft se necessário.');
+    }
+    showToast('success', 'Busca concluída', `${xboxFriendsState.friends.length} amigo(s) encontrado(s) na Força Aliada.`);
   } catch (err) {
-    container.innerHTML = `<p style="font-size:13px;color:var(--danger);">Falha: ${err.message}. Sua conta está vinculada à Microsoft?</p>`;
-    showToast('error', 'Falha ao sincronizar', err.message);
+    const container = document.getElementById('xbox-friends-list');
+    if (container) {
+      container.innerHTML = `
+        <div class="xbox-empty-state">
+          <div class="xbox-empty-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>
+          </div>
+          <h3>Falha na busca</h3>
+          <p>${escapeHTML(err.message)}. Confira se sua conta Microsoft está vinculada.</p>
+        </div>
+      `;
+    }
+    showToast('error', 'Falha ao buscar amigos', err.message);
   } finally {
-    btn.innerText = 'Sincronizar Novamente';
-    btn.disabled  = false;
+    if (btn) {
+      btn.textContent = btn.dataset.label === 'Buscar amigos' ? 'Buscar novamente' : (btn.dataset.label || 'Buscar novamente');
+      btn.disabled = false;
+    }
+    updateXboxFriendControls();
+  }
+}
+
+async function syncSelectedXboxFriends() {
+  const selectedIds = Array.from(xboxFriendsState.selected);
+  if (!selectedIds.length) return;
+  const btn = document.getElementById('btn-sync-selected-friends');
+  if (btn) {
+    btn.dataset.label = btn.textContent;
+    btn.innerHTML = '<span class="conn-spinner" style="border-top-color:#fff;border-color:rgba(255,255,255,.35);border-top-color:#fff;"></span> Conectando';
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/xbox/friends/sync`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ user_ids: selectedIds })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar contatos');
+
+    xboxFriendsState.friends = xboxFriendsState.friends.map(friend =>
+      selectedIds.includes(Number(friend.id)) ? { ...friend, is_following: true } : friend
+    );
+    xboxFriendsState.selected.clear();
+    renderXboxFriends();
+    showToast('success', 'Conexões criadas', `${data.newConnections ?? 0} nova(s) conexão(ões) foram ativadas.`);
+  } catch (err) {
+    showToast('error', 'Sincronia não concluída', err.message);
+  } finally {
+    if (btn) {
+      btn.textContent = btn.dataset.label || 'Conectar com selecionados';
+      updateXboxFriendControls();
+    }
   }
 }
 </script>
