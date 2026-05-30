@@ -4639,7 +4639,6 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
        JOIN user_posts target ON target.id = COALESCE(p.repost_of_id, p.id)
        JOIN users u ON u.id = target.author_id
        WHERE p.id = $2
-         AND target.author_id != $1
          AND NOT EXISTS (
            SELECT 1 FROM user_blocks ub
            WHERE (ub.blocker_id=$1 AND ub.blocked_id=u.id)
@@ -4652,6 +4651,10 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
     if (!target) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Post nao encontrado para repost.' });
+    }
+    if (Number(target.author_id) === Number(req.user.sub)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Voce nao pode repostar seu proprio post.' });
     }
 
     const { rows } = await client.query(
