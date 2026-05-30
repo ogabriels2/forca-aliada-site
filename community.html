@@ -1760,15 +1760,15 @@ async function loadFriendsBar(){
     list.innerHTML=barRows.map((p)=>{
       const n=p.minecraft_name||p.username||'Steve'; 
       const isOnline = p.is_online === true; // AGORA USA O DADO REAL DO BANCO!
-      return `<div class="friend-item js-profile" data-mc="${esc(n)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
+      return `<div class="friend-item js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
     }).join('');
     if(reqList) reqList.innerHTML=requests.length?requests.map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
     }).join(''):'<p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p>';
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
     }).join('');
   }catch(e){}
 }
@@ -2011,7 +2011,7 @@ function bindThreadEvents(post,id){
   col.addEventListener('click',e=>{
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
     const jp=e.target.closest('.js-profile');
-    if(jp&&!e.target.closest('button')){const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc)navigateProfile(mc);return}
+    if(jp&&!e.target.closest('button')){const uid=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
     const menu=e.target.closest('[data-action]');
     if(!menu)return;
     const act=menu.dataset.action;
@@ -2209,7 +2209,7 @@ async function renderProfileRoute(identifier){
       if(rb){const unblock=rb.textContent.trim().toLowerCase().includes('desbloquear');blockUser(rb.dataset.uid,unblock);return}
       const rl=e.target.closest('[data-rel]');if(rl){openRelModal(rl.dataset.rel,rl.dataset.mc,rl.dataset.uid);return}
       const jp=e.target.closest('.js-profile');
-      if(jp&&!e.target.closest('button')){const mc2=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc2)navigateProfile(mc2);return}
+      if(jp&&!e.target.closest('button')){const uid2=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc2=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier2=uid2?`id:${uid2}`:mc2;if(identifier2)navigateProfile(identifier2);return}
     };
   }catch(e){
     showRouteUI(`<div class="route-top"><button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button></div><div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Perfil indisponível</h3><p>${esc(e.message)}</p></div>`);
@@ -2380,7 +2380,7 @@ async function runGlobalSearch(term){
     const prow=Array.isArray(players)?players:[];
     const postRows=Array.isArray(posts.posts)?posts.posts:[];
     box.innerHTML=[
-      ...prow.map(p=>{const n=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);return`<button class="search-result js-profile" data-mc="${esc(n)}" type="button"><img src="${skin(n,50)}" alt="${esc(n)}"><span><strong>${esc(n)}</strong><small>@${esc(p.username||n)} · ${esc(rk.label)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`}),
+      ...prow.map(p=>{const n=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${skin(n,50)}" alt="${esc(n)}"><span><strong>${esc(n)}</strong><small>@${esc(p.username||n)} · ${esc(rk.label)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`}),
       ...postRows.map(p=>{const id=p.repost_of_id||p.id;const n=p.repost_original_minecraft_name||p.minecraft_name||p.username||'Steve';const text=p.repost_original_content||p.content||'';return`<button class="search-result search-result-post" data-search-post="${esc(id)}" type="button"><span><strong>${esc(n)}</strong><small>${esc(text.slice(0,120))}</small></span><span>${esc(time(p.created_at))}</span></button>`})
     ].join('')||'<div class="empty-card"><p>Nenhum resultado encontrado.</p></div>';
   }catch(e){box.innerHTML=`<div class="empty-card"><p>${esc(e.message)}</p></div>`}
@@ -2545,9 +2545,9 @@ function bindEvents(){
     const folBtn=e.target.closest('[data-fol]');
     if(folBtn){e.stopPropagation();toggleFollowBtn(folBtn.dataset.uid,folBtn.dataset.on==='1',folBtn);return}
     const prow=e.target.closest('.player-row,.rel-row');
-    if(prow&&!e.target.closest('button')){const mc=prow.dataset.mc;if(mc)navigateProfile(mc);return}
+    if(prow&&!e.target.closest('button')){const uid=prow.dataset.uid;const mc=prow.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
     const jp=e.target.closest('.js-profile');
-    if(jp&&!e.target.closest('button')){const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc)navigateProfile(mc);return}
+    if(jp&&!e.target.closest('button')){const uid=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
     const postCard=e.target.closest('.post-card');
     if(postCard){
       const id=postCard.dataset.postId;
