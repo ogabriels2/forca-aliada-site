@@ -865,22 +865,42 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .post-actions{gap:0}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-/* ─── BOTÃO FLUTUANTE (FAB) ─── */
+/* ─── BOTÃO FLUTUANTE E FALSO EDITOR ─── */
 .fab-post {
-  position: fixed; right: 20px; bottom: 20px; z-index: 100;
-  width: 56px; height: 56px; border-radius: 999px; padding: 0;
-  box-shadow: var(--shadow-lg);
-  display: grid; place-items: center; /* Agora o botão aparece sempre! */
+  position: fixed; right: 24px; bottom: 24px; z-index: 100;
+  height: 52px; padding: 0 22px; border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(18,81,224,0.35); border: none;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15.5px; font-weight: 800; cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
 }
-#toast-stack { bottom: 86px; } /* Evita que as notificações cubram o botão */
+.fab-post:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(18,81,224,0.45); }
+.fab-text { display: block; }
+#toast-stack { bottom: 90px; }
+
+/* Gatilho visual no topo do feed */
+.fake-composer { cursor: pointer; transition: border-color var(--t-fast); }
+.fake-composer:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.fake-input {
+  flex: 1; height: 42px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); display: flex; align-items: center; padding: 0 16px;
+  color: var(--ink-3); font-size: 14px; transition: background var(--t-fast);
+}
+.fake-composer:hover .fake-input { background: var(--surface-solid); }
+
+@media(max-width: 960px) {
+  .fab-post { width: 56px; height: 56px; padding: 0; justify-content: center; }
+  .fab-text { display: none; }
+}
 </style>
 </head>
 <body>
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
 <!-- TOPBAR -->
-<button class="fab-post btn btn-primary" id="fab-post" aria-label="Criar novo post">
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+<button class="fab-post btn-primary" id="fab-post" aria-label="Criar novo post">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  <span class="fab-text">Postar</span>
 </button>
 
 <header class="topbar">
@@ -985,29 +1005,11 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
     </div>
 
     <!-- COMPOSER -->
-    <div class="composer" id="composer">
-      <div class="composer-inner">
-        <img class="av42" id="comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar">
-        <div class="comp-body">
-          <div class="comp-editor" id="comp-editor">
-            <div class="comp-mirror" id="comp-mirror"><span class="pl">O que está acontecendo no servidor?</span></div>
-            <textarea class="comp-ta" id="post-ta" maxlength="280" aria-label="Escrever post" rows="3" spellcheck="true"></textarea>
-            <div class="mention-box" id="mention-box" role="listbox" aria-label="Sugestões de menção"></div>
-          </div>
-          <div class="comp-footer">
-            <div>
-              <span class="comp-hint">Máx. 280 · Mencione com @</span>
-              <div class="rate-hint" id="rate-hint"></div>
-            </div>
-            <div class="comp-tools">
-              <div class="ring-wrap" id="char-ring" aria-hidden="true">
-                <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg>
-                <span id="ring-label"></span>
-              </div>
-              <button class="btn btn-primary btn-sm" id="publish-btn" disabled>Publicar</button>
-            </div>
-          </div>
-        </div>
+    <div class="composer fake-composer" id="fake-composer" tabindex="0" role="button" aria-label="Criar novo post">
+      <div class="composer-inner" style="align-items:center">
+        <img class="av42" id="fake-comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
+        <div class="fake-input">O que está acontecendo no servidor?</div>
+        <button class="btn btn-primary btn-sm hide-sm">Postar</button>
       </div>
     </div>
 
@@ -1073,6 +1075,42 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
       </button>
     </div>
     <div class="sheet-body"><div class="relation-list2" id="rel-list"></div></div>
+  </div>
+</div>
+
+<div class="backdrop" id="post-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="post-title" style="overflow:visible">
+    <div class="sheet-header">
+      <h2 id="post-title">Novo Post</h2>
+      <button class="close-btn" data-close="post-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" style="padding:16px; overflow:visible">
+      <div class="composer-inner">
+        <img class="av42" id="comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
+        <div class="comp-body">
+          <div class="comp-editor" id="comp-editor">
+            <div class="comp-mirror" id="comp-mirror"><span class="pl">O que está acontecendo no servidor?</span></div>
+            <textarea class="comp-ta" id="post-ta" maxlength="280" aria-label="Escrever post" rows="4" spellcheck="true"></textarea>
+            <div class="mention-box" id="mention-box" role="listbox" aria-label="Sugestões de menção"></div>
+          </div>
+          <div class="comp-footer">
+            <div>
+              <span class="comp-hint">Máx. 280 · Mencione com @</span>
+              <div class="rate-hint" id="rate-hint"></div>
+            </div>
+            <div class="comp-tools">
+              <div class="ring-wrap" id="char-ring" aria-hidden="true">
+                <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg>
+                <span id="ring-label"></span>
+              </div>
+              <button class="btn btn-primary btn-sm" id="publish-btn" disabled>Publicar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1323,6 +1361,7 @@ async function loadMe(){
   $('#top-av').src=skin(n,50);
   $('#top-name').textContent=n;
   $('#comp-av').src=skin(n,50);
+  if($('#fake-comp-av')) $('#fake-comp-av').src=skin(n,50);
   $('#mini-av').src=skin(n,100);
   $('#mini-name').textContent=n;
   $('#mini-handle').textContent=`@${me.username||n}`;
@@ -1426,14 +1465,14 @@ async function loadFeed({reset=false}={}){
   }finally{state.loading=false;$('#load-more-wrap').hidden=!state.hasMore||!state.posts.length}
 }
 function switchTab(filter){
-  state.filter=filter;
-  $$('.tab').forEach(t=>{
-    const isActive = t.dataset.tab === filter;
-    t.classList.toggle('is-active', isActive);
-    t.setAttribute('aria-selected', String(isActive));
-  });
-  $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===filter));
-  loadFeed({reset:true});
+  state.filter=filter;
+  $$('.tab').forEach(t=>{
+    const isActive = t.dataset.tab === filter;
+    t.classList.toggle('is-active', isActive);
+    t.setAttribute('aria-selected', String(isActive));
+  });
+  $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===filter));
+  loadFeed({reset:true});
 }
 
 /* ======================= PUBLISH ======================= */
@@ -1450,6 +1489,7 @@ async function publishPost(){
       const card=$(`.post-card[data-post-id="${created.id}"]`);
       if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.classList.add('flash');setTimeout(()=>card.classList.remove('flash'),2400);}
     });
+    closeModal('post-modal');
     toast('success','Post publicado!','Sua mensagem entrou no feed.');
   }catch(e){toast('error','Falha ao publicar',e.message)}
   finally{setBtnLoad(btn,false,'Publicar');updateComposer()}
@@ -1822,6 +1862,20 @@ async function openRelModal(type,mc,uid){
   }catch(e){$('#rel-list').innerHTML=`<p style="padding:18px 0;text-align:center;color:var(--danger);font-size:13px">${esc(e.message)}</p>`}
 }
 
+/* ======================= TRENDING (HASHTAGS REAIS) ======================= */
+async function loadTrending(){
+  const list = $('#trending-list');
+  list.innerHTML = Array.from({length:5},()=>'<div class="skel" style="height:34px;border-radius:6px;margin-bottom:6px"></div>').join('');
+  try {
+    const data = await api('/api/community/trending-hashtags');
+    const trends = Array.isArray(data) ? data : (data.trends || []);
+    if(!trends.length){ list.innerHTML = '<p style="font-size:12px;color:var(--ink-3);padding:10px 0;text-align:center">Nenhum assunto no momento.</p>'; return; }
+    list.innerHTML = trends.slice(0,5).map(t => `<div class="trend-item"><span class="hashtag">#${esc(t.tag||t.hashtag)}</span><span class="count">${num(t.count||t.posts_count)} posts</span></div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--ink-3);padding:10px 0;text-align:center">Assuntos em alta indisponíveis.</p>';
+  }
+}
+
 /* ======================= NOTIFICATIONS ======================= */
 function notifText(n){
   const a=n.actor_minecraft_name||n.actor_username||'Alguém';
@@ -1926,11 +1980,14 @@ function bindEvents(){
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>closeModal(m.id))});
 
-  // Ativar botão flutuante de postagem (FAB)
-  $('#fab-post')?.addEventListener('click', () => {
-    if(state.routeActive) { Router.navigate('/community'); setTimeout(() => $('#post-ta')?.focus(), 100); }
-    else { window.scrollTo({top: 0, behavior: 'smooth'}); $('#post-ta')?.focus(); }
-  });
+  // Ativar modal de postagem (FAB e Fake Composer)
+  const openPostModal = () => {
+    if(state.routeActive) Router.navigate('/community');
+    openModal('post-modal');
+    setTimeout(() => $('#post-ta')?.focus(), 100);
+  };
+  $('#fab-post')?.addEventListener('click', openPostModal);
+  $('#fake-composer')?.addEventListener('click', openPostModal);
 
   // infinite scroll
   const sentinel=$('#feed-sentinel');
@@ -1952,7 +2009,7 @@ async function boot(){
   bindEvents();updateComposer();updateThemeIcon(document.documentElement.getAttribute('data-theme'));
   try{await loadMe();}
   catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
-  await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadNotifs()]);
+  await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadNotifs()]);
   Router.init();
 }
 boot();
