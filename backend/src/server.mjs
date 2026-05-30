@@ -26,6 +26,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 
+const PROCESS_STARTED_AT = new Date();
+
 // ── Cache em memória para status do Minecraft ──────────────────────────────────
 // Cache de status do Minecraft.
 // TTL: 50s — ligeiramente menor que o intervalo de polling do dashboard (60s).
@@ -223,7 +225,8 @@ app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
     if (corsOrigins.includes(origin) || origin.endsWith('.github.io')) return cb(null, true);
-    return cb(new Error('CORS blocked'));
+    console.warn('[cors blocked]', origin);
+    return cb(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret', 'x-app-key'],
@@ -261,6 +264,9 @@ const AUDIT_SCHEMA_STATEMENTS = [
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_id INTEGER",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255)",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'system'",
+  "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action VARCHAR(50) DEFAULT 'system'",
+  "UPDATE audit_logs SET action = COALESCE(action, type, 'system') WHERE action IS NULL",
+  "ALTER TABLE audit_logs ALTER COLUMN action SET DEFAULT 'system'",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS severity VARCHAR(20) DEFAULT 'info'",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_id INTEGER",
   "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS target_name VARCHAR(255)",
@@ -860,12 +866,13 @@ async function audit({
   try {
     await pool.query(
       `INSERT INTO audit_logs
-         (actor_id, actor_name, type, severity, target_id, target_name, message, metadata, ip, user_agent, session_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+         (actor_id, actor_name, type, action, severity, target_id, target_name, message, metadata, ip, user_agent, session_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         actorId    || null,
         actorName  || null,
-        type,
+        type || 'system',
+        type || 'system',
         severity,
         targetId   || null,
         targetName || null,
