@@ -1068,6 +1068,302 @@ button.profile-stat:hover { border-color: var(--accent); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
 
+:where(a, button, textarea, input):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 48%, transparent);
+  outline-offset: 3px;
+}
+
+.notif-wrap { position: relative; }
+.notif-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border: 2px solid var(--surface-solid);
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+.notif-badge[hidden] { display: none; }
+.notif-menu,
+.post-menu {
+  position: absolute;
+  z-index: 240;
+  display: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+}
+.notif-menu.show,
+.post-menu.show { display: block; animation: fadeIn var(--t-fast) var(--ease); }
+.notif-menu {
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(360px, calc(100vw - 24px));
+  overflow: hidden;
+}
+.notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.notif-head strong { font-size: 13px; }
+.notif-list { display: grid; max-height: 360px; overflow: auto; }
+.notif-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-solid);
+}
+.notif-row.unread { background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface-solid)); }
+.notif-row img { width: 38px; height: 38px; border-radius: 11px; }
+.notif-row strong { display: block; font-size: 13px; }
+.notif-row span { display: block; margin-top: 3px; color: var(--ink-2); font-size: 12px; line-height: 1.35; }
+.notif-foot { display: block; padding: 11px 14px; color: var(--accent); font-size: 13px; font-weight: 850; text-align: center; }
+
+.route-view { display: grid; gap: 14px; }
+.route-view[hidden] { display: none; }
+.route-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 800;
+}
+.thread-page,
+.profile-page {
+  display: grid;
+  gap: 14px;
+}
+.thread-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.thread-title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+.post-card.is-pinned {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: linear-gradient(135deg, var(--accent-soft), transparent 42%), var(--surface);
+}
+.pin-badge,
+.edited-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.edited-badge { color: var(--ink-3); text-transform: none; letter-spacing: 0; }
+.post-more-wrap { position: relative; margin-left: auto; }
+.post-more {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.post-more:hover { background: var(--surface-soft); color: var(--accent); }
+.post-menu {
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 178px;
+  padding: 6px;
+}
+.post-menu button {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.post-menu button:hover { background: var(--surface-soft); color: var(--accent); }
+.post-menu button.danger { color: var(--danger); }
+.recent-comments {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.recent-comment {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.recent-comment strong { color: var(--ink); }
+.post-card.flash {
+  animation: flashBorder 2s var(--ease);
+}
+@keyframes flashBorder {
+  0%, 100% { box-shadow: var(--shadow-md); border-color: var(--line); }
+  18%, 70% { box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow-md); border-color: var(--accent); }
+}
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes followPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.92); }
+  65% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes likeFlip {
+  0% { transform: translateY(0); opacity: 1; }
+  40% { transform: translateY(-100%); opacity: 0; }
+  41% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.post-card { animation: slideInUp 0.3s var(--ease) both; }
+.mini-follow.is-popping,
+.primary-btn.is-popping { animation: followPop 0.34s var(--ease); }
+.post-action.like.is-flipping span { animation: likeFlip 0.32s var(--ease); }
+
+.mention-suggest {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 4;
+  display: none;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+}
+.mention-suggest.show { display: grid; }
+.mention-option {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 4px 6px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.mention-option:hover,
+.mention-option:focus-visible { background: var(--accent-soft); }
+.mention-option img { width: 30px; height: 30px; border-radius: 8px; }
+.rate-hint { color: var(--ink-3); font-size: 12px; font-weight: 800; }
+
+.profile-hero-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.profile-rank-cover {
+  height: 190px;
+  background: linear-gradient(135deg, #64748b, #d0d5dd);
+}
+.profile-rank-cover.rank-ouro { background: linear-gradient(135deg, #92400e, #f6c66b, #fff3bf); }
+.profile-rank-cover.rank-diamante { background: linear-gradient(135deg, #0e9384, #22c55e, #b7f7e6); }
+.profile-rank-cover.rank-netherite { background: linear-gradient(135deg, #24113f, #7c3aed, #15101f); }
+.profile-rank-cover.rank-staff { background: linear-gradient(135deg, #0d4fc7, #1761f0, #46c3b2); }
+.profile-hero-body { padding: 0 20px 20px; }
+.profile-hero-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: -62px;
+}
+.profile-hero-avatar {
+  width: 128px;
+  height: 128px;
+  border-radius: 28px;
+  border: 6px solid var(--surface-solid);
+  object-fit: cover;
+  background: var(--surface-soft);
+  box-shadow: 0 0 0 3px var(--accent), 0 0 0 7px var(--accent-soft), var(--shadow-lg);
+}
+.profile-hero-name {
+  margin: 16px 0 4px;
+  font-size: 40px;
+  line-height: 0.95;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+.profile-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr) minmax(220px, 0.72fr);
+  gap: 14px;
+}
+.stat-card,
+.profile-post-tile,
+.badge-tile {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.stat-card { padding: 15px; }
+.stat-card strong { display: block; font-size: 24px; }
+.stat-card span { color: var(--ink-3); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; }
+.profile-post-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.profile-post-tile { min-height: 132px; padding: 13px; cursor: pointer; }
+.profile-post-tile p { display: -webkit-box; margin: 0 0 12px; overflow: hidden; color: var(--ink); font-size: 14px; line-height: 1.45; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.badge-grid { display: grid; gap: 8px; }
+.badge-tile { padding: 11px; }
+.badge-tile strong { font-size: 13px; }
+.badge-tile span { display: block; margin-top: 4px; color: var(--ink-2); font-size: 12px; }
+.mini-bars { display: flex; align-items: end; gap: 5px; height: 54px; margin-top: 12px; }
+.mini-bars i { flex: 1; min-height: 4px; border-radius: 999px 999px 0 0; background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+
+.modal-confirm .modal-sheet { width: min(430px, 100%); }
+.confirm-body { padding: 18px; }
+.confirm-body h2 { margin: 0 0 8px; font-size: 18px; }
+.confirm-body p { margin: 0; color: var(--ink-2); line-height: 1.5; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 18px 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
 @media (max-width: 1080px) {
   .community-shell { grid-template-columns: minmax(0, 1fr) 300px; }
   .rail { display: none; }
@@ -1098,6 +1394,14 @@ button.profile-stat:hover { border-color: var(--accent); }
   .post-head { display: grid; gap: 4px; }
   .post-time { white-space: normal; }
   .profile-stats { grid-template-columns: repeat(2, 1fr); }
+  .profile-grid { grid-template-columns: 1fr; }
+  .profile-post-grid { grid-template-columns: 1fr; }
+  .profile-hero-main { align-items: flex-start; flex-direction: column; }
+  .profile-hero-name { font-size: 30px; }
+  .profile-hero-avatar { width: 104px; height: 104px; border-radius: 23px; }
+  .composer-card { position: sticky; bottom: 10px; z-index: 50; }
+  .thread-page { min-height: 100vh; }
+  .route-top { position: sticky; top: 66px; z-index: 55; padding: 10px 0; background: var(--bg); }
   .modal-backdrop { padding: 10px; align-items: end; }
   .modal-sheet { max-height: calc(100vh - 20px); border-radius: 18px 18px 0 0; }
 }
@@ -1140,6 +1444,17 @@ button.profile-stat:hover { border-color: var(--accent); }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
         Conta
       </a>
+      <div class="notif-wrap">
+        <button class="icon-btn" type="button" id="social-notif-btn" aria-label="Abrir notificacoes sociais" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="notif-badge" id="social-notif-badge" hidden>0</span>
+        </button>
+        <div class="notif-menu" id="social-notif-menu" role="menu" aria-label="Notificacoes sociais">
+          <div class="notif-head"><strong>Social</strong><button class="ghost-btn" type="button" id="mark-social-read">Ler tudo</button></div>
+          <div class="notif-list" id="social-notif-list"></div>
+          <a class="notif-foot" href="account.html?tab=notificacoes-sociais">Ver todas</a>
+        </div>
+      </div>
       <button class="icon-btn" type="button" id="theme-toggle" aria-label="Alternar tema">
         <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"/></svg>
       </button>
@@ -1340,10 +1655,38 @@ const state = {
   players: [],
   activePostId: null,
   postStats: { own: 0, likes: 0 },
+  routeView: null,
+  feedNodes: [],
+  socialNotifications: [],
+  mentionSuggestions: [],
 };
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => Array.from(document.querySelectorAll(selector));
+const Router = {
+  routes: {},
+  register(pattern, handler) {
+    this.routes[pattern] = handler;
+  },
+  navigate(path, { push = true } = {}) {
+    if (push) history.pushState({}, '', path);
+    this.dispatch(path);
+  },
+  dispatch(path = location.pathname) {
+    const cleanPath = path.split('?')[0].replace(/\/+$/, '') || '/community';
+    for (const [pattern, handler] of Object.entries(this.routes)) {
+      const regex = new RegExp('^' + pattern.replace(/:[^/]+/g, '([^/]+)').replace(/\//g, '\\/') + '$');
+      const match = cleanPath.match(regex);
+      if (match) return handler(...match.slice(1).map(decodeURIComponent));
+    }
+    if (cleanPath.endsWith('/community.html')) return this.routes['/community']?.();
+    return this.routes['/community']?.();
+  },
+  init() {
+    window.addEventListener('popstate', () => this.dispatch());
+    this.dispatch();
+  }
+};
 const icons = {
   check: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>',
   error: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>',
@@ -1482,6 +1825,43 @@ function logout() {
   location.href = 'login.html';
 }
 
+function setupRouteView() {
+  const column = document.querySelector('.feed-column');
+  if (!column || state.routeView) return;
+  state.feedNodes = Array.from(column.children);
+  const view = document.createElement('section');
+  view.id = 'route-view';
+  view.className = 'route-view';
+  view.hidden = true;
+  column.appendChild(view);
+  state.routeView = view;
+}
+
+function showFeedRoute() {
+  setupRouteView();
+  state.feedNodes.forEach(node => { node.hidden = false; });
+  state.routeView.hidden = true;
+  state.routeView.innerHTML = '';
+  document.title = 'Comunidade | Forca Aliada';
+}
+
+function showDetailRoute(html) {
+  setupRouteView();
+  state.feedNodes.forEach(node => { node.hidden = true; });
+  state.routeView.hidden = false;
+  state.routeView.innerHTML = html;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function navigatePost(id) {
+  Router.navigate(`/community/post/${encodeURIComponent(id)}`);
+}
+
+function navigateProfile(identifier) {
+  if (!identifier) return;
+  Router.navigate(`/profile/${encodeURIComponent(identifier)}`);
+}
+
 function applyUser(user) {
   state.me = normalizeUser(user);
   const name = state.me.minecraft_name || state.me.username || 'Steve';
@@ -1525,6 +1905,76 @@ function updateComposer() {
   ring.classList.toggle('warning', remaining <= 40 && remaining >= 0);
   ring.classList.toggle('danger', remaining < 0);
   $('#publish-btn').disabled = value.trim().length < 2 || value.length > 280 || state.loadingFeed;
+  updateRateHint();
+  updateMentionSuggestions();
+}
+
+function updateRateHint() {
+  const target = $('#rate-hint');
+  if (!target) return;
+  const hourAgo = Date.now() - (60 * 60 * 1000);
+  const count = state.posts.filter(post => Number(post.author_id) === Number(state.me?.id) && new Date(post.created_at).getTime() > hourAgo).length;
+  target.textContent = count >= 7 ? `Limite proximo: ${count}/10 posts esta hora` : `${count}/10 posts nesta hora`;
+}
+
+let mentionTimer = null;
+function updateMentionSuggestions() {
+  const input = $('#post-content');
+  const box = $('#mention-suggest');
+  if (!input || !box) return;
+  const beforeCursor = input.value.slice(0, input.selectionStart || input.value.length);
+  const match = beforeCursor.match(/(^|\s)@([a-z0-9_]{1,32})$/i);
+  if (!match) {
+    box.classList.remove('show');
+    box.innerHTML = '';
+    return;
+  }
+  const term = match[2].toLowerCase();
+  clearTimeout(mentionTimer);
+  mentionTimer = setTimeout(async () => {
+    try {
+      const params = new URLSearchParams({ limit: '5', following: 'true' });
+      if (term) params.set('search', term);
+      const rows = await apiJson(`/api/community/players?${params.toString()}`);
+      state.mentionSuggestions = Array.isArray(rows) ? rows.slice(0, 5) : [];
+      renderMentionSuggestions(match[0], term);
+    } catch {
+      box.classList.remove('show');
+    }
+  }, 160);
+}
+
+function renderMentionSuggestions(_token, term) {
+  const box = $('#mention-suggest');
+  if (!box) return;
+  if (!state.mentionSuggestions.length) {
+    box.classList.remove('show');
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = state.mentionSuggestions.map(player => {
+    const name = player.minecraft_name || player.username || 'Steve';
+    return `
+      <button class="mention-option" type="button" data-mention="${escapeHTML(name)}">
+        <img src="${skinUrl(name, 50)}" alt="Avatar de ${escapeHTML(name)}" onerror="this.src='${skinUrl('Steve', 50)}'">
+        <span><strong>@${escapeHTML(name)}</strong><br><small>${escapeHTML(rankInfo(player.rank, player.merit).label)}</small></span>
+      </button>
+    `;
+  }).join('');
+  box.classList.add('show');
+}
+
+function insertMention(name) {
+  const input = $('#post-content');
+  if (!input || !name) return;
+  const start = input.selectionStart || input.value.length;
+  const before = input.value.slice(0, start).replace(/(^|\s)@([a-z0-9_]{1,32})$/i, `$1@${name} `);
+  const after = input.value.slice(start);
+  input.value = before + after;
+  input.focus();
+  input.selectionStart = input.selectionEnd = before.length;
+  $('#mention-suggest')?.classList.remove('show');
+  updateComposer();
 }
 
 function renderSkeletons(target, count = 3) {
@@ -1546,20 +1996,38 @@ function postHTML(post) {
   const mcName = post.minecraft_name || post.username || 'Steve';
   const rank = rankInfo(post.rank || post.role, post.merit);
   const isOwner = state.me && Number(post.author_id) === Number(state.me.id);
+  const edited = post.updated_at && new Date(post.updated_at).getTime() > new Date(post.created_at).getTime();
+  const createdAt = new Date(post.created_at).getTime();
+  const canEdit = isOwner && ((Date.now() - createdAt) / 60000) <= 15;
+  const recentComments = Array.isArray(post.recent_comments) ? post.recent_comments : [];
   return `
-    <article class="post-card" data-post-id="${post.id}" tabindex="0">
+    <article class="post-card ${post.is_pinned ? 'is-pinned' : ''}" data-post-id="${post.id}" tabindex="0">
       <div class="post-layout">
-        <img class="avatar js-open-profile" data-mc-name="${escapeHTML(mcName)}" src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
+        <img class="avatar js-open-profile" data-mc-name="${escapeHTML(mcName)}" data-user-id="${escapeHTML(post.author_id)}" src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
         <div>
           <div class="post-head">
             <div class="post-author">
-              <strong class="js-open-profile" data-mc-name="${escapeHTML(mcName)}">${escapeHTML(mcName)}</strong>
+              ${post.is_pinned ? '<span class="pin-badge">Fixado</span>' : ''}
+              <strong class="js-open-profile" data-mc-name="${escapeHTML(mcName)}" data-user-id="${escapeHTML(post.author_id)}">${escapeHTML(mcName)}</strong>
               <span>@${escapeHTML(post.username || mcName)}</span>
               <span class="rank-pill" style="--rank:${rank.color}">${escapeHTML(rank.label)}</span>
             </div>
-            <time class="post-time" datetime="${escapeHTML(post.created_at)}">${escapeHTML(formatTime(post.created_at))}</time>
+            <div class="post-more-wrap">
+              <time class="post-time" datetime="${escapeHTML(post.created_at)}">${escapeHTML(formatTime(post.created_at))}</time>
+              ${edited ? '<span class="edited-badge">(editado)</span>' : ''}
+              <button class="post-more" type="button" data-action="open-menu" aria-label="Abrir menu do post">...</button>
+              <div class="post-menu" role="menu">
+                ${canEdit ? '<button type="button" data-action="edit">Editar</button>' : ''}
+                ${isOwner ? '<button class="danger" type="button" data-action="delete">Excluir</button>' : '<button type="button" data-action="report">Denunciar</button>'}
+                <button type="button" data-action="copy-link">Copiar link</button>
+              </div>
+            </div>
           </div>
           <div class="post-content">${mentionHTML(post.content)}</div>
+          ${recentComments.length ? `<div class="recent-comments">${recentComments.slice(0, 3).map(comment => {
+            const cName = comment.minecraft_name || comment.username || 'Jogador';
+            return `<div class="recent-comment"><strong>${escapeHTML(cName)}:</strong> ${mentionHTML(comment.content)}</div>`;
+          }).join('')}<button class="ghost-btn" type="button" data-action="comments">Ver ${formatNumber(post.comments_count || 0)} respostas</button></div>` : ''}
           <div class="post-actions">
             <button class="post-action like ${post.liked_by_me ? 'is-active' : ''}" type="button" data-action="like" aria-label="Curtir post">
               ${icons.heart}<span>${formatNumber(post.likes_count)}</span>
@@ -1567,7 +2035,6 @@ function postHTML(post) {
             <button class="post-action" type="button" data-action="comments" aria-label="Abrir comentarios">
               ${icons.comment}<span>${formatNumber(post.comments_count)}</span>
             </button>
-            ${isOwner ? `<button class="post-action delete" type="button" data-action="delete" aria-label="Excluir post">${icons.trash}<span>Excluir</span></button>` : ''}
           </div>
         </div>
       </div>
@@ -1659,6 +2126,14 @@ async function publishPost() {
     input.value = '';
     updateComposer();
     renderFeed();
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`.post-card[data-post-id="${created.id}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('flash');
+        setTimeout(() => card.classList.remove('flash'), 2100);
+      }
+    });
     showToast('success', 'Post publicado', 'Sua mensagem entrou no feed.');
   } catch (err) {
     showToast('error', 'Falha ao publicar', err.message || 'Tente novamente.');
@@ -1680,8 +2155,9 @@ async function toggleLike(id, button) {
   post.likes_count = Math.max(0, Number(post.likes_count || 0) + (liked ? -1 : 1));
   button?.classList.toggle('is-active', post.liked_by_me);
   button?.classList.add('is-popping');
+  button?.classList.add('is-flipping');
   button.querySelector('span').textContent = formatNumber(post.likes_count);
-  setTimeout(() => button?.classList.remove('is-popping'), 420);
+  setTimeout(() => button?.classList.remove('is-popping', 'is-flipping'), 420);
   updateMiniStats();
   try {
     await apiJson(`/api/community/posts/${encodeURIComponent(id)}/like`, { method: liked ? 'DELETE' : 'POST' });
@@ -1694,7 +2170,12 @@ async function toggleLike(id, button) {
 }
 
 async function deletePost(id) {
-  const ok = confirm('Excluir este post da comunidade?');
+  const ok = await confirmAction({
+    title: 'Excluir post',
+    message: 'Esta publicacao sera removida da comunidade. A acao nao pode ser desfeita.',
+    confirmText: 'Excluir',
+    danger: true,
+  });
   if (!ok) return;
   try {
     await apiJson(`/api/community/posts/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -1705,6 +2186,137 @@ async function deletePost(id) {
   } catch (err) {
     showToast('error', 'Nao foi possivel excluir', err.message || 'Tente novamente.');
   }
+}
+
+function confirmAction({ title, message, confirmText = 'Confirmar', cancelText = 'Cancelar', danger = false }) {
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop modal-confirm show';
+    backdrop.setAttribute('role', 'presentation');
+    backdrop.innerHTML = `
+      <section class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="confirm-body">
+          <h2 id="confirm-title">${escapeHTML(title)}</h2>
+          <p>${escapeHTML(message)}</p>
+        </div>
+        <div class="confirm-actions">
+          <button class="secondary-btn" type="button" data-confirm="cancel">${escapeHTML(cancelText)}</button>
+          <button class="${danger ? 'danger-btn' : 'primary-btn'}" type="button" data-confirm="ok">${escapeHTML(confirmText)}</button>
+        </div>
+      </section>
+    `;
+    const close = value => {
+      document.body.classList.remove('modal-open');
+      backdrop.remove();
+      resolve(value);
+    };
+    backdrop.addEventListener('click', event => {
+      const action = event.target.closest('[data-confirm]')?.dataset.confirm;
+      if (action === 'ok') close(true);
+      if (action === 'cancel' || event.target === backdrop) close(false);
+    });
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+    backdrop.querySelector('[data-confirm="cancel"]')?.focus();
+  });
+}
+
+async function reportContent(contentType, contentId) {
+  const reason = await chooseReportReason();
+  if (!reason) return;
+  try {
+    await apiJson('/api/community/report', {
+      method: 'POST',
+      body: JSON.stringify({ content_type: contentType, content_id: Number(contentId), reason }),
+    });
+    showToast('success', 'Denuncia enviada', 'A moderacao recebeu o contexto.');
+  } catch (err) {
+    showToast('error', 'Denuncia nao enviada', err.message || 'Tente novamente.');
+  }
+}
+
+function chooseReportReason() {
+  return new Promise(resolve => {
+    const reasons = [
+      ['spam', 'Spam'],
+      ['harassment', 'Assedio'],
+      ['hate_speech', 'Discurso de odio'],
+      ['inappropriate', 'Inapropriado'],
+      ['misinformation', 'Informacao falsa'],
+      ['other', 'Outro'],
+    ];
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop modal-confirm show';
+    backdrop.innerHTML = `
+      <section class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="report-title">
+        <div class="confirm-body">
+          <h2 id="report-title">Denunciar conteudo</h2>
+          <p>Escolha o motivo principal. A equipe revisa o historico antes de agir.</p>
+          <div class="badge-grid" style="margin-top:12px;">
+            ${reasons.map(([id, label]) => `<button class="secondary-btn" type="button" data-report-reason="${id}">${label}</button>`).join('')}
+          </div>
+        </div>
+        <div class="confirm-actions"><button class="ghost-btn" type="button" data-report-cancel>Cancelar</button></div>
+      </section>
+    `;
+    const close = value => {
+      document.body.classList.remove('modal-open');
+      backdrop.remove();
+      resolve(value);
+    };
+    backdrop.addEventListener('click', event => {
+      const reason = event.target.closest('[data-report-reason]')?.dataset.reportReason;
+      if (reason) close(reason);
+      if (event.target.closest('[data-report-cancel]') || event.target === backdrop) close(null);
+    });
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+  });
+}
+
+async function editPostInline(id, card) {
+  const post = findPost(id);
+  if (!post || !card) return;
+  const contentEl = card.querySelector('.post-content');
+  if (!contentEl) return;
+  const original = post.content || '';
+  contentEl.innerHTML = `
+    <div class="composer-editor" style="min-height:96px;">
+      <textarea class="composer-input" style="color:var(--ink);min-height:96px;" maxlength="280" aria-label="Editar post">${escapeHTML(original)}</textarea>
+    </div>
+    <div class="composer-footer">
+      <span class="composer-hint">Edicao liberada por 15 minutos apos publicar.</span>
+      <div class="composer-tools">
+        <button class="secondary-btn" type="button" data-edit-cancel>Cancelar</button>
+        <button class="primary-btn" type="button" data-edit-save>Salvar</button>
+      </div>
+    </div>
+  `;
+  const textarea = contentEl.querySelector('textarea');
+  textarea.focus();
+  contentEl.querySelector('[data-edit-cancel]').addEventListener('click', event => {
+    event.stopPropagation();
+    contentEl.innerHTML = mentionHTML(original);
+  });
+  contentEl.querySelector('[data-edit-save]').addEventListener('click', async event => {
+    event.stopPropagation();
+    const next = textarea.value.trim();
+    if (next.length < 2 || next.length > 280) return showToast('warning', 'Texto invalido', 'Use entre 2 e 280 caracteres.');
+    const button = event.currentTarget;
+    setButtonLoading(button, true, 'Salvando');
+    try {
+      const updated = await apiJson(`/api/community/posts/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content: next }),
+      });
+      Object.assign(post, updated);
+      renderFeed();
+      showToast('success', 'Post editado', 'A publicacao foi atualizada.');
+    } catch (err) {
+      showToast('error', 'Edicao nao salva', err.message || 'Tente novamente.');
+      setButtonLoading(button, false, 'Salvar');
+    }
+  });
 }
 
 function openModal(id) {
@@ -1722,55 +2334,12 @@ function closeModal(id) {
 }
 
 async function openComments(id) {
-  const post = findPost(id);
-  if (!post) return;
-  state.activePostId = id;
-  $('#thread-root').innerHTML = postHTML(post);
-  $('#comments-list').innerHTML = '<div class="skeleton post-skeleton"></div>';
-  $('#comment-content').value = '';
-  openModal('comments-modal');
-  try {
-    const comments = await apiJson(`/api/community/posts/${encodeURIComponent(id)}/comments`);
-    renderComments(comments);
-  } catch (err) {
-    $('#comments-list').innerHTML = `
-      <section class="empty-state">
-        <div class="empty-icon">${icons.error}</div>
-        <h3>Comentarios indisponiveis</h3>
-        <p>${escapeHTML(err.message || 'Tente novamente em instantes.')}</p>
-      </section>
-    `;
-  }
+  navigatePost(id);
 }
 
 function renderComments(comments) {
   const list = $('#comments-list');
-  if (!Array.isArray(comments) || comments.length === 0) {
-    list.innerHTML = `
-      <section class="empty-state">
-        <div class="empty-icon">${icons.comment}</div>
-        <h3>Nenhuma resposta ainda</h3>
-        <p>Responda para iniciar a thread.</p>
-      </section>
-    `;
-    return;
-  }
-  list.innerHTML = comments.map(comment => {
-    const mcName = comment.minecraft_name || comment.username || 'Steve';
-    return `
-      <article class="comment-row">
-        <img src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
-        <div>
-          <div class="comment-meta">
-            <strong class="js-open-profile" data-mc-name="${escapeHTML(mcName)}">${escapeHTML(mcName)}</strong>
-            <span>@${escapeHTML(comment.username || mcName)}</span>
-            <span>${escapeHTML(formatTime(comment.created_at))}</span>
-          </div>
-          <p>${mentionHTML(comment.content)}</p>
-        </div>
-      </article>
-    `;
-  }).join('');
+  list.innerHTML = commentsHTML(comments);
 }
 
 async function submitComment(event) {
@@ -1796,6 +2365,204 @@ async function submitComment(event) {
   } finally {
     setButtonLoading(button, false, 'Comentar');
   }
+}
+
+async function renderPostRoute(id) {
+  showDetailRoute(`
+    <div class="route-top">
+      <button class="ghost-btn" type="button" data-route-back>Comunidade</button>
+      <span class="crumb">Comunidade / Post</span>
+    </div>
+    <section class="thread-page">
+      <div class="thread-card"><div class="skeleton post-skeleton"></div></div>
+    </section>
+  `);
+  state.activePostId = id;
+  try {
+    const [post, comments] = await Promise.all([
+      apiJson(`/api/community/posts/${encodeURIComponent(id)}`),
+      apiJson(`/api/community/posts/${encodeURIComponent(id)}/comments`),
+    ]);
+    const cached = findPost(id);
+    if (cached) Object.assign(cached, post);
+    else state.posts.unshift(post);
+    document.title = `Post de ${post.minecraft_name || post.username || 'jogador'} | Forca Aliada`;
+    state.routeView.innerHTML = `
+      <div class="route-top">
+        <button class="ghost-btn" type="button" data-route-back>Comunidade</button>
+        <span class="crumb">Comunidade / @${escapeHTML(post.username || post.minecraft_name || 'jogador')} / Post</span>
+      </div>
+      <section class="thread-page">
+        <div class="thread-card">
+          <h1 class="thread-title">Thread · ${formatNumber(post.comments_count || comments.length)} respostas</h1>
+          <div style="margin-top:14px;">${postHTML(post)}</div>
+        </div>
+        <form class="comment-form" id="route-comment-form">
+          <textarea id="route-comment-content" maxlength="280" placeholder="Responder com ate 280 caracteres" aria-label="Responder ao post"></textarea>
+          <button class="primary-btn" type="submit">Responder</button>
+        </form>
+        <div class="comments-list" id="route-comments-list">${commentsHTML(comments)}</div>
+      </section>
+    `;
+  } catch (err) {
+    showDetailRoute(`
+      <div class="route-top"><button class="ghost-btn" type="button" data-route-back>Comunidade</button></div>
+      <section class="empty-state">
+        <div class="empty-icon">${icons.error}</div>
+        <h3>Post indisponivel</h3>
+        <p>${escapeHTML(err.message || 'Nao foi possivel abrir esta thread.')}</p>
+      </section>
+    `);
+  }
+}
+
+function commentsHTML(comments) {
+  if (!Array.isArray(comments) || comments.length === 0) {
+    return `
+      <section class="empty-state">
+        <div class="empty-icon">${icons.comment}</div>
+        <h3>Nenhuma resposta ainda</h3>
+        <p>Responda para iniciar a thread.</p>
+      </section>
+    `;
+  }
+  return comments.map(comment => {
+    const mcName = comment.minecraft_name || comment.username || 'Steve';
+    const deleted = Boolean(comment.is_deleted);
+    return `
+      <article class="comment-row">
+        <img src="${skinUrl(mcName, 50)}" alt="Avatar de ${escapeHTML(mcName)}" width="50" height="50" onerror="this.src='${skinUrl('Steve', 50)}'">
+        <div>
+          <div class="comment-meta">
+            <strong class="js-open-profile" data-mc-name="${escapeHTML(mcName)}" data-user-id="${escapeHTML(comment.author_id)}">${escapeHTML(mcName)}</strong>
+            <span>@${escapeHTML(comment.username || mcName)}</span>
+            <span>${escapeHTML(formatTime(comment.created_at))}</span>
+          </div>
+          <p style="${deleted ? 'color:var(--ink-3);font-style:italic;' : ''}">${deleted ? escapeHTML(comment.content) : mentionHTML(comment.content)}</p>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+async function submitRouteComment(event) {
+  event.preventDefault();
+  const content = $('#route-comment-content')?.value.trim();
+  if (!state.activePostId || !content || content.length > 280) return;
+  const button = event.target.querySelector('button[type="submit"]');
+  setButtonLoading(button, true, 'Enviando');
+  try {
+    await apiJson(`/api/community/posts/${encodeURIComponent(state.activePostId)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+    const post = findPost(state.activePostId);
+    if (post) post.comments_count = Number(post.comments_count || 0) + 1;
+    await renderPostRoute(state.activePostId);
+    renderFeed();
+  } catch (err) {
+    showToast('error', 'Resposta nao enviada', err.message || 'Tente novamente.');
+    setButtonLoading(button, false, 'Responder');
+  }
+}
+
+async function renderProfileRoute(identifier) {
+  showDetailRoute(`
+    <div class="route-top">
+      <button class="ghost-btn" type="button" data-route-back>Comunidade</button>
+      <span class="crumb">Comunidade / Perfil</span>
+    </div>
+    <section class="profile-page">
+      <div class="profile-hero-card">
+        <div class="profile-rank-cover skeleton"></div>
+        <div class="profile-hero-body"><div class="skeleton post-skeleton"></div></div>
+      </div>
+    </section>
+  `);
+  try {
+    const data = await apiJson(`/api/community/player/${encodeURIComponent(identifier)}/full-profile`);
+    renderFullProfile(data);
+  } catch (err) {
+    showDetailRoute(`
+      <div class="route-top"><button class="ghost-btn" type="button" data-route-back>Comunidade</button></div>
+      <section class="empty-state">
+        <div class="empty-icon">${icons.error}</div>
+        <h3>Perfil indisponivel</h3>
+        <p>${escapeHTML(err.message || 'Nao foi possivel abrir este perfil.')}</p>
+      </section>
+    `);
+  }
+}
+
+function rankClass(rank, role) {
+  const id = `${rank || ''} ${role || ''}`.toLowerCase();
+  if (id.includes('owner') || id.includes('full') || id.includes('admin')) return 'rank-staff';
+  if (id.includes('netherite')) return 'rank-netherite';
+  if (id.includes('diamante')) return 'rank-diamante';
+  if (id.includes('ouro')) return 'rank-ouro';
+  return 'rank-ferro';
+}
+
+function renderFullProfile(data) {
+  const profile = data.profile || {};
+  const posts = Array.isArray(data.posts) ? data.posts : [];
+  const stats = data.game_stats;
+  const badges = Array.isArray(data.badges) ? data.badges : [];
+  const mcName = profile.minecraft_name || profile.username || 'Steve';
+  const rank = rankInfo(profile.rank || profile.role, profile.merit);
+  const isMe = Number(profile.id) === Number(state.me?.id);
+  document.title = `${mcName} | Forca Aliada`;
+  const bars = stats?.daily_hours?.length
+    ? stats.daily_hours.map(day => `<i style="height:${Math.max(8, Math.min(54, Number(day.hours || 0) * 12))}px"></i>`).join('')
+    : Array.from({ length: 7 }, () => '<i style="height:8px"></i>').join('');
+  state.routeView.innerHTML = `
+    <div class="route-top">
+      <button class="ghost-btn" type="button" data-route-back>Comunidade</button>
+      <span class="crumb">Perfil publico</span>
+    </div>
+    <section class="profile-page">
+      <div class="profile-hero-card">
+        <div class="profile-rank-cover ${rankClass(profile.rank, profile.role)}"></div>
+        <div class="profile-hero-body">
+          <div class="profile-hero-main">
+            <img class="profile-hero-avatar" src="${skinUrl(mcName, 140)}" alt="Avatar de ${escapeHTML(mcName)}" onerror="this.src='${skinUrl('Steve', 140)}'">
+            <div class="profile-actions">
+              ${isMe ? '<a class="secondary-btn" href="account.html">Editar conta</a>' : `<button class="primary-btn" type="button" data-profile-follow data-user-id="${escapeHTML(profile.id)}" data-following="${profile.is_following ? '1' : '0'}">${profile.is_blocked_by_me ? 'Bloqueado' : profile.is_following ? 'Seguindo' : 'Seguir'}</button>`}
+              ${isMe ? '' : `<button class="secondary-btn" type="button" data-profile-report data-user-id="${escapeHTML(profile.id)}">Denunciar</button><button class="danger-btn" type="button" data-profile-block data-user-id="${escapeHTML(profile.id)}">${profile.is_blocked_by_me ? 'Desbloquear' : 'Bloquear'}</button>`}
+            </div>
+          </div>
+          <h1 class="profile-hero-name">${escapeHTML(mcName)}</h1>
+          <p class="profile-handle">@${escapeHTML(profile.username || mcName)} · membro desde ${escapeHTML(formatTime(profile.created_at))}</p>
+          <p class="profile-bio">${escapeHTML(profile.bio || 'Sem bio publica por enquanto.')}</p>
+          <div class="profile-stats">
+            <button class="profile-stat" type="button" data-relation="followers" data-mc-name="${escapeHTML(profile.minecraft_name || '')}" data-user-id="${escapeHTML(profile.id)}"><strong>${formatNumber(profile.followers_count || 0)}</strong><span>Seguidores</span></button>
+            <button class="profile-stat" type="button" data-relation="following" data-mc-name="${escapeHTML(profile.minecraft_name || '')}" data-user-id="${escapeHTML(profile.id)}"><strong>${formatNumber(profile.following_count || 0)}</strong><span>Seguindo</span></button>
+            <div class="profile-stat"><strong>${formatNumber(profile.posts_count || 0)}</strong><span>Posts</span></div>
+            <div class="profile-stat"><strong>${formatNumber(profile.merit || 0)}</strong><span>Merito</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="profile-grid">
+        <aside class="badge-grid">
+          <div class="stat-card"><span>Horas no servidor</span><strong>${stats ? formatNumber(Number(stats.total_hours || 0).toFixed(1)) : 'Privado'}</strong><div class="mini-bars">${bars}</div></div>
+          <div class="stat-card"><span>Rank atual</span><strong style="color:${rank.color}">${escapeHTML(rank.label)}</strong><p class="season-copy">${escapeHTML((profile.rank_benefits || []).join(' · '))}</p></div>
+          <div class="stat-card"><span>Capital</span><strong>${formatNumber(profile.capital || 0)}</strong></div>
+        </aside>
+        <section>
+          <div class="page-head"><h1>Posts recentes</h1></div>
+          <div class="profile-post-grid">
+            ${posts.length ? posts.map(post => `<article class="profile-post-tile" tabindex="0" data-post-id="${post.id}"><p>${mentionHTML(post.content)}</p><span class="post-time">${formatNumber(post.likes_count)} likes · ${formatNumber(post.comments_count)} respostas</span></article>`).join('') : '<section class="empty-state"><p>Nenhum post publico ainda.</p></section>'}
+          </div>
+        </section>
+        <aside>
+          <div class="page-head"><h1>Conquistas</h1></div>
+          <div class="badge-grid">
+            ${badges.map(badge => `<div class="badge-tile" title="${escapeHTML(badge.description)}"><strong>${escapeHTML(badge.label)}</strong><span>${escapeHTML(badge.description)} · ${formatNumber(badge.progress || 0)}%</span></div>`).join('')}
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
 }
 
 function renderPlayersSkeleton() {
@@ -1858,23 +2625,7 @@ async function toggleFollow(targetId, currentlyFollowing, button) {
 }
 
 async function openProfile(mcName) {
-  if (!mcName) return;
-  $('#profile-content').innerHTML = '<div class="modal-content"><div class="skeleton post-skeleton"></div></div>';
-  openModal('profile-modal');
-  try {
-    const profile = await apiJson(`/api/community/player/${encodeURIComponent(mcName)}`);
-    renderProfile(profile);
-  } catch (err) {
-    $('#profile-content').innerHTML = `
-      <div class="modal-content">
-        <section class="empty-state">
-          <div class="empty-icon">${icons.error}</div>
-          <h3>Perfil indisponivel</h3>
-          <p>${escapeHTML(err.message || 'Nao foi possivel abrir este jogador.')}</p>
-        </section>
-      </div>
-    `;
-  }
+  navigateProfile(mcName);
 }
 
 function renderProfile(profile) {
@@ -1915,13 +2666,16 @@ function renderProfile(profile) {
   }
 }
 
-async function openRelationList(type, mcName) {
+async function openRelationList(type, mcName, userId = null) {
+  const identifier = mcName || (userId ? `id:${userId}` : '');
+  if (!identifier) return;
   const title = type === 'followers' ? 'Seguidores' : 'Seguindo';
-  $('#relation-title').textContent = `${title} de ${mcName}`;
+  $('#relation-title').textContent = `${title} de ${mcName || 'usuario'}`;
   $('#relation-list').innerHTML = Array.from({ length: 4 }, () => '<div class="skeleton" style="height:64px;border-radius:14px;"></div>').join('');
   openModal('relation-modal');
   try {
-    const rows = await apiJson(`/api/community/player/${encodeURIComponent(mcName)}/${type}`);
+    const payload = await apiJson(`/api/community/player/${encodeURIComponent(identifier)}/${type}`);
+    const rows = Array.isArray(payload) ? payload : (payload.rows || []);
     $('#relation-list').innerHTML = rows.length ? rows.map(player => {
       const name = player.minecraft_name || player.username || 'Steve';
       const rank = rankInfo(player.rank);
@@ -1961,12 +2715,81 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', next);
 }
 
+function notificationText(item) {
+  const actor = item.actor_minecraft_name || item.actor_username || 'Alguem';
+  const map = {
+    new_follower: `${actor} comecou a seguir voce`,
+    post_like: `${actor} curtiu seu post`,
+    comment: `${actor} respondeu seu post`,
+    mention_post: `${actor} mencionou voce em um post`,
+    mention_comment: `${actor} mencionou voce em um comentario`,
+    friend_joined: `${actor} entrou na comunidade`,
+  };
+  return map[item.type] || 'Nova notificacao social';
+}
+
+async function loadSocialNotifications() {
+  try {
+    const [list, unread] = await Promise.all([
+      apiJson('/api/me/social-notifications?limit=5'),
+      apiJson('/api/me/social-notifications/unread-count'),
+    ]);
+    state.socialNotifications = list.rows || [];
+    renderSocialNotifications(unread.count || 0);
+  } catch {
+    renderSocialNotifications(0);
+  }
+}
+
+function renderSocialNotifications(count = 0) {
+  const badge = $('#social-notif-badge');
+  if (badge) {
+    badge.hidden = count <= 0;
+    badge.textContent = count > 9 ? '9+' : String(count);
+  }
+  const list = $('#social-notif-list');
+  if (!list) return;
+  list.innerHTML = state.socialNotifications.length ? state.socialNotifications.map(item => {
+    const name = item.actor_minecraft_name || item.actor_username || 'Steve';
+    return `
+      <button class="notif-row ${item.is_read ? '' : 'unread'}" type="button" data-notif-id="${item.id}" data-entity-type="${escapeHTML(item.entity_type || '')}" data-entity-id="${escapeHTML(item.entity_id || '')}">
+        <img src="${skinUrl(name, 50)}" alt="Avatar de ${escapeHTML(name)}" onerror="this.src='${skinUrl('Steve', 50)}'">
+        <span><strong>${escapeHTML(notificationText(item))}</strong><span>${escapeHTML(item.preview_text || '')}</span></span>
+      </button>
+    `;
+  }).join('') : '<div class="notif-row"><span></span><span><strong>Sem novidades</strong><span>Quando alguem interagir, aparece aqui.</span></span></div>';
+}
+
 function bindEvents() {
+  if (!$('#mention-suggest')) {
+    $('.composer-editor')?.insertAdjacentHTML('beforeend', '<div class="mention-suggest" id="mention-suggest" role="listbox" aria-label="Sugestoes de mencao"></div>');
+  }
+  if (!$('#rate-hint')) {
+    $('.composer-hint')?.insertAdjacentHTML('afterend', '<div class="rate-hint" id="rate-hint">0/10 posts nesta hora</div>');
+  }
   $('#post-content').addEventListener('input', updateComposer);
+  $('#post-content').addEventListener('keyup', updateMentionSuggestions);
+  $('#post-content').addEventListener('click', updateMentionSuggestions);
   $('#publish-btn').addEventListener('click', publishPost);
   $('#load-more-btn').addEventListener('click', () => loadFeed({ reset: false }));
   $('#comment-form').addEventListener('submit', submitComment);
   $('#theme-toggle').addEventListener('click', toggleTheme);
+  $('#social-notif-btn')?.addEventListener('click', event => {
+    event.stopPropagation();
+    const menu = $('#social-notif-menu');
+    const open = !menu.classList.contains('show');
+    menu.classList.toggle('show', open);
+    $('#social-notif-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  $('#mark-social-read')?.addEventListener('click', async event => {
+    event.stopPropagation();
+    try {
+      await apiJson('/api/me/social-notifications/read-all', { method: 'POST' });
+      await loadSocialNotifications();
+    } catch {
+      showToast('error', 'Nao foi possivel marcar', 'Tente novamente em instantes.');
+    }
+  });
   $('#user-chip').addEventListener('click', () => location.href = 'account.html');
   $('#refresh-players').addEventListener('click', () => loadPlayers($('#player-search').value.trim()));
 
