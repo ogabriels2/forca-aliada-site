@@ -2760,6 +2760,41 @@ function renderSocialNotifications(count = 0) {
   }).join('') : '<div class="notif-row"><span></span><span><strong>Sem novidades</strong><span>Quando alguem interagir, aparece aqui.</span></span></div>';
 }
 
+async function copyPostLink(id) {
+  const url = `${location.origin}/community/post/${encodeURIComponent(id)}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('success', 'Link copiado', 'A URL do post foi enviada para a area de transferencia.');
+  } catch {
+    showToast('warning', 'Copie manualmente', url);
+  }
+}
+
+async function blockFromProfile(userId, unblock = false) {
+  if (!userId || Number(userId) === Number(state.me?.id)) return;
+  const ok = unblock || await confirmAction({
+    title: 'Bloquear usuario',
+    message: 'Voces deixam de se seguir e nao aparecem mais um para o outro nas areas sociais.',
+    confirmText: 'Bloquear',
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await apiJson(`/api/me/blocks/${encodeURIComponent(userId)}`, { method: unblock ? 'DELETE' : 'POST' });
+    showToast('success', unblock ? 'Usuario desbloqueado' : 'Usuario bloqueado', unblock ? 'As interacoes sociais foram liberadas.' : 'A relacao foi removida dos espacos sociais.');
+    Router.navigate(location.pathname, { push: false });
+  } catch (err) {
+    showToast('error', 'Acao nao concluida', err.message || 'Tente novamente.');
+  }
+}
+
+function registerRoutes() {
+  Router.register('/community', showFeedRoute);
+  Router.register('/community.html', showFeedRoute);
+  Router.register('/community/post/:id', renderPostRoute);
+  Router.register('/profile/:identifier', renderProfileRoute);
+}
+
 function bindEvents() {
   if (!$('#mention-suggest')) {
     $('.composer-editor')?.insertAdjacentHTML('beforeend', '<div class="mention-suggest" id="mention-suggest" role="listbox" aria-label="Sugestoes de mencao"></div>');
@@ -2803,6 +2838,39 @@ function bindEvents() {
   $$('[data-rail-filter]').forEach(btn => btn.addEventListener('click', () => switchFilter(btn.dataset.railFilter)));
 
   document.addEventListener('click', event => {
+    if (!event.target.closest('.notif-wrap')) {
+      $('#social-notif-menu')?.classList.remove('show');
+      $('#social-notif-btn')?.setAttribute('aria-expanded', 'false');
+    }
+    if (!event.target.closest('.post-more-wrap')) {
+      $$('.post-menu.show').forEach(menu => menu.classList.remove('show'));
+    }
+
+    const routeBack = event.target.closest('[data-route-back]');
+    if (routeBack) {
+      event.preventDefault();
+      Router.navigate('/community');
+      return;
+    }
+
+    const mention = event.target.closest('[data-mention]');
+    if (mention) {
+      event.preventDefault();
+      insertMention(mention.dataset.mention);
+      return;
+    }
+
+    const notif = event.target.closest('[data-notif-id]');
+    if (notif) {
+      event.preventDefault();
+      apiJson(`/api/me/social-notifications/${encodeURIComponent(notif.dataset.notifId)}/read`, { method: 'PATCH' }).catch(() => {});
+      $('#social-notif-menu')?.classList.remove('show');
+      if (notif.dataset.entityType === 'post' && notif.dataset.entityId) navigatePost(notif.dataset.entityId);
+      else if (notif.dataset.entityType === 'user' && notif.dataset.entityId) navigateProfile(`id:${notif.dataset.entityId}`);
+      loadSocialNotifications();
+      return;
+    }
+
     const closeButton = event.target.closest('[data-close-modal]');
     if (closeButton) closeModal(closeButton.dataset.closeModal);
     if (event.target.classList.contains('modal-backdrop')) closeModal(event.target.id);
@@ -2814,13 +2882,51 @@ function bindEvents() {
     }
 
     const relation = event.target.closest('[data-relation]');
-    if (relation) openRelationList(relation.dataset.relation, relation.dataset.mcName);
+    if (relation) {
+      openRelationList(relation.dataset.relation, relation.dataset.mcName, relation.dataset.userId);
+      return;
+    }
 
     const followButton = event.target.closest('[data-action="follow-player"]');
     if (followButton) {
       event.stopPropagation();
       const row = followButton.closest('[data-user-id]');
       toggleFollow(row?.dataset.userId, followButton.dataset.following === '1', followButton);
+      return;
+    }
+
+    const profileFollow = event.target.closest('[data-profile-follow]');
+    if (profileFollow) {
+      const currently = profileFollow.dataset.following === '1';
+      profileFollow.classList.add('is-popping');
+      profileFollow.dataset.following = currently ? '0' : '1';
+      profileFollow.textContent = currently ? 'Seguir' : 'Seguindo';
+      toggleFollow(profileFollow.dataset.userId, currently, null);
+      setTimeout(() => profileFollow.classList.remove('is-popping'), 380);
+      return;
+    }
+
+    const profileReport = event.target.closest('[data-profile-report]');
+    if (profileReport) {
+      reportContent('user', profileReport.dataset.userId);
+      return;
+    }
+
+    const profileBlock = event.target.closest('[data-profile-block]');
+    if (profileBlock) {
+      blockFromProfile(profileBlock.dataset.userId, profileBlock.textContent.trim().toLowerCase().includes('desbloquear'));
+      return;
+    }
+
+    const profilePost = event.target.closest('.profile-post-tile');
+    if (profilePost) {
+      navigatePost(profilePost.dataset.postId);
+      return;
+    }
+
+    const routeForm = event.target.closest('#route-comment-form');
+    if (routeForm) {
+      return;
     }
 
     const postCard = event.target.closest('.post-card');
@@ -2836,8 +2942,19 @@ function bindEvents() {
       const id = card.dataset.postId;
       if (action.dataset.action === 'like') toggleLike(id, action);
       if (action.dataset.action === 'comments') openComments(id);
+      if (action.dataset.action === 'open-menu') {
+        const menu = action.closest('.post-more-wrap')?.querySelector('.post-menu');
+        menu?.classList.toggle('show');
+      }
+      if (action.dataset.action === 'edit') editPostInline(id, card);
       if (action.dataset.action === 'delete') deletePost(id);
+      if (action.dataset.action === 'report') reportContent('post', id);
+      if (action.dataset.action === 'copy-link') copyPostLink(id);
     }
+  });
+
+  document.addEventListener('submit', event => {
+    if (event.target.matches('#route-comment-form')) submitRouteComment(event);
   });
 
   document.addEventListener('keydown', event => {
@@ -2851,6 +2968,8 @@ function bindEvents() {
 }
 
 async function boot() {
+  setupRouteView();
+  registerRoutes();
   bindEvents();
   updateComposer();
   try {
@@ -2863,7 +2982,9 @@ async function boot() {
   await Promise.allSettled([
     loadFeed({ reset: true }),
     loadPlayers(),
+    loadSocialNotifications(),
   ]);
+  Router.init();
 }
 
 boot();

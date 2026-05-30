@@ -1684,6 +1684,9 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <div id="profile-msg" style="font-size:13px; margin-top:12px; text-align:right; min-height: 18px; font-weight:600;"></div>
 
           <div class="read-actions">
+            <a class="btn-secondary" id="public-profile-link" href="profile.html" style="text-decoration:none;">
+              Ver meu perfil
+            </a>
             <button class="btn-secondary" onclick="toggleEditMode(true)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               Editar Perfil
@@ -1743,7 +1746,12 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           <p>Fique por dentro dos avisos, eventos e atualizações do servidor.</p>
         </div>
 
-        <div class="card">
+        <div class="notif-filters" style="margin-bottom:14px;">
+          <button class="notif-filter-btn active" id="notif-subtab-system" onclick="switchNotifSubtab('system', this)">Sistema <span id="system-unread-inline"></span></button>
+          <button class="notif-filter-btn" id="notif-subtab-social" onclick="switchNotifSubtab('social', this)">Social <span id="social-unread-inline"></span></button>
+        </div>
+
+        <div class="card" id="system-notif-panel">
           <div class="card-title">
             <div class="card-title-left">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -1762,6 +1770,19 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
           <div id="notif-list">
             <!-- Populado via JS -->
+          </div>
+        </div>
+
+        <div class="card" id="social-notif-panel" style="display:none;">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg>
+              Notificacoes Sociais
+            </div>
+            <button class="btn-outline btn-sm" onclick="markAllSocialRead()" id="mark-all-social-read-btn">Marcar social como lidas</button>
+          </div>
+          <div id="social-notif-list">
+            <div class="notif-empty"><div class="icon">👥</div><p>Carregando notificacoes sociais...</p></div>
           </div>
         </div>
       </section>
@@ -2175,6 +2196,29 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         <div class="card">
           <div class="card-title">
             <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/><circle cx="12" cy="12" r="10"/></svg>
+              Privacidade e Bloqueios
+            </div>
+            <button class="btn-outline btn-sm" onclick="loadBlocks()">Atualizar</button>
+          </div>
+          <div style="display:grid; gap:14px;">
+            <label class="pref-row" style="cursor:pointer;">
+              <div><strong>Perfil publico</strong><p>Permite que jogadores vejam seu perfil social, rank e bio.</p></div>
+              <input type="checkbox" id="pref-public-profile-security" onchange="syncPrivacyMirror('public_profile', this.checked)">
+            </label>
+            <label class="pref-row" style="cursor:pointer;">
+              <div><strong>Historico de jogo publico</strong><p>Mostra horas, sessoes e ultima vez visto no perfil publico.</p></div>
+              <input type="checkbox" id="pref-public-history-security" onchange="syncPrivacyMirror('public_history', this.checked)">
+            </label>
+            <div id="blocks-list">
+              <div class="notif-empty"><div class="icon">Bloq.</div><p>Carregando usuarios bloqueados...</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
               Alterar Senha
             </div>
@@ -2534,6 +2578,7 @@ let myHistoryData = { history: [], activeSession: null };
 let myChartInstance = null;
 let currentNotifFilter = 'all';
 let notifCache = [];
+let socialNotifCache = [];
 let prefsSaveTimer = null;
 let xboxFriendsState = { friends: [], selected: new Set(), totalXbox: 0, warnings: [] };
 let initialTabApplied = false;
@@ -2597,6 +2642,10 @@ function applyPrefsToUI(p = {}) {
     const el = document.getElementById(id);
     if (el && value !== undefined) el.checked = Boolean(value);
   });
+  const profileSecurity = document.getElementById('pref-public-profile-security');
+  const historySecurity = document.getElementById('pref-public-history-security');
+  if (profileSecurity && p.public_profile !== undefined) profileSecurity.checked = Boolean(p.public_profile);
+  if (historySecurity && p.public_history !== undefined) historySecurity.checked = Boolean(p.public_history);
   if (p.theme) applyTheme(p.theme);
   else applyTheme(localStorage.getItem(THEME_KEY) || 'light');
 }
@@ -2784,9 +2833,143 @@ async function updateNotifBadges(forcedCount = null) {
     const el = document.getElementById(id);
     if (el) { el.textContent = count > 9 ? '9+' : count; el.style.display = count > 0 ? 'inline-block' : 'none'; }
   });
+  const inline = document.getElementById('system-unread-inline');
+  if (inline) inline.textContent = count ? `(${count > 9 ? '9+' : count})` : '';
 }
 
 // ── CONQUISTAS ─────────────────────────────────────────────────
+function switchNotifSubtab(tab, btn = null) {
+  const system = document.getElementById('system-notif-panel');
+  const social = document.getElementById('social-notif-panel');
+  if (system) system.style.display = tab === 'social' ? 'none' : '';
+  if (social) social.style.display = tab === 'social' ? '' : 'none';
+  document.querySelectorAll('#tab-notificacoes > .notif-filters .notif-filter-btn').forEach(b => b.classList.remove('active'));
+  (btn || document.getElementById(tab === 'social' ? 'notif-subtab-social' : 'notif-subtab-system'))?.classList.add('active');
+  if (tab === 'social') loadSocialNotifications();
+}
+
+function socialNotifText(item) {
+  const actor = item.actor_minecraft_name || item.actor_username || 'Alguem';
+  const map = {
+    new_follower: `${actor} comecou a seguir voce`,
+    post_like: `${actor} curtiu seu post`,
+    comment: `${actor} respondeu seu post`,
+    mention_post: `${actor} mencionou voce em um post`,
+    mention_comment: `${actor} mencionou voce em um comentario`,
+    friend_joined: `${actor} entrou na comunidade`,
+  };
+  return map[item.type] || 'Nova notificacao social';
+}
+
+async function loadSocialNotifications() {
+  const el = document.getElementById('social-notif-list');
+  if (el) el.innerHTML = '<div class="notif-empty"><div class="icon">👥</div><p>Carregando notificacoes sociais...</p></div>';
+  try {
+    const [listRes, countRes] = await Promise.all([
+      fetch(`${API_BASE}/api/me/social-notifications?limit=30`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetch(`${API_BASE}/api/me/social-notifications/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } }),
+    ]);
+    if (!listRes.ok) throw new Error('Social indisponivel');
+    const payload = await listRes.json();
+    socialNotifCache = payload.rows || [];
+    renderSocialNotifs();
+    if (countRes.ok) {
+      const count = (await countRes.json()).count || 0;
+      const inline = document.getElementById('social-unread-inline');
+      if (inline) inline.textContent = count ? `(${count > 9 ? '9+' : count})` : '';
+    }
+  } catch (err) {
+    console.error('[social-notifications]', err);
+    socialNotifCache = [];
+    if (el) el.innerHTML = '<div class="notif-empty"><div class="icon">⚠</div><p>Nao foi possivel carregar notificacoes sociais.</p></div>';
+  }
+}
+
+function renderSocialNotifs() {
+  const el = document.getElementById('social-notif-list');
+  if (!el) return;
+  if (!socialNotifCache.length) {
+    el.innerHTML = '<div class="notif-empty"><div class="icon">👥</div><p>Nenhuma notificacao social ainda.</p></div>';
+    return;
+  }
+  el.innerHTML = socialNotifCache.map(n => `
+    <div class="notif-item" onclick="openSocialNotification('${escapeHTML(n.id)}')">
+      <div class="notif-dot-wrap"><div class="notif-dot ${n.is_read ? 'read' : ''}"></div></div>
+      <div class="notif-icon-box social">👥</div>
+      <div class="notif-content"><h4>${escapeHTML(socialNotifText(n))}</h4><p>${escapeHTML(n.preview_text || 'Interacao social na comunidade.')}</p></div>
+      <div class="notif-actions"><div class="notif-time">${escapeHTML(formatRelativeTime(n.created_at))}</div></div>
+    </div>
+  `).join('');
+}
+
+async function openSocialNotification(id) {
+  const item = socialNotifCache.find(n => String(n.id) === String(id));
+  if (!item) return;
+  fetch(`${API_BASE}/api/me/social-notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } }).catch(() => {});
+  if (item.entity_type === 'post' && item.entity_id) window.location.href = `post.html?id=${encodeURIComponent(item.entity_id)}`;
+  else if (item.entity_type === 'user' && item.entity_id) window.location.href = `profile.html?id=id:${encodeURIComponent(item.entity_id)}`;
+}
+
+async function markAllSocialRead() {
+  try {
+    const res = await fetch(`${API_BASE}/api/me/social-notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao marcar social');
+    await loadSocialNotifications();
+    showToast('success', 'Feito!', 'Notificacoes sociais marcadas como lidas.');
+  } catch (err) {
+    console.error('[social-notifications]', err);
+    showToast('error', 'Erro', 'Nao foi possivel atualizar notificacoes sociais.');
+  }
+}
+
+function syncPrivacyMirror(key, checked) {
+  const sourceId = key === 'public_history' ? 'pref-public-history' : 'pref-public-profile';
+  const source = document.getElementById(sourceId);
+  if (source) source.checked = checked;
+  schedulePrefsSave();
+}
+
+async function loadBlocks() {
+  const el = document.getElementById('blocks-list');
+  if (!el) return;
+  el.innerHTML = '<div class="notif-empty"><div class="icon">Bloq.</div><p>Carregando usuarios bloqueados...</p></div>';
+  try {
+    const res = await fetch(`${API_BASE}/api/me/blocks?limit=50`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Bloqueios indisponiveis');
+    const payload = await res.json();
+    const rows = payload.rows || [];
+    if (!rows.length) {
+      el.innerHTML = '<div class="notif-empty"><div class="icon">OK</div><p>Nenhum usuario bloqueado.</p></div>';
+      return;
+    }
+    el.innerHTML = rows.map(u => {
+      const name = u.minecraft_name || u.username || 'Steve';
+      return `
+        <div class="notif-item" style="cursor:default;">
+          <div class="notif-icon-box system"><img src="https://minotar.net/helm/${encodeURIComponent(name)}/32.png" alt="Avatar de ${escapeHTML(name)}" width="28" height="28" style="border-radius:8px;" onerror="this.style.display='none'"></div>
+          <div class="notif-content"><h4>${escapeHTML(name)}</h4><p>Bloqueado em ${escapeHTML(formatRelativeTime(u.created_at))}</p></div>
+          <div class="notif-actions"><button class="notif-action-btn" onclick="unblockUser('${escapeHTML(u.id)}')">Desbloquear</button></div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('[blocks]', err);
+    el.innerHTML = '<div class="notif-empty"><div class="icon">!</div><p>Nao foi possivel carregar bloqueios.</p></div>';
+  }
+}
+
+async function unblockUser(id) {
+  try {
+    const res = await fetch(`${API_BASE}/api/me/blocks/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error('Falha ao desbloquear');
+    showToast('success', 'Usuario desbloqueado', 'A relacao social foi liberada.');
+    loadBlocks();
+  } catch (err) {
+    console.error('[blocks]', err);
+    showToast('error', 'Erro', 'Nao foi possivel desbloquear o usuario.');
+  }
+}
+
 function computeAchievements(session, historyData) {
   const now = Date.now();
   const createdAt = session.createdAt ? new Date(session.createdAt) : null;
@@ -3240,7 +3423,9 @@ function initAccount() {
   renderData();
   fetchMyActivity();
   loadNotifications();
+  loadSocialNotifications();
   loadPrefs();
+  loadBlocks();
   renderSessionInfo();
   // Render rank roadmap with 0 merit while real data loads
   renderRanksRoadmap(0);
@@ -3251,12 +3436,14 @@ function applyInitialTabFromUrl() {
   if (initialTabApplied) return;
   const tab = new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace(/^#/, '');
   if (!tab) return;
-  const allowed = new Set(['perfil', 'notificacoes', 'atividade', 'merito', 'preferencias', 'conexoes', 'seguranca', 'amigos']);
-  if (!allowed.has(tab) || !document.getElementById(`tab-${tab}`)) return;
+  const normalizedTab = tab === 'notificacoes-sociais' ? 'notificacoes' : tab;
+  const allowed = new Set(['perfil', 'notificacoes', 'notificacoes-sociais', 'atividade', 'merito', 'preferencias', 'conexoes', 'seguranca', 'amigos']);
+  if (!allowed.has(tab) || !document.getElementById(`tab-${normalizedTab}`)) return;
   const idMap = { perfil: 'nav-btn-perfil', notificacoes: 'nav-btn-notif', merito: 'nav-btn-merito', amigos: 'nav-btn-amigos' };
-  const btn = document.getElementById(idMap[tab]) || Array.from(document.querySelectorAll('.nav-item')).find(el => (el.getAttribute('onclick') || '').includes(`'${tab}'`));
+  const btn = document.getElementById(idMap[normalizedTab]) || Array.from(document.querySelectorAll('.nav-item')).find(el => (el.getAttribute('onclick') || '').includes(`'${normalizedTab}'`));
   if (btn) {
-    switchTab(tab, btn);
+    switchTab(normalizedTab, btn);
+    if (tab === 'notificacoes-sociais') switchNotifSubtab('social');
     initialTabApplied = true;
   }
 }
@@ -3281,7 +3468,7 @@ function applyInitialTabFromUrl() {
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
 
     const me = await res.json();
-    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, createdAt: me.created_at, isVerified: me.is_verified !== false };
+    session = { id: me.id, username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, createdAt: me.created_at, isVerified: me.is_verified !== false };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     await syncThemePreference();
 
@@ -3297,6 +3484,10 @@ function applyInitialTabFromUrl() {
     console.error('Erro no Bootstrap:', err);
     if (document.body.style.visibility !== 'visible') {
       document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar a conta. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
+      document.body.style.visibility = 'visible';
+    }
+  } finally {
+    if (document.body.style.visibility !== 'visible') {
       document.body.style.visibility = 'visible';
     }
   }
@@ -3337,6 +3528,11 @@ function renderData(options = {}) {
   document.getElementById('edit-username').value = session.username;
   document.getElementById('edit-email').value = session.email || '';
   document.getElementById('edit-mc').value = session.minecraftName || '';
+  const profileLink = document.getElementById('public-profile-link');
+  if (profileLink) {
+    const identifier = session.minecraftName || (session.id ? `id:${session.id}` : 'me');
+    profileLink.href = `profile.html?id=${encodeURIComponent(identifier)}`;
+  }
 
   // Pill de cargo
   const pill = document.getElementById('role-pill');
@@ -3397,6 +3593,11 @@ function switchTab(tabId, btnElement) {
   // Load social accounts when conexoes tab is opened
   if (tabId === 'conexoes') loadSocialAccounts();
   if (tabId === 'amigos') updateXboxFriendControls();
+  if (tabId === 'notificacoes') {
+    loadNotifications();
+    loadSocialNotifications();
+  }
+  if (tabId === 'seguranca') loadBlocks();
 }
 
 function toggleMobileSidebar(e) {
