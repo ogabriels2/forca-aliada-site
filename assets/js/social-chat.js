@@ -5,10 +5,11 @@
   if (!token) return;
 
   const PROD = 'https://forca-aliada-site.onrender.com';
-  const API_BASE = window.FA_API_BASE
-    || localStorage.getItem('fa_api_base')
-    || ((location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000' : PROD);
-  const bases = [...new Set([API_BASE, PROD].filter(Boolean))];
+  const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+  const LOCAL_API = 'http://localhost:3000';
+  const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
+  const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
+  const bases = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 
   const state = {
     open: false,
@@ -84,16 +85,23 @@
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', `Bearer ${token}`);
     if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    const timeoutMs = options.timeoutMs || 25000;
+    const fetchOptions = { ...options };
+    delete fetchOptions.timeoutMs;
     let err;
     for (const base of bases) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const res = await fetch(`${base}${path}`, { ...options, headers });
+        const res = await fetch(`${base}${path}`, { ...fetchOptions, headers, signal: controller.signal });
         const text = await res.text();
         const data = text ? JSON.parse(text) : {};
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         return data;
       } catch (e) {
-        err = e;
+        err = e.name === 'AbortError' ? new Error('A API demorou para responder. Tente novamente em alguns segundos.') : e;
+      } finally {
+        clearTimeout(timeout);
       }
     }
     throw err;
@@ -334,21 +342,23 @@
   }
 
   function renderMessagesContent() {
+    const error = state.error ? `<div class="fa-chat-inline-error"><strong>Falha no chat</strong>${esc(state.error)}</div>` : '';
     if (state.loadingMessages) return `<div class="fa-chat-message-loading">${loadingRows()}</div>`;
-    if (state.messages.length) return state.messages.map(message => renderMessage(message)).join('');
+    if (state.messages.length) return error + state.messages.map(message => renderMessage(message)).join('');
     const preview = state.current?.last_message_body;
     if (preview) {
-      return `<div class="fa-chat-empty"><strong>Historico sincronizando</strong>A conversa existe, mas as mensagens ainda nao chegaram desta sessao. Tente atualizar em alguns segundos.</div>`;
+      return `${error}<div class="fa-chat-empty"><strong>Historico sincronizando</strong>A conversa existe, mas as mensagens ainda nao chegaram desta sessao. Tente atualizar em alguns segundos.</div>`;
     }
-    return `<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
+    return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
   }
 
   function renderMessage(message) {
     const isMe = Number(message.sender_id) === Number(state.me?.id);
     const sender = message.minecraft_name || message.username || 'Steve';
+    const status = message.client_status === 'pending' ? 'enviando' : message.client_status === 'failed' ? 'nao enviada' : rel(message.created_at);
     return `
-      <div class="fa-chat-bubble-row ${isMe ? 'is-me' : ''}">
-        <div class="fa-chat-bubble">${state.currentKind === 'group' && !isMe ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : ''}${esc(message.body)}<time>${esc(rel(message.created_at))}</time></div>
+      <div class="fa-chat-bubble-row ${isMe ? 'is-me' : ''} ${message.client_status ? `is-${esc(message.client_status)}` : ''}">
+        <div class="fa-chat-bubble">${state.currentKind === 'group' && !isMe ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : ''}${esc(message.body)}<time>${esc(status)}${message.client_error ? ` - ${esc(message.client_error)}` : ''}</time></div>
       </div>`;
   }
 
@@ -557,28 +567,56 @@
     const body = textarea.value.trim();
     if (!body || !state.current || state.busy) return;
     const isGroup = state.currentKind === 'group';
+    const form = textarea.closest('[data-chat-form]');
+    const sendButton = form?.querySelector('.fa-chat-send');
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     state.busy = true;
+    state.error = '';
     textarea.value = '';
+    textarea.disabled = true;
+    if (sendButton) sendButton.disabled = true;
+    state.messages.push({
+      id: tempId,
+      sender_id: state.me?.id,
+      body,
+      created_at: new Date().toISOString(),
+      username: state.me?.username,
+      minecraft_name: state.me?.minecraft_name,
+      client_status: 'pending',
+    });
+    updateMessagesList({ scroll: true });
     try {
       const msg = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages`, {
         method: 'POST',
         body: JSON.stringify({ body }),
+        timeoutMs: 30000,
       });
-      state.messages.push({
+      const saved = {
         ...msg,
         username: state.me?.username,
         minecraft_name: state.me?.minecraft_name,
-      });
+      };
+      const idx = state.messages.findIndex(item => item.id === tempId);
+      if (idx >= 0) state.messages[idx] = saved;
+      else state.messages.push(saved);
       if (isGroup) await loadGroups();
       else await loadConversations();
       updateMessagesList({ scroll: true });
       updateLauncherBadge();
     } catch (e) {
+      state.error = e.message || 'Mensagem nao enviada.';
+      const failed = state.messages.find(item => item.id === tempId);
+      if (failed) {
+        failed.client_status = 'failed';
+        failed.client_error = state.error;
+      }
       textarea.value = body;
-      state.error = e.message;
       updateMessagesList({ scroll: true });
     } finally {
       state.busy = false;
+      textarea.disabled = false;
+      if (sendButton) sendButton.disabled = false;
+      textarea.focus();
     }
   }
 
