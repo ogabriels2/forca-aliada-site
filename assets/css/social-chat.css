@@ -89,17 +89,25 @@
   bottom: 90px;
   width: min(408px, calc(100vw - 28px));
   height: min(620px, calc(100vh - 116px));
-  display: none;
+  display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--fa-chat-line);
   border-radius: 18px;
   background: var(--fa-chat-panel);
   box-shadow: var(--fa-chat-shadow);
+  /* [FIX] Use visibility+opacity instead of display:none to avoid flash/reflow */
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0s linear 0.15s;
 }
 
 .fa-chat-panel.is-open {
-  display: grid;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.15s ease, visibility 0s linear 0s;
 }
 
 .fa-chat-top {
@@ -786,5 +794,29 @@
     bottom: calc(82px + env(safe-area-inset-bottom, 0px));
     height: min(620px, calc(100dvh - 100px - env(safe-area-inset-bottom, 0px)));
     border-radius: 16px;
+  }
+
+  /* [FIX] In thread view on mobile, make messages area flex-fill and compose stay at the very bottom */
+  .fa-chat-thread {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .fa-chat-thread .fa-chat-messages {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fa-chat-thread .fa-chat-compose-wrap {
+    flex: 0 0 auto;
+    /* Ensure it sticks to bottom even when keyboard appears */
+    position: sticky;
+    bottom: 0;
+    background: var(--fa-chat-panel);
+    z-index: 1;
   }
 }
