@@ -3721,9 +3721,6 @@ app.get('/api/community/player/:identifier', auth, async (req, res) => {
   }
 });
 
-  }
-});
-
 // Ver perfil público de um jogador específico
 app.get('/api/community/player/:mc_name', auth, async (req, res) => {
   const mcName = sanitize(req.params.mc_name).toLowerCase();
@@ -3888,9 +3885,6 @@ app.delete('/api/me/follows/:targetId', auth, async (req, res) => {
     console.error('[DELETE /api/me/follows/:targetId]', e);
     res.status(500).json({ error: 'Erro ao deixar de seguir' });
   }
-});
-
-  } catch (e) { res.status(500).json({ error: 'Erro ao deixar de seguir' }); }
 });
 
 // ─────────────────────────────────────────────
@@ -4460,50 +4454,6 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   }
 });
 
-  if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' }); 
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query(
-      'INSERT INTO user_posts(author_id, content) VALUES($1, $2) RETURNING id, content, created_at',
-      [req.user.sub, content]
-    );
-    const newPost = rows[0];
-
-    // Processa Menções
-    const mentions = extractMentions(content);
-    if (mentions.length > 0) {
-      const { rows: mentionedUsers } = await client.query(
-        'SELECT id, minecraft_name, username FROM users WHERE LOWER(username) = ANY($1) OR LOWER(minecraft_name) = ANY($1)',
-        [mentions]
-      );
-      for (const mUser of mentionedUsers) {
-        if (mUser.id === req.user.sub) continue; // Não notifica a si mesmo
-        await client.query(
-          "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('post', $1, $2)",
-          [newPost.id, mUser.id]
-        );
-        const targetName = mUser.minecraft_name || mUser.username;
-        const authorName = req.user.minecraft_name || req.user.username;
-        await createMinecraftNotification({
-          minecraftName: targetName,
-          title: 'Você foi mencionado!',
-          body: `${authorName} mencionou você em uma postagem: "${content.substring(0, 40)}..."`,
-          type: 'social', icon: '💬', createdBy: req.user.sub
-        });
-      }
-    }
-    await client.query('COMMIT');
-    res.status(201).json(newPost);
-  } catch (e) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: 'Erro ao publicar.' });
-  } finally {
-    client.release();
-  }
-});
-
 // Buscar o Feed (Geral ou Seguindo) - COM PAGINAÇÃO POR CURSOR (ID)
 app.get('/api/community/posts', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
@@ -4598,9 +4548,6 @@ app.get('/api/community/posts', auth, async (req, res) => {
     console.error('[GET /api/community/posts]', e);
     res.status(500).json({ error: 'Erro ao buscar o feed.' });
   }
-});
-
-  } catch (e) { res.status(500).json({ error: 'Erro ao buscar o feed.' }); }
 });
 
 // ── SISTEMA DE COMENTÁRIOS ──
@@ -4893,7 +4840,6 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   } finally {
     client.release();
   }
-});
 
 // ── LISTAS DE SEGUIDORES / SEGUINDO ──
 app.delete('/api/community/posts/:postId/comments/:commentId', auth, async (req, res) => {
@@ -5070,24 +5016,6 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts/:id/like]', e);
-    res.status(500).json({ error: 'Erro ao curtir' });
-  } finally {
-    client.release();
-  }
-});
-
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rowCount } = await client.query('INSERT INTO post_likes(post_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [postId, req.user.sub]);
-    if (rowCount > 0) {
-      await client.query('UPDATE user_posts SET likes_count = likes_count + 1 WHERE id = $1', [postId]);
-    }
-    await client.query('COMMIT');
-    res.json({ ok: true });
-  } catch (e) {
-    await client.query('ROLLBACK');
     res.status(500).json({ error: 'Erro ao curtir' });
   } finally {
     client.release();
@@ -5344,8 +5272,6 @@ app.delete('/api/admin/posts/:id', auth, requireAdmin, async (req, res) => {
 });
 
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Erro ao excluir' }); }
-});
 
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
 app.get('/api/me/social-notifications', auth, async (req, res) => {
@@ -5589,12 +5515,6 @@ app.post('/api/me/xbox/friends/sync', auth, async (req, res) => {
     res.status(500).json({ error: 'Erro ao sincronizar contatos' });
   } finally {
     client.release();
-  }
-});
-
-  } catch (err) {
-    console.error('[xbox/friends]', err.message);
-    res.status(500).json({ error: err.message });
   }
 });
 
@@ -6766,7 +6686,6 @@ app.use((err, req, res, _next) => {
   });
   if (res.headersSent) return;
   res.status(status).json({ error: status < 500 ? err.message : 'internal error' });
-});
 });
 
 // ─────────────────────────────────────────────
