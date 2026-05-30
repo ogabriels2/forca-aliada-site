@@ -1407,7 +1407,8 @@ async function api(path, opts={}){
     const timeout=setTimeout(()=>controller.abort(),timeoutMs);
     try{
       const r=await fetch(`${base}${path}`,{...fetchOpts,headers:h,signal:controller.signal});
-      if(r.status===401||r.status===403){logout();throw new Error('Sessão inválida');}
+      if(r.status===401){logout();throw new Error('Sessão inválida');}
+      if(r.status===403){const txt403=await r.text();const d403=txt403?JSON.parse(txt403):{};throw new Error(d403.error||'Ação não permitida');}
       const txt=await r.text();
       const data=txt?JSON.parse(txt):{};
       if(!r.ok) throw new Error(data.error||`HTTP ${r.status}`);
