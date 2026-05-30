@@ -4799,6 +4799,7 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   }
 });
 
+
 // ── LISTAS DE SEGUIDORES / SEGUINDO ──
 app.delete('/api/community/posts/:postId/comments/:commentId', auth, async (req, res) => {
   const postId = parseInt(req.params.postId, 10);
@@ -5228,8 +5229,6 @@ app.delete('/api/admin/posts/:id', auth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Erro ao excluir post' });
   }
 });
-
-    res.json({ ok: true });
 
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
 app.get('/api/me/social-notifications', auth, async (req, res) => {
