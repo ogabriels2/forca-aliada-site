@@ -657,6 +657,15 @@ CREATE TABLE IF NOT EXISTS user_follows (
 CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id);
 CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id);
 
+CREATE TABLE IF NOT EXISTS user_blocks (
+  blocker_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  blocked_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_blocker ON user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON user_blocks(blocked_id);
+
 -- Adiciona a coluna Bio/Status nas preferências, se não existir
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT '';
 
@@ -670,8 +679,13 @@ CREATE TABLE IF NOT EXISTS user_posts (
   likes_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS edit_count INTEGER DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_user_posts_author ON user_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_user_posts_date ON user_posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_posts_pinned ON user_posts(is_pinned DESC, pinned_at DESC NULLS LAST, id DESC);
 
 CREATE TABLE IF NOT EXISTS post_likes (
   post_id INTEGER REFERENCES user_posts(id) ON DELETE CASCADE,
@@ -687,7 +701,10 @@ CREATE TABLE IF NOT EXISTS post_comments (
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id);
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+DROP INDEX IF EXISTS idx_comments_post;
+CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id, created_at ASC);
 
 CREATE TABLE IF NOT EXISTS content_mentions (
   id SERIAL PRIMARY KEY,
@@ -696,6 +713,49 @@ CREATE TABLE IF NOT EXISTS content_mentions (
   mentioned_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS content_reports (
+  id BIGSERIAL PRIMARY KEY,
+  reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content_type VARCHAR(20) NOT NULL CHECK (content_type IN ('post','comment','user')),
+  content_id INTEGER NOT NULL,
+  reason VARCHAR(50) NOT NULL CHECK (reason IN ('spam','hate_speech','harassment','inappropriate','misinformation','other')),
+  description TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','reviewed_kept','reviewed_removed','dismissed')),
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  action_taken VARCHAR(50),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (reporter_id, content_type, content_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON content_reports(status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS moderation_queue (
+  id BIGSERIAL PRIMARY KEY,
+  content_type VARCHAR(20) NOT NULL,
+  content_id INTEGER NOT NULL,
+  reason VARCHAR(50) NOT NULL DEFAULT 'reports_threshold',
+  report_count INTEGER DEFAULT 1,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (content_type, content_id)
+);
+
+CREATE TABLE IF NOT EXISTS social_notifications (
+  id BIGSERIAL PRIMARY KEY,
+  recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  type VARCHAR(50) NOT NULL,
+  entity_type VARCHAR(20),
+  entity_id INTEGER,
+  preview_text TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_social_notif_recipient ON social_notifications(recipient_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_social_notif_entity ON social_notifications(entity_type, entity_id);
 `;
 await pool.query(featureSchemaSql);
 
@@ -796,6 +856,110 @@ async function createMinecraftNotification({ minecraftName, title, body, type = 
     [title, body, type, icon, mc, createdBy]
   );
   return rows[0];
+}
+
+const SOCIAL_NOTIFICATION_TYPES = new Set([
+  'new_follower',
+  'post_like',
+  'comment',
+  'mention_post',
+  'mention_comment',
+  'friend_joined',
+]);
+
+const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
+const REPORT_REASONS = new Set(['spam', 'hate_speech', 'harassment', 'inappropriate', 'misinformation', 'other']);
+
+function isPrivileged(role) {
+  return ['full', 'owner'].includes(role);
+}
+
+function clampInt(value, fallback, min, max) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function parseCommunityIdentifier(identifier = '') {
+  const raw = sanitize(decodeURIComponent(String(identifier || ''))).trim();
+  const idMatch = raw.match(/^id:(\d+)$/i);
+  if (idMatch) return { raw, byId: true, value: Number(idMatch[1]) };
+  return { raw, byId: false, value: raw.toLowerCase() };
+}
+
+function rankBenefits(rank) {
+  const id = String(rank || 'ferro').toLowerCase();
+  if (id.includes('netherite')) return ['Destaque maximo no perfil', 'Prioridade em eventos', 'Badge lendario'];
+  if (id.includes('diamante')) return ['Destaque verde no feed', 'Beneficios de temporada', 'Badge raro'];
+  if (id.includes('ouro')) return ['Badge dourado', 'Maior visibilidade social', 'Eventos especiais'];
+  if (id.includes('admin') || id.includes('staff') || id.includes('full') || id.includes('owner')) return ['Ferramentas de moderacao', 'Destaque institucional', 'Sinalizacao de confianca'];
+  return ['Progressao inicial', 'Base para ranks maiores', 'Perfil publico gamificado'];
+}
+
+function buildProfileBadges(profile = {}, stats = {}) {
+  const merit = Number(profile.merit || 0);
+  const followers = Number(profile.followers_count || 0);
+  const posts = Number(profile.posts_count || 0);
+  const hours = Number(stats.total_hours || 0);
+  const badges = [];
+
+  if (merit >= 150) badges.push({ id: 'ouro', label: 'Ouro Social', description: 'Alcancou 150 pontos de merito.', progress: 100 });
+  else badges.push({ id: 'ouro-next', label: 'Rumo ao Ouro', description: 'Faltam pontos de merito para o rank Ouro.', progress: Math.round((merit / 150) * 100) });
+
+  if (followers >= 10) badges.push({ id: 'networker', label: 'Conector', description: 'Tem pelo menos 10 seguidores na comunidade.', progress: 100 });
+  else badges.push({ id: 'networker-next', label: 'Conector', description: 'Construa sua rede de seguidores.', progress: Math.round((followers / 10) * 100) });
+
+  if (posts >= 25) badges.push({ id: 'voz-ativa', label: 'Voz Ativa', description: 'Publicou 25 posts no feed.', progress: 100 });
+  else badges.push({ id: 'voz-ativa-next', label: 'Voz Ativa', description: 'Continue puxando conversa no feed.', progress: Math.round((posts / 25) * 100) });
+
+  if (hours >= 20) badges.push({ id: 'veterano', label: 'Veterano', description: 'Somou 20 horas ou mais no servidor.', progress: 100 });
+  else badges.push({ id: 'veterano-next', label: 'Veterano', description: 'Jogue mais horas para desbloquear.', progress: Math.round((hours / 20) * 100) });
+
+  return badges.slice(0, 8);
+}
+
+async function createSocialNotification({ recipientId, actorId, type, entityType = null, entityId = null, previewText = '' }, db = pool) {
+  const recipient = Number(recipientId);
+  const actor = actorId ? Number(actorId) : null;
+  if (!recipient || !actor || recipient === actor || !SOCIAL_NOTIFICATION_TYPES.has(type)) return null;
+
+  const { rows: blocked } = await db.query(
+    `SELECT 1 FROM user_blocks
+     WHERE (blocker_id=$1 AND blocked_id=$2)
+        OR (blocker_id=$2 AND blocked_id=$1)
+     LIMIT 1`,
+    [recipient, actor],
+  );
+  if (blocked.length) return null;
+
+  const preview = sanitize(previewText || '').slice(0, 120);
+  const { rows } = await db.query(
+    `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text)
+     SELECT $1,$2,$3,$4,$5,$6
+     WHERE NOT EXISTS (
+       SELECT 1 FROM social_notifications
+       WHERE recipient_id=$1
+         AND actor_id=$2
+         AND type=$3
+         AND COALESCE(entity_type, '') = COALESCE($4, '')
+         AND COALESCE(entity_id, 0) = COALESCE($5, 0)
+         AND created_at > NOW() - INTERVAL '1 hour'
+     )
+     RETURNING id`,
+    [recipient, actor, type, entityType, entityId, preview],
+  );
+  return rows[0] || null;
+}
+
+async function assertNoSocialBlock(viewerId, targetId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM user_blocks
+     WHERE (blocker_id=$1 AND blocked_id=$2)
+        OR (blocker_id=$2 AND blocked_id=$1)
+     LIMIT 1`,
+    [viewerId, targetId],
+  );
+  return rows.length === 0;
 }
 
 // ─────────────────────────────────────────────
@@ -1346,6 +1510,19 @@ try {
       }
     }
   }
+
+  await pool.query(`
+    UPDATE user_posts p
+    SET likes_count = counts.real_count
+    FROM (
+      SELECT p2.id AS post_id, COUNT(pl.user_id)::int AS real_count
+      FROM user_posts p2
+      LEFT JOIN post_likes pl ON pl.post_id = p2.id
+      GROUP BY p2.id
+    ) counts
+    WHERE counts.post_id = p.id
+      AND p.likes_count IS DISTINCT FROM counts.real_count
+  `);
 
   res.json({ ok: true, app_connected: appConnected, server_online: status.online });
 } catch (err) {
@@ -3175,7 +3352,177 @@ activeSession: active.rows[0]?.entered_at || null,
 // ─────────────────────────────────────────────
 
 // Lista pública de jogadores (Para a página Comunidade)
+// SOCIAL V2: rotas profissionais de comunidade, registradas antes das legadas.
 app.get('/api/community/players', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 20, 1, 50);
+  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
+  const onlyFollowing = String(req.query.following || '').toLowerCase() === 'true';
+  const params = [req.user.sub];
+  const conditions = [
+    'COALESCE(up.public_profile, TRUE) = TRUE',
+    'u.id != $1',
+    `NOT EXISTS (
+      SELECT 1 FROM user_blocks ub
+      WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+         OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+    )`,
+  ];
+
+  if (search) {
+    params.push(search);
+    conditions.push(`(LOWER(COALESCE(u.minecraft_name, '')) LIKE $${params.length} OR LOWER(u.username) LIKE $${params.length})`);
+  }
+
+  if (onlyFollowing) {
+    conditions.push('EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id = $1 AND uf.following_id = u.id)');
+  }
+
+  params.push(limit);
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(up.bio, '') AS bio,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             COALESCE(pb.capital_balance, 0) AS capital,
+             (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS is_following,
+             EXISTS(SELECT 1 FROM player_sessions ps WHERE ps.left_at IS NULL AND LOWER(ps.player) = LOWER(u.minecraft_name)) AS is_online
+      FROM users u
+      LEFT JOIN user_preferences up ON u.id = up.user_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY followers_count DESC, merit DESC, u.created_at DESC
+      LIMIT $${params.length}
+    `, params);
+    res.json(rows);
+  } catch (e) {
+    console.error('[GET /api/community/players]', e);
+    res.status(500).json({ error: 'Erro ao buscar comunidade' });
+  }
+});
+
+app.get('/api/community/player/:identifier/full-profile', auth, async (req, res) => {
+  const ident = parseCommunityIdentifier(req.params.identifier);
+  const where = ident.byId ? 'u.id = $2' : '(LOWER(u.minecraft_name) = $2 OR LOWER(u.username) = $2)';
+
+  try {
+    const { rows: profileRows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
+             COALESCE(up.bio, '') AS bio,
+             COALESCE(up.public_profile, TRUE) AS public_profile,
+             COALESCE(up.public_history, FALSE) AS public_history,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             COALESCE(pb.capital_balance, 0) AS capital,
+             (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
+             (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
+             (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id)::int AS posts_count,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id) AS is_following,
+             EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=u.id) AS is_blocked_by_me,
+             EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=u.id AND blocked_id=$1) AS has_blocked_me
+      FROM users u
+      LEFT JOIN user_preferences up ON u.id = up.user_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${where}
+      LIMIT 1
+    `, [req.user.sub, ident.value]);
+
+    const profile = profileRows[0];
+    if (!profile) return res.status(404).json({ error: 'Jogador nao encontrado' });
+    if (profile.has_blocked_me || (profile.is_blocked_by_me && Number(profile.id) !== Number(req.user.sub))) {
+      return res.status(403).json({ error: 'Perfil indisponivel.' });
+    }
+    if (!profile.public_profile && Number(profile.id) !== Number(req.user.sub)) {
+      return res.status(403).json({ error: 'Este perfil e privado.' });
+    }
+
+    const profileUserId = profile.id;
+    const mcName = profile.minecraft_name || profile.username;
+    const canSeeHistory = Boolean(profile.public_history) || Number(profile.id) === Number(req.user.sub);
+
+    const [postsResult, statsResult, dailyResult, followResult] = await Promise.all([
+      pool.query(`
+        SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
+               (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+               (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me
+        FROM user_posts p
+        WHERE p.author_id=$2
+        ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC
+        LIMIT 12
+      `, [req.user.sub, profileUserId]),
+      canSeeHistory ? pool.query(`
+        SELECT COUNT(*)::int AS total_sessions,
+               COALESCE(SUM(duration_hours),0)::float AS total_hours,
+               MAX(entered_at) AS last_seen
+        FROM player_sessions
+        WHERE LOWER(player)=LOWER($1)
+      `, [mcName]) : Promise.resolve({ rows: [{ total_sessions: 0, total_hours: 0, last_seen: null }] }),
+      canSeeHistory ? pool.query(`
+        SELECT date_trunc('day', entered_at)::date AS day,
+               COALESCE(SUM(duration_hours),0)::float AS hours
+        FROM player_sessions
+        WHERE LOWER(player)=LOWER($1)
+          AND entered_at > NOW() - INTERVAL '7 days'
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `, [mcName]) : Promise.resolve({ rows: [] }),
+      pool.query('SELECT created_at FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, profileUserId]),
+    ]);
+
+    const gameStats = canSeeHistory ? { ...(statsResult.rows[0] || {}), daily_hours: dailyResult.rows } : null;
+    res.json({
+      profile: { ...profile, rank_benefits: rankBenefits(profile.rank) },
+      posts: postsResult.rows,
+      game_stats: gameStats,
+      badges: buildProfileBadges(profile, gameStats || {}),
+      follow_since: followResult.rows[0]?.created_at || null,
+    });
+  } catch (e) {
+    console.error('[GET /api/community/player/:identifier/full-profile]', e);
+    res.status(500).json({ error: 'Erro ao buscar perfil completo' });
+  }
+});
+
+app.get('/api/community/player/:identifier', auth, async (req, res) => {
+  const ident = parseCommunityIdentifier(req.params.identifier);
+  const where = ident.byId ? 'u.id = $2' : '(LOWER(u.minecraft_name) = $2 OR LOWER(u.username) = $2)';
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
+             COALESCE(up.bio, '') AS bio,
+             COALESCE(up.public_profile, TRUE) AS public_profile,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             COALESCE(pb.capital_balance, 0) AS capital,
+             (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
+             (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS is_following,
+             EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=u.id) AS is_blocked_by_me,
+             EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=u.id AND blocked_id=$1) AS has_blocked_me
+      FROM users u
+      LEFT JOIN user_preferences up ON u.id = up.user_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${where}
+      LIMIT 1
+    `, [req.user.sub, ident.value]);
+
+    if (!rows.length) return res.status(404).json({ error: 'Jogador nao encontrado' });
+    if (rows[0].has_blocked_me || (rows[0].is_blocked_by_me && Number(rows[0].id) !== Number(req.user.sub))) {
+      return res.status(403).json({ error: 'Perfil indisponivel.' });
+    }
+    if (!rows[0].public_profile && Number(rows[0].id) !== Number(req.user.sub)) {
+      return res.status(403).json({ error: 'Este perfil e privado.' });
+    }
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[GET /api/community/player/:identifier]', e);
+    res.status(500).json({ error: 'Erro ao buscar perfil' });
+  }
+});
+
+app.get('/api/community/players-legacy-disabled', auth, async (req, res) => {
   const limit = Math.min(50, parseInt(req.query.limit || 20));
   const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
 
@@ -3233,7 +3580,129 @@ app.get('/api/community/player/:mc_name', auth, async (req, res) => {
 });
 
 // Seguir um jogador
+app.get('/api/me/blocks', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 24, 1, 50);
+  const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, ub.created_at,
+             COALESCE(pb.rank, 'ferro') AS rank
+      FROM user_blocks ub
+      JOIN users u ON u.id = ub.blocked_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ub.blocker_id = $1
+        AND ($2::timestamptz IS NULL OR ub.created_at < $2::timestamptz)
+      ORDER BY ub.created_at DESC
+      LIMIT $3
+    `, [req.user.sub, cursor, limit + 1]);
+    const page = rows.slice(0, limit);
+    res.json({ rows: page, next_cursor: rows.length > limit ? page.at(-1)?.created_at : null, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/me/blocks]', e);
+    res.status(500).json({ error: 'Erro ao listar bloqueios' });
+  }
+});
+
+app.post('/api/me/blocks/:userId', auth, async (req, res) => {
+  const targetId = parseInt(req.params.userId, 10);
+  if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'ID invalido' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: target } = await client.query('SELECT id, username, minecraft_name FROM users WHERE id=$1', [targetId]);
+    if (!target.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuario nao encontrado' });
+    }
+    await client.query('INSERT INTO user_blocks(blocker_id, blocked_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [req.user.sub, targetId]);
+    await client.query(
+      `DELETE FROM user_follows
+       WHERE (follower_id=$1 AND following_id=$2)
+          OR (follower_id=$2 AND following_id=$1)`,
+      [req.user.sub, targetId],
+    );
+    await client.query('COMMIT');
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'security',
+      severity: 'warning',
+      targetId,
+      targetName: target[0].minecraft_name || target[0].username,
+      message: `Usuario bloqueado: ${target[0].minecraft_name || target[0].username}`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/me/blocks/:userId]', e);
+    res.status(500).json({ error: 'Erro ao bloquear usuario' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/me/blocks/:userId', auth, async (req, res) => {
+  const targetId = parseInt(req.params.userId, 10);
+  if (!targetId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    await pool.query('DELETE FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2', [req.user.sub, targetId]);
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'security',
+      severity: 'info',
+      targetId,
+      message: `Usuario desbloqueado: #${targetId}`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/me/blocks/:userId]', e);
+    res.status(500).json({ error: 'Erro ao desbloquear usuario' });
+  }
+});
+
 app.post('/api/me/follows/:targetId', auth, async (req, res) => {
+  const targetId = parseInt(req.params.targetId, 10);
+  if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const allowed = await assertNoSocialBlock(req.user.sub, targetId);
+    if (!allowed) return res.status(403).json({ error: 'Nao e possivel seguir este usuario.' });
+
+    const { rowCount } = await pool.query(
+      'INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING',
+      [req.user.sub, targetId],
+    );
+    const { rows: target } = await pool.query('SELECT id, username, minecraft_name FROM users WHERE id=$1', [targetId]);
+    if (!target.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+
+    if (rowCount > 0) {
+      await createSocialNotification({
+        recipientId: targetId,
+        actorId: req.user.sub,
+        type: 'new_follower',
+        entityType: 'user',
+        entityId: req.user.sub,
+        previewText: `${req.user.minecraft_name || req.user.username} comecou a seguir voce.`,
+      });
+      if (target[0]?.minecraft_name) {
+        await createMinecraftNotification({
+          minecraftName: target[0].minecraft_name,
+          title: 'Novo Seguidor!',
+          body: `${req.user.minecraft_name || req.user.username} comecou a seguir voce.`,
+          type: 'social',
+          icon: '👤',
+          createdBy: req.user.sub,
+        });
+      }
+    }
+    res.json({ ok: true, created: rowCount > 0 });
+  } catch (e) {
+    console.error('[POST /api/me/follows/:targetId]', e);
+    res.status(500).json({ error: 'Erro ao seguir' });
+  }
+});
+
+app.post('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) => {
   const targetId = parseInt(req.params.targetId);
   if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'ID inválido' });
   try {
@@ -3255,6 +3724,17 @@ app.post('/api/me/follows/:targetId', auth, async (req, res) => {
 
 // Parar de seguir
 app.delete('/api/me/follows/:targetId', auth, async (req, res) => {
+  const targetId = parseInt(req.params.targetId, 10);
+  try {
+    await pool.query('DELETE FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, targetId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/me/follows/:targetId]', e);
+    res.status(500).json({ error: 'Erro ao deixar de seguir' });
+  }
+});
+
+app.delete('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) => {
   const targetId = parseInt(req.params.targetId);
   try {
     await pool.query('DELETE FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, targetId]);
@@ -3274,7 +3754,76 @@ function extractMentions(text) {
 }
 
 // Criar uma postagem com suporte a Menções (@)
-app.post('/api/community/posts', auth, authLimiter, async (req, res) => {
+app.post('/api/community/posts', auth, async (req, res) => {
+  const content = sanitize(req.body?.content || '');
+  if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
+  if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: recentPosts } = await client.query(
+      `SELECT COUNT(*)::int AS count FROM user_posts
+       WHERE author_id=$1 AND created_at > NOW() - INTERVAL '1 hour'`,
+      [req.user.sub],
+    );
+    if (recentPosts[0].count >= 10) {
+      await client.query('ROLLBACK');
+      return res.status(429).json({ error: 'Limite de 10 posts por hora atingido. Aguarde um momento.' });
+    }
+
+    const { rows } = await client.query(
+      `INSERT INTO user_posts(author_id, content)
+       VALUES($1, $2)
+       RETURNING id, content, created_at, updated_at, edit_count, is_pinned`,
+      [req.user.sub, content],
+    );
+    const newPost = rows[0];
+
+    const mentions = extractMentions(content);
+    if (mentions.length > 0) {
+      const { rows: mentionedUsers } = await client.query(
+        'SELECT id, minecraft_name, username FROM users WHERE LOWER(username) = ANY($1) OR LOWER(minecraft_name) = ANY($1)',
+        [mentions],
+      );
+      for (const mUser of mentionedUsers) {
+        if (mUser.id === req.user.sub) continue;
+        await client.query(
+          "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('post', $1, $2) ON CONFLICT DO NOTHING",
+          [newPost.id, mUser.id],
+        );
+        await createSocialNotification({
+          recipientId: mUser.id,
+          actorId: req.user.sub,
+          type: 'mention_post',
+          entityType: 'post',
+          entityId: newPost.id,
+          previewText: content,
+        }, client);
+        const targetName = mUser.minecraft_name || mUser.username;
+        const authorName = req.user.minecraft_name || req.user.username;
+        await createMinecraftNotification({
+          minecraftName: targetName,
+          title: 'Voce foi mencionado!',
+          body: `${authorName} mencionou voce em uma postagem: "${content.substring(0, 40)}..."`,
+          type: 'social',
+          icon: '💬',
+          createdBy: req.user.sub,
+        });
+      }
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ...newPost, likes_count: 0, comments_count: 0 });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/community/posts]', e);
+    res.status(500).json({ error: 'Erro ao publicar.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/community/posts-legacy-disabled', auth, authLimiter, async (req, res) => {
   const content = sanitize(req.body?.content || '');
   if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' }); 
@@ -3323,6 +3872,70 @@ app.post('/api/community/posts', auth, authLimiter, async (req, res) => {
 
 // Buscar o Feed (Geral ou Seguindo) - COM PAGINAÇÃO POR CURSOR (ID)
 app.get('/api/community/posts', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 20, 1, 50);
+  const filter = req.query.filter || 'all';
+  const cursor = parseInt(req.query.cursor, 10) || null;
+  const params = [req.user.sub, limit];
+  const conditions = [
+    `NOT EXISTS (
+      SELECT 1 FROM user_blocks ub
+      WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+         OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+    )`,
+  ];
+
+  if (cursor) {
+    params.push(cursor);
+    conditions.push(`p.id < $${params.length}`);
+  }
+  if (filter === 'following') {
+    conditions.push(`(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`);
+  }
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  try {
+    const { rows } = await pool.query(`
+      SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
+             COALESCE((
+               SELECT json_agg(row_to_json(rc))
+               FROM (
+                 SELECT pc.id, pc.content, pc.created_at, cu.username, cu.minecraft_name
+                 FROM post_comments pc
+                 JOIN users cu ON cu.id = pc.author_id
+                 WHERE pc.post_id = p.id
+                   AND pc.is_deleted = FALSE
+                   AND NOT EXISTS (
+                     SELECT 1 FROM user_blocks cub
+                     WHERE (cub.blocker_id = $1 AND cub.blocked_id = cu.id)
+                        OR (cub.blocker_id = cu.id AND cub.blocked_id = $1)
+                   )
+                 ORDER BY pc.created_at DESC
+                 LIMIT 3
+               ) rc
+             ), '[]'::json) AS recent_comments
+      FROM user_posts p
+      JOIN users u ON p.author_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      ${whereClause}
+      ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
+      LIMIT $2
+    `, params);
+    const hasMore = rows.length === limit;
+    const nextCursor = hasMore ? rows[rows.length - 1].id : null;
+    res.json({ posts: rows, next_cursor: nextCursor, has_more: hasMore });
+  } catch (e) {
+    console.error('[GET /api/community/posts]', e);
+    res.status(500).json({ error: 'Erro ao buscar o feed.' });
+  }
+});
+
+app.get('/api/community/posts-legacy-disabled', auth, async (req, res) => {
   const limit = Math.min(50, parseInt(req.query.limit || 20));
   const filter = req.query.filter || 'all';
   const cursor = parseInt(req.query.cursor) || null; // ID do último post carregado
@@ -3360,7 +3973,69 @@ app.get('/api/community/posts', auth, async (req, res) => {
 });
 
 // ── SISTEMA DE COMENTÁRIOS ──
+app.get('/api/community/posts/:id', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rows } = await pool.query(`
+      SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count
+      FROM user_posts p
+      JOIN users u ON p.author_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE p.id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      LIMIT 1
+    `, [req.user.sub, postId]);
+    if (!rows.length) return res.status(404).json({ error: 'Post nao encontrado' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[GET /api/community/posts/:id]', e);
+    res.status(500).json({ error: 'Erro ao buscar post' });
+  }
+});
+
 app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  try {
+    const { rows } = await pool.query(`
+      SELECT c.id,
+             CASE WHEN c.is_deleted THEN '[comentario removido]' ELSE c.content END AS content,
+             c.is_deleted,
+             c.created_at,
+             u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
+             COALESCE(pb.rank, 'ferro') AS rank
+      FROM post_comments c
+      JOIN users u ON c.author_id = u.id
+      JOIN user_posts p ON p.id = c.post_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE c.post_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+             OR (ub.blocker_id = $1 AND ub.blocked_id = p.author_id)
+             OR (ub.blocker_id = p.author_id AND ub.blocked_id = $1)
+        )
+      ORDER BY c.created_at ASC
+    `, [req.user.sub, postId]);
+    res.json(rows);
+  } catch (e) {
+    console.error('[GET /api/community/posts/:id/comments]', e);
+    res.status(500).json({ error: 'Erro ao carregar comentarios' });
+  }
+});
+
+app.get('/api/community/posts/:id/comments-legacy-disabled', auth, async (req, res) => {
   const postId = parseInt(req.params.id);
   try {
     const { rows } = await pool.query(`
@@ -3374,7 +4049,100 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
 });
 
 // Criar um comentário com suporte a Menções (@)
-app.post('/api/community/posts/:id/comments', auth, authLimiter, async (req, res) => {
+app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const content = sanitize(req.body?.content || '');
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  if (!content || content.length > 280) return res.status(400).json({ error: 'Comentario invalido' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: postRows } = await client.query(
+      `SELECT p.author_id, p.content, u.minecraft_name, u.username
+       FROM user_posts p
+       JOIN users u ON u.id = p.author_id
+       WHERE p.id=$1
+       LIMIT 1`,
+      [postId],
+    );
+    const post = postRows[0];
+    if (!post) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Post nao encontrado' });
+    }
+
+    const { rows: blocked } = await client.query(
+      `SELECT 1 FROM user_blocks
+       WHERE (blocker_id=$1 AND blocked_id=$2)
+          OR (blocker_id=$2 AND blocked_id=$1)
+       LIMIT 1`,
+      [req.user.sub, post.author_id],
+    );
+    if (blocked.length) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Nao e possivel comentar neste post.' });
+    }
+
+    const { rows } = await client.query(
+      'INSERT INTO post_comments(post_id, author_id, content) VALUES($1, $2, $3) RETURNING id, created_at',
+      [postId, req.user.sub, content],
+    );
+    const newComment = rows[0];
+
+    await createSocialNotification({
+      recipientId: post.author_id,
+      actorId: req.user.sub,
+      type: 'comment',
+      entityType: 'post',
+      entityId: postId,
+      previewText: content,
+    }, client);
+
+    const mentions = extractMentions(content);
+    if (mentions.length > 0) {
+      const { rows: mentionedUsers } = await client.query(
+        'SELECT id, minecraft_name, username FROM users WHERE LOWER(username) = ANY($1) OR LOWER(minecraft_name) = ANY($1)',
+        [mentions],
+      );
+      for (const mUser of mentionedUsers) {
+        if (mUser.id === req.user.sub) continue;
+        await client.query(
+          "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('comment', $1, $2) ON CONFLICT DO NOTHING",
+          [newComment.id, mUser.id],
+        );
+        await createSocialNotification({
+          recipientId: mUser.id,
+          actorId: req.user.sub,
+          type: 'mention_comment',
+          entityType: 'comment',
+          entityId: newComment.id,
+          previewText: content,
+        }, client);
+        const targetName = mUser.minecraft_name || mUser.username;
+        const authorName = req.user.minecraft_name || req.user.username;
+        await createMinecraftNotification({
+          minecraftName: targetName,
+          title: 'Voce foi mencionado!',
+          body: `${authorName} mencionou voce em um comentario: "${content.substring(0, 40)}..."`,
+          type: 'social',
+          icon: '💬',
+          createdBy: req.user.sub,
+        });
+      }
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, id: newComment.id, created_at: newComment.created_at });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/community/posts/:id/comments]', e);
+    res.status(500).json({ error: 'Erro ao comentar' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/community/posts/:id/comments-legacy-disabled', auth, authLimiter, async (req, res) => {
   const postId = parseInt(req.params.id);
   const content = sanitize(req.body?.content || '');
   if (!content || content.length > 280) return res.status(400).json({ error: 'Comentário inválido' });
@@ -3422,7 +4190,66 @@ app.post('/api/community/posts/:id/comments', auth, authLimiter, async (req, res
 });
 
 // ── LISTAS DE SEGUIDORES / SEGUINDO ──
-app.get('/api/community/player/:mc_name/followers', auth, async (req, res) => {
+app.delete('/api/community/posts/:postId/comments/:commentId', auth, async (req, res) => {
+  const postId = parseInt(req.params.postId, 10);
+  const commentId = parseInt(req.params.commentId, 10);
+  if (!postId || !commentId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE post_comments
+       SET is_deleted=TRUE, deleted_at=NOW()
+       WHERE id=$1 AND post_id=$2 AND (author_id=$3 OR $4)
+         AND is_deleted = FALSE`,
+      [commentId, postId, req.user.sub, isPrivileged(req.user.role)],
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Comentario nao encontrado ou sem permissao' });
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'delete',
+      targetId: commentId,
+      message: `Comentario #${commentId} removido`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/community/posts/:postId/comments/:commentId]', e);
+    res.status(500).json({ error: 'Erro ao remover comentario' });
+  }
+});
+
+app.get('/api/community/player/:identifier/followers', auth, async (req, res) => {
+  const ident = parseCommunityIdentifier(req.params.identifier);
+  const limit = clampInt(req.query.limit, 24, 1, 50);
+  const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
+  const where = ident.byId ? 'target.id = $2' : 'LOWER(target.minecraft_name) = $2';
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
+      FROM user_follows uf
+      JOIN users u ON uf.follower_id = u.id
+      JOIN users target ON uf.following_id = target.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${where}
+        AND ($3::timestamptz IS NULL OR uf.created_at < $3::timestamptz)
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      ORDER BY uf.created_at DESC
+      LIMIT $4
+    `, [req.user.sub, ident.value, cursor, limit + 1]);
+    const page = rows.slice(0, limit);
+    res.json({ rows: page, next_cursor: rows.length > limit ? page.at(-1)?.created_at : null, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/community/player/:identifier/followers]', e);
+    res.status(500).json({ error: 'Erro ao listar' });
+  }
+});
+
+app.get('/api/community/player/:mc_name/followers-legacy-disabled', auth, async (req, res) => {
   const mcName = sanitize(req.params.mc_name).toLowerCase();
   try {
     const { rows } = await pool.query(`
@@ -3439,7 +4266,39 @@ app.get('/api/community/player/:mc_name/followers', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Erro ao listar' }); }
 });
 
-app.get('/api/community/player/:mc_name/following', auth, async (req, res) => {
+app.get('/api/community/player/:identifier/following', auth, async (req, res) => {
+  const ident = parseCommunityIdentifier(req.params.identifier);
+  const limit = clampInt(req.query.limit, 24, 1, 50);
+  const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
+  const where = ident.byId ? 'target.id = $2' : 'LOWER(target.minecraft_name) = $2';
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
+      FROM user_follows uf
+      JOIN users u ON uf.following_id = u.id
+      JOIN users target ON uf.follower_id = target.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${where}
+        AND ($3::timestamptz IS NULL OR uf.created_at < $3::timestamptz)
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      ORDER BY uf.created_at DESC
+      LIMIT $4
+    `, [req.user.sub, ident.value, cursor, limit + 1]);
+    const page = rows.slice(0, limit);
+    res.json({ rows: page, next_cursor: rows.length > limit ? page.at(-1)?.created_at : null, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/community/player/:identifier/following]', e);
+    res.status(500).json({ error: 'Erro ao listar' });
+  }
+});
+
+app.get('/api/community/player/:mc_name/following-legacy-disabled', auth, async (req, res) => {
   const mcName = sanitize(req.params.mc_name).toLowerCase();
   try {
     const { rows } = await pool.query(`
@@ -3458,6 +4317,53 @@ app.get('/api/community/player/:mc_name/following', auth, async (req, res) => {
 
 // Curtir um post
 app.post('/api/community/posts/:id/like', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: postRows } = await client.query('SELECT author_id, content FROM user_posts WHERE id=$1 LIMIT 1', [postId]);
+    const post = postRows[0];
+    if (!post) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Post nao encontrado' });
+    }
+    const { rows: blocked } = await client.query(
+      `SELECT 1 FROM user_blocks
+       WHERE (blocker_id=$1 AND blocked_id=$2)
+          OR (blocker_id=$2 AND blocked_id=$1)
+       LIMIT 1`,
+      [req.user.sub, post.author_id],
+    );
+    if (blocked.length) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Acao indisponivel.' });
+    }
+    const { rowCount } = await client.query('INSERT INTO post_likes(post_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [postId, req.user.sub]);
+    if (rowCount > 0) {
+      await client.query('UPDATE user_posts SET likes_count = likes_count + 1 WHERE id = $1', [postId]);
+      await createSocialNotification({
+        recipientId: post.author_id,
+        actorId: req.user.sub,
+        type: 'post_like',
+        entityType: 'post',
+        entityId: postId,
+        previewText: post.content,
+      }, client);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, created: rowCount > 0 });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/community/posts/:id/like]', e);
+    res.status(500).json({ error: 'Erro ao curtir' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/community/posts/:id/like-legacy-disabled', auth, async (req, res) => {
   const postId = parseInt(req.params.id);
   if (!postId) return res.status(400).json({ error: 'ID inválido' });
 
@@ -3501,7 +4407,233 @@ app.delete('/api/community/posts/:id/like', auth, async (req, res) => {
 });
 
 // Apagar o próprio post
+app.patch('/api/community/posts/:id', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const content = sanitize(req.body?.content || '');
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
+  if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
+  try {
+    const { rows } = await pool.query('SELECT author_id, created_at, edit_count FROM user_posts WHERE id=$1', [postId]);
+    const post = rows[0];
+    if (!post) return res.status(404).json({ error: 'Post nao encontrado' });
+    if (Number(post.author_id) !== Number(req.user.sub)) return res.status(403).json({ error: 'forbidden' });
+    const ageMinutes = (Date.now() - new Date(post.created_at).getTime()) / 60000;
+    if (ageMinutes > 15) return res.status(403).json({ error: 'Edicao permitida apenas nos primeiros 15 minutos.' });
+    const { rows: updated } = await pool.query(
+      `UPDATE user_posts
+       SET content=$1, updated_at=NOW(), edit_count=COALESCE(edit_count, 0)+1
+       WHERE id=$2
+       RETURNING id, content, created_at, updated_at, edit_count, is_pinned`,
+      [content, postId],
+    );
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'update',
+      targetId: postId,
+      message: `Post #${postId} editado`,
+    });
+    res.json(updated[0]);
+  } catch (e) {
+    console.error('[PATCH /api/community/posts/:id]', e);
+    res.status(500).json({ error: 'Erro ao editar post' });
+  }
+});
+
 app.delete('/api/community/posts/:id', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  try {
+    const { rows } = await pool.query('DELETE FROM user_posts WHERE id=$1 AND author_id=$2 RETURNING id', [postId, req.user.sub]);
+    if (!rows.length) return res.status(404).json({ error: 'Post nao encontrado ou nao autorizado' });
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'delete',
+      targetId: postId,
+      message: `Post #${postId} removido pelo autor`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/community/posts/:id]', e);
+    res.status(500).json({ error: 'Erro ao excluir' });
+  }
+});
+
+app.post('/api/community/report', auth, async (req, res) => {
+  const contentType = sanitize(req.body?.content_type);
+  const contentId = parseInt(req.body?.content_id, 10);
+  const reason = sanitize(req.body?.reason);
+  const description = sanitize(req.body?.description || '').slice(0, 600);
+  if (!REPORT_CONTENT_TYPES.has(contentType) || !contentId || !REPORT_REASONS.has(reason)) {
+    return res.status(400).json({ error: 'Denuncia invalida' });
+  }
+
+  try {
+    let exists;
+    if (contentType === 'post') exists = await pool.query('SELECT id FROM user_posts WHERE id=$1', [contentId]);
+    if (contentType === 'comment') exists = await pool.query('SELECT id FROM post_comments WHERE id=$1', [contentId]);
+    if (contentType === 'user') exists = await pool.query('SELECT id FROM users WHERE id=$1', [contentId]);
+    if (!exists?.rows?.length) return res.status(404).json({ error: 'Conteudo nao encontrado' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO content_reports(reporter_id, content_type, content_id, reason, description)
+       VALUES($1,$2,$3,$4,$5)
+       ON CONFLICT(reporter_id, content_type, content_id)
+       DO UPDATE SET reason=$4, description=$5, status='pending', created_at=NOW()
+       RETURNING id`,
+      [req.user.sub, contentType, contentId, reason, description || null],
+    );
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM content_reports
+       WHERE content_type=$1 AND content_id=$2 AND status='pending'`,
+      [contentType, contentId],
+    );
+    const count = countRows[0]?.count || 0;
+    if (count >= 3) {
+      await pool.query(
+        `INSERT INTO moderation_queue(content_type, content_id, report_count)
+         VALUES($1, $2, $3)
+         ON CONFLICT(content_type, content_id)
+         DO UPDATE SET report_count=$3, status='pending'`,
+        [contentType, contentId, count],
+      );
+    }
+
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'security',
+      severity: 'warning',
+      targetId: contentId,
+      targetName: contentType,
+      message: `Denuncia criada: ${contentType} #${contentId}`,
+      metadata: { reportId: rows[0].id, reason },
+    });
+    res.status(201).json({ ok: true, id: rows[0].id, report_count: count });
+  } catch (e) {
+    console.error('[POST /api/community/report]', e);
+    res.status(500).json({ error: 'Erro ao enviar denuncia' });
+  }
+});
+
+app.get('/api/admin/reports', auth, requireAdmin, async (req, res) => {
+  const status = sanitize(req.query.status || 'pending');
+  const page = clampInt(req.query.page, 0, 0, 100000);
+  const limit = clampInt(req.query.limit, 20, 1, 100);
+  const params = [];
+  const conditions = [];
+  if (status && status !== 'all') {
+    params.push(status);
+    conditions.push(`cr.status=$${params.length}`);
+  }
+  params.push(limit, page * limit);
+  try {
+    const { rows } = await pool.query(`
+      SELECT cr.*, reporter.username AS reporter_username, reviewer.username AS reviewer_username
+      FROM content_reports cr
+      JOIN users reporter ON reporter.id = cr.reporter_id
+      LEFT JOIN users reviewer ON reviewer.id = cr.reviewed_by
+      ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
+      ORDER BY cr.created_at DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `, params);
+    res.json({ rows, page, limit });
+  } catch (e) {
+    console.error('[GET /api/admin/reports]', e);
+    res.status(500).json({ error: 'Erro ao listar denuncias' });
+  }
+});
+
+app.patch('/api/admin/reports/:id', auth, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const action = sanitize(req.body?.action || '');
+  if (!id || !['dismiss', 'remove_content', 'warn_user'].includes(action)) {
+    return res.status(400).json({ error: 'Acao invalida' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT * FROM content_reports WHERE id=$1 FOR UPDATE', [id]);
+    const report = rows[0];
+    if (!report) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Denuncia nao encontrada' });
+    }
+    let status = 'reviewed_kept';
+    if (action === 'dismiss') status = 'dismissed';
+    if (action === 'remove_content') {
+      status = 'reviewed_removed';
+      if (report.content_type === 'post') await client.query('DELETE FROM user_posts WHERE id=$1', [report.content_id]);
+      if (report.content_type === 'comment') {
+        await client.query('UPDATE post_comments SET is_deleted=TRUE, deleted_at=NOW() WHERE id=$1', [report.content_id]);
+      }
+    }
+    await client.query(
+      `UPDATE content_reports
+       SET status=$1, reviewed_by=$2, reviewed_at=NOW(), action_taken=$3
+       WHERE id=$4`,
+      [status, req.user.sub, action, id],
+    );
+    await client.query(
+      `UPDATE moderation_queue
+       SET status=$1, reviewed_by=$2, reviewed_at=NOW()
+       WHERE content_type=$3 AND content_id=$4`,
+      [status === 'reviewed_removed' ? 'removed' : 'reviewed', req.user.sub, report.content_type, report.content_id],
+    );
+    await client.query('COMMIT');
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'moderation',
+      severity: action === 'remove_content' ? 'warning' : 'info',
+      targetId: report.content_id,
+      targetName: report.content_type,
+      message: `Denuncia #${id} revisada: ${action}`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[PATCH /api/admin/reports/:id]', e);
+    res.status(500).json({ error: 'Erro ao revisar denuncia' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/admin/posts/:id', auth, requireAdmin, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const reason = sanitize(req.body?.reason || 'moderation').slice(0, 160);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rows } = await pool.query(`
+      DELETE FROM user_posts p
+      USING users u
+      WHERE p.id=$1 AND u.id=p.author_id
+      RETURNING p.id, u.id AS author_id, u.username, u.minecraft_name
+    `, [postId]);
+    if (!rows.length) return res.status(404).json({ error: 'Post nao encontrado' });
+    const targetName = rows[0].minecraft_name || rows[0].username;
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'delete',
+      severity: 'warning',
+      targetId: postId,
+      targetName,
+      message: `Post #${postId} removido por admin: ${reason}`,
+      metadata: { authorId: rows[0].author_id, reason },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/admin/posts/:id]', e);
+    res.status(500).json({ error: 'Erro ao excluir post' });
+  }
+});
+
+app.delete('/api/community/posts-legacy-disabled/:id', auth, async (req, res) => {
   const postId = parseInt(req.params.id);
   try {
     const { rowCount } = await pool.query('DELETE FROM user_posts WHERE id=$1 AND author_id=$2', [postId, req.user.sub]);
@@ -3511,6 +4643,75 @@ app.delete('/api/community/posts/:id', auth, async (req, res) => {
 });
 
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
+app.get('/api/me/social-notifications', auth, async (req, res) => {
+  const limit = clampInt(req.query.limit, 20, 1, 50);
+  const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
+  try {
+    const { rows } = await pool.query(`
+      SELECT sn.id, sn.type, sn.entity_type, sn.entity_id, sn.preview_text, sn.is_read, sn.created_at,
+             actor.id AS actor_id, actor.username AS actor_username, actor.minecraft_name AS actor_minecraft_name,
+             actor.photo_url AS actor_photo_url
+      FROM social_notifications sn
+      LEFT JOIN users actor ON actor.id = sn.actor_id
+      WHERE sn.recipient_id = $1
+        AND ($2::timestamptz IS NULL OR sn.created_at < $2::timestamptz)
+        AND (
+          actor.id IS NULL OR NOT EXISTS (
+            SELECT 1 FROM user_blocks ub
+            WHERE (ub.blocker_id=$1 AND ub.blocked_id=actor.id)
+               OR (ub.blocker_id=actor.id AND ub.blocked_id=$1)
+          )
+        )
+      ORDER BY sn.created_at DESC
+      LIMIT $3
+    `, [req.user.sub, cursor, limit + 1]);
+    const page = rows.slice(0, limit);
+    res.json({ rows: page, next_cursor: rows.length > limit ? page.at(-1)?.created_at : null, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/me/social-notifications]', e);
+    res.status(500).json({ error: 'Erro ao listar notificacoes sociais' });
+  }
+});
+
+app.get('/api/me/social-notifications/unread-count', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT COUNT(*)::int AS count FROM social_notifications WHERE recipient_id=$1 AND is_read=FALSE',
+      [req.user.sub],
+    );
+    res.json({ count: rows[0]?.count || 0 });
+  } catch (e) {
+    console.error('[GET /api/me/social-notifications/unread-count]', e);
+    res.status(500).json({ error: 'Erro ao contar notificacoes sociais' });
+  }
+});
+
+app.post('/api/me/social-notifications/read-all', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE social_notifications SET is_read=TRUE WHERE recipient_id=$1 AND is_read=FALSE', [req.user.sub]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[POST /api/me/social-notifications/read-all]', e);
+    res.status(500).json({ error: 'Erro ao marcar notificacoes sociais' });
+  }
+});
+
+app.patch('/api/me/social-notifications/:id/read', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rowCount } = await pool.query(
+      'UPDATE social_notifications SET is_read=TRUE WHERE id=$1 AND recipient_id=$2',
+      [id, req.user.sub],
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Notificacao nao encontrada' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[PATCH /api/me/social-notifications/:id/read]', e);
+    res.status(500).json({ error: 'Erro ao marcar notificacao social' });
+  }
+});
+
 app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
   try {
     const requestedIntegrationId = req.query.integration_id ? Number(req.query.integration_id) : null;
@@ -3605,6 +4806,11 @@ app.get('/api/me/xbox/friends', auth, xboxApiLimiter, async (req, res) => {
          JOIN users u ON ui.user_id = u.id
          WHERE ui.xbox_xuid = ANY($1)
            AND u.id <> $2
+           AND NOT EXISTS (
+             SELECT 1 FROM user_blocks ub
+             WHERE (ub.blocker_id = $2 AND ub.blocked_id = u.id)
+                OR (ub.blocker_id = u.id AND ub.blocked_id = $2)
+           )
          ORDER BY u.id, ui.is_primary DESC, ui.updated_at DESC NULLS LAST`,
         [xuids, req.user.sub]
       );
@@ -3636,6 +4842,15 @@ app.post('/api/me/xbox/friends/sync', auth, async (req, res) => {
       const parsedId = parseInt(targetId);
       if (!parsedId || parsedId === req.user.sub) continue;
 
+      const { rows: blocked } = await client.query(
+        `SELECT 1 FROM user_blocks
+         WHERE (blocker_id=$1 AND blocked_id=$2)
+            OR (blocker_id=$2 AND blocked_id=$1)
+         LIMIT 1`,
+        [req.user.sub, parsedId]
+      );
+      if (blocked.length) continue;
+
       const { rowCount } = await client.query(
         'INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING',
         [req.user.sub, parsedId]
@@ -3644,6 +4859,14 @@ app.post('/api/me/xbox/friends/sync', auth, async (req, res) => {
       if (rowCount > 0) {
         newConnections++;
         const { rows: target } = await client.query('SELECT minecraft_name FROM users WHERE id=$1', [parsedId]);
+        await createSocialNotification({
+          recipientId: parsedId,
+          actorId: req.user.sub,
+          type: 'new_follower',
+          entityType: 'user',
+          entityId: req.user.sub,
+          previewText: `${req.user.minecraft_name || req.user.username} encontrou seu perfil pelo Xbox e comecou a seguir voce.`,
+        }, client);
         if (target[0]?.minecraft_name) {
           await createMinecraftNotification({
             minecraftName: target[0].minecraft_name,
