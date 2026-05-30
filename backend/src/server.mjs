@@ -4749,6 +4749,45 @@ app.get('/api/community/player/:identifier/following', auth, async (req, res) =>
   }
 });
 
+app.get('/api/community/player/:identifier/friends', auth, async (req, res) => {
+  const ident = parseCommunityIdentifier(req.params.identifier);
+  const limit = clampInt(req.query.limit, 24, 1, 50);
+  const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
+  const where = ident.byId ? 'target.id = $2' : 'LOWER(target.minecraft_name) = $2';
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url,
+             GREATEST(out_f.created_at, back_f.created_at) AS created_at,
+             COALESCE(pb.rank, 'ferro') AS rank,
+             COALESCE(pb.merit_total, 0) AS merit,
+             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
+      FROM users target
+      JOIN user_follows out_f ON out_f.follower_id = target.id
+      JOIN user_follows back_f ON back_f.follower_id = out_f.following_id AND back_f.following_id = target.id
+      JOIN users u ON u.id = out_f.following_id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      LEFT JOIN user_preferences up ON up.user_id = target.id
+      WHERE ${where}
+        AND (COALESCE(up.public_profile, TRUE) = TRUE OR target.id = $1)
+        AND ($3::timestamptz IS NULL OR GREATEST(out_f.created_at, back_f.created_at) < $3::timestamptz)
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+             OR (ub.blocker_id = $1 AND ub.blocked_id = target.id)
+             OR (ub.blocker_id = target.id AND ub.blocked_id = $1)
+        )
+      ORDER BY created_at DESC
+      LIMIT $4
+    `, [req.user.sub, ident.value, cursor, limit + 1]);
+    const page = rows.slice(0, limit);
+    res.json({ rows: page, next_cursor: rows.length > limit ? page.at(-1)?.created_at : null, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/community/player/:identifier/friends]', e);
+    res.status(500).json({ error: 'Erro ao listar amigos' });
+  }
+});
+
 app.get('/api/community/player/:mc_name/following-legacy-disabled', auth, async (req, res) => {
   const mcName = sanitize(req.params.mc_name).toLowerCase();
   try {
