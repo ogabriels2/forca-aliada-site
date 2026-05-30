@@ -1543,9 +1543,10 @@ async function loadFriendsBar(){
   const list=$('#friends-list'), sugList=$('#friend-sug-list'); if(!list)return;
   try {
     const rows=await api('/api/community/players?limit=10'); const players=Array.isArray(rows)?rows:[];
-    list.innerHTML=players.slice(0,8).map((p, i)=>{
-      const n=p.minecraft_name||p.username||'Steve'; const isOnline = i<3; // Mostra verde para os 3 primeiros
-      return `<div class="friend-item js-profile" data-mc="${esc(n)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot ${i===1?'playing':''}"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
+    list.innerHTML=players.slice(0,8).map((p)=>{
+      const n=p.minecraft_name||p.username||'Steve'; 
+      const isOnline = p.is_online === true; // AGORA USA O DADO REAL DO BANCO!
+      return `<div class="friend-item js-profile" data-mc="${esc(n)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
     }).join('');
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
