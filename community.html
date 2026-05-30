@@ -403,6 +403,7 @@ img{display:block}
   font-size:12.5px;font-weight:700;cursor:pointer;
   transition:transform var(--t-fast) var(--ease),box-shadow var(--t-fast),background var(--t-fast),color var(--t-fast),border-color var(--t-fast);
 }
+.btn svg{width:15px;height:15px;flex-shrink:0}
 .btn:disabled{opacity:0.48;cursor:not-allowed;transform:none!important}
 .btn-primary{
   color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-h));
@@ -475,7 +476,8 @@ img{display:block}
 .mention-token{color:var(--accent);font-weight:700}
 /* preview comments */
 .preview-comments{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:4px}
-.preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;gap:4px}
+.preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;align-items:flex-start;gap:4px}
+.preview-row svg{width:14px;height:14px;flex-shrink:0;margin-top:1px}
 .preview-row strong{color:var(--ink);font-weight:700}
 /* post actions */
 .post-actions{display:flex;align-items:center;gap:1px;margin-top:9px}
@@ -654,7 +656,8 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 }
 .post-tile:hover{transform:translateY(-2px);border-color:var(--accent)}
 .post-tile p{font-size:12.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-bottom:7px}
-.post-tile .tile-meta{font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.post-tile .tile-meta{display:flex;align-items:center;gap:4px;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.post-tile .tile-meta svg{width:13px;height:13px;flex-shrink:0}
 .badge-mini{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);padding:9px 11px}
 .badge-mini strong{font-size:12.5px;font-weight:800}
 .badge-mini span{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-2)}
@@ -1377,6 +1380,7 @@ function renderFeed({append=false}={}){
   const list=$('#feed-list'),wrap=$('#feed-wrap');
   if(!state.posts.length){wrap.innerHTML=emptyFeed();return}
   if(append){
+    $$('.post-skel').forEach(el=>el.remove());
     const existing=new Set($$('.post-card').map(el=>Number(el.dataset.postId)));
     const html=state.posts.filter(p=>!existing.has(Number(p.id))).map(postCardHTML).join('');
     if(html) list.insertAdjacentHTML('beforeend',html);
