@@ -16,6 +16,16 @@
 
 <script>
 (function(){
+  const path=location.pathname.replace(/\/+$/,'');
+  const postMatch=path.match(/\/community\/post\/([^/]+)$/);
+  const profileMatch=path.match(/\/profile\/([^/]+)$/);
+  if(postMatch||profileMatch){
+    const url=new URL('/community.html',location.origin);
+    if(postMatch) url.searchParams.set('post',decodeURIComponent(postMatch[1]));
+    if(profileMatch) url.searchParams.set('profile',decodeURIComponent(profileMatch[1]));
+    location.replace(url.pathname+url.search);
+    return;
+  }
   const key='fa_theme';
   const token=localStorage.getItem('fa_token');
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}

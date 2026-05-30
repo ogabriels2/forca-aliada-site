@@ -169,7 +169,7 @@ button { border: 0; }
   box-shadow: var(--shadow-md);
 }
 .cover {
-  height: 216px;
+  height: 152px;
   position: relative;
   background: linear-gradient(135deg, #667085, #d0d5dd);
 }
@@ -185,7 +185,7 @@ button { border: 0; }
 .cover.diamante { background: linear-gradient(135deg, #064e3b, #0e9384 50%, #a7f3d0); }
 .cover.netherite { background: linear-gradient(135deg, #1e1b4b, #7c3aed 52%, #4c1d95); }
 .cover.staff { background: linear-gradient(135deg, #1e3a8a, var(--accent) 52%, #bfdbfe); }
-.hero-body { padding: 0 22px 22px; }
+.hero-body { padding: 0 18px 18px; }
 .hero-row {
   position: relative;
   z-index: 1;
@@ -193,20 +193,20 @@ button { border: 0; }
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-top: -62px;
+  margin-top: -48px;
 }
 .identity { min-width: 0; display: flex; align-items: flex-end; gap: 14px; }
 .avatar {
-  width: 124px;
-  height: 124px;
+  width: 96px;
+  height: 96px;
   flex: 0 0 auto;
-  border: 6px solid var(--surface-solid);
-  border-radius: 28px;
+  border: 5px solid var(--surface-solid);
+  border-radius: 22px;
   object-fit: cover;
   background: var(--surface-soft);
   box-shadow: 0 0 0 3px var(--accent), 0 0 0 7px var(--accent-soft), var(--shadow-lg);
 }
-.identity-text { min-width: 0; padding-bottom: 8px; }
+.identity-text { min-width: 0; padding-bottom: 5px; }
 .name-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 h1 { margin: 0; font-size: clamp(30px, 5vw, 43px); line-height: .98; font-weight: 930; letter-spacing: -.04em; word-break: break-word; }
 .handle { margin: 7px 0 0; color: var(--ink-2); font-size: 14px; font-weight: 750; }
@@ -225,20 +225,20 @@ h1 { margin: 0; font-size: clamp(30px, 5vw, 43px); line-height: .98; font-weight
 .profile-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; }
 .bio {
   max-width: 760px;
-  margin: 15px 0 0;
+  margin: 10px 0 0;
   color: var(--ink-2);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.45;
 }
 .stats {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 9px;
-  margin-top: 16px;
+  gap: 7px;
+  margin-top: 12px;
 }
 .stat {
-  min-height: 78px;
-  padding: 12px;
+  min-height: 56px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--surface-soft);
@@ -247,8 +247,8 @@ h1 { margin: 0; font-size: clamp(30px, 5vw, 43px); line-height: .98; font-weight
 }
 button.stat { cursor: pointer; transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast) var(--ease); }
 button.stat:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-soft); }
-.stat strong { display: block; font-size: 21px; font-weight: 930; letter-spacing: -.02em; }
-.stat span { display: block; margin-top: 5px; color: var(--ink-3); font-size: 10.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+.stat strong { display: block; font-size: 17px; font-weight: 930; letter-spacing: -.02em; }
+.stat span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
 
 .content-grid {
   display: grid;
@@ -395,13 +395,16 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
 @media (max-width: 760px) {
   .topbar-inner, .shell { width: min(100% - 22px, 720px); }
   .top-actions .btn.secondary { display: none; }
-  .cover { height: 178px; }
+  .cover { height: 128px; }
   .hero-row { align-items: flex-start; flex-direction: column; }
   .identity { align-items: flex-start; flex-direction: column; gap: 9px; }
   .identity-text { padding-bottom: 0; }
   .profile-actions { justify-content: flex-start; padding-bottom: 0; }
-  .avatar { width: 104px; height: 104px; border-radius: 24px; }
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .avatar { width: 86px; height: 86px; border-radius: 20px; }
+  .stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+  .stat { min-height: 48px; padding: 7px 5px; }
+  .stat strong { font-size: 15px; }
+  .stat span { font-size: 7.6px; letter-spacing: .02em; }
   .side-stack { grid-template-columns: 1fr; }
 }
 @media (max-width: 430px) {

@@ -509,6 +509,8 @@ img{display:block}
   color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;
 }
 .mention-token{color:var(--accent);font-weight:700}
+.hashtag-token{display:inline;padding:0;color:var(--accent-2);font-weight:800;vertical-align:baseline;cursor:pointer}
+.hashtag-token:hover{text-decoration:underline;text-underline-offset:2px}
 /* preview comments */
 .preview-comments{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:4px}
 .preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;align-items:flex-start;gap:4px}
@@ -529,6 +531,10 @@ img{display:block}
 .pa-like.is-on svg{fill:var(--danger)}
 .pa-comment:hover{background:var(--accent-soft);color:var(--accent)}
 .pa-share:hover{background:var(--success-soft);color:var(--success)}
+.pa-repost:hover,.pa-repost.is-on{background:var(--success-soft);color:var(--success)}
+.repost-label{display:flex;align-items:center;gap:6px;margin:0 0 5px 54px;color:var(--ink-3);font-size:11.5px;font-weight:800}
+.repost-label svg{width:14px;height:14px}
+.repost-quote{margin:7px 0 8px;padding:8px 10px;border-left:3px solid var(--accent-2);border-radius:0 var(--r-sm) var(--r-sm) 0;background:var(--surface-soft);color:var(--ink-2);font-size:13px;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere}
 @keyframes likePop{0%{transform:scale(.8)}55%{transform:scale(1.3) rotate(-8deg)}100%{transform:scale(1)}}
 .pa-like.popping svg{animation:likePop .32s var(--ease)}
 /* more btn */
@@ -644,7 +650,7 @@ img{display:block}
   background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden;
 }
 .profile-cover{
-  height:190px;
+  height:132px;
   background:linear-gradient(135deg,var(--rk-iron),color-mix(in srgb,var(--rk-iron) 50%,#000));
 }
 .profile-cover.rk-ouro{background:linear-gradient(135deg,#78350f,#f59e0b 50%,#fef3c7)}
@@ -656,43 +662,48 @@ img{display:block}
   content:'';display:block;height:100%;
   background:url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.06'%3E%3Crect x='0' y='0' width='20' height='20'/%3E%3Crect x='20' y='20' width='20' height='20'/%3E%3C/g%3E%3C/svg%3E");
 }
-.profile-hero-body{padding:0 20px 20px}
-.profile-topline{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-top:-54px;position:relative;z-index:2}
+.profile-hero-body{padding:0 16px 16px}
+.profile-topline{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:-42px;position:relative;z-index:2}
 .profile-av{
-  width:108px;height:108px;border-radius:24px;border:5px solid var(--surface-solid);
+  width:86px;height:86px;border-radius:20px;border:4px solid var(--surface-solid);
   object-fit:cover;background:var(--bg);box-shadow:var(--shadow-md);
 }
-.profile-actions-row{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:4px}
-.profile-name{margin:14px 0 3px;font-size:31px;font-weight:900;letter-spacing:-0.03em;word-break:break-word}
+.profile-actions-row{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:2px}
+.profile-name{margin:10px 0 2px;font-size:27px;font-weight:900;letter-spacing:-0.03em;word-break:break-word}
 .profile-handle2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);font-weight:650}
-.profile-bio2{max-width:680px;margin-top:12px;font-size:14.5px;color:var(--ink-2);line-height:1.55}
-.profile-stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+.profile-bio2{max-width:680px;margin-top:8px;font-size:14px;color:var(--ink-2);line-height:1.45}
+.profile-stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px}
 .pstat{
   border:1px solid var(--line);border-radius:var(--r-sm);
-  padding:10px 11px;background:var(--bg);
+  min-height:54px;padding:8px 10px;background:var(--bg);
 }
 button.pstat{cursor:pointer;transition:border-color var(--t-fast),background var(--t-fast)}
 button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
-.pstat strong{display:block;font-size:17px;font-weight:900;letter-spacing:-0.01em}
-.pstat small{display:block;font-family:var(--ff-mono);color:var(--ink-3);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}
-.profile-content-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;margin-top:14px;align-items:start}
+.pstat strong{display:block;font-size:16px;font-weight:900;letter-spacing:-0.01em}
+.pstat small{display:block;font-family:var(--ff-mono);color:var(--ink-3);font-size:8.8px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:1px}
+.profile-tabs2{display:flex;gap:6px;margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.profile-tabs2 button{min-height:34px;flex:1;border:1px solid transparent;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);font-size:12px;font-weight:900;cursor:pointer}
+.profile-tabs2 button:hover,.profile-tabs2 button.is-active{border-color:var(--line);background:var(--bg);color:var(--accent)}
+.profile-content-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;margin-top:12px;align-items:start}
 .profile-main-feed,.profile-side{display:grid;gap:10px;min-width:0}
+.profile-feed-stack{display:grid;gap:10px}
+.profile-feed-stack .post-card{margin:0}
 .profile-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:0}
 .profile-section-title strong{font-size:14px;font-weight:900;letter-spacing:-0.01em}
 .profile-section-title span{font-family:var(--ff-mono);font-size:10px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em}
-.stat-block{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-xs);padding:11px}
+.stat-block{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);box-shadow:var(--shadow-xs);padding:10px}
 .stat-block .lbl{font-family:var(--ff-mono);font-size:9.5px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px}
 .stat-block .val{font-size:20px;font-weight:900;letter-spacing:-0.02em}
 .mini-bars2{display:flex;align-items:flex-end;gap:3px;height:44px;margin-top:9px}
 .mini-bars2 span{flex:1;min-height:3px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),var(--accent-2));opacity:.65;transition:opacity var(--t-fast)}
 .mini-bars2 span:hover{opacity:1}
-.profile-about-card{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-xs);padding:12px}
+.profile-about-card{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);box-shadow:var(--shadow-xs);padding:10px}
 .profile-about-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .posts-mini-grid{display:grid;gap:9px}
 .post-tile{
   border:1px solid var(--line);border-radius:var(--r-md);
   background:var(--surface);box-shadow:var(--shadow-xs);
-  padding:13px;cursor:pointer;min-height:92px;
+  padding:12px;cursor:pointer;min-height:78px;
   transition:transform var(--t-fast) var(--ease),border-color var(--t-fast);
 }
 .post-tile:hover{transform:translateY(-2px);border-color:var(--accent)}
@@ -746,8 +757,10 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 
 /* trending hashtags */
 .trend-item{
+  width:100%;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:7px 9px;border-radius:var(--r-sm);cursor:pointer;
+  color:inherit;text-align:left;
   transition:background var(--t-fast);
 }
 .trend-item:hover{background:var(--accent-soft)}
@@ -889,11 +902,14 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .feed-tabs{width:100%}
   .tab{flex:1;min-width:0}
   .composer,.thread-hero,.reply-bar,.card{border-radius:var(--r-md)}
-  .profile-stats-grid{grid-template-columns:repeat(2,1fr)}
+  .profile-stats-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
   .profile-content-grid{grid-template-columns:1fr}
   .posts-mini-grid{grid-template-columns:1fr}
   .profile-topline{align-items:flex-start;flex-direction:column}
-  .profile-name{font-size:22px}
+  .profile-name{font-size:23px}
+  .pstat{min-height:48px;padding:7px 6px}
+  .pstat strong{font-size:15px}
+  .pstat small{font-size:7.6px;letter-spacing:0.03em}
 }
 @media(max-width:440px){
   .topbar-inner{width:calc(100% - 18px);gap:7px}
@@ -906,6 +922,51 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .post-actions{gap:0}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+.mobile-menu-btn{display:none}
+.mobile-bottom-nav{display:none}
+.mobile-drawer-shell{position:fixed;inset:0;z-index:260;display:none;background:rgba(15,23,42,.38);backdrop-filter:blur(10px)}
+.mobile-drawer-shell.show{display:block}
+.mobile-drawer{width:min(330px,calc(100vw - 42px));height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:14px;border-right:1px solid var(--line);background:var(--surface-solid);box-shadow:var(--shadow-lg);transform:translateX(-105%);transition:transform var(--t-med) var(--ease)}
+.mobile-drawer-shell.show .mobile-drawer{transform:translateX(0)}
+.mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mobile-drawer-profile{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
+.mobile-drawer-profile img{width:48px;height:48px;border-radius:13px}
+.mobile-drawer-profile strong,.mobile-drawer-profile small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mobile-drawer-profile strong{font-size:14px;font-weight:900}.mobile-drawer-profile small{color:var(--ink-3);font-size:12px;font-weight:700}
+.mobile-drawer-nav{display:grid;gap:6px;align-content:start;overflow:auto}
+.mobile-drawer-item{min-height:42px;display:flex;align-items:center;gap:10px;padding:0 11px;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);font-size:13px;font-weight:850;text-align:left;cursor:pointer}
+.mobile-drawer-item svg{width:18px;height:18px;flex:0 0 auto}.mobile-drawer-item:hover,.mobile-drawer-item.is-active{background:var(--accent-soft);color:var(--accent)}
+.mobile-drawer-season{padding:12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
+.mobile-drawer-season h3{font-size:14px;margin:3px 0 4px}.mobile-drawer-season p{color:var(--ink-2);font-size:12px;line-height:1.45}
+.search-panel-intro{display:grid;gap:12px}
+.search-chip-row{display:flex;gap:7px;flex-wrap:wrap}
+.search-chip{min-height:30px;padding:0 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface-soft);color:var(--ink-2);font-size:12px;font-weight:800;cursor:pointer}
+.search-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.search-results{display:grid;gap:8px;margin-top:12px}
+.search-result{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:9px;align-items:center;padding:9px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);cursor:pointer;text-align:left}
+.search-result:hover{border-color:var(--accent);background:var(--accent-soft)}
+.search-result img{width:38px;height:38px;border-radius:10px}
+.search-result strong{display:block;font-size:13px;font-weight:900}
+.search-result small{display:block;margin-top:2px;color:var(--ink-3);font-size:11.5px}
+.search-result-post{grid-template-columns:minmax(0,1fr) auto}
+@media(max-width:768px){
+  body{padding-bottom:78px}
+  .mobile-menu-btn{display:inline-flex}
+  .mobile-bottom-nav{
+    position:fixed;left:10px;right:10px;bottom:10px;z-index:190;
+    display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
+    padding:7px;border:1px solid var(--line);border-radius:20px;
+    background:color-mix(in srgb,var(--surface-solid) 88%,transparent);
+    box-shadow:var(--shadow-lg);backdrop-filter:blur(20px) saturate(170%);
+  }
+  .mbtn{min-width:0;min-height:48px;display:grid;place-items:center;gap:2px;border-radius:15px;color:var(--ink-2);font-size:10px;font-weight:850}
+  .mbtn svg{width:20px;height:20px}
+  .mbtn.is-active,.mbtn:hover{background:var(--accent-soft);color:var(--accent)}
+  .mbtn-post{background:var(--accent);color:#fff}
+  .mbtn-post:hover{background:var(--accent-h);color:#fff}
+  .fab-post{display:none}
+}
 /* ─── BOTÃO FLUTUANTE E FALSO EDITOR ─── */
 .fab-post {
   position: fixed; right: 24px; bottom: 24px; z-index: 100;
@@ -955,6 +1016,9 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
       <input type="search" id="global-search" placeholder="Buscar jogadores, posts…" aria-label="Busca global" autocomplete="off">
     </div>
     <nav class="topnav" aria-label="Ações">
+      <button class="tbtn mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
       <a class="tbtn hide-sm" href="account.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         Conta
@@ -1121,6 +1185,85 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 
 </div><!-- /page-body -->
 
+<nav class="mobile-bottom-nav" aria-label="Navegação principal">
+  <button class="mbtn is-active" type="button" id="mobile-home-btn" aria-label="Feed">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+    Home
+  </button>
+  <button class="mbtn" type="button" id="mobile-search-btn" aria-label="Buscar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    Buscar
+  </button>
+  <button class="mbtn mbtn-post" type="button" id="mobile-post-btn" aria-label="Criar post">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Postar
+  </button>
+  <button class="mbtn" type="button" id="mobile-chat-btn" aria-label="Mensagens">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+    Chat
+  </button>
+  <button class="mbtn" type="button" id="mobile-profile-btn" aria-label="Meu perfil">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Perfil
+  </button>
+</nav>
+
+<div class="mobile-drawer-shell" id="mobile-side-menu" aria-hidden="true">
+  <aside class="mobile-drawer" role="dialog" aria-modal="true" aria-label="Menu da comunidade">
+    <div class="mobile-drawer-head">
+      <strong>Comunidade</strong>
+      <button class="close-btn" data-close-mobile-menu aria-label="Fechar menu">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <button class="mobile-drawer-profile" type="button" id="drawer-profile-btn">
+      <img id="drawer-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar">
+      <span><strong id="drawer-name">...</strong><small id="drawer-handle">@...</small></span>
+    </button>
+    <nav class="mobile-drawer-nav" aria-label="Atalhos da comunidade">
+      <button class="mobile-drawer-item is-active" type="button" data-drawer-filter="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Feed geral</span></button>
+      <button class="mobile-drawer-item" type="button" data-drawer-filter="following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg><span>Seguindo</span></button>
+      <button class="mobile-drawer-item" type="button" id="drawer-search-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Buscar</span></button>
+      <a class="mobile-drawer-item" href="account.html?tab=notificacoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificacoes</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
+      <a class="mobile-drawer-item" href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Minha conta</span></a>
+    </nav>
+    <div class="mobile-drawer-season">
+      <p class="eyebrow">Temporada ativa</p>
+      <h3>Season II</h3>
+      <p>Ganhe merito participando, fazendo amigos e puxando boas conversas no feed.</p>
+      <div class="progress-track"><div class="progress-bar" style="width:38%"></div></div>
+    </div>
+  </aside>
+</div>
+
+<div class="backdrop" id="search-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="search-title">
+    <div class="sheet-header">
+      <h2 id="search-title">Buscar na comunidade</h2>
+      <button class="close-btn" data-close="search-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="search-box" style="margin-bottom:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="search" id="modal-search-input" placeholder="Buscar perfis, posts, hashtags..." autocomplete="off">
+      </div>
+      <div class="search-panel-intro" id="search-empty-state">
+        <div>
+          <p class="profile-section-title"><strong>Em alta</strong><span>hashtags</span></p>
+          <div class="search-chip-row" id="search-trend-chips"></div>
+        </div>
+        <div>
+          <p class="profile-section-title"><strong>Buscas recentes</strong><span>salvas</span></p>
+          <div class="search-chip-row" id="search-recent-chips"></div>
+        </div>
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+</div>
+
 <!-- RELATION MODAL -->
 <div class="backdrop" id="rel-modal" aria-hidden="true" role="presentation">
   <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="rel-title">
@@ -1197,7 +1340,8 @@ if (!token) location.replace('login.html');
 const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
   players:[], notifs:[], notifUnread:0,
-  activePostId: null, mentionSuggestions:[], routeActive:false
+  activePostId: null, mentionSuggestions:[], routeActive:false,
+  searchQuery:'', hashtag:''
 };
 
 /* ======================= HELPERS ======================= */
@@ -1206,7 +1350,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = v => String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const mentionHTML = t => esc(t||'')
   .replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-token">@$2</span>')
-  .replace(/(^|[\s([{])#([a-z0-9_A-ZÀ-ÿ]{2,32})/gi,'$1<span class="mention-token" style="color:var(--accent-2)">#$2</span>');
+  .replace(/(^|[\s([{])#([a-z0-9_A-ZÀ-ÿ]{2,32})/gi,'$1<button class="mention-token hashtag-token" data-hashtag="$2" type="button">#$2</button>');
 const skin = (n,s=50) => `https://minotar.net/helm/${encodeURIComponent((n||'Steve').trim()||'Steve')}/${s}.png`;
 const num  = v => Number(v||0).toLocaleString('pt-BR');
 const time = v => {
@@ -1226,6 +1370,16 @@ function rankInfo(rank='',merit=0){
   if(id.includes('diamante')||merit>=450) return{label:'Diamante',color:'var(--rk-diamond)',cls:'rk-diamante'};
   if(id.includes('ouro')||merit>=150) return{label:'Ouro',color:'var(--rk-gold)',cls:'rk-ouro'};
   return{label:rank||'Ferro',color:'var(--rk-iron)',cls:'rk-ferro'};
+}
+function communityUrl(params={}){
+  const url = new URL('/community.html', location.origin);
+  Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
+  return url.pathname + url.search;
+}
+function communityShareUrl(params={}){
+  const url = new URL('/community.html', location.origin);
+  Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
+  return url.href;
 }
 
 /* ======================= API ======================= */
@@ -1252,12 +1406,19 @@ const Router={
   routes:{},
   register(pat,fn){ this.routes[pat]=fn; },
   navigate(path,{push=true,replace=false}={}){
-    if(replace) history.replaceState({},document.title,path);
-    else if(push) history.pushState({},document.title,path);
-    this.dispatch(path);
+    const navPath = path === '/community' ? communityUrl() : path;
+    if(replace) history.replaceState({},document.title,navPath);
+    else if(push) history.pushState({},document.title,navPath);
+    this.dispatch(navPath);
   },
-  dispatch(path=location.pathname){
-    const p=(path.split('?')[0].replace(/\/+$/,'')||'/community');
+  dispatch(path=location.pathname + location.search){
+    const url = new URL(path, location.origin);
+    const query = url.searchParams;
+    if(query.get('post')) return this.routes['/community/post/:id']?.(query.get('post'));
+    if(query.get('profile')) return this.routes['/profile/:id']?.(query.get('profile'));
+    if(query.get('tag')) return showHashtagRoute(query.get('tag'));
+    if(query.get('q')) return showSearchRoute(query.get('q'));
+    const p=(url.pathname.replace(/\/+$/,'')||'/community');
     for(const[pat,fn] of Object.entries(this.routes)){
       const rx=new RegExp('^'+pat.replace(/:[^/]+/g,'([^/]+)').replace(/\//g,'\\/')+'$');
       const m=p.match(rx);
@@ -1281,6 +1442,7 @@ const IC={
   heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
   comment:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+  repost:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>',
   edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
   pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>',
@@ -1435,6 +1597,9 @@ async function loadMe(){
   $('#mini-av').src=skin(n,100);
   $('#mini-name').textContent=n;
   $('#mini-handle').textContent=`@${me.username||n}`;
+  if($('#drawer-av')) $('#drawer-av').src=skin(n,50);
+  if($('#drawer-name')) $('#drawer-name').textContent=n;
+  if($('#drawer-handle')) $('#drawer-handle').textContent=`@${me.username||n}`;
   // Rank color cover
   const cover=$('#mini-cover');
   if(cover) cover.style.background=`linear-gradient(135deg,color-mix(in srgb,${rk.color} 85%,#000),color-mix(in srgb,var(--accent-2) 70%,#000))`;
@@ -1452,22 +1617,30 @@ function updateMiniStats(){
 /* ======================= FEED ======================= */
 function skels(n=3){return Array.from({length:n},()=>'<div class="post-skel skel"></div>').join('')}
 function postCardHTML(p){
-  const mc=p.minecraft_name||p.username||'Steve';
-  const rk=rankInfo(p.rank||p.role,p.merit);
-  const isMe=state.me&&Number(p.author_id)===Number(state.me.id);
+  const isRepost=Boolean(p.repost_of_id);
+  const reposter=p.minecraft_name||p.username||'Steve';
+  const mc=isRepost?(p.repost_original_minecraft_name||p.repost_original_username||'Steve'):reposter;
+  const authorId=isRepost?p.repost_original_author_id:p.author_id;
+  const username=isRepost?(p.repost_original_username||mc):(p.username||mc);
+  const rk=rankInfo(isRepost?(p.repost_original_rank||p.repost_original_role):(p.rank||p.role),isRepost?p.repost_original_merit:p.merit);
+  const targetPostId=p.repost_of_id||p.id;
+  const displayContent=isRepost?(p.repost_original_content||''):p.content;
+  const quoteContent=isRepost&&p.content?`<div class="repost-quote">${mentionHTML(p.content)}</div>`:'';
+  const isMe=state.me&&Number(authorId)===Number(state.me.id);
   const edited=p.updated_at&&new Date(p.updated_at)>new Date(p.created_at);
-  const canEdit=isMe&&((Date.now()-new Date(p.created_at))/60000)<=15;
+  const canEdit=!isRepost&&isMe&&((Date.now()-new Date(p.created_at))/60000)<=15;
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
-  const postUrl=`/community/post/${encodeURIComponent(p.id)}`;
-  return`<article class="post-card ${p.is_pinned?'is-pinned':''}" data-post-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
+  const postUrl=communityUrl({post:targetPostId});
+  return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
+    ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(reposter)} repostou</span></div>`:''}
     <div class="post-layout">
-      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(p.author_id)}" src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">
+      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">
       <div>
         <div class="post-head">
           <div class="post-author">
             ${p.is_pinned?`<span class="pin-flag">${IC.pin} Fixado</span>`:''}
-            <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(p.author_id)}" style="cursor:pointer">${esc(mc)}</strong>
-            <span class="handle">@${esc(p.username||mc)}</span>
+            <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" style="cursor:pointer">${esc(mc)}</strong>
+            <span class="handle">@${esc(username)}</span>
             <span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>
           </div>
           <div class="post-meta">
@@ -1486,11 +1659,13 @@ function postCardHTML(p){
             </div>
           </div>
         </div>
-        <div class="post-content">${mentionHTML(p.content)}</div>
+        ${quoteContent}
+        <div class="post-content">${mentionHTML(displayContent)}</div>
         ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>`<div class="preview-row">${IC.comment}<strong>${esc(c.minecraft_name||c.username||'?')}:</strong><span>${mentionHTML(c.content)}</span></div>`).join('')}${p.comments_count>2?`<button class="btn btn-ghost btn-xs" style="margin-top:3px" data-action="open-thread">Ver ${num(p.comments_count)} respostas →</button>`:''}</div>`:''}
         <div class="post-actions">
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${num(Number(p.comments_count) || 0)}</span></button>
+          <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${num(Number(p.reposts_count) || 0)}</span></button>
           <button class="pa pa-share" data-action="copy" aria-label="Compartilhar">${IC.share}</button>
         </div>
       </div>
@@ -1499,7 +1674,8 @@ function postCardHTML(p){
 }
 function emptyFeed(){
   const follow=state.filter==='following';
-  return`<div class="empty-card"><div class="empty-icon">${IC.empty}</div><h3>${follow?'Seu feed está quieto':'Nenhum post ainda'}</h3><p>${follow?'Siga jogadores para montar sua linha do tempo.':'Seja o primeiro a publicar algo aqui.'}</p></div>`;
+  const scoped=state.hashtag||state.searchQuery;
+  return`<div class="empty-card"><div class="empty-icon">${IC.empty}</div><h3>${scoped?'Nada encontrado':follow?'Seu feed está quieto':'Nenhum post ainda'}</h3><p>${scoped?'Tente outro termo ou volte para o feed geral.':follow?'Siga jogadores para montar sua linha do tempo.':'Seja o primeiro a publicar algo aqui.'}</p></div>`;
 }
 function renderFeed({append=false}={}){
   const list=$('#feed-list'),wrap=$('#feed-wrap');
@@ -1507,7 +1683,7 @@ function renderFeed({append=false}={}){
   if(append){
     $$('.post-skel').forEach(el=>el.remove());
     const existing=new Set($$('.post-card').map(el=>Number(el.dataset.postId)));
-    const html=state.posts.filter(p=>!existing.has(Number(p.id))).map(postCardHTML).join('');
+    const html=state.posts.filter(p=>!existing.has(Number(p.repost_of_id||p.id))).map(postCardHTML).join('');
     if(html) list.insertAdjacentHTML('beforeend',html);
   }else{
     list.innerHTML=state.posts.map(postCardHTML).join('');
@@ -1522,6 +1698,8 @@ async function loadFeed({reset=false}={}){
   if(reset){state.cursor=null;state.hasMore=true;state.posts=[];list.innerHTML=skels(3)}
   try{
     const p=new URLSearchParams({limit:'20',filter:state.filter});
+    if(state.searchQuery) p.set('search',state.searchQuery);
+    if(state.hashtag) p.set('hashtag',state.hashtag);
     if(state.cursor) p.set('cursor',state.cursor);
     const data=await api(`/api/community/posts?${p}`);
     const inc=Array.isArray(data.posts)?data.posts:[];
@@ -1599,7 +1777,7 @@ async function publishPost(type){
 }
 
 /* ======================= LIKE ======================= */
-function findPost(id){return state.posts.find(p=>Number(p.id)===Number(id))}
+function findPost(id){return state.posts.find(p=>Number(p.id)===Number(id)||Number(p.repost_of_id)===Number(id))}
 async function toggleLike(id,btn){
   const post=findPost(id);if(!post)return;
   const liked=Boolean(post.liked_by_me);
@@ -1615,6 +1793,29 @@ async function toggleLike(id,btn){
     post.liked_by_me=liked;post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?1:-1));
     btn?.classList.toggle('is-on',liked);const s2=btn?.querySelector('span');if(s2)s2.textContent=num(post.likes_count);
     toast('error','Like não salvo',e.message);
+  }
+}
+async function toggleRepost(id,btn){
+  const post=findPost(id)||state.posts.find(p=>Number(p.repost_of_id)===Number(id));
+  const reposted=Boolean(post?.reposted_by_me);
+  if(post){
+    post.reposted_by_me=!reposted;
+    post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?-1:1));
+  }
+  btn?.classList.toggle('is-on',!reposted);
+  const span=btn?.querySelector('span'); if(span) span.textContent=num(post?.reposts_count||0);
+  try{
+    await api(`/api/community/posts/${encodeURIComponent(id)}/repost`,{method:reposted?'DELETE':'POST',body:reposted?undefined:JSON.stringify({content:''})});
+    toast('success',reposted?'Repost removido':'Repost feito',reposted?'Saiu do seu feed.':'Agora aparece para quem segue você.');
+    if(!reposted) loadFeed({reset:true});
+  }catch(e){
+    if(post){
+      post.reposted_by_me=reposted;
+      post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?1:-1));
+    }
+    btn?.classList.toggle('is-on',reposted);
+    const s2=btn?.querySelector('span'); if(s2) s2.textContent=num(post?.reposts_count||0);
+    toast('error','Repost não concluído',e.message);
   }
 }
 
@@ -1649,7 +1850,7 @@ async function editPostInline(id,card){
 
 /* ======================= COPY LINK ======================= */
 async function copyLink(id){
-  const url=`${location.origin}/community/post/${encodeURIComponent(id)}`;
+  const url=communityShareUrl({post:id});
   try{await navigator.clipboard.writeText(url);toast('success','Link copiado!',url)}
   catch{toast('info','Copie manualmente',url)}
 }
@@ -1657,10 +1858,13 @@ async function copyLink(id){
 /* ======================= NAVIGATE ======================= */
 function navigatePost(id){
   state.activePostId=id;
-  Router.navigate(`/community/post/${encodeURIComponent(id)}`);
+  Router.navigate(communityUrl({post:id}));
 }
 function navigateProfile(identifier){
-  Router.navigate(`/profile/${encodeURIComponent(identifier)}`);
+  Router.navigate(communityUrl({profile:identifier}));
+}
+function navigateHashtag(tag){
+  Router.navigate(communityUrl({tag:String(tag||'').replace(/^#/,'')}));
 }
 
 /* ======================= RENDER POST ROUTE ======================= */
@@ -1747,6 +1951,8 @@ function bindThreadEvents(post,id){
   const col=$('#route-col');
   col.addEventListener('click',e=>{
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
+    const jp=e.target.closest('.js-profile');
+    if(jp&&!e.target.closest('button')){const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc)navigateProfile(mc);return}
     const menu=e.target.closest('[data-action]');
     if(!menu)return;
     const act=menu.dataset.action;
@@ -1755,8 +1961,6 @@ function bindThreadEvents(post,id){
     if(act==='delete-thread'){deletePost(id);return}
     if(act==='report-thread'){reportContent('post',id);return}
     if(act==='copy-thread'){copyLink(id);return}
-    const jp=e.target.closest('.js-profile');
-    if(jp&&!e.target.closest('button')){const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc)navigateProfile(mc);return}
   });
   $('#thread-like')?.addEventListener('click',async()=>{
     const btn=$('#thread-like');const liked=Boolean(post.liked_by_me);
@@ -1833,6 +2037,24 @@ async function renderProfileRoute(identifier){
     const mc=prof.minecraft_name||prof.username||'Steve';
     const rk=rankInfo(prof.rank||prof.role,prof.merit);
     const isMe=Number(prof.id)===Number(state.me?.id);
+    const profilePosts=posts.map(p=>({
+      ...p,
+      author_id:prof.id,
+      username:prof.username,
+      minecraft_name:mc,
+      role:prof.role,
+      rank:prof.rank,
+      merit:prof.merit,
+      recent_comments:Array.isArray(p.recent_comments)?p.recent_comments:[],
+      comments_count:Number(p.comments_count||0),
+      likes_count:Number(p.likes_count||0),
+      reposts_count:Number(p.reposts_count||0),
+    }));
+    profilePosts.forEach(post=>{
+      const idx=state.posts.findIndex(item=>Number(item.id)===Number(post.id));
+      if(idx>=0) state.posts[idx]={...state.posts[idx],...post};
+      else state.posts.push(post);
+    });
     document.title=`${mc} | Força Aliada`;
     const bars=stats?.daily_hours?.length
       ?stats.daily_hours.map(d=>`<span style="height:${Math.max(4,Math.min(44,Number(d.hours||0)*10))}px"></span>`).join('')
@@ -1862,17 +2084,22 @@ async function renderProfileRoute(identifier){
             <div class="pstat"><strong>${num(prof.posts_count||0)}</strong><small>Posts</small></div>
             <div class="pstat"><strong>${num(prof.merit||0)}</strong><small>Mérito</small></div>
           </div>
+          <div class="profile-tabs2" role="tablist" aria-label="Seções do perfil">
+            <button class="is-active" type="button" data-profile-jump="posts">Posts</button>
+            <button type="button" data-profile-jump="about">Sobre</button>
+            <button type="button" data-profile-jump="badges">Conquistas</button>
+          </div>
         </div>
       </div>
       <div class="profile-content-grid">
-        <section class="profile-main-feed">
-          <div class="profile-section-title"><strong>Posts recentes</strong><span>${num(posts.length)} visiveis</span></div>
-          <div class="posts-mini-grid">
-            ${posts.length?posts.map(p=>`<article class="post-tile" data-post-id="${p.id}"><p>${mentionHTML(p.content)}</p><div class="tile-meta">${IC.heart} ${num(p.likes_count)} · ${IC.comment} ${num(p.comments_count)}</div></article>`).join(''):'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhum post público.</p></div>'}
+        <section class="profile-main-feed" id="profile-posts-section">
+          <div class="profile-section-title"><strong>Posts</strong><span>${num(profilePosts.length)} visíveis</span></div>
+          <div class="profile-feed-stack">
+            ${profilePosts.length?profilePosts.map(postCardHTML).join(''):'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhum post público.</p></div>'}
           </div>
         </section>
         <aside class="profile-side">
-          <div class="profile-about-card">
+          <div class="profile-about-card" id="profile-about-section">
             <div class="profile-section-title"><strong>Servidor</strong><span>Status</span></div>
             <div class="profile-about-grid" style="margin-top:10px">
               <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'Privado'}</div></div>
@@ -1886,7 +2113,7 @@ async function renderProfileRoute(identifier){
             <p style="font-size:12px;color:var(--ink-2);margin-top:5px;line-height:1.35">${esc((prof.rank_benefits||[]).join(' · ')||'Progresso inicial da comunidade.')}</p>
           </div>
           <div class="profile-section-title"><strong>Conquistas</strong><span>${num(badges.length)}</span></div>
-          <div class="badge-list">
+          <div class="badge-list" id="profile-badges-section">
             ${badges.map(b=>`<div class="badge-mini" title="${esc(b.description)}"><strong>${esc(b.label)}</strong><span>${esc(b.description)} · ${num(b.progress||0)}%</span></div>`).join('')||'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhuma conquista.</p></div>'}
           </div>
         </aside>
@@ -1900,13 +2127,19 @@ async function renderProfileRoute(identifier){
       const msg=e.target.closest('[data-pf-message]');
       if(msg){window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
       if(e.target.closest('[data-profile-edit]')){openCommunityProfileEditor();return}
+      const jump=e.target.closest('[data-profile-jump]');
+      if(jump){
+        $$('.profile-tabs2 button').forEach(btn=>btn.classList.toggle('is-active',btn===jump));
+        const targetId=jump.dataset.profileJump==='about'?'#profile-about-section':jump.dataset.profileJump==='badges'?'#profile-badges-section':'#profile-posts-section';
+        routeCol.querySelector(targetId)?.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
       const rr=e.target.closest('[data-pf-report]');if(rr){reportContent('user',rr.dataset.uid);return}
       const rb=e.target.closest('[data-pf-block]');
       if(rb){const unblock=rb.textContent.trim().toLowerCase().includes('desbloquear');blockUser(rb.dataset.uid,unblock);return}
       const rl=e.target.closest('[data-rel]');if(rl){openRelModal(rl.dataset.rel,rl.dataset.mc,rl.dataset.uid);return}
       const jp=e.target.closest('.js-profile');
       if(jp&&!e.target.closest('button')){const mc2=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;if(mc2)navigateProfile(mc2);return}
-      if(e.target.closest('.post-more-wrap')){const m=e.target.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
     };
   }catch(e){
     showRouteUI(`<div class="route-top"><button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button></div><div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Perfil indisponível</h3><p>${esc(e.message)}</p></div>`);
@@ -2022,16 +2255,64 @@ async function loadTrending(){
     const data = await api('/api/community/trending-hashtags');
     const trends = Array.isArray(data) ? data : (data.trends || []);
     if(!trends.length){ list.innerHTML = '<p style="font-size:12px;color:var(--ink-3);padding:10px 0;text-align:center">Nenhum assunto no momento.</p>'; return; }
-    list.innerHTML = trends.slice(0,5).map(t => `<div class="trend-item"><span class="hashtag">#${esc(t.tag||t.hashtag)}</span><span class="count">${num(t.count||t.posts_count)} posts</span></div>`).join('');
+    list.innerHTML = trends.slice(0,5).map(t => `<button class="trend-item" data-tag="${esc(t.tag||t.hashtag)}" type="button"><span class="hashtag">#${esc(t.tag||t.hashtag)}</span><span class="count">${num(t.count||t.posts_count)} posts</span></button>`).join('');
   } catch(e) {
     list.innerHTML = '<p style="font-size:12px;color:var(--ink-3);padding:10px 0;text-align:center">Assuntos em alta indisponíveis.</p>';
   }
 }
 
+const SEARCH_KEY='fa_recent_community_searches';
+function recentSearches(){
+  try{return JSON.parse(localStorage.getItem(SEARCH_KEY)||'[]').filter(Boolean).slice(0,8)}
+  catch{return[]}
+}
+function saveSearch(term){
+  const clean=String(term||'').trim(); if(!clean)return;
+  const next=[clean,...recentSearches().filter(item=>item.toLowerCase()!==clean.toLowerCase())].slice(0,8);
+  localStorage.setItem(SEARCH_KEY,JSON.stringify(next));
+}
+async function openSearchModal(seed=''){
+  openModal('search-modal');
+  const input=$('#modal-search-input');
+  input.value=seed||'';
+  renderSearchHome();
+  setTimeout(()=>input.focus(),80);
+  if(seed) runGlobalSearch(seed);
+}
+async function renderSearchHome(){
+  $('#search-results').innerHTML='';
+  $('#search-empty-state').style.display='grid';
+  $('#search-recent-chips').innerHTML=recentSearches().map(t=>`<button class="search-chip" data-search-term="${esc(t)}" type="button">${esc(t)}</button>`).join('')||'<span style="font-size:12px;color:var(--ink-3)">Nenhuma busca salva ainda.</span>';
+  try{
+    const data=await api('/api/community/trending-hashtags');
+    const trends=(data.trends||[]).slice(0,8);
+    $('#search-trend-chips').innerHTML=trends.map(t=>`<button class="search-chip" data-hashtag="${esc(t.tag)}" type="button">#${esc(t.tag)}</button>`).join('')||'<span style="font-size:12px;color:var(--ink-3)">Sem assuntos em alta.</span>';
+  }catch{$('#search-trend-chips').innerHTML='<span style="font-size:12px;color:var(--ink-3)">Indisponível.</span>'}
+}
+async function runGlobalSearch(term){
+  const q=String(term||'').trim();
+  const box=$('#search-results');
+  if(!q){renderSearchHome();return}
+  $('#search-empty-state').style.display='none';
+  box.innerHTML=Array.from({length:4},()=>'<div class="skel" style="height:56px;border-radius:10px"></div>').join('');
+  try{
+    const [players,posts]=await Promise.all([
+      api(`/api/community/players?limit=6&search=${encodeURIComponent(q)}`),
+      api(`/api/community/posts?limit=8&search=${encodeURIComponent(q)}`)
+    ]);
+    const prow=Array.isArray(players)?players:[];
+    const postRows=Array.isArray(posts.posts)?posts.posts:[];
+    box.innerHTML=[
+      ...prow.map(p=>{const n=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);return`<button class="search-result js-profile" data-mc="${esc(n)}" type="button"><img src="${skin(n,50)}" alt="${esc(n)}"><span><strong>${esc(n)}</strong><small>@${esc(p.username||n)} · ${esc(rk.label)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`}),
+      ...postRows.map(p=>{const id=p.repost_of_id||p.id;const n=p.repost_original_minecraft_name||p.minecraft_name||p.username||'Steve';const text=p.repost_original_content||p.content||'';return`<button class="search-result search-result-post" data-search-post="${esc(id)}" type="button"><span><strong>${esc(n)}</strong><small>${esc(text.slice(0,120))}</small></span><span>${esc(time(p.created_at))}</span></button>`})
+    ].join('')||'<div class="empty-card"><p>Nenhum resultado encontrado.</p></div>';
+  }catch(e){box.innerHTML=`<div class="empty-card"><p>${esc(e.message)}</p></div>`}
+}
+
 /* ======================= NOTIFICATIONS ======================= */
 function notifText(n){
   const a=n.actor_minecraft_name||n.actor_username||'Alguém';
-  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,friend_joined:`${a} entrou na comunidade`};
+  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,repost:`${a} repostou seu post`,friend_joined:`${a} entrou na comunidade`};
   return map[n.type]||'Nova notificação';
 }
 async function loadNotifs(){
@@ -2041,10 +2322,11 @@ async function loadNotifs(){
   }catch{renderNotifs()}
 }
 function renderNotifs(){
-  const dot=$('#notif-dot');const badge=$('#nav-notif-badge');
+  const dot=$('#notif-dot');const badge=$('#nav-notif-badge');const drawerBadge=$('#drawer-notif-badge');
   const hasUnread=state.notifUnread>0;
   if(dot){dot.hidden=!hasUnread;dot.textContent=state.notifUnread>9?'9+':String(state.notifUnread||0);}
   if(badge){badge.hidden=!hasUnread;badge.textContent=state.notifUnread>9?'9+':String(state.notifUnread||0);}
+  if(drawerBadge){drawerBadge.hidden=!hasUnread;drawerBadge.textContent=state.notifUnread>9?'9+':String(state.notifUnread||0);}
   const list=$('#notif-list');
   list.innerHTML=state.notifs.length?state.notifs.map(n=>{
     const nm=n.actor_minecraft_name||n.actor_username||'Steve';
@@ -2054,7 +2336,26 @@ function renderNotifs(){
 
 /* ======================= ROUTE HANDLERS ======================= */
 function showFeedRoute(){
+  const hadScope=Boolean(state.searchQuery||state.hashtag);
+  state.searchQuery='';state.hashtag='';
   showFeedUI();document.title='Comunidade | Força Aliada';
+  const header=$('.col-header h1'); if(header) header.textContent='Comunidade';
+  const sub=$('.col-header p'); if(sub) sub.textContent='Novidades, conquistas e conversas do servidor.';
+  if(hadScope) loadFeed({reset:true});
+}
+function showHashtagRoute(tag){
+  state.searchQuery='';state.hashtag=String(tag||'').replace(/^#/,'').trim();
+  showFeedUI();document.title=`#${state.hashtag} | Força Aliada`;
+  const header=$('.col-header h1'); if(header) header.textContent=`#${state.hashtag}`;
+  const sub=$('.col-header p'); if(sub) sub.textContent='Posts filtrados por hashtag.';
+  loadFeed({reset:true});
+}
+function showSearchRoute(query){
+  state.hashtag='';state.searchQuery=String(query||'').trim();
+  showFeedUI();document.title=`Busca: ${state.searchQuery} | Força Aliada`;
+  const header=$('.col-header h1'); if(header) header.textContent='Resultados';
+  const sub=$('.col-header p'); if(sub) sub.textContent=`Busca por "${state.searchQuery}" em posts e perfis.`;
+  loadFeed({reset:true});
 }
 
 /* ======================= EVENT DELEGATION ======================= */
@@ -2091,10 +2392,65 @@ function bindEvents(){
       if(v) loadPlayers(v);
     },280);
   });
+  $('#global-search')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      const q=e.currentTarget.value.trim();
+      if(q){saveSearch(q);Router.navigate(communityUrl({q}));}
+    }
+  });
+  $('#global-search')?.addEventListener('focus',e=>openSearchModal(e.currentTarget.value.trim()));
+  let modalSearchTimer=null;
+  $('#modal-search-input')?.addEventListener('input',e=>{
+    clearTimeout(modalSearchTimer);
+    modalSearchTimer=setTimeout(()=>runGlobalSearch(e.target.value.trim()),220);
+  });
+  $('#modal-search-input')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      const q=e.currentTarget.value.trim(); if(!q)return;
+      saveSearch(q); closeModal('search-modal'); Router.navigate(communityUrl({q}));
+    }
+  });
+  $('#mobile-home-btn')?.addEventListener('click',()=>Router.navigate('/community'));
+  $('#mobile-search-btn')?.addEventListener('click',()=>openSearchModal());
+  $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
+  $('#mobile-chat-btn')?.addEventListener('click',()=>window.FAChat?.open());
+  $('#mobile-profile-btn')?.addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
+  const mobileMenu=$('#mobile-side-menu');
+  const closeMobileMenu=()=>{
+    mobileMenu?.classList.remove('show');
+    mobileMenu?.setAttribute('aria-hidden','true');
+    document.body.classList.remove('modal-open');
+  };
+  $('#mobile-menu-btn')?.addEventListener('click',()=>{
+    mobileMenu?.classList.add('show');
+    mobileMenu?.setAttribute('aria-hidden','false');
+    document.body.classList.add('modal-open');
+  });
+  mobileMenu?.addEventListener('click',e=>{
+    if(e.target===mobileMenu||e.target.closest('[data-close-mobile-menu]')){closeMobileMenu();return}
+    const filter=e.target.closest('[data-drawer-filter]');
+    if(filter){
+      closeMobileMenu();
+      Router.navigate('/community');
+      switchTab(filter.dataset.drawerFilter);
+      $$('.mobile-drawer-item[data-drawer-filter]').forEach(btn=>btn.classList.toggle('is-active',btn===filter));
+      return;
+    }
+    if(e.target.closest('#drawer-search-btn')){closeMobileMenu();openSearchModal();return}
+    if(e.target.closest('#drawer-profile-btn')){closeMobileMenu();if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);return}
+  });
 
   document.addEventListener('click',e=>{
     if(!e.target.closest('.notif-wrap')) $('#notif-menu')?.classList.remove('show');
     if(!e.target.closest('.post-more-wrap')) $$('.post-menu.show').forEach(m=>m.classList.remove('show'));
+    const hash=e.target.closest('[data-hashtag]');
+    if(hash){e.preventDefault();e.stopPropagation();closeModal('search-modal');navigateHashtag(hash.dataset.hashtag);return}
+    const searchTerm=e.target.closest('[data-search-term]');
+    if(searchTerm){const q=searchTerm.dataset.searchTerm;$('#modal-search-input').value=q;runGlobalSearch(q);return}
+    const searchPost=e.target.closest('[data-search-post]');
+    if(searchPost){closeModal('search-modal');navigatePost(searchPost.dataset.searchPost);return}
+    const trend=e.target.closest('.trend-item');
+    if(trend?.dataset.tag){e.preventDefault();navigateHashtag(trend.dataset.tag);return}
     const closeBtn=e.target.closest('[data-close]');if(closeBtn){closeModal(closeBtn.dataset.close);return}
     if(e.target.classList.contains('backdrop')&&e.target.id) closeModal(e.target.id);
     const pick=e.target.closest('[data-pick]');if(pick){e.preventDefault();insertMention(pick.dataset.pick);return}
@@ -2122,6 +2478,7 @@ function bindEvents(){
         if(a==='menu'){const m=act.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
+        if(a==='repost'){toggleRepost(id,act.closest('.pa-repost'));return}
         if(a==='edit'){editPostInline(id,postCard);return}
         if(a==='delete'){deletePost(id);return}
         if(a==='report'){reportContent('post',id);return}
