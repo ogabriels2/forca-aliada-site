@@ -4799,48 +4799,6 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   }
 });
 
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query(
-      'INSERT INTO post_comments(post_id, author_id, content) VALUES($1, $2, $3) RETURNING id',
-      [postId, req.user.sub, content]
-    );
-    const newComment = rows[0];
-
-    // Processa Menções no Comentário
-    const mentions = extractMentions(content);
-    if (mentions.length > 0) {
-      const { rows: mentionedUsers } = await client.query(
-        'SELECT id, minecraft_name, username FROM users WHERE LOWER(username) = ANY($1) OR LOWER(minecraft_name) = ANY($1)',
-        [mentions]
-      );
-      for (const mUser of mentionedUsers) {
-        if (mUser.id === req.user.sub) continue; // Não notifica a si mesmo
-        await client.query(
-          "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('comment', $1, $2)",
-          [newComment.id, mUser.id]
-        );
-        const targetName = mUser.minecraft_name || mUser.username;
-        const authorName = req.user.minecraft_name || req.user.username;
-        await createMinecraftNotification({
-          minecraftName: targetName,
-          title: 'Você foi mencionado!',
-          body: `${authorName} mencionou você em um comentário: "${content.substring(0, 40)}..."`,
-          type: 'social', icon: '💬', createdBy: req.user.sub
-        });
-      }
-    }
-    await client.query('COMMIT');
-    res.status(201).json({ ok: true, id: newComment.id });
-  } catch (e) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: 'Erro ao comentar' });
-  } finally {
-    client.release();
-  }
-
 // ── LISTAS DE SEGUIDORES / SEGUINDO ──
 app.delete('/api/community/posts/:postId/comments/:commentId', auth, async (req, res) => {
   const postId = parseInt(req.params.postId, 10);
