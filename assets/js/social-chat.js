@@ -15,17 +15,24 @@
     tab: 'conversations',
     me: null,
     conversations: [],
+    groups: [],
     friends: [],
     requests: [],
     people: [],
     current: null,
+    currentKind: null,
     messages: [],
     unread: 0,
     search: '',
+    groupCreating: false,
+    groupName: '',
+    groupMemberIds: [],
     busy: false,
     error: '',
     loadingConversations: false,
+    loadingGroups: false,
     loadingFriends: false,
+    loadingMessages: false,
     warmed: false,
   };
 
@@ -35,11 +42,14 @@
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg>',
     user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+    group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   };
 
   const root = document.createElement('div');
   root.id = 'fa-chat-root';
   document.body.appendChild(root);
+  let fabObserver = null;
 
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({
     '&': '&amp;',
@@ -56,6 +66,7 @@
     || 'Steve';
 
   const handleOf = person => person?.username || person?.other_username || nameOf(person);
+  const groupNameOf = group => group?.name || 'Grupo';
   const skin = (name, size = 50) => `https://minotar.net/helm/${encodeURIComponent((name || 'Steve').trim() || 'Steve')}/${size}.png`;
   const rel = value => {
     if (!value) return '';
@@ -67,6 +78,7 @@
     if (diff < 172800) return 'ontem';
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
@@ -88,7 +100,7 @@
   }
 
   function render() {
-    root.classList.toggle('fa-chat-has-fab', Boolean(document.querySelector('.fab-post')));
+    syncFabPosition();
     root.innerHTML = `
       <button class="fa-chat-launcher" type="button" data-chat-toggle aria-label="Mensagens" aria-expanded="${state.open ? 'true' : 'false'}">
         ${icons.chat}
@@ -126,19 +138,45 @@
     }
   }
 
+  function syncFabPosition() {
+    const fab = document.querySelector('.fab-post');
+    const mobileNav = document.querySelector('.mobile-bottom-nav');
+    root.classList.toggle('fa-chat-has-mobile-nav', Boolean(mobileNav));
+    if (!fab) {
+      root.classList.remove('fa-chat-has-fab');
+      return;
+    }
+    const rect = fab.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1 || getComputedStyle(fab).display === 'none') {
+      root.classList.remove('fa-chat-has-fab');
+      return;
+    }
+    root.classList.add('fa-chat-has-fab');
+    const styles = getComputedStyle(fab);
+    root.style.setProperty('--fa-chat-fab-right', `${Math.max(14, window.innerWidth - rect.right)}px`);
+    root.style.setProperty('--fa-chat-fab-width', `${Math.ceil(rect.width)}px`);
+    root.style.setProperty('--fa-chat-fab-bottom', styles.bottom || `${Math.max(14, window.innerHeight - rect.bottom)}px`);
+  }
+
+  function recalcUnread() {
+    const directUnread = state.conversations.reduce((sum, conv) => sum + Number(conv.unread_count || 0), 0);
+    const groupUnread = state.groups.reduce((sum, group) => sum + Number(group.unread_count || 0), 0);
+    state.unread = directUnread + groupUnread;
+  }
+
   function updateConversationList() {
     const list = root.querySelector('.fa-chat-list');
-    if (!list || state.current || state.tab !== 'conversations') return;
-    list.innerHTML = renderConversations();
+    if (!list || state.current) return;
+    if (state.tab === 'conversations') list.innerHTML = renderConversations();
+    if (state.tab === 'groups') list.innerHTML = renderGroups();
+    if (state.tab === 'friends') list.innerHTML = renderFriends();
     updateLauncherBadge();
   }
 
   function updateMessagesList({ scroll = false } = {}) {
     const list = root.querySelector('[data-chat-messages]');
     if (!list || !state.current) return;
-    list.innerHTML = state.messages.length
-      ? state.messages.map(message => renderMessage(message)).join('')
-      : '<div class="fa-chat-empty"><strong>Comece a conversa</strong>Mensagens diretas ficam aqui.</div>';
+    list.innerHTML = renderMessagesContent();
     if (scroll) updateScroll();
   }
 
@@ -146,13 +184,14 @@
     return `
       <div class="fa-chat-tabs" role="tablist">
         <button class="fa-chat-tab ${state.tab === 'conversations' ? 'is-active' : ''}" type="button" data-chat-tab="conversations">Conversas</button>
+        <button class="fa-chat-tab ${state.tab === 'groups' ? 'is-active' : ''}" type="button" data-chat-tab="groups">Grupos</button>
         <button class="fa-chat-tab ${state.tab === 'friends' ? 'is-active' : ''}" type="button" data-chat-tab="friends">Amigos</button>
       </div>
       <div class="fa-chat-body">
         <div class="fa-chat-search">
-          <input type="search" data-chat-search placeholder="${state.tab === 'friends' ? 'Buscar pessoas' : 'Buscar conversa'}" value="${esc(state.search)}" autocomplete="off">
+          <input type="search" data-chat-search placeholder="${state.tab === 'friends' ? 'Buscar pessoas' : state.tab === 'groups' ? 'Buscar grupos ou membros' : 'Buscar conversa'}" value="${esc(state.search)}" autocomplete="off">
         </div>
-        <div class="fa-chat-list">${state.tab === 'friends' ? renderFriends() : renderConversations()}</div>
+        <div class="fa-chat-list">${state.tab === 'friends' ? renderFriends() : state.tab === 'groups' ? renderGroups() : renderConversations()}</div>
       </div>`;
   }
 
@@ -194,6 +233,69 @@
     return `${requestHtml}<div class="fa-chat-empty" style="padding:10px 8px;text-align:left"><strong>${state.search.trim() ? 'Resultados' : 'Amigos'}</strong></div>${listHtml}`;
   }
 
+  function renderGroups() {
+    if (state.groupCreating) return renderGroupCreator();
+    const term = state.search.trim().toLowerCase();
+    const rows = state.groups.filter(group => {
+      const name = groupNameOf(group).toLowerCase();
+      const preview = String(group.last_message_body || group.last_sender_name || '').toLowerCase();
+      return !term || name.includes(term) || preview.includes(term);
+    });
+    const create = `
+      <button class="fa-chat-new-group" type="button" data-chat-new-group>
+        <span>${icons.plus}</span>
+        <strong>Novo grupo</strong>
+        <small>Converse com varios amigos em um so lugar</small>
+      </button>`;
+    if (state.loadingGroups && !rows.length) return `${create}${loadingRows()}`;
+    if (!rows.length) {
+      return `${create}<div class="fa-chat-empty"><strong>Nenhum grupo ainda</strong>Crie um grupo com amigos ou seguidores para conversar melhor.</div>`;
+    }
+    return create + rows.map(group => {
+      const name = groupNameOf(group);
+      const preview = group.last_message_body
+        ? `${group.last_sender_name || 'Alguem'}: ${group.last_message_body}`
+        : `${Number(group.member_count || 0)} membros`;
+      return `
+        <button class="fa-chat-row ${group.unread_count ? 'is-unread' : ''}" type="button" data-chat-group="${esc(group.id)}">
+          <span class="fa-chat-group-av">${icons.group}</span>
+          <span class="fa-chat-row-meta"><strong>${esc(name)}</strong><small>${esc(preview)}</small></span>
+          ${group.unread_count ? `<span class="fa-chat-pill">${esc(group.unread_count)}</span>` : `<small>${esc(rel(group.last_message_at || group.group_last_message_at || group.created_at))}</small>`}
+        </button>`;
+    }).join('');
+  }
+
+  function renderGroupCreator() {
+    const selected = new Set(state.groupMemberIds.map(String));
+    const source = state.search.trim() ? state.people : state.friends;
+    const rows = source.filter(person => !state.me || Number(person.id) !== Number(state.me.id));
+    return `
+      <form class="fa-chat-group-maker" data-chat-group-form>
+        <div class="fa-chat-maker-head">
+          <button class="fa-chat-icon-btn" type="button" data-chat-cancel-group aria-label="Voltar">${icons.back}</button>
+          <div><strong>Novo grupo</strong><small>${selected.size ? `${selected.size} selecionado${selected.size > 1 ? 's' : ''}` : 'Escolha pelo menos uma pessoa'}</small></div>
+        </div>
+        <input class="fa-chat-group-name" data-chat-group-name maxlength="80" placeholder="Nome do grupo" value="${esc(state.groupName)}" autocomplete="off">
+        <div class="fa-chat-selected">${selected.size ? state.groupMemberIds.map(id => {
+          const person = [...state.friends, ...state.people].find(item => String(item.id) === String(id));
+          return `<span>${esc(nameOf(person || { username: `#${id}` }))}</span>`;
+        }).join('') : '<small>Os grupos ajudam a reunir amigos, squads e times sem misturar conversas diretas.</small>'}</div>
+        <div class="fa-chat-member-list">
+          ${state.loadingFriends && !rows.length ? loadingRows() : rows.length ? rows.map(person => {
+            const name = nameOf(person);
+            const checked = selected.has(String(person.id));
+            return `
+              <button class="fa-chat-member ${checked ? 'is-selected' : ''}" type="button" data-chat-member-toggle="${esc(person.id)}">
+                <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
+                <span><strong>${esc(name)}</strong><small>@${esc(handleOf(person))}</small></span>
+                <i>${checked ? '✓' : '+'}</i>
+              </button>`;
+          }).join('') : '<div class="fa-chat-empty"><strong>Ninguem encontrado</strong>Busque amigos ou perfis publicos.</div>'}
+        </div>
+        <button class="fa-chat-create" type="submit" ${state.busy || !state.groupName.trim() || !selected.size ? 'disabled' : ''}>Criar grupo</button>
+      </form>`;
+  }
+
   function friendRow(person, canFollowBack) {
     const name = nameOf(person);
     const meta = person.bio || (person.is_online ? 'Online agora' : `${person.rank || 'Ferro'} - ${Number(person.followers_count || 0).toLocaleString('pt-BR')} seg.`);
@@ -211,17 +313,18 @@
 
   function renderThread() {
     const conv = state.current;
-    const name = nameOf(conv);
+    const isGroup = state.currentKind === 'group';
+    const name = isGroup ? groupNameOf(conv) : nameOf(conv);
     return `
       <div class="fa-chat-thread">
         <div class="fa-chat-peerbar">
           <button class="fa-chat-icon-btn" type="button" data-chat-back aria-label="Voltar">${icons.back}</button>
-          <img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
-          <div><strong>${esc(name)}</strong><small>@${esc(handleOf(conv))}${conv.is_friend ? ' - amigo' : ''}</small></div>
-          <button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>
+          ${isGroup ? `<span class="fa-chat-peer-av fa-chat-group-av">${icons.group}</span>` : `<img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">`}
+          <div><strong>${esc(name)}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${conv.is_friend ? ' - amigo' : ''}`}</small></div>
+          ${isGroup ? '<span></span>' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>`}
         </div>
         <div class="fa-chat-messages" data-chat-messages>
-          ${state.messages.length ? state.messages.map(message => renderMessage(message)).join('') : '<div class="fa-chat-empty"><strong>Comece a conversa</strong>Mensagens diretas ficam aqui.</div>'}
+          ${renderMessagesContent()}
         </div>
         <form class="fa-chat-compose" data-chat-form>
           <textarea data-chat-input maxlength="500" rows="1" placeholder="Digite uma mensagem" aria-label="Mensagem"></textarea>
@@ -230,11 +333,22 @@
       </div>`;
   }
 
+  function renderMessagesContent() {
+    if (state.loadingMessages) return `<div class="fa-chat-message-loading">${loadingRows()}</div>`;
+    if (state.messages.length) return state.messages.map(message => renderMessage(message)).join('');
+    const preview = state.current?.last_message_body;
+    if (preview) {
+      return `<div class="fa-chat-empty"><strong>Historico sincronizando</strong>A conversa existe, mas as mensagens ainda nao chegaram desta sessao. Tente atualizar em alguns segundos.</div>`;
+    }
+    return `<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
+  }
+
   function renderMessage(message) {
     const isMe = Number(message.sender_id) === Number(state.me?.id);
+    const sender = message.minecraft_name || message.username || 'Steve';
     return `
       <div class="fa-chat-bubble-row ${isMe ? 'is-me' : ''}">
-        <div class="fa-chat-bubble">${esc(message.body)}<time>${esc(rel(message.created_at))}</time></div>
+        <div class="fa-chat-bubble">${state.currentKind === 'group' && !isMe ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : ''}${esc(message.body)}<time>${esc(rel(message.created_at))}</time></div>
       </div>`;
   }
 
@@ -267,9 +381,20 @@
     try {
       const data = await api('/api/me/conversations?limit=30');
       state.conversations = Array.isArray(data.rows) ? data.rows : [];
-      state.unread = state.conversations.reduce((sum, conv) => sum + Number(conv.unread_count || 0), 0);
+      recalcUnread();
     } catch (e) {
       state.error = e.message || 'Nao foi possivel carregar.';
+    }
+  }
+
+  async function loadGroups() {
+    try {
+      const data = await api('/api/me/group-conversations?limit=30');
+      state.groups = Array.isArray(data.rows) ? data.rows : [];
+      recalcUnread();
+    } catch {
+      state.groups = [];
+      recalcUnread();
     }
   }
 
@@ -305,13 +430,15 @@
     state.open = true;
     state.error = '';
     state.loadingConversations = !state.conversations.length;
+    state.loadingGroups = !state.groups.length;
     state.loadingFriends = !state.friends.length;
     render();
     try {
       await ensureMe();
-      await Promise.all([loadConversations(), loadFriends()]);
+      await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
     } finally {
       state.loadingConversations = false;
+      state.loadingGroups = false;
       state.loadingFriends = false;
       render();
     }
@@ -324,11 +451,20 @@
 
   async function openConversation(conv) {
     state.current = conv;
+    state.currentKind = 'direct';
     state.messages = [];
+    state.loadingMessages = true;
     render();
     try {
-      const data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=50`);
-      state.messages = Array.isArray(data.rows) ? data.rows : [];
+      let data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=50`);
+      let rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length && conv.last_message_id) {
+        await wait(450);
+        data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=50&t=${Date.now()}`);
+        rows = Array.isArray(data.rows) ? data.rows : [];
+      }
+      state.messages = rows;
+      state.loadingMessages = false;
       conv.unread_count = 0;
       await loadConversations();
       state.current = state.conversations.find(item => Number(item.id) === Number(conv.id)) || conv;
@@ -336,6 +472,36 @@
       updateScroll();
     } catch (e) {
       state.messages = [];
+      state.loadingMessages = false;
+      state.error = e.message;
+      render();
+    }
+  }
+
+  async function openGroupConversation(group) {
+    state.current = group;
+    state.currentKind = 'group';
+    state.messages = [];
+    state.loadingMessages = true;
+    render();
+    try {
+      let data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=50`);
+      let rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length && group.last_message_id) {
+        await wait(450);
+        data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=50&t=${Date.now()}`);
+        rows = Array.isArray(data.rows) ? data.rows : [];
+      }
+      state.messages = rows;
+      state.loadingMessages = false;
+      group.unread_count = 0;
+      await loadGroups();
+      state.current = state.groups.find(item => Number(item.id) === Number(group.id)) || group;
+      render();
+      updateScroll();
+    } catch (e) {
+      state.messages = [];
+      state.loadingMessages = false;
       state.error = e.message;
       render();
     }
@@ -343,7 +509,8 @@
 
   async function refreshCurrentMessages() {
     if (!state.current || state.busy) return;
-    const data = await api(`/api/me/conversations/${encodeURIComponent(state.current.id)}/messages?limit=50`);
+    const isGroup = state.currentKind === 'group';
+    const data = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages?limit=50`);
     const nextMessages = Array.isArray(data.rows) ? data.rows : [];
     const before = state.messages.map(item => item.id).join(',');
     const after = nextMessages.map(item => item.id).join(',');
@@ -355,8 +522,13 @@
       state.messages = nextMessages;
       updateMessagesList({ scroll: wasNearBottom });
     }
-    await loadConversations();
-    state.current = state.conversations.find(item => Number(item.id) === Number(state.current.id)) || state.current;
+    if (isGroup) {
+      await loadGroups();
+      state.current = state.groups.find(item => Number(item.id) === Number(state.current.id)) || state.current;
+    } else {
+      await loadConversations();
+      state.current = state.conversations.find(item => Number(item.id) === Number(state.current.id)) || state.current;
+    }
     updateLauncherBadge();
   }
 
@@ -364,6 +536,7 @@
     if (!user?.id) return;
     state.open = true;
     state.current = null;
+    state.currentKind = null;
     state.error = '';
     state.loadingConversations = true;
     render();
@@ -383,10 +556,11 @@
   async function sendMessage(textarea) {
     const body = textarea.value.trim();
     if (!body || !state.current || state.busy) return;
+    const isGroup = state.currentKind === 'group';
     state.busy = true;
     textarea.value = '';
     try {
-      const msg = await api(`/api/me/conversations/${encodeURIComponent(state.current.id)}/messages`, {
+      const msg = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages`, {
         method: 'POST',
         body: JSON.stringify({ body }),
       });
@@ -395,7 +569,8 @@
         username: state.me?.username,
         minecraft_name: state.me?.minecraft_name,
       });
-      await loadConversations();
+      if (isGroup) await loadGroups();
+      else await loadConversations();
       updateMessagesList({ scroll: true });
       updateLauncherBadge();
     } catch (e) {
@@ -414,15 +589,44 @@
     render();
   }
 
+  async function createGroup() {
+    const name = state.groupName.trim();
+    const memberIds = [...new Set(state.groupMemberIds.map(id => parseInt(id, 10)).filter(Boolean))];
+    if (!name || !memberIds.length || state.busy) return;
+    state.busy = true;
+    updateConversationList();
+    try {
+      const group = await api('/api/me/group-conversations', {
+        method: 'POST',
+        body: JSON.stringify({ name, member_ids: memberIds }),
+      });
+      state.groupCreating = false;
+      state.groupName = '';
+      state.groupMemberIds = [];
+      state.search = '';
+      await loadGroups();
+      await openGroupConversation(group);
+    } catch (e) {
+      state.error = e.message || 'Grupo nao criado.';
+      render();
+    } finally {
+      state.busy = false;
+    }
+  }
+
   let searchTimer = null;
   root.addEventListener('click', async event => {
     const toggle = event.target.closest('[data-chat-toggle]');
     const close = event.target.closest('[data-chat-close]');
     const tab = event.target.closest('[data-chat-tab]');
     const convBtn = event.target.closest('[data-chat-conv]');
+    const groupBtn = event.target.closest('[data-chat-group]');
     const userBtn = event.target.closest('[data-chat-user]');
     const back = event.target.closest('[data-chat-back]');
     const profile = event.target.closest('[data-chat-profile]');
+    const newGroup = event.target.closest('[data-chat-new-group]');
+    const cancelGroup = event.target.closest('[data-chat-cancel-group]');
+    const memberToggle = event.target.closest('[data-chat-member-toggle]');
 
     try {
       if (toggle) {
@@ -432,16 +636,25 @@
       } else if (tab) {
         state.tab = tab.dataset.chatTab;
         state.search = '';
+        state.groupCreating = false;
         if (state.tab === 'friends') state.loadingFriends = !state.friends.length;
+        if (state.tab === 'groups') state.loadingGroups = !state.groups.length;
         render();
         if (state.tab === 'friends') {
           await loadFriends();
           state.loadingFriends = false;
         }
+        if (state.tab === 'groups') {
+          await Promise.all([loadGroups(), loadFriends()]);
+          state.loadingGroups = false;
+        }
         render();
       } else if (convBtn) {
         const conv = state.conversations.find(item => Number(item.id) === Number(convBtn.dataset.chatConv));
         if (conv) await openConversation(conv);
+      } else if (groupBtn) {
+        const group = state.groups.find(item => Number(item.id) === Number(groupBtn.dataset.chatGroup));
+        if (group) await openGroupConversation(group);
       } else if (userBtn) {
         const follow = event.target.closest('[data-follow-back]');
         if (follow) {
@@ -452,13 +665,34 @@
         await openWithUser({ id: userBtn.dataset.chatUser, minecraft_name: userBtn.dataset.chatName });
       } else if (back) {
         state.current = null;
+        state.currentKind = null;
         state.messages = [];
-        await loadConversations();
+        if (state.tab === 'groups') await loadGroups();
+        else await loadConversations();
         render();
       } else if (profile) {
         const target = `id:${profile.dataset.chatProfile}`;
         if (typeof window.navigateProfile === 'function') window.navigateProfile(target);
         else location.href = `profile.html?id=${encodeURIComponent(target)}`;
+      } else if (newGroup) {
+        state.groupCreating = true;
+        state.search = '';
+        state.loadingFriends = !state.friends.length;
+        render();
+        await loadFriends();
+        state.loadingFriends = false;
+        render();
+      } else if (cancelGroup) {
+        state.groupCreating = false;
+        state.groupName = '';
+        state.groupMemberIds = [];
+        render();
+      } else if (memberToggle) {
+        const id = String(memberToggle.dataset.chatMemberToggle);
+        state.groupMemberIds = state.groupMemberIds.includes(id)
+          ? state.groupMemberIds.filter(item => item !== id)
+          : [...state.groupMemberIds, id].slice(0, 19);
+        updateConversationList();
       }
     } catch (e) {
       state.error = e.message || 'Acao nao concluida.';
@@ -467,21 +701,34 @@
   });
 
   root.addEventListener('input', event => {
+    const groupName = event.target.closest('[data-chat-group-name]');
+    if (groupName) {
+      state.groupName = groupName.value;
+      const submit = root.querySelector('.fa-chat-create');
+      if (submit) submit.disabled = state.busy || !state.groupName.trim() || !state.groupMemberIds.length;
+      return;
+    }
     const input = event.target.closest('[data-chat-search]');
     if (!input) return;
     state.search = input.value;
     clearTimeout(searchTimer);
     searchTimer = setTimeout(async () => {
-      if (state.tab === 'friends') await searchPeople(state.search);
+      if (state.tab === 'friends' || (state.tab === 'groups' && state.groupCreating)) await searchPeople(state.search);
       const list = root.querySelector('.fa-chat-list');
       if (list) {
-        list.innerHTML = state.tab === 'friends' ? renderFriends() : renderConversations();
+        list.innerHTML = state.tab === 'friends' ? renderFriends() : state.tab === 'groups' ? renderGroups() : renderConversations();
         updateLauncherBadge();
       }
     }, 180);
   });
 
   root.addEventListener('submit', event => {
+    const groupForm = event.target.closest('[data-chat-group-form]');
+    if (groupForm) {
+      event.preventDefault();
+      createGroup();
+      return;
+    }
     const form = event.target.closest('[data-chat-form]');
     if (!form) return;
     event.preventDefault();
@@ -494,7 +741,7 @@
     close: closePanel,
     openWithUser,
     refresh: async () => {
-      await Promise.all([loadUnread(), loadConversations(), loadFriends()]);
+      await Promise.all([loadUnread(), loadConversations(), loadGroups(), loadFriends()]);
       render();
     },
   };
@@ -504,7 +751,7 @@
     state.warmed = true;
     try {
       await ensureMe();
-      await Promise.all([loadConversations(), loadFriends()]);
+      await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
       if (state.open && !state.current) render();
       else updateLauncherBadge();
     } catch {
@@ -513,6 +760,12 @@
   }
 
   render();
+  syncFabPosition();
+  window.addEventListener('resize', syncFabPosition, { passive: true });
+  if ('MutationObserver' in window) {
+    fabObserver = new MutationObserver(syncFabPosition);
+    fabObserver.observe(document.body, { childList: true, subtree: true });
+  }
   loadUnread();
   if ('requestIdleCallback' in window) {
     requestIdleCallback(() => warmChat(), { timeout: 4000 });
@@ -528,7 +781,8 @@
         if (draft.trim()) return;
         await refreshCurrentMessages();
       } else if (state.open) {
-        await loadConversations();
+        if (state.tab === 'groups') await loadGroups();
+        else await loadConversations();
         updateConversationList();
       }
     } catch (e) {
