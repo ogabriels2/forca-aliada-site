@@ -135,7 +135,7 @@ body{
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   min-height:100vh;overflow-x:hidden;
 }
-body.modal-open{overflow:hidden}
+body.modal-open{overflow:hidden;padding-right:8px}
 a{color:inherit;text-decoration:none}
 button,textarea,input,select{font:inherit;border:none;background:none;color:inherit}
 button{cursor:pointer}
@@ -340,28 +340,31 @@ img{display:block}
 .comp-editor{
   position:relative;min-height:96px;
   border:1px solid var(--line);border-radius:var(--r-md);
-  background:var(--bg);overflow:hidden;
+  background:var(--bg);
   transition:border-color var(--t-fast),box-shadow var(--t-fast);
 }
 .comp-editor:focus-within{
   border-color:color-mix(in srgb,var(--accent) 52%,var(--line));
   box-shadow:0 0 0 3.5px var(--accent-soft);
 }
-.comp-mirror,.comp-ta{
-  width:100%;min-height:96px;
+.comp-mirror{
+  min-height:96px;
   padding:11px 12px;font-size:14px;line-height:1.58;
-  white-space:pre-wrap;overflow-wrap:anywhere;
+  white-space:pre-wrap;word-break:break-word;
+  color:var(--ink);
 }
-.comp-mirror{position:absolute;inset:0;pointer-events:none;color:var(--ink)}
 .comp-mirror .pl{color:var(--ink-3)}
 .mention-hi{
   color:var(--accent);font-weight:700;
   background:var(--accent-soft);border-radius:5px;padding:1px 3px;
 }
 .comp-ta{
-  position:relative;z-index:1;
+  position:absolute;inset:0;z-index:1;
+  width:100%;height:100%;
+  padding:11px 12px;font-size:14px;line-height:1.58;
   border:none;resize:none;outline:none;
   color:transparent;caret-color:var(--ink);background:transparent;
+  overflow:hidden;
 }
 .comp-ta::selection{background:color-mix(in srgb,var(--accent) 20%,transparent)}
 .comp-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
@@ -623,7 +626,7 @@ img{display:block}
   object-fit:cover;background:var(--bg);box-shadow:var(--shadow-md);
 }
 .profile-actions-row{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:4px}
-.profile-name{margin:13px 0 2px;font-size:26px;font-weight:900;letter-spacing:-0.03em}
+.profile-name{margin:13px 0 2px;font-size:26px;font-weight:900;letter-spacing:-0.03em;word-break:break-word}
 .profile-handle2{font-size:12.5px;color:var(--ink-2);font-weight:500}
 .profile-bio2{margin-top:10px;font-size:13px;color:var(--ink-2);line-height:1.55}
 .profile-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
@@ -1252,7 +1255,7 @@ function updateComposer(){
   label.textContent=remain<=40?String(remain):'';
   btn.disabled=len<2||len>max;
   mirror.innerHTML=val
-    ?esc(val).replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-hi">@$2</span>')
+    ?esc(val + ' ').replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-hi">@$2</span>')
     :`<span class="pl">O que está acontecendo no servidor?</span>`;
 }
 function updateMentions(){
@@ -1278,7 +1281,7 @@ function renderMentionBox(){
   if(!state.mentionSuggestions.length){box.classList.remove('show');return}
   box.innerHTML=state.mentionSuggestions.map(p=>{
     const n=p.minecraft_name||p.username||'Steve';
-    return`<button class="mention-opt" type="button" role="option" data-pick="${esc(n)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.src='${skin('Steve',50)}'"><span><strong>@${esc(n)}</strong><small style="color:var(--ink-3)">${esc(rankInfo(p.rank,p.merit).label)}</small></span></button>`;
+    return`<button class="mention-opt" type="button" role="option" data-pick="${esc(n)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><span><strong>@${esc(n)}</strong><small style="color:var(--ink-3)">${esc(rankInfo(p.rank,p.merit).label)}</small></span></button>`;
   }).join('');
   box.classList.add('show');
 }
@@ -1330,7 +1333,7 @@ function postCardHTML(p){
   const postUrl=`/community/post/${encodeURIComponent(p.id)}`;
   return`<article class="post-card ${p.is_pinned?'is-pinned':''}" data-post-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
     <div class="post-layout">
-      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(p.author_id)}" src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.src='${skin('Steve',50)}'">
+      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(p.author_id)}" src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">
       <div>
         <div class="post-head">
           <div class="post-author">
@@ -1403,10 +1406,14 @@ async function loadFeed({reset=false}={}){
   }finally{state.loading=false;$('#load-more-wrap').hidden=!state.hasMore||!state.posts.length}
 }
 function switchTab(filter){
-  state.filter=filter;
-  $$('.tab').forEach(t=>t.classList.toggle('is-active',t.dataset.tab===filter));
-  $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===filter));
-  loadFeed({reset:true});
+  state.filter=filter;
+  $$('.tab').forEach(t=>{
+    const isActive = t.dataset.tab === filter;
+    t.classList.toggle('is-active', isActive);
+    t.setAttribute('aria-selected', String(isActive));
+  });
+  $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===filter));
+  loadFeed({reset:true});
 }
 
 /* ======================= PUBLISH ======================= */
@@ -1529,7 +1536,7 @@ async function renderPostRoute(id){
           <span class="thread-count">${num(post.comments_count||comments.length)} respostas</span>
         </div>
         <div class="post-layout">
-          <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(post.author_id)}" src="${skin(mc,60)}" alt="${esc(mc)}" onerror="this.src='${skin('Steve',60)}'">
+          <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(post.author_id)}" src="${skin(mc,60)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',60)}'">
           <div>
             <div class="post-head">
               <div class="post-author">
@@ -1561,7 +1568,7 @@ async function renderPostRoute(id){
         </div>
       </div>
       <div class="reply-bar" id="reply-bar">
-        <img class="av42" src="${skin(state.me?.minecraft_name||'Steve',50)}" alt="Seu avatar" onerror="this.src='${skin('Steve',50)}'">
+        <img class="av42" src="${skin(state.me?.minecraft_name||'Steve',50)}" alt="Seu avatar" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">
         <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
         <button class="btn btn-primary btn-sm" id="reply-btn">Responder</button>
       </div>
@@ -1637,7 +1644,7 @@ function commentsHTML(comments){
     return`<div class="empty-card"><div class="empty-icon">${IC.comment}</div><h3>Nenhuma resposta ainda</h3><p>Seja o primeiro a responder esta thread.</p></div>`;
   return`<div class="comments-list">${comments.map(c=>{
     const mc=c.minecraft_name||c.username||'Steve';const del=Boolean(c.is_deleted);
-    return`<article class="comment-row"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.src='${skin('Steve',50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(mc)}</strong><span class="handle">@${esc(c.username||mc)}</span><span class="ts">· ${esc(time(c.created_at))}</span></div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
+    return`<article class="comment-row"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(mc)}</strong><span class="handle">@${esc(c.username||mc)}</span><span class="ts">· ${esc(time(c.created_at))}</span></div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
   }).join('')}</div>`;
 }
 
@@ -1674,7 +1681,7 @@ async function renderProfileRoute(identifier){
         <div class="profile-cover ${rk.cls}"></div>
         <div class="profile-hero-body">
           <div class="profile-topline">
-            <img class="profile-av" src="${skin(mc,140)}" alt="${esc(mc)}" onerror="this.src='${skin('Steve',140)}'">
+            <img class="profile-av" src="${skin(mc,140)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',140)}'">
             <div class="profile-actions-row">
               ${isMe?'<a class="btn btn-secondary" href="account.html">Editar conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_following?'Seguindo':'Seguir'}</button>`}
               ${isMe?'':`<button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
@@ -1757,7 +1764,7 @@ async function reportContent(type,id){
 function playerRowHTML(p){
   const mc=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);
   const on=Boolean(p.is_following||p.followed_by_me);
-  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.src='${skin('Steve',50)}'"><div><strong>${esc(mc)}</strong><small>${esc(rk.label)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
+  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(mc)}</strong><small>${esc(rk.label)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
 }
 async function loadPlayers(search=''){
   $('#player-list').innerHTML=Array.from({length:3},()=>'<div class="skel" style="height:52px;border-radius:10px"></div>').join('');
@@ -1790,7 +1797,7 @@ async function openRelModal(type,mc,uid){
     const rows=Array.isArray(payload)?payload:(payload.rows||[]);
     $('#rel-list').innerHTML=rows.length?rows.map(p=>{
       const n=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank);const fol=Boolean(p.followed_by_me);const itsMe=Number(p.id)===Number(state.me?.id);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} · @${esc(p.username||n)}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} · @${esc(p.username||n)}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
     }).join(''):`<p style="padding:18px 0;text-align:center;color:var(--ink-3);font-size:13px">Nenhum jogador nesta lista.</p>`;
   }catch(e){$('#rel-list').innerHTML=`<p style="padding:18px 0;text-align:center;color:var(--danger);font-size:13px">${esc(e.message)}</p>`}
 }
@@ -1815,7 +1822,7 @@ function renderNotifs(){
   const list=$('#notif-list');
   list.innerHTML=state.notifs.length?state.notifs.map(n=>{
     const nm=n.actor_minecraft_name||n.actor_username||'Steve';
-    return`<button class="notif-row ${n.is_read?'':'unread'}" data-nid="${n.id}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}"><img src="${skin(nm,50)}" alt="${esc(nm)}" onerror="this.src='${skin('Steve',50)}'"><div><strong>${esc(notifText(n))}</strong><small>${esc(n.preview_text||'')} · ${esc(time(n.created_at))}</small></div></button>`;
+    return`<button class="notif-row ${n.is_read?'':'unread'}" data-nid="${n.id}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}"><img src="${skin(nm,50)}" alt="${esc(nm)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(notifText(n))}</strong><small>${esc(n.preview_text||'')} · ${esc(time(n.created_at))}</small></div></button>`;
   }).join(''):`<div style="padding:18px 13px;text-align:center;color:var(--ink-3);font-size:13px">Nenhuma notificação recente.</div>`;
 }
 
