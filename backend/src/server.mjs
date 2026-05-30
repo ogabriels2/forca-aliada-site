@@ -224,7 +224,7 @@ const corsOrigins = Array.from(new Set([
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
-    if (corsOrigins.includes(origin) || origin.endsWith('.github.io')) return cb(null, true);
+    if (corsOrigins.includes(origin)) return cb(null, true);
     console.warn('[cors blocked]', origin);
     return cb(null, false);
   },
@@ -323,10 +323,21 @@ const xboxApiLimiter = rateLimit({
   message: { error: 'Limite atingido. Para proteger sua conta e o servidor, aguarde 5 minutos antes de sincronizar novamente.' }
 });
 
+// [SEC-01] Rate limiter for post creation - prevents race condition in manual count check
+const postLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  limit: 10,
+  keyGenerator: (req) => String(req.user?.sub || req.ip),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite de 10 posts por hora atingido.' },
+});
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
 function sanitize(v)            { return String(v || '').replace(/[<>]/g, '').trim(); }
+function generateVerificationCode() { return crypto.randomInt(100000, 1000000).toString(); }
 function validateEmail(e)       { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 function validatePassword(p)    { return typeof p === 'string' && p.length >= 8 && p.length <= 128; }
 function validateUsername(u)    { return /^[a-z0-9_]{3,32}$/i.test(u); }
@@ -764,6 +775,9 @@ CREATE TABLE IF NOT EXISTS social_notifications (
 CREATE INDEX IF NOT EXISTS idx_social_notif_recipient ON social_notifications(recipient_id, is_read, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_social_notif_entity ON social_notifications(entity_type, entity_id);
 
+CREATE INDEX IF NOT EXISTS idx_user_posts_feed ON user_posts(id DESC) WHERE is_pinned = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_follows_pair ON user_follows(follower_id, following_id);
+
 CREATE TABLE IF NOT EXISTS direct_conversations (
   id BIGSERIAL PRIMARY KEY,
   participant_a INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -905,8 +919,7 @@ async function auditFromReq(req, opts) {
   try {
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
     if (rawToken) {
-      const { createHash } = await import('node:crypto');
-      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
       const { rows } = await pool.query(
         'SELECT id FROM user_sessions WHERE token_hash=$1 AND revoked=FALSE LIMIT 1',
         [tokenHash],
@@ -1088,6 +1101,26 @@ function directConversationSelect(extraWhere = '') {
 }
 
 // ─────────────────────────────────────────────
+
+// ── Session token validation cache (60s TTL) for auth middleware ──────────────
+const _sessionCache = new Map(); // tokenHash → { valid: bool, expiresAt: number }
+const SESSION_CACHE_TTL_MS = 60_000;
+function getCachedSession(tokenHash) {
+  const entry = _sessionCache.get(tokenHash);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { _sessionCache.delete(tokenHash); return null; }
+  return entry.valid;
+}
+function setCachedSession(tokenHash, valid) {
+  _sessionCache.set(tokenHash, { valid, expiresAt: Date.now() + SESSION_CACHE_TTL_MS });
+  // Housekeeping: clear expired entries periodically
+  if (_sessionCache.size > 5000) {
+    const now = Date.now();
+    for (const [k, v] of _sessionCache) { if (v.expiresAt < now) _sessionCache.delete(k); }
+  }
+}
+function invalidateSessionCache(tokenHash) { _sessionCache.delete(tokenHash); }
+
 // Auth middleware
 // ─────────────────────────────────────────────
 async function auth(req, res, next) {
@@ -1100,6 +1133,21 @@ const { rows } = await pool.query(
 [decoded.sub],
 );
 if (!rows.length) return res.status(401).json({ error: 'user deleted' });
+
+// [SEC-03] Verify token is not revoked (with in-memory cache to avoid DB hit per request)
+const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+const cached = getCachedSession(tokenHash);
+if (cached === false) return res.status(401).json({ error: 'session revoked' });
+if (cached === null) {
+  const { rows: sessionRows } = await pool.query(
+    'SELECT id FROM user_sessions WHERE token_hash=$1 AND user_id=$2 AND revoked=FALSE LIMIT 1',
+    [tokenHash, rows[0].id],
+  );
+  const valid = sessionRows.length > 0;
+  setCachedSession(tokenHash, valid);
+  if (!valid) return res.status(401).json({ error: 'session revoked' });
+}
+
 req.user = rows[0];
 req.user.sub = rows[0].id;
 next();
@@ -1125,10 +1173,16 @@ app.get('/healthz', (_req, res) => res.json({
   ok: true,
   startedAt: PROCESS_STARTED_AT.toISOString(),
   uptimeSeconds: Math.floor(process.uptime()),
+}));
+
+// Admin-only health endpoint with detailed diagnostics
+app.get('/admin/health', auth, requireAdmin, (_req, res) => res.json({
+  ok: true,
+  startedAt: PROCESS_STARTED_AT.toISOString(),
+  uptimeSeconds: Math.floor(process.uptime()),
   mc_state: _mcState,
   cloud_lockout: { active: _cloudLockout.active, since: _cloudLockout.since || null },
   app_connected: isAppConnectedInMemory(),
-  // Configuração de detecção de TCPShield (para debug)
   tcpshield_detection: {
     query_enabled: process.env.MC_QUERY_DISABLED !== 'true',
     offline_motd_configured: Boolean(process.env.MC_OFFLINE_MOTD),
@@ -1585,7 +1639,7 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
 // CRON e SNAPSHOT
 // ─────────────────────────────────────────────
 app.get('/api/cron', async (req, res) => {
-const key = req.query.key || req.headers['x-ingest-secret'];
+const key = req.headers['x-ingest-secret'];
 if (key !== INGEST_SECRET) return res.status(403).json({ error: 'forbidden' });
 
 try {
@@ -2022,7 +2076,7 @@ async function linkMicrosoftIntegration({ userId, msRefreshToken, xuid, mcUuid, 
     await client.query('BEGIN');
 
     const { rows: userRows } = await client.query('SELECT * FROM users WHERE id=$1', [userId]);
-    if (!userRows[0]) throw new Error('Conta nÃ£o encontrada para vinculaÃ§Ã£o.');
+    if (!userRows[0]) throw new Error('Conta não encontrada para vinculação.');
 
     const { rows: primaryRows } = await client.query(
       'SELECT id FROM user_integrations WHERE user_id=$1 AND is_primary=TRUE LIMIT 1',
@@ -2798,7 +2852,7 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
         'UPDATE users SET username=$1, password_hash=$2 WHERE email=$3',
         [username, hash, email]
       );
-      const code      = Math.floor(100000 + Math.random() * 900000).toString();
+      const code      = generateVerificationCode();
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
       await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
       await pool.query('INSERT INTO email_verifications(email,code,expires_at) VALUES($1,$2,$3)', [email, code, expiresAt]);
@@ -2813,7 +2867,7 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
       [username, email, hash, 'limited'],
     );
 
-    const code      = Math.floor(100000 + Math.random() * 900000).toString();
+    const code      = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await pool.query('DELETE FROM email_verifications WHERE email=$1', [email]);
     await pool.query('INSERT INTO email_verifications(email,code,expires_at) VALUES($1,$2,$3)', [email, code, expiresAt]);
@@ -2903,7 +2957,7 @@ if (!user || !(await bcrypt.compare(password, user.password_hash))) {
 }
 
 if (user.is_verified === false) {
-const code      = Math.floor(100000 + Math.random() * 900000).toString();
+const code      = generateVerificationCode();
 const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 await pool.query('DELETE FROM email_verifications WHERE email=$1', [user.email]);
 await pool.query('INSERT INTO email_verifications(email,code,expires_at) VALUES($1,$2,$3)', [user.email, code, expiresAt]);
@@ -2920,8 +2974,7 @@ await auditFromReq(req, {
 
 const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
-const { createHash } = await import('node:crypto');
-const tokenHash = createHash('sha256').update(token).digest('hex');
+const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 const ua = req.headers['user-agent'] || null;
 const ip = req.ip || req.socket?.remoteAddress || null;
 (async () => {
@@ -2964,7 +3017,7 @@ await pool.query('DELETE FROM password_resets WHERE email=$1 OR expires_at<NOW()
 const { rows } = await pool.query('SELECT username FROM users WHERE email=$1', [email]);
 if (!rows.length) return res.json({ ok: true }); 
 
-const code      = Math.floor(100000 + Math.random() * 900000).toString();
+const code      = generateVerificationCode();
 const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 await pool.query('INSERT INTO password_resets(email,code,expires_at) VALUES($1,$2,$3)', [email, code, expiresAt]);
 await sendSystemEmail(email, rows[0].username, code, 'reset');
@@ -3008,14 +3061,14 @@ res.json({ ok: true });
 
 app.post('/api/auth/logout', auth, async (req, res) => {
   try {
-    const { createHash } = await import('node:crypto');
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
     if (rawToken) {
-      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
       await pool.query(
         'UPDATE user_sessions SET revoked=TRUE WHERE token_hash=$1',
         [tokenHash],
       );
+      invalidateSessionCache(tokenHash);
     }
     await auditFromReq(req, {
       actorId:   req.user?.sub,
@@ -3117,7 +3170,7 @@ app.post('/api/me/delete-request', auth, emailLimiter, async (req, res) => {
     }
 
     const user = rows[0];
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     // Upsert: se já existe uma solicitação pendente, substitui
@@ -3145,7 +3198,7 @@ app.post('/api/me/delete-request', auth, emailLimiter, async (req, res) => {
   }
 });
 
-app.delete('/api/me', auth, async (req, res) => {
+app.delete('/api/me', auth, emailLimiter, async (req, res) => {
 const email    = sanitize(req.body?.email).toLowerCase();
 const password = req.body?.password || '';
 const emailCode = sanitize(req.body?.emailCode || '');
@@ -3165,7 +3218,8 @@ const { rows: verRows } = await pool.query(
 );
 if (!verRows.length) return res.status(400).json({ error: 'code_not_requested' });
 if (new Date(verRows[0].expires_at) < new Date()) return res.status(400).json({ error: 'code_expired' });
-if (verRows[0].code !== emailCode) return res.status(400).json({ error: 'invalid_code' });
+if (!emailCode || !/^\d{6}$/.test(String(emailCode))) return res.status(400).json({ error: 'invalid_code' });
+if (!crypto.timingSafeEqual(Buffer.from(verRows[0].code), Buffer.from(String(emailCode)))) return res.status(400).json({ error: 'invalid_code' });
 
 // Remove o código usado
 await pool.query('DELETE FROM delete_account_verifications WHERE user_id=$1', [req.user.sub]);
@@ -3667,34 +3721,6 @@ app.get('/api/community/player/:identifier', auth, async (req, res) => {
   }
 });
 
-app.get('/api/community/players-legacy-disabled', auth, async (req, res) => {
-  const limit = Math.min(50, parseInt(req.query.limit || 20));
-  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
-
-  let query = `
-    SELECT u.id, u.username, u.minecraft_name, u.photo_url, up.bio, 
-           COALESCE(pb.rank, 'ferro') AS rank, COALESCE(pb.merit_total, 0) AS merit,
-           (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) AS followers_count
-    FROM users u
-    JOIN user_preferences up ON u.id = up.user_id
-    LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-    WHERE up.public_profile = TRUE AND u.id != $1
-  `;
-  const params = [req.user.sub];
-
-  if (search) {
-    query += ` AND (LOWER(u.minecraft_name) LIKE $2 OR LOWER(u.username) LIKE $2)`;
-    params.push(search);
-  }
-
-  query += ` ORDER BY followers_count DESC, merit DESC LIMIT $${params.length + 1}`;
-  params.push(limit);
-
-  try {
-    const { rows } = await pool.query(query, params);
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Erro ao buscar comunidade' });
   }
 });
 
@@ -3847,43 +3873,9 @@ app.post('/api/me/follows/:targetId', auth, async (req, res) => {
   }
 });
 
-app.post('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) => {
-  const targetId = parseInt(req.params.targetId);
-  if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'ID inválido' });
-  try {
-    await pool.query('INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [req.user.sub, targetId]);
-    
-// Solicitações pendentes (Quem te segue, mas você não segue de volta)
-app.get('/api/me/friend-requests', auth, async (req, res) => {
-  try {
-    const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at, COALESCE(pb.rank, 'ferro') AS rank
-      FROM user_follows uf
-      JOIN users u ON uf.follower_id = u.id
-      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-      WHERE uf.following_id = $1
-        AND NOT EXISTS ( SELECT 1 FROM user_follows uf2 WHERE uf2.follower_id = $1 AND uf2.following_id = u.id )
-        AND NOT EXISTS ( SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id) OR (ub.blocker_id = u.id AND ub.blocked_id = $1) )
-      ORDER BY uf.created_at DESC LIMIT 10
-    `, [req.user.sub]);
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Erro ao buscar solicitações' });
-  }
-});
-
-    // Notifica a pessoa que foi seguida
-    const { rows: target } = await pool.query('SELECT minecraft_name FROM users WHERE id=$1', [targetId]);
-    if (target[0]?.minecraft_name) {
-      await createMinecraftNotification({
-        minecraftName: target[0].minecraft_name,
-        title: 'Novo Seguidor!',
-        body: `${req.user.minecraft_name || req.user.username} começou a seguir você.`,
-        type: 'social', icon: '👤', createdBy: req.user.sub
-      });
-    }
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Erro ao seguir' }); }
+// Legacy endpoint disabled - returns 404 to signal clients to update
+app.post('/api/me/follows-legacy-disabled/:targetId', auth, (_req, res) => {
+  res.status(404).json({ error: 'Endpoint legado desativado. Use /api/me/follows/:targetId' });
 });
 
 // Parar de seguir
@@ -3898,11 +3890,6 @@ app.delete('/api/me/follows/:targetId', auth, async (req, res) => {
   }
 });
 
-app.delete('/api/me/follows-legacy-disabled/:targetId', auth, async (req, res) => {
-  const targetId = parseInt(req.params.targetId);
-  try {
-    await pool.query('DELETE FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, targetId]);
-    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'Erro ao deixar de seguir' }); }
 });
 
@@ -4414,7 +4401,7 @@ function extractMentions(text) {
 }
 
 // Criar uma postagem com suporte a Menções (@)
-app.post('/api/community/posts', auth, async (req, res) => {
+app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   const content = sanitize(req.body?.content || '');
   if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
@@ -4422,16 +4409,6 @@ app.post('/api/community/posts', auth, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows: recentPosts } = await client.query(
-      `SELECT COUNT(*)::int AS count FROM user_posts
-       WHERE author_id=$1 AND created_at > NOW() - INTERVAL '1 hour'`,
-      [req.user.sub],
-    );
-    if (recentPosts[0].count >= 10) {
-      await client.query('ROLLBACK');
-      return res.status(429).json({ error: 'Limite de 10 posts por hora atingido. Aguarde um momento.' });
-    }
-
     const { rows } = await client.query(
       `INSERT INTO user_posts(author_id, content)
        VALUES($1, $2)
@@ -4483,9 +4460,6 @@ app.post('/api/community/posts', auth, async (req, res) => {
   }
 });
 
-app.post('/api/community/posts-legacy-disabled', auth, authLimiter, async (req, res) => {
-  const content = sanitize(req.body?.content || '');
-  if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' }); 
 
   const client = await pool.connect();
@@ -4626,40 +4600,6 @@ app.get('/api/community/posts', auth, async (req, res) => {
   }
 });
 
-app.get('/api/community/posts-legacy-disabled', auth, async (req, res) => {
-  const limit = Math.min(50, parseInt(req.query.limit || 20));
-  const filter = req.query.filter || 'all';
-  const cursor = parseInt(req.query.cursor) || null; // ID do último post carregado
-
-  const params = [req.user.sub, limit];
-  let conditions = [];
-
-  if (cursor) {
-    conditions.push(`p.id < $${params.length + 1}`);
-    params.push(cursor);
-  }
-  if (filter === 'following') {
-    conditions.push(`(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`);
-  }
-
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const query = `
-    SELECT p.id, p.content, p.likes_count, p.created_at,
-           u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
-           EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
-           (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id)::int AS comments_count
-    FROM user_posts p
-    JOIN users u ON p.author_id = u.id
-    ${whereClause}
-    ORDER BY p.id DESC LIMIT $2
-  `;
-
-  try {
-    const { rows } = await pool.query(query, params);
-    const hasMore = rows.length === limit;
-    const nextCursor = hasMore ? rows[rows.length - 1].id : null;
-    res.json({ posts: rows, next_cursor: nextCursor, has_more: hasMore });
   } catch (e) { res.status(500).json({ error: 'Erro ao buscar o feed.' }); }
 });
 
@@ -4697,7 +4637,12 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
 
 app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
+  const limit = clampInt(req.query.limit, 20, 1, 50);
+  const cursor = parseInt(req.query.cursor, 10) || null;
   try {
+    const params = [req.user.sub, postId, limit + 1];
+    const cursorClause = cursor ? `AND c.id > $${params.length + 1}` : '';
+    if (cursor) params.push(cursor);
     const { rows } = await pool.query(`
       SELECT c.id,
              CASE WHEN c.is_deleted THEN '[comentario removido]' ELSE c.content END AS content,
@@ -4710,6 +4655,7 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
       JOIN user_posts p ON p.id = c.post_id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE c.post_id = $2
+        ${cursorClause}
         AND NOT EXISTS (
           SELECT 1 FROM user_blocks ub
           WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
@@ -4718,8 +4664,11 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
              OR (ub.blocker_id = p.author_id AND ub.blocked_id = $1)
         )
       ORDER BY c.created_at ASC
-    `, [req.user.sub, postId]);
-    res.json(rows);
+      LIMIT $3
+    `, params);
+    const page = rows.slice(0, limit);
+    const next_cursor = rows.length > limit ? page[page.length - 1]?.id : null;
+    res.json({ comments: page, next_cursor, has_more: rows.length > limit });
   } catch (e) {
     console.error('[GET /api/community/posts/:id/comments]', e);
     res.status(500).json({ error: 'Erro ao carregar comentarios' });
@@ -4808,18 +4757,6 @@ app.delete('/api/community/posts/:id/repost', auth, async (req, res) => {
   }
 });
 
-app.get('/api/community/posts/:id/comments-legacy-disabled', auth, async (req, res) => {
-  const postId = parseInt(req.params.id);
-  try {
-    const { rows } = await pool.query(`
-      SELECT c.id, c.content, c.created_at, u.id AS author_id, u.username, u.minecraft_name, u.photo_url
-      FROM post_comments c
-      JOIN users u ON c.author_id = u.id
-      WHERE c.post_id = $1 ORDER BY c.created_at ASC
-    `, [postId]);
-    res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Erro ao carregar comentários' }); }
-});
 
 // Criar um comentário com suporte a Menções (@)
 app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
@@ -4915,10 +4852,6 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   }
 });
 
-app.post('/api/community/posts/:id/comments-legacy-disabled', auth, authLimiter, async (req, res) => {
-  const postId = parseInt(req.params.id);
-  const content = sanitize(req.body?.content || '');
-  if (!content || content.length > 280) return res.status(400).json({ error: 'Comentário inválido' });
 
   const client = await pool.connect();
   try {
@@ -5022,22 +4955,6 @@ app.get('/api/community/player/:identifier/followers', auth, async (req, res) =>
   }
 });
 
-app.get('/api/community/player/:mc_name/followers-legacy-disabled', auth, async (req, res) => {
-  const mcName = sanitize(req.params.mc_name).toLowerCase();
-  try {
-    const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(pb.rank, 'ferro') AS rank,
-             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
-      FROM user_follows uf
-      JOIN users u ON uf.follower_id = u.id
-      JOIN users target ON uf.following_id = target.id
-      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-      WHERE LOWER(target.minecraft_name) = $2
-      ORDER BY uf.created_at DESC LIMIT 50
-    `, [req.user.sub, mcName]);
-    res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Erro ao listar' }); }
-});
 
 app.get('/api/community/player/:identifier/following', auth, async (req, res) => {
   const ident = parseCommunityIdentifier(req.params.identifier);
@@ -5110,22 +5027,6 @@ app.get('/api/community/player/:identifier/friends', auth, async (req, res) => {
   }
 });
 
-app.get('/api/community/player/:mc_name/following-legacy-disabled', auth, async (req, res) => {
-  const mcName = sanitize(req.params.mc_name).toLowerCase();
-  try {
-    const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(pb.rank, 'ferro') AS rank,
-             EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
-      FROM user_follows uf
-      JOIN users u ON uf.following_id = u.id
-      JOIN users target ON uf.follower_id = target.id
-      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-      WHERE LOWER(target.minecraft_name) = $2
-      ORDER BY uf.created_at DESC LIMIT 50
-    `, [req.user.sub, mcName]);
-    res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Erro ao listar' }); }
-});
 
 // Curtir um post
 app.post('/api/community/posts/:id/like', auth, async (req, res) => {
@@ -5175,9 +5076,6 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
   }
 });
 
-app.post('/api/community/posts/:id/like-legacy-disabled', auth, async (req, res) => {
-  const postId = parseInt(req.params.id);
-  if (!postId) return res.status(400).json({ error: 'ID inválido' });
 
   const client = await pool.connect();
   try {
@@ -5445,11 +5343,6 @@ app.delete('/api/admin/posts/:id', auth, requireAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/community/posts-legacy-disabled/:id', auth, async (req, res) => {
-  const postId = parseInt(req.params.id);
-  try {
-    const { rowCount } = await pool.query('DELETE FROM user_posts WHERE id=$1 AND author_id=$2', [postId, req.user.sub]);
-    if (!rowCount) return res.status(404).json({ error: 'Post não encontrado ou não autorizado' });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'Erro ao excluir' }); }
 });
@@ -5699,37 +5592,6 @@ app.post('/api/me/xbox/friends/sync', auth, async (req, res) => {
   }
 });
 
-app.get('/api/me/xbox/friends-legacy', auth, async (req, res) => {
-  try {
-    // 1. Renova token MS com verificação de erros robusta
-    const accessToken = await refreshMsAccessToken(req.user.sub, null, 'java');
-
-    // 2. Autentica no Xbox Live
-    const xblData  = await getXboxLiveToken(accessToken);
-    const uhs      = xblData.DisplayClaims.xui[0].uhs;
-    const xstsXbox = await getXSTSToken(xblData.Token, 'http://xboxlive.com');
-
-    // 3. Busca amigos do Xbox Live
-    const friendsRes = await fetch(
-      'https://peoplehub.xboxlive.com/users/me/people/social/decoration/detail',
-      { headers: { 'Authorization': `XBL3.0 x=${uhs};${xstsXbox.Token}`, 'x-xbl-contract-version': '2', 'Accept-Language': 'pt-BR' } }
-    );
-    if (!friendsRes.ok) throw new Error('Não foi possível obter a lista de amigos do Xbox Live.');
-    const friendsData = await friendsRes.json();
-
-    // 4. Cruza com o banco do Servidor
-    const xuids = (friendsData.people || []).map(p => p.xuid);
-    let commonFriends = [];
-    if (xuids.length > 0) {
-      const { rows: matched } = await pool.query(
-        `SELECT u.username, u.minecraft_name
-         FROM user_integrations ui JOIN users u ON ui.user_id = u.id
-         WHERE ui.xbox_xuid = ANY($1)`,
-        [xuids]
-      );
-      commonFriends = matched;
-    }
-    res.json({ xboxFriendsTotal: (friendsData.people || []).length, serverFriends: commonFriends });
   } catch (err) {
     console.error('[xbox/friends]', err.message);
     res.status(500).json({ error: err.message });
@@ -6775,7 +6637,6 @@ app.get('/api/admin/players-with-balances', auth, requireAdmin, async (req, res)
 // ─────────────────────────────────────────────
 app.post('/api/me/session/ping', auth, async (req, res) => {
   try {
-    const { createHash } = await import('node:crypto');
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     await pool.query(
@@ -6791,7 +6652,6 @@ app.post('/api/me/session/ping', auth, async (req, res) => {
 // ─────────────────────────────────────────────
 app.get('/api/me/sessions', auth, async (req, res) => {
   try {
-    const { createHash } = await import('node:crypto');
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
     const currentHash = createHash('sha256').update(rawToken).digest('hex');
 
@@ -6826,7 +6686,6 @@ app.get('/api/me/sessions', auth, async (req, res) => {
 
 app.delete('/api/me/sessions/:id', auth, async (req, res) => {
   try {
-    const { createHash } = await import('node:crypto');
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
     const currentHash = createHash('sha256').update(rawToken).digest('hex');
 
@@ -6853,7 +6712,6 @@ app.delete('/api/me/sessions/:id', auth, async (req, res) => {
 
 app.delete('/api/me/sessions', auth, async (req, res) => {
   try {
-    const { createHash } = await import('node:crypto');
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
     const currentHash = createHash('sha256').update(rawToken).digest('hex');
 
@@ -6897,9 +6755,18 @@ app.use((req, res, next) => {
 // ─────────────────────────────────────────────
 // Error handler
 // ─────────────────────────────────────────────
-app.use((err, _req, res, _next) => {
-console.error('[error]', err?.message || err);
-res.status(500).json({ error: 'internal error' });
+app.use((err, req, res, _next) => {
+  const status = err.status || err.statusCode || 500;
+  console.error('[error]', {
+    method: req.method,
+    path: req.path,
+    status,
+    message: err?.message,
+    stack: process.env.NODE_ENV !== 'production' ? err?.stack : undefined,
+  });
+  if (res.headersSent) return;
+  res.status(status).json({ error: status < 500 ? err.message : 'internal error' });
+});
 });
 
 // ─────────────────────────────────────────────
