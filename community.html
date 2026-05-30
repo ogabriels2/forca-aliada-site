@@ -1858,7 +1858,7 @@ async function renderProfileRoute(identifier){
           <div class="profile-stats-grid">
             <button class="pstat" data-rel="followers" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.followers_count||0)}</strong><small>Seguidores</small></button>
             <button class="pstat" data-rel="following" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.following_count||0)}</strong><small>Seguindo</small></button>
-            <div class="pstat"><strong>${num(prof.friends_count||0)}</strong><small>Amigos</small></div>
+            <button class="pstat" data-rel="friends" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.friends_count||0)}</strong><small>Amigos</small></button>
             <div class="pstat"><strong>${num(prof.posts_count||0)}</strong><small>Posts</small></div>
             <div class="pstat"><strong>${num(prof.merit||0)}</strong><small>Mérito</small></div>
           </div>
@@ -1999,7 +1999,7 @@ async function toggleFollowBtn(uid,currently,btn){
 
 /* ======================= RELATION MODAL ======================= */
 async function openRelModal(type,mc,uid){
-  const title=type==='followers'?'Seguidores':'Seguindo';
+  const title=type==='followers'?'Seguidores':type==='friends'?'Amigos':'Seguindo';
   $('#rel-title').textContent=`${title} de ${mc||'jogador'}`;
   $('#rel-list').innerHTML=Array.from({length:4},()=>'<div class="skel" style="height:54px;border-radius:10px"></div>').join('');
   openModal('rel-modal');
