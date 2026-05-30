@@ -334,22 +334,22 @@
         <div class="fa-chat-messages" data-chat-messages>
           ${renderMessagesContent()}
         </div>
-        <form class="fa-chat-compose" data-chat-form>
-          <textarea data-chat-input maxlength="500" rows="1" placeholder="Digite uma mensagem" aria-label="Mensagem"></textarea>
-          <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
-        </form>
-        <div data-chat-char-counter style="text-align:right;font-size:10px;padding:0 8px 4px;opacity:0;transition:opacity 0.15s;color:var(--fa-chat-muted,#888)"></div>
+        <div class="fa-chat-compose-wrap">
+          <div data-chat-char-counter style="text-align:right;font-size:10px;padding:0 10px 2px;opacity:0;transition:opacity 0.15s;color:var(--fa-chat-muted,#888)"></div>
+          <form class="fa-chat-compose" data-chat-form>
+            <textarea data-chat-input maxlength="500" rows="1" placeholder="Digite uma mensagem" aria-label="Mensagem"></textarea>
+            <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
+          </form>
+        </div>
       </div>`;
   }
 
   function renderMessagesContent() {
     const error = state.error ? `<div class="fa-chat-inline-error"><strong>Falha no chat</strong>${esc(state.error)}</div>` : '';
-    if (state.loadingMessages) return `<div class="fa-chat-message-loading">${loadingRows()}</div>`;
-    if (state.messages.length) return error + state.messages.map(message => renderMessage(message)).join('');
-    const preview = state.current?.last_message_body;
-    if (preview) {
-      return `${error}<div class="fa-chat-empty"><strong>Historico sincronizando</strong>A conversa existe, mas as mensagens ainda nao chegaram desta sessao. Tente atualizar em alguns segundos.</div>`;
+    if (state.loadingMessages) {
+      return `<div class="fa-chat-message-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--fa-chat-muted,#888)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="animation:faChatSpin .8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="font-size:12px;font-weight:600">Carregando mensagens...</span></div>`;
     }
+    if (state.messages.length) return error + state.messages.map(message => renderMessage(message)).join('');
     return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
   }
 

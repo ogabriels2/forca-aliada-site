@@ -608,11 +608,22 @@
   to { background-position: -180% 0; }
 }
 
+@keyframes faChatSpin {
+  to { transform: rotate(360deg); }
+}
+
 .fa-chat-thread {
   min-height: 0;
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.fa-chat-compose-wrap {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--fa-chat-line);
+  background: var(--fa-chat-panel);
 }
 
 .fa-chat-peerbar {
@@ -700,8 +711,7 @@
   grid-template-columns: minmax(0, 1fr) 38px;
   align-items: end;
   gap: 8px;
-  padding: 10px;
-  border-top: 1px solid var(--fa-chat-line);
+  padding: 8px 10px 10px;
 }
 
 .fa-chat-compose textarea {
