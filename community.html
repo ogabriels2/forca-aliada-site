@@ -898,6 +898,8 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .right-panel{display:none}
   .hide-sm{display:none}
   .userbtn span{display:none}
+  /* Hide floating chat launcher on mobile — chat is in the bottom nav */
+  #fa-chat-root .fa-chat-launcher{display:none!important}
   .userbtn{width:34px;padding:2px}
   .feed-col,.route-col.show{padding-top:12px}
   .col-header h1{font-size:20px}
@@ -962,7 +964,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .mobile-menu-btn{display:inline-flex}
   .mobile-bottom-nav{
     position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));z-index:190;
-    display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
+    display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
     padding:6px;border:1px solid var(--line);border-radius:18px;
     background:color-mix(in srgb,var(--surface-solid) 88%,transparent);
     box-shadow:var(--shadow-lg);backdrop-filter:blur(20px) saturate(170%);
@@ -1204,6 +1206,10 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   <button class="mbtn mbtn-post" type="button" id="mobile-post-btn" aria-label="Criar post">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     Postar
+  </button>
+  <button class="mbtn" type="button" id="mobile-chat-btn" aria-label="Mensagens">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+    Chat
   </button>
   <button class="mbtn" type="button" id="mobile-profile-btn" aria-label="Meu perfil">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -1818,43 +1824,41 @@ async function toggleLike(id,btn){
   }
 }
 async function toggleRepost(originalId,btn){
-  // originalId = ID do post original (vem de data-post-id do card, que já é o targetPostId)
-  // Localiza o objeto no state: pode ser o post original ou um repost que aponta para ele
+  // originalId = targetPostId from the card (always the original post's ID)
+  // Find the state entry: may be the original or a repost entry pointing to it
   const post=state.posts.find(p=>Number(p.id)===Number(originalId))
            ||state.posts.find(p=>Number(p.repost_of_id)===Number(originalId));
-  // Lê o estado real de reposted_by_me do objeto; padrão false se não encontrado
+  // Read reposted_by_me; default false when post not in local state
   const reposted=Boolean(post?.reposted_by_me);
 
-  // Atualização otimista
+  // Optimistic UI
   if(post){ post.reposted_by_me=!reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?-1:1)); }
   btn?.classList.toggle('is-on',!reposted);
-  const span=btn?.querySelector('span'); if(span) span.textContent=num(post?.reposts_count||0);
+  const span=btn?.querySelector('span'); if(span) span.textContent=num(Number(post?.reposts_count||0)+(reposted?0:1));
 
   try{
     if(reposted){
-      // Desfazer repost
       await api(`/api/community/posts/${encodeURIComponent(originalId)}/repost`,{method:'DELETE'});
       toast('success','Repost removido','Saiu do seu feed.');
     } else {
-      // Fazer repost — trata 409 ("já repostou") como sucesso silencioso
       try{
         await api(`/api/community/posts/${encodeURIComponent(originalId)}/repost`,{method:'POST',body:JSON.stringify({content:''})});
         toast('success','Repost feito!','Agora aparece para quem segue você.');
-      }catch(err409){
-        // Se já havia repostado (conflito), considera ok e corrige estado local
-        if(err409.message&&(err409.message.includes('ja repostou')||err409.message.includes('já repostou')||err409.message.includes('409'))){
+      }catch(err){
+        // 409 conflict = already reposted, treat as success
+        const msg=String(err.message||'');
+        if(msg.includes('ja repostou')||msg.includes('já repostou')||msg.includes('409')||msg.includes('conflict')||msg.includes('Conflict')){
           if(post){ post.reposted_by_me=true; }
           btn?.classList.add('is-on');
           toast('info','Já repostado','Este post já estava no seu feed.');
           return;
         }
-        throw err409;
+        throw err;
       }
     }
-    // Recarrega o feed para refletir o estado real do servidor
     loadFeed({reset:true});
   }catch(e){
-    // Reverter otimismo em caso de erro real
+    // Revert on real error
     if(post){ post.reposted_by_me=reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?1:-1)); }
     btn?.classList.toggle('is-on',reposted);
     const s2=btn?.querySelector('span'); if(s2) s2.textContent=num(post?.reposts_count||0);
