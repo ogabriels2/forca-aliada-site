@@ -338,6 +338,7 @@
           <textarea data-chat-input maxlength="500" rows="1" placeholder="Digite uma mensagem" aria-label="Mensagem"></textarea>
           <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
         </form>
+        <div data-chat-char-counter style="text-align:right;font-size:10px;padding:0 8px 4px;opacity:0;transition:opacity 0.15s;color:var(--fa-chat-muted,#888)"></div>
       </div>`;
   }
 
@@ -439,10 +440,16 @@
   async function openPanel() {
     state.open = true;
     state.error = '';
+    // [4.5] Partial update: show panel without full DOM rebuild if already rendered
+    const panel = root.querySelector('.fa-chat-panel');
+    if (panel) {
+      panel.classList.add('is-open');
+      root.querySelector('[data-chat-toggle]')?.setAttribute('aria-expanded', 'true');
+    }
     state.loadingConversations = !state.conversations.length;
     state.loadingGroups = !state.groups.length;
     state.loadingFriends = !state.friends.length;
-    render();
+    if (!panel) render();
     try {
       await ensureMe();
       await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
@@ -456,7 +463,14 @@
 
   function closePanel() {
     state.open = false;
-    render();
+    // [4.5] Partial update: just hide panel without full DOM rebuild
+    const panel = root.querySelector('.fa-chat-panel');
+    if (panel) {
+      panel.classList.remove('is-open');
+      root.querySelector('[data-chat-toggle]')?.setAttribute('aria-expanded', 'false');
+    } else {
+      render();
+    }
   }
 
   async function openConversation(conv) {
@@ -570,6 +584,7 @@
     const form = textarea.closest('[data-chat-form]');
     const sendButton = form?.querySelector('.fa-chat-send');
     const tempId = `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const savedBody = textarea.value; // [2.6] save for error recovery
     state.busy = true;
     state.error = '';
     textarea.value = '';
@@ -610,7 +625,7 @@
         failed.client_status = 'failed';
         failed.client_error = state.error;
       }
-      textarea.value = body;
+      textarea.value = savedBody; // [2.6] restore saved content
       updateMessagesList({ scroll: true });
     } finally {
       state.busy = false;
@@ -746,6 +761,19 @@
       if (submit) submit.disabled = state.busy || !state.groupName.trim() || !state.groupMemberIds.length;
       return;
     }
+    // [3.2] Character counter for message compose
+    const chatInput = event.target.closest('[data-chat-input]');
+    if (chatInput) {
+      const counter = root.querySelector('[data-chat-char-counter]');
+      if (counter) {
+        const remaining = 500 - chatInput.value.length;
+        const show = chatInput.value.length > 440;
+        counter.textContent = show ? `${remaining} restantes` : '';
+        counter.style.opacity = show ? '1' : '0';
+        counter.style.color = remaining < 20 ? 'var(--fa-chat-danger,#e55)' : 'var(--fa-chat-muted,#888)';
+      }
+      return;
+    }
     const input = event.target.closest('[data-chat-search]');
     if (!input) return;
     state.search = input.value;
@@ -810,7 +838,15 @@
   } else {
     setTimeout(() => warmChat(), 1400);
   }
+  let _chatPollFailures = 0;
   setInterval(async () => {
+    // [3.11] Skip polling when tab is hidden and not in active conversation
+    if (document.hidden && !state.current) return;
+    // Exponential backoff: skip every other cycle after 2 consecutive failures
+    if (_chatPollFailures >= 2 && _chatPollFailures % 2 !== 0) {
+      _chatPollFailures++;
+      return;
+    }
     try {
       if (!state.open) {
         await loadUnread();
@@ -823,7 +859,9 @@
         else await loadConversations();
         updateConversationList();
       }
+      _chatPollFailures = 0; // reset on success
     } catch (e) {
+      _chatPollFailures++;
       state.error = e.message || 'Nao foi possivel atualizar o chat.';
     }
   }, 25000);
