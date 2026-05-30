@@ -24,6 +24,9 @@
     search: '',
     busy: false,
     error: '',
+    loadingConversations: false,
+    loadingFriends: false,
+    warmed: false,
   };
 
   const icons = {
@@ -162,6 +165,7 @@
     });
 
     if (state.error) return `<div class="fa-chat-error"><strong>Chat indisponivel</strong>${esc(state.error)}</div>`;
+    if (state.loadingConversations && !rows.length) return loadingRows();
     if (!rows.length) {
       return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para comecar.</div>';
     }
@@ -180,6 +184,7 @@
   function renderFriends() {
     const source = state.search.trim() ? state.people : state.friends;
     const requestRows = state.search.trim() ? [] : state.requests;
+    if (state.loadingFriends && !source.length && !requestRows.length) return loadingRows();
     const requestHtml = requestRows.length ? `
       <div class="fa-chat-empty" style="padding:10px 8px;text-align:left"><strong>Seguidores recentes</strong></div>
       ${requestRows.map(person => friendRow(person, true)).join('')}` : '';
@@ -198,6 +203,10 @@
         <span class="fa-chat-friend-meta"><strong>${esc(name)}</strong><small>${esc(meta)}</small></span>
         ${canFollowBack ? '<span class="fa-chat-pill" data-follow-back>+</span>' : (person.is_online ? '<span class="fa-chat-status"></span>' : '')}
       </button>`;
+  }
+
+  function loadingRows() {
+    return Array.from({ length: 5 }, () => '<div class="fa-chat-skel"><span></span><i></i><b></b></div>').join('');
   }
 
   function renderThread() {
@@ -294,10 +303,18 @@
 
   async function openPanel() {
     state.open = true;
-    await ensureMe();
+    state.error = '';
+    state.loadingConversations = !state.conversations.length;
+    state.loadingFriends = !state.friends.length;
     render();
-    await Promise.all([loadConversations(), loadFriends()]);
-    render();
+    try {
+      await ensureMe();
+      await Promise.all([loadConversations(), loadFriends()]);
+    } finally {
+      state.loadingConversations = false;
+      state.loadingFriends = false;
+      render();
+    }
   }
 
   function closePanel() {
@@ -347,14 +364,20 @@
     if (!user?.id) return;
     state.open = true;
     state.current = null;
+    state.error = '';
+    state.loadingConversations = true;
     render();
-    await ensureMe();
-    const conv = await api('/api/me/conversations', {
-      method: 'POST',
-      body: JSON.stringify({ target_id: user.id }),
-    });
-    await loadConversations();
-    await openConversation(conv);
+    try {
+      await ensureMe();
+      const conv = await api('/api/me/conversations', {
+        method: 'POST',
+        body: JSON.stringify({ target_id: user.id }),
+      });
+      await loadConversations();
+      await openConversation(conv);
+    } finally {
+      state.loadingConversations = false;
+    }
   }
 
   async function sendMessage(textarea) {
@@ -409,8 +432,12 @@
       } else if (tab) {
         state.tab = tab.dataset.chatTab;
         state.search = '';
+        if (state.tab === 'friends') state.loadingFriends = !state.friends.length;
         render();
-        if (state.tab === 'friends') await loadFriends();
+        if (state.tab === 'friends') {
+          await loadFriends();
+          state.loadingFriends = false;
+        }
         render();
       } else if (convBtn) {
         const conv = state.conversations.find(item => Number(item.id) === Number(convBtn.dataset.chatConv));
@@ -472,8 +499,26 @@
     },
   };
 
+  async function warmChat() {
+    if (state.warmed) return;
+    state.warmed = true;
+    try {
+      await ensureMe();
+      await Promise.all([loadConversations(), loadFriends()]);
+      if (state.open && !state.current) render();
+      else updateLauncherBadge();
+    } catch {
+      state.warmed = false;
+    }
+  }
+
   render();
   loadUnread();
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => warmChat(), { timeout: 4000 });
+  } else {
+    setTimeout(() => warmChat(), 1400);
+  }
   setInterval(async () => {
     try {
       if (!state.open) {

@@ -322,6 +322,45 @@
   margin-bottom: 5px;
 }
 
+.fa-chat-skel {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 34px;
+  gap: 9px;
+  align-items: center;
+  padding: 9px;
+}
+
+.fa-chat-skel span,
+.fa-chat-skel i,
+.fa-chat-skel b {
+  display: block;
+  min-width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--fa-chat-soft), color-mix(in srgb, var(--fa-chat-soft) 45%, var(--fa-chat-panel)), var(--fa-chat-soft));
+  background-size: 180% 100%;
+  animation: faChatSkel 1.1s ease-in-out infinite;
+}
+
+.fa-chat-skel span {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.fa-chat-skel i {
+  width: 100%;
+  height: 12px;
+}
+
+.fa-chat-skel b {
+  width: 28px;
+  height: 18px;
+}
+
+@keyframes faChatSkel {
+  to { background-position: -180% 0; }
+}
+
 .fa-chat-thread {
   min-height: 0;
   display: grid;
