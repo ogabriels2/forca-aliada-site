@@ -164,7 +164,7 @@ img{display:block}
 /* brand */
 .brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .brand img{width:34px;height:34px;border-radius:9px;object-fit:cover}
-.brand-text strong{font-size:15px;font-weight:800;letter-spacing:0}
+.brand-text strong{font-size:15px;font-weight:700;letter-spacing:0}
 .brand-text small{display:block;font-family:var(--ff-mono);font-size:9px;color:var(--ink-3);letter-spacing:0.12em;text-transform:uppercase;margin-top:1px}
 /* top search */
 .top-search{
@@ -249,7 +249,7 @@ img{display:block}
   margin-top:-28px;border:4px solid var(--surface-solid);
   object-fit:cover;background:var(--bg);box-shadow:var(--shadow-md);
 }
-.mini-name{font-size:15px;font-weight:800;margin:9px 0 1px;letter-spacing:0}
+.mini-name{font-size:15px;font-weight:700;margin:9px 0 1px;letter-spacing:0}
 .mini-handle{font-size:11.5px;color:var(--ink-3);font-weight:500}
 .mini-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
 .mini-stat{
@@ -273,7 +273,7 @@ img{display:block}
 .rnav-item{
   display:flex;align-items:center;gap:10px;
   min-height:42px;padding:0 11px;border-radius:var(--r-sm);
-  color:var(--ink-2);font-size:13.5px;font-weight:600;cursor:pointer;
+  color:var(--ink-2);font-size:14px;font-weight:700;cursor:pointer;
   transition:background var(--t-fast),color var(--t-fast),transform var(--t-fast) var(--ease);
   width:100%;
 }
@@ -489,7 +489,7 @@ img{display:block}
 .av42-sq{width:42px;height:42px;border-radius:11px;object-fit:cover;background:var(--bg);border:1px solid var(--line);flex-shrink:0}
 .post-head{display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap}
 .post-author{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
-.post-author strong{font-size:13px;font-weight:800;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.post-author strong{font-size:13px;font-weight:700;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .post-author .handle{font-size:11.5px;color:var(--ink-3);font-weight:500}
 .rank-pill{
   --rk:var(--rk-iron);
@@ -744,7 +744,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 }
 .player-row:hover{transform:translateY(-1px);border-color:var(--line-strong);background:var(--surface-solid)}
 .player-row img{width:36px;height:36px;border-radius:9px;object-fit:cover}
-.player-row strong{display:block;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-row strong{display:block;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .player-row small{display:block;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);margin-top:1px}
 .follow-btn{
   height:26px;padding:0 9px;border-radius:999px;
@@ -1001,7 +1001,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 
 /* --- MANAGER VISUAL SYSTEM FOR COMMUNITY --- */
 :root{
-  --ff:'Syne','Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ff:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --ff-mono:'DM Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
   --ff-display:'Bebas Neue','Syne',sans-serif;
   --ff-serif:'Instrument Serif',Georgia,serif;
@@ -1123,18 +1123,24 @@ body::after{
 .topbar-inner{max-width:1320px;width:calc(100% - 40px);gap:18px}
 .brand{gap:12px}
 .brand img{
-  width:36px;
-  height:36px;
+  width:42px;
+  height:42px;
+  padding:2px;
   border-radius:6px;
+  object-fit:contain;
   border:1px solid var(--line-strong);
-  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent);
+  background:color-mix(in srgb,var(--surface-solid) 18%,transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent);
 }
+.brand img{content:url('assets/images/fa-icon-dark.png')}
+[data-theme=light] .brand img{content:url('assets/images/fa-icon-light.png')}
 .brand-text{display:flex;align-items:baseline;gap:8px}
-.brand-text strong{font-size:15px;font-weight:800;color:var(--ink)}
+.brand-text strong{font-family:var(--ff);font-size:15px;font-weight:700;color:var(--ink)}
 .brand-text small{
   display:inline;
   font-family:var(--ff);
   font-size:13px;
+  font-weight:500;
   color:var(--ink-3);
   text-transform:none;
 }
@@ -1155,8 +1161,9 @@ body::after{
 .follow-btn,
 .tab,
 .search-chip{
+  font-family:var(--ff);
   border-radius:6px;
-  font-weight:800;
+  font-weight:700;
 }
 .tbtn{
   height:36px;
@@ -1226,7 +1233,7 @@ body::after{
   background:color-mix(in srgb,var(--surface-solid) 76%,transparent);
   box-shadow:none;
 }
-.tab{height:32px;min-width:96px;color:var(--ink-2)}
+.tab{height:32px;min-width:96px;color:var(--ink-2);font-size:13px}
 .tab.is-active,
 .btn-primary,
 .mbtn-post{
@@ -1403,7 +1410,7 @@ body::after{
 .mini-cover::after{background-size:32px 32px;opacity:.82}
 .mini-body{padding:0 14px 14px}
 .mini-av{border-color:var(--surface-solid);box-shadow:var(--shadow-md)}
-.mini-name{font-size:16px;font-weight:800}
+.mini-name{font-family:var(--ff);font-size:16px;font-weight:700}
 .mini-handle,.friend-name,.post-author .handle,.post-time,.edited-tag{color:var(--ink-3)}
 .mini-stat,
 .pstat,
@@ -1428,7 +1435,9 @@ body::after{
 }
 .rnav-item{
   border-radius:6px;
-  font-weight:750;
+  font-family:var(--ff);
+  font-size:14px;
+  font-weight:700;
 }
 .rnav-item:hover,
 .rnav-item.is-active,
@@ -1446,7 +1455,8 @@ body::after{
 .season-card h3,
 .panel-head h2,
 .profile-section-title strong{
-  font-weight:800;
+  font-family:var(--ff);
+  font-weight:700;
   color:var(--ink);
 }
 .progress-track{height:7px;border-color:var(--line);background:color-mix(in srgb,var(--bg) 72%,#000 8%)}
@@ -1523,7 +1533,7 @@ body::after{
 .post-author strong,
 .comment-author strong,
 .player-row strong,
-.rel-row strong{font-weight:800;color:var(--ink)}
+.rel-row strong{font-family:var(--ff);font-weight:700;color:var(--ink)}
 .rank-pill{
   border-radius:4px;
   font-family:var(--ff-mono);
@@ -1576,11 +1586,26 @@ body::after{
 }
 .panel-card{padding:14px}
 .panel-head h2{
-  font-family:var(--ff-display);
-  font-size:25px;
-  font-weight:400;
+  font-family:var(--ff);
+  font-size:15px;
+  font-weight:800;
+  text-transform:uppercase;
 }
 .player-list{gap:8px}
+.right-panel{
+  max-height:calc(100vh - var(--topbar-h) - 28px);
+  overflow-y:auto;
+  padding-right:4px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--line-strong) transparent;
+}
+.player-list{
+  max-height:min(420px,44vh);
+  overflow-y:auto;
+  padding-right:3px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--line-strong) transparent;
+}
 .player-row,
 .rel-row,
 .search-result{
@@ -1596,11 +1621,24 @@ body::after{
 }
 .follow-btn{color:var(--accent);background:var(--accent-soft)}
 .trend-item{
-  min-height:34px;
+  min-height:38px;
+  width:100%;
+  padding:8px 10px;
   border-radius:6px;
+  overflow:visible;
 }
 .trend-item:hover{background:var(--accent-soft)}
-.trend-item .hashtag{font-family:var(--ff-mono);color:var(--accent);font-weight:500}
+#trending-list{display:grid;gap:4px;overflow:visible}
+.trend-item .hashtag{
+  min-width:0;
+  overflow:visible;
+  white-space:normal;
+  line-height:1.2;
+  font-family:var(--ff);
+  color:var(--accent);
+  font-weight:700;
+}
+.trend-item .count{flex:0 0 auto;white-space:nowrap}
 .notif-row,
 .comment-row{
   border-color:var(--line);
@@ -1612,9 +1650,9 @@ body::after{
 .sheet{border-color:var(--line-strong);background:var(--surface-solid)}
 .sheet-header,.sheet-footer,.notif-head{border-color:var(--line)}
 .sheet-header h2{
-  font-family:var(--ff-display);
-  font-size:28px;
-  font-weight:400;
+  font-family:var(--ff);
+  font-size:17px;
+  font-weight:800;
 }
 .close-btn{border-radius:6px}
 .toast{
@@ -1701,7 +1739,7 @@ body::after{
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="index.html" aria-label="Início">
-      <img src="assets/images/logo.JPG" alt="Força Aliada" width="72" height="72">
+      <img src="assets/images/fa-icon-dark.png" alt="Força Aliada" width="72" height="72">
       <span class="brand-text"><strong>Força Aliada</strong><small>Comunidade</small></span>
     </a>
     <div class="top-search" role="search">
