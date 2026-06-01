@@ -25,6 +25,8 @@ import pg from 'pg';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -235,6 +237,46 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false }));
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+});
+
+const communityMediaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 4,
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter(_req, file, cb) {
+    if (!/^image\/(png|jpe?g|webp|gif|avif|bmp)$/i.test(file.mimetype || '')) {
+      return cb(new Error('Envie apenas imagens.'));
+    }
+    cb(null, true);
+  },
+});
+
+function communityMediaUploadMiddleware(req, res, next) {
+  communityMediaUpload.array('media', 4)(req, res, err => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Cada imagem pode ter no maximo 5MB.'
+        : err.code === 'LIMIT_FILE_COUNT'
+          ? 'Envie no maximo 4 imagens por post.'
+          : 'Upload invalido.';
+      return res.status(400).json({ error: message });
+    }
+    return res.status(400).json({ error: err.message || 'Upload invalido.' });
+  });
+}
+
+function cloudinaryIsConfigured() {
+  return Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+}
+
 // ─────────────────────────────────────────────
 // DB
 // ─────────────────────────────────────────────
@@ -331,6 +373,14 @@ const postLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Limite de 10 posts por hora atingido.' },
+});
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  keyGenerator: (req) => String(req.user?.sub || req.ip),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite de uploads por hora atingido.' },
 });
 
 // ─────────────────────────────────────────────
@@ -708,6 +758,10 @@ ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS edit_count INTEGER DEFAULT 0;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS repost_of_id INTEGER REFERENCES user_posts(id) ON DELETE CASCADE;
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS media_urls TEXT[] DEFAULT '{}'::text[];
+ALTER TABLE user_posts ALTER COLUMN media_urls SET DEFAULT '{}'::text[];
+UPDATE user_posts SET media_urls = '{}'::text[] WHERE media_urls IS NULL;
+ALTER TABLE user_posts ALTER COLUMN media_urls SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_user_posts_author ON user_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_user_posts_date ON user_posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_posts_pinned ON user_posts(is_pinned DESC, pinned_at DESC NULLS LAST, id DESC);
@@ -1093,6 +1147,28 @@ function clampInt(value, fallback, min, max) {
   const parsed = parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizePostMediaUrls(input) {
+  const values = Array.isArray(input) ? input : [];
+  const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+  const seen = new Set();
+  const urls = [];
+  for (const value of values) {
+    if (urls.length >= 4) break;
+    const raw = String(value || '').trim();
+    if (!raw || raw.length > 700 || seen.has(raw)) continue;
+    try {
+      const url = new URL(raw);
+      const isCloudinaryImage = url.protocol === 'https:'
+        && url.hostname === 'res.cloudinary.com'
+        && url.pathname.startsWith(`/${cloudName || ''}/image/upload/`);
+      if (!isCloudinaryImage) continue;
+      seen.add(raw);
+      urls.push(url.href);
+    } catch {}
+  }
+  return urls;
 }
 
 function parseCommunityIdentifier(identifier = '') {
@@ -3782,7 +3858,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
 
     const [postsResult, repliesResult, repostsResult, statsResult, dailyResult, followResult] = await Promise.all([
       pool.query(`
-        SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
+        SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
                (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
@@ -3796,7 +3872,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
       `, [req.user.sub, profileUserId]),
       pool.query(`
         SELECT pc.id AS comment_id, pc.content AS comment_content, pc.created_at AS comment_created_at,
-               p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
+               p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
                au.id AS author_id, au.username, au.minecraft_name, au.photo_url, au.role,
                COALESCE(aup.display_name, '') AS display_name,
                COALESCE(aup.avatar_url, '') AS avatar_url,
@@ -3823,8 +3899,9 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
         LIMIT 20
       `, [req.user.sub, profileUserId]),
       pool.query(`
-        SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.repost_of_id,
+        SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.repost_of_id,
                op.content AS repost_original_content,
+               op.media_urls AS repost_original_media_urls,
                op.created_at AS repost_original_created_at,
                ou.id AS repost_original_author_id,
                 ou.username AS repost_original_username,
@@ -4603,19 +4680,61 @@ function extractMentions(text) {
 }
 
 // Criar uma postagem com suporte a Menções (@)
+function uploadCommunityImage(file, userId) {
+  return new Promise((resolve, reject) => {
+    const folder = process.env.CLOUDINARY_COMMUNITY_FOLDER || 'forca-aliada/community-posts';
+    const stream = cloudinary.uploader.upload_stream({
+      folder,
+      resource_type: 'image',
+      format: 'webp',
+      use_filename: false,
+      unique_filename: true,
+      overwrite: false,
+      context: { uploaded_by: String(userId || '') },
+      transformation: [
+        { fetch_format: 'webp', quality: 'auto:eco', flags: 'strip_profile' },
+      ],
+    }, (err, result) => {
+      if (err) return reject(err);
+      if (!result?.secure_url) return reject(new Error('Cloudinary nao retornou URL segura.'));
+      resolve(result.secure_url);
+    });
+    stream.end(file.buffer);
+  });
+}
+
+app.post('/api/community/upload', auth, uploadLimiter, communityMediaUploadMiddleware, async (req, res) => {
+  if (!cloudinaryIsConfigured()) {
+    return res.status(503).json({ error: 'Upload de imagens ainda nao esta configurado.' });
+  }
+  const files = Array.isArray(req.files) ? req.files : [];
+  if (!files.length) return res.status(400).json({ error: 'Selecione ao menos uma imagem.' });
+  if (files.length > 4) return res.status(400).json({ error: 'Envie no maximo 4 imagens por post.' });
+
+  try {
+    const urls = await Promise.all(files.map(file => uploadCommunityImage(file, req.user.sub)));
+    res.status(201).json({ urls });
+  } catch (e) {
+    console.error('[POST /api/community/upload]', e);
+    res.status(502).json({ error: 'Nao foi possivel enviar as imagens agora.' });
+  }
+});
+
 app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   const content = sanitizeText(req.body?.content || '');
-  if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
+  const mediaUrls = normalizePostMediaUrls(req.body?.media_urls);
+  if (!content && !mediaUrls.length) return res.status(400).json({ error: 'Escreva algo ou adicione uma imagem.' });
+  if (content && content.length < 2 && !mediaUrls.length) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `INSERT INTO user_posts(author_id, content)
-       VALUES($1, $2)
-       RETURNING id, content, created_at, updated_at, edit_count, is_pinned`,
-      [req.user.sub, content],
+      `INSERT INTO user_posts(author_id, content, media_urls)
+       VALUES($1, $2, $3::text[])
+       RETURNING id, content, media_urls, created_at, updated_at, edit_count, is_pinned`,
+      [req.user.sub, content, mediaUrls],
     );
     const newPost = rows[0];
 
@@ -4652,7 +4771,7 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       }
     }
     await client.query('COMMIT');
-    res.status(201).json({ ...newPost, likes_count: 0, comments_count: 0 });
+    res.status(201).json({ ...newPost, likes_count: 0, comments_count: 0, reposts_count: 0 });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts]', e);
@@ -4703,9 +4822,10 @@ app.get('/api/community/posts', auth, async (req, res) => {
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
   try {
     const { rows } = await pool.query(`
-      SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+      SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
              p.repost_of_id,
              op.content AS repost_original_content,
+             op.media_urls AS repost_original_media_urls,
              op.created_at AS repost_original_created_at,
              ou.id AS repost_original_author_id,
              ou.username AS repost_original_username,
@@ -4835,11 +4955,12 @@ app.get('/api/community/feed', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       WITH base AS (
-        SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+        SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
                p.repost_of_id,
                COALESCE(p.repost_of_id, p.id) AS target_id,
                COALESCE(op.content, p.content) AS target_content,
                op.content AS repost_original_content,
+               op.media_urls AS repost_original_media_urls,
                op.created_at AS repost_original_created_at,
                ou.id AS repost_original_author_id,
                ou.username AS repost_original_username,
@@ -4936,9 +5057,10 @@ app.get('/api/community/feed', auth, async (req, res) => {
                END)::double precision AS hot_score
         FROM author_ranked a
       )
-      SELECT f.id, f.content, f.created_at, f.updated_at, f.edit_count, f.is_pinned, f.pinned_at,
+      SELECT f.id, f.content, f.media_urls, f.created_at, f.updated_at, f.edit_count, f.is_pinned, f.pinned_at,
              f.repost_of_id,
              f.repost_original_content,
+             f.repost_original_media_urls,
              f.repost_original_created_at,
              f.repost_original_author_id,
              f.repost_original_username,
@@ -5009,7 +5131,7 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   try {
     const { rows } = await pool.query(`
-      SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+      SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
              ${socialRankSql('u', 'pb')} AS rank,
