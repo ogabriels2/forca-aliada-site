@@ -250,10 +250,9 @@ const communityMediaUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
     files: 4,
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 10 * 1024 * 1024, // Limite seguro aumentado para 10MB
   },
   fileFilter(_req, file, cb) {
-    // Adicionado suporte preventivo aos formatos heic/heif do iPhone
     if (!/^image\/(png|jpe?g|webp|gif|avif|bmp|heic|heif)$/i.test(file.mimetype || '')) {
       return cb(new Error('Envie apenas imagens.'));
     }
@@ -262,22 +261,20 @@ const communityMediaUpload = multer({
 });
 
 function communityMediaUploadMiddleware(req, res, next) {
-  // Mudamos de .array('media', 4) para .any() para flexibilizar o recebimento do arquivo
   communityMediaUpload.any()(req, res, err => {
     if (!err) return next();
     
-    // Agora o console do Render vai nos dizer o motivo exato se falhar!
     console.error('[MULTER ERROR DETAILED]:', err); 
     
     if (err instanceof multer.MulterError) {
       const message = err.code === 'LIMIT_FILE_SIZE'
-        ? 'Cada imagem pode ter no maximo 5MB.'
+        ? 'A imagem pode ter no máximo 10MB.'
         : err.code === 'LIMIT_FILE_COUNT'
-          ? 'Envie no maximo 4 imagens por post.'
-          : `Upload invalido (${err.code}).`; // Vai exibir na tela o código real do erro
+          ? 'Envie no máximo 4 imagens por post.'
+          : `Upload inválido (${err.code}).`;
       return res.status(400).json({ error: message });
     }
-    return res.status(400).json({ error: err.message || 'Upload invalido.' });
+    return res.status(400).json({ error: err.message || 'Upload inválido.' });
   });
 }
 
