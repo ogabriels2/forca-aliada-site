@@ -31,105 +31,7 @@
 })();
 </script>
 <style>
-/* --- MANAGER VISUAL SYSTEM FOR COMMUNITY --- */
-:root{
-  --ff:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --ff-mono:'DM Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
-  --ff-display:'Outfit','Syne',sans-serif;
-  --ff-serif:'Instrument Serif',Georgia,serif;
-  --bg:#f2eee5;
-  --bg-2:#e8e0cf;
-  --surface:rgba(253,252,248,.88);
-  --surface-solid:#fdfcf8;
-  --surface-hover:#f6f0e3;
-  --surface-soft:#eee6d6;
-  --ink:#14120d;
-  --ink-2:#5f594f;
-  --ink-3:#8d8578;
-  --line:rgba(93,73,31,.18);
-  --line-strong:rgba(93,73,31,.34);
-  --accent:#9b7a2d;
-  --accent-h:#6f5520;
-  --accent-2:#14765f;
-  --accent-soft:rgba(201,168,76,.14);
-  --accent-mid:rgba(201,168,76,.28);
-  --danger:#b43a30;
-  --danger-soft:rgba(180,58,48,.12);
-  --success:#248a4d;
-  --success-soft:rgba(36,138,77,.13);
-  --warning:#a46c0a;
-  --warning-soft:rgba(164,108,10,.14);
-  --gold:#9b7a2d;
-  --gold-light:#d8b858;
-  --purple:#6f4bb2;
-  --purple-light:#9c80df;
-  --rk-iron:#7a756d;
-  --rk-gold:#b8831d;
-  --rk-diamond:#12876f;
-  --rk-netherite:#7e5aca;
-  --rk-staff:#3f7ec4;
-  --rk-owner:#b43a30;
-  --topbar-h:72px;
-  --left-w:260px;
-  --right-w:306px;
-  --r-xs:4px;
-  --r-sm:6px;
-  --r-md:8px;
-  --r-lg:8px;
-  --r-xl:10px;
-  --shadow-xs:0 1px 0 rgba(255,255,255,.65) inset,0 8px 18px rgba(69,53,25,.08);
-  --shadow-sm:0 1px 0 rgba(255,255,255,.72) inset,0 18px 34px rgba(69,53,25,.12);
-  --shadow-md:0 1px 0 rgba(255,255,255,.68) inset,0 24px 52px rgba(69,53,25,.16);
-  --shadow-lg:0 34px 90px rgba(31,24,12,.28);
-  --shadow-accent:0 12px 30px rgba(155,122,45,.22);
-
-  --ease:cubic-bezier(0.16,1,0.3,1);
-  --ease-out:cubic-bezier(0,0,0.3,1);
-  --t-fast:0.12s;
-  --t-med:0.22s;
-  /* Z-index — hierarquia única */
-  --z-sticky:50;
-  --z-dropdown:60;
-  --z-nav:100;
-  --z-fab:110;
-  --z-mobile-nav:120;
-  --z-drawer:200;
-  --z-modal:300;
-  --z-toast:400;
-}
-[data-theme=dark]{
-  --bg:#0a0a08;
-  --bg-2:#11110f;
-  --surface:rgba(26,26,23,.78);
-  --surface-solid:#141412;
-  --surface-hover:#202019;
-  --surface-soft:#1b1b17;
-  --ink:#fdfcf8;
-  --ink-2:#d4d0c8;
-  --ink-3:#8f8a7e;
-  --line:rgba(201,168,76,.16);
-  --line-strong:rgba(201,168,76,.34);
-  --accent:#c9a84c;
-  --accent-h:#e8c96a;
-  --accent-2:#3dba5f;
-  --accent-soft:rgba(201,168,76,.105);
-  --accent-mid:rgba(201,168,76,.25);
-  --danger:#ff6b5e;
-  --danger-soft:rgba(255,107,94,.13);
-  --success:#3dba5f;
-  --success-soft:rgba(61,186,95,.14);
-  --warning:#ffd166;
-  --warning-soft:rgba(255,209,102,.13);
-  --gold:#c9a84c;
-  --gold-light:#e8c96a;
-  --purple:#9f7aea;
-  --purple-light:#c4b5fd;
-  --shadow-xs:0 1px 0 rgba(255,255,255,.04) inset,0 10px 22px rgba(0,0,0,.34);
-  --shadow-sm:0 1px 0 rgba(255,255,255,.05) inset,0 20px 44px rgba(0,0,0,.42);
-  --shadow-md:0 1px 0 rgba(255,255,255,.06) inset,0 30px 70px rgba(0,0,0,.52);
-  --shadow-lg:0 44px 120px rgba(0,0,0,.72);
-  --shadow-accent:0 18px 46px rgba(201,168,76,.18);
-}html{min-height:100%;scroll-behavior:smooth}
+html{min-height:100%;scroll-behavior:smooth}
 body{
   font-family:var(--ff);background:var(--bg);color:var(--ink);
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
@@ -162,7 +64,7 @@ img{display:block}
 }
 /* brand */
 .brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
-.brand img:not(.brand-logo){width:34px;height:34px;border-radius:9px;object-fit:cover}
+.brand img{width:34px;height:34px;border-radius:9px;object-fit:cover}
 .brand-text strong{font-size:15px;font-weight:700;letter-spacing:0}
 .brand-text small{display:block;font-family:var(--ff-mono);font-size:9px;color:var(--ink-3);letter-spacing:0.12em;text-transform:uppercase;margin-top:1px}
 /* top search */
@@ -885,7 +787,105 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .confirm-body p{font-size:13.5px;color:var(--ink-2);line-height:1.5}
 .confirm-footer{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}
 
+/* --- MANAGER VISUAL SYSTEM FOR COMMUNITY --- */
+:root{
+  --ff:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ff-mono:'DM Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --ff-display:'Outfit','Syne',sans-serif;
+  --ff-serif:'Instrument Serif',Georgia,serif;
+  --bg:#f2eee5;
+  --bg-2:#e8e0cf;
+  --surface:rgba(253,252,248,.88);
+  --surface-solid:#fdfcf8;
+  --surface-hover:#f6f0e3;
+  --surface-soft:#eee6d6;
+  --ink:#14120d;
+  --ink-2:#5f594f;
+  --ink-3:#8d8578;
+  --line:rgba(93,73,31,.18);
+  --line-strong:rgba(93,73,31,.34);
+  --accent:#9b7a2d;
+  --accent-h:#6f5520;
+  --accent-2:#14765f;
+  --accent-soft:rgba(201,168,76,.14);
+  --accent-mid:rgba(201,168,76,.28);
+  --danger:#b43a30;
+  --danger-soft:rgba(180,58,48,.12);
+  --success:#248a4d;
+  --success-soft:rgba(36,138,77,.13);
+  --warning:#a46c0a;
+  --warning-soft:rgba(164,108,10,.14);
+  --gold:#9b7a2d;
+  --gold-light:#d8b858;
+  --purple:#6f4bb2;
+  --purple-light:#9c80df;
+  --rk-iron:#7a756d;
+  --rk-gold:#b8831d;
+  --rk-diamond:#12876f;
+  --rk-netherite:#7e5aca;
+  --rk-staff:#3f7ec4;
+  --rk-owner:#b43a30;
+  --topbar-h:72px;
+  --left-w:260px;
+  --right-w:306px;
+  --r-xs:4px;
+  --r-sm:6px;
+  --r-md:8px;
+  --r-lg:8px;
+  --r-xl:10px;
+  --shadow-xs:0 1px 0 rgba(255,255,255,.65) inset,0 8px 18px rgba(69,53,25,.08);
+  --shadow-sm:0 1px 0 rgba(255,255,255,.72) inset,0 18px 34px rgba(69,53,25,.12);
+  --shadow-md:0 1px 0 rgba(255,255,255,.68) inset,0 24px 52px rgba(69,53,25,.16);
+  --shadow-lg:0 34px 90px rgba(31,24,12,.28);
+  --shadow-accent:0 12px 30px rgba(155,122,45,.22);
 
+  --ease:cubic-bezier(0.16,1,0.3,1);
+  --ease-out:cubic-bezier(0,0,0.3,1);
+  --t-fast:0.12s;
+  --t-med:0.22s;
+  /* Z-index — hierarquia única */
+  --z-sticky:50;
+  --z-dropdown:60;
+  --z-nav:100;
+  --z-fab:110;
+  --z-mobile-nav:120;
+  --z-drawer:200;
+  --z-modal:300;
+  --z-toast:400;
+}
+[data-theme=dark]{
+  --bg:#0a0a08;
+  --bg-2:#11110f;
+  --surface:rgba(26,26,23,.78);
+  --surface-solid:#141412;
+  --surface-hover:#202019;
+  --surface-soft:#1b1b17;
+  --ink:#fdfcf8;
+  --ink-2:#d4d0c8;
+  --ink-3:#8f8a7e;
+  --line:rgba(201,168,76,.16);
+  --line-strong:rgba(201,168,76,.34);
+  --accent:#c9a84c;
+  --accent-h:#e8c96a;
+  --accent-2:#3dba5f;
+  --accent-soft:rgba(201,168,76,.105);
+  --accent-mid:rgba(201,168,76,.25);
+  --danger:#ff6b5e;
+  --danger-soft:rgba(255,107,94,.13);
+  --success:#3dba5f;
+  --success-soft:rgba(61,186,95,.14);
+  --warning:#ffd166;
+  --warning-soft:rgba(255,209,102,.13);
+  --gold:#c9a84c;
+  --gold-light:#e8c96a;
+  --purple:#9f7aea;
+  --purple-light:#c4b5fd;
+  --shadow-xs:0 1px 0 rgba(255,255,255,.04) inset,0 10px 22px rgba(0,0,0,.34);
+  --shadow-sm:0 1px 0 rgba(255,255,255,.05) inset,0 20px 44px rgba(0,0,0,.42);
+  --shadow-md:0 1px 0 rgba(255,255,255,.06) inset,0 30px 70px rgba(0,0,0,.52);
+  --shadow-lg:0 44px 120px rgba(0,0,0,.72);
+  --shadow-accent:0 18px 46px rgba(201,168,76,.18);
+}
 .topbar *, .page-body *, .backdrop *, .toast *, .fab-post{letter-spacing:0}
 html{background:var(--bg)}
 body{
@@ -932,9 +932,9 @@ body::after{
   height:42px;
   padding:2px;
   border-radius:6px;
-  border:none;
-  background:transparent;
-  box-shadow:none;
+  border:1px solid var(--line-strong);
+  background:color-mix(in srgb,var(--surface-solid) 18%,transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent);
   overflow:hidden;
   flex:0 0 auto;
 }
@@ -1842,8 +1842,26 @@ body::after{
   background:var(--surface-solid);
 }
 .toast-ic{border-radius:6px}
-
-
+.fab-post{
+  height:54px;
+  right:24px;
+  bottom:24px;
+  border-radius:8px;
+  box-shadow:var(--shadow-accent);
+}
+.fab-post:hover{box-shadow:0 20px 48px rgba(201,168,76,.22)}
+.mobile-drawer{
+  border-color:var(--line);
+  background:var(--surface-solid);
+}
+.mobile-drawer-profile,
+.mobile-drawer-season{border-radius:8px;border-color:var(--line);background:var(--surface-soft)}
+.mobile-bottom-nav{
+  border-radius:8px!important;
+  border-color:var(--line)!important;
+  background:color-mix(in srgb,var(--surface-solid) 88%,transparent)!important;
+}
+.mbtn{border-radius:6px!important}
 [data-theme=dark] #toast-stack .toast,
 [data-theme=dark] .sheet,
 [data-theme=dark] .post-menu,
@@ -1900,60 +1918,6 @@ body::after{
   .fab-post { width: 56px; height: 56px; padding: 0; justify-content: center; }
   .fab-text { display: none; }
 }
-
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-
-.mobile-menu-btn{display:none}
-.mobile-bottom-nav{display:none}
-.mobile-drawer-shell{position:fixed;inset:0;z-index:var(--z-drawer);display:none;background:rgba(15,23,42,.38);backdrop-filter:blur(10px)}
-.mobile-drawer-shell.show{display:block}
-.mobile-drawer{width:min(330px,calc(100vw - 42px));height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:14px;border-right:1px solid var(--line);background:var(--surface-solid);box-shadow:var(--shadow-lg);transform:translateX(-105%);transition:transform var(--t-med) var(--ease)}
-.mobile-drawer-shell.show .mobile-drawer{transform:translateX(0)}
-.mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.mobile-drawer-profile{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
-.mobile-drawer-profile img{width:48px;height:48px;border-radius:13px}
-.mobile-drawer-profile strong,.mobile-drawer-profile small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mobile-drawer-profile strong{font-size:14px;font-weight:900}.mobile-drawer-profile small{color:var(--ink-3);font-size:12px;font-weight:700}
-.mobile-drawer-nav{display:grid;gap:6px;align-content:start;overflow:auto}
-.mobile-drawer-item{min-height:42px;display:flex;align-items:center;gap:10px;padding:0 11px;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);font-size:13px;font-weight:700;text-align:left;cursor:pointer}
-.mobile-drawer-item svg{width:18px;height:18px;flex:0 0 auto}
-@media(max-width:768px){
-  body{padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
-  body.modal-open{padding-right:0}
-  .brand img:not(.brand-logo){width:34px;height:34px;border-radius:9px}
-  .brand-text small{display:none}
-  .topnav{gap:5px}
-  .tbtn{min-width:34px}
-  .mobile-menu-btn{display:inline-flex}
-  .mobile-bottom-nav{
-    position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));z-index:var(--z-mobile-nav);
-    display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
-    padding:6px;border:1px solid var(--line);border-radius:18px;
-    background:color-mix(in srgb,var(--surface-solid) 88%,transparent);
-    box-shadow:var(--shadow-lg);backdrop-filter:blur(20px) saturate(170%);
-  }
-  .mbtn{min-width:0;min-height:46px;display:grid;place-items:center;gap:2px;border-radius:14px;color:var(--ink-2);font-size:9.5px;font-weight:700}
-  .mbtn svg{width:19px;height:19px}
-  .mbtn.is-active,.mbtn:hover{background:var(--accent-soft);color:var(--accent)}
-  .mbtn-post{background:var(--accent);color:#fff}
-  .mbtn-post:hover{background:var(--accent-h);color:#fff}
-  .fab-post{display:none!important}
-  .left-rail,.right-panel{display:none}
-  .page-body{grid-template-columns:1fr!important}
-}
-/* ─── BOTÃO FLUTUANTE ─── */
-.fab-post {
-  position: fixed; right: 24px; bottom: 24px; z-index: var(--z-fab);
-  height: 52px; padding: 0 22px; border-radius: 999px;
-  box-shadow: var(--shadow-accent); border: none;
-  display: flex; align-items: center; gap: 8px;
-  font-size: 15.5px; font-weight: 800; cursor: pointer;
-  color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-h));
-  transition: transform var(--t-fast), box-shadow var(--t-fast);
-}
-.fab-post:hover { transform: translateY(-2px); box-shadow: 0 20px 48px rgba(201,168,76,.28); }
-.fab-text { display: block; }
-
 </style>
 </head>
 <body>
@@ -1972,7 +1936,7 @@ body::after{
         <img class="brand-logo brand-logo-dark" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
         <img class="brand-logo brand-logo-light" src="assets/images/fa-icon-light.png" alt="" width="72" height="72">
       </span>
-      <span class="brand-text"><strong>Community</strong><small>Força Aliada</small></span>
+      <span class="brand-text"><strong>FA Community</strong><small>Força Aliada</small></span>
     </a>
     <div class="top-search" role="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -2044,57 +2008,6 @@ body::after{
         <span class="rnav-badge" id="nav-notif-badge" hidden>0</span>
       </a>
       <!-- Minha Conta removida da left-rail — acesso exclusivo via Perfil -->
-    </nav>
-    <div class="mobile-drawer-season network-card">
-      <p class="eyebrow">Agora na rede</p>
-      <h3>Busca inteligente</h3>
-      <p>Encontre pessoas, respostas e assuntos antes de postar.</p>
-      <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>Buscar na comunidade</button>
-    </div>
-  </aside>
-</div>
-
-<nav class="mobile-bottom-nav" aria-label="Navegação principal">
-  <button class="mbtn is-active" type="button" id="mobile-home-btn" aria-label="Feed">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
-    Home
-  </button>
-  <button class="mbtn" type="button" id="mobile-search-btn" aria-label="Buscar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    Buscar
-  </button>
-  <button class="mbtn mbtn-post" type="button" id="mobile-post-btn" aria-label="Criar post">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    Postar
-  </button>
-  <button class="mbtn" type="button" id="mobile-chat-btn" aria-label="Mensagens">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-    Chat
-  </button>
-  <button class="mbtn" type="button" id="mobile-profile-btn" aria-label="Meu perfil">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-    Perfil
-  </button>
-</nav>
-
-<div class="mobile-drawer-shell" id="mobile-side-menu" aria-hidden="true">
-  <aside class="mobile-drawer" role="dialog" aria-modal="true" aria-label="Menu da comunidade">
-    <div class="mobile-drawer-head">
-      <strong>Comunidade</strong>
-      <button class="close-btn" data-close-mobile-menu aria-label="Fechar menu">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
-    </div>
-    <button class="mobile-drawer-profile" type="button" id="drawer-profile-btn">
-      <img id="drawer-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar">
-      <span><strong id="drawer-name">...</strong><small id="drawer-handle">@...</small></span>
-    </button>
-    <nav class="mobile-drawer-nav" aria-label="Atalhos da comunidade">
-      <button class="mobile-drawer-item is-active" type="button" data-drawer-filter="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Feed geral</span></button>
-      <button class="mobile-drawer-item" type="button" data-drawer-filter="following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg><span>Seguindo</span></button>
-      <button class="mobile-drawer-item" type="button" id="drawer-search-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Buscar</span></button>
-      <a class="mobile-drawer-item" href="account.html?tab=notificacoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificações</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
-      <a class="mobile-drawer-item" href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Minha conta</span></a>
     </nav>
     <div class="mobile-drawer-season network-card">
       <p class="eyebrow">Agora na rede</p>
