@@ -452,7 +452,7 @@
       return !term || name.includes(term) || handle.includes(term);
     });
 
-    if (state.error) return `<div class="fa-chat-error"><strong>Chat indisponivel</strong>${esc(state.error)}</div>`;
+    if (state.error && !rows.length) return `<div class="fa-chat-error"><strong>Chat indisponivel</strong>${esc(state.error)}</div>`;
     if (state.loadingConversations && !rows.length) return loadingRows();
     if (!rows.length) {
       return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para comecar.</div>';
@@ -701,13 +701,16 @@
   }
 
   async function loadConversations() {
-    state.error = '';
     try {
       const data = await api('/api/me/conversations?limit=30');
       state.conversations = Array.isArray(data.rows) ? data.rows : [];
       recalcUnread();
     } catch (e) {
-      state.error = e.message || 'Nao foi possivel carregar.';
+      // Só expõe o erro no inbox (sem conversa aberta).
+      // Quando há uma thread aberta o erro de lista não deve poluir o chat.
+      if (!state.current) {
+        state.error = e.message || 'Nao foi possivel carregar.';
+      }
     }
   }
 
@@ -822,18 +825,22 @@
       }
       state.messages = rows;
       state.loadingMessages = false;
+      state.error = ''; // mensagens carregadas com sucesso — limpa qualquer erro anterior
       // Update cache
       if (k) state._msgCache[k] = rows.slice();
 
       conv.unread_count = 0;
-      await loadConversations();
+      // loadConversations pode falhar sem afetar o chat aberto
+      try {
+        await loadConversations();
+      } catch { /* silencioso — não afeta a thread */ }
       state.current = state.conversations.find(item => Number(item.id) === Number(conv.id)) || conv;
 
       updateMessagesList({ scroll: true });
     } catch (e) {
       state.messages = cached; // fallback to cache on error
       state.loadingMessages = false;
-      state.error = e.message;
+      state.error = e.message || 'Erro ao carregar mensagens';
       updateMessagesList({ scroll: false });
     }
   }
@@ -869,17 +876,21 @@
       }
       state.messages = rows;
       state.loadingMessages = false;
+      state.error = ''; // mensagens carregadas com sucesso — limpa erro anterior
       if (k) state._msgCache[k] = rows.slice();
 
       group.unread_count = 0;
-      await loadGroups();
+      // loadGroups pode falhar sem afetar o chat aberto
+      try {
+        await loadGroups();
+      } catch { /* silencioso */ }
       state.current = state.groups.find(item => Number(item.id) === Number(group.id)) || group;
 
       updateMessagesList({ scroll: true });
     } catch (e) {
       state.messages = cached;
       state.loadingMessages = false;
-      state.error = e.message;
+      state.error = e.message || 'Erro ao carregar mensagens';
       updateMessagesList({ scroll: false });
     }
   }
