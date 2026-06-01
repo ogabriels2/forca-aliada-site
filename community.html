@@ -339,6 +339,18 @@ img{display:block}
   border:1px solid var(--line);border-radius:var(--r-lg);
   background:var(--surface);box-shadow:var(--shadow-sm);
   padding:13px;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast),background var(--t-fast);
+}
+.composer.drag-over{
+  border-color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 6%,var(--surface));
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+/* drag-over também para o modal */
+.sheet.drag-over{
+  outline:2px dashed var(--accent);
+  outline-offset:-4px;
+  background:color-mix(in srgb,var(--accent) 5%,var(--surface));
 }
 .composer-inner{display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px}
 .av42{width:42px;height:42px;border-radius:11px;object-fit:cover;background:var(--bg);border:1px solid var(--line)}
@@ -2408,6 +2420,7 @@ body::after{
           <span id="inline-media-count">0/4</span>
         </button>
         <span class="media-status" id="inline-media-status"></span>
+        <span style="font-size:11px;color:var(--ink-3);margin-left:auto;pointer-events:none" id="inline-drop-hint">arraste imagens aqui</span>
         <input class="media-input" id="inline-media-input" type="file" multiple accept="image/*" hidden>
       </div>
       <div class="media-preview-container" id="inline-media-preview" aria-live="polite"></div>
@@ -2553,6 +2566,7 @@ body::after{
         <input class="media-input" id="modal-media-input" type="file" multiple accept="image/*" hidden>
         <button class="btn btn-ghost btn-sm" disabled title="Enquete"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
         <span class="media-status" id="modal-media-status"></span>
+        <span style="font-size:11px;color:var(--ink-3);pointer-events:none">arraste imagens</span>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <div class="ring-wrap" id="modal-char-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="modal-ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg><span id="modal-ring-label"></span></div>
@@ -3193,17 +3207,28 @@ async function ensureEditorLibraries(){
     waitForGlobal('imageCompression'),
   ]);
 }
+/* URL pública e estável do modelo NSFW (quantizado, ~3 MB) */
+const NSFW_MODEL_URL='https://nsfwjs.com/quant_nsfw_mobilenet/model.json';
+
 async function getNsfwModel(type){
   if(!state.nsfwModelPromise){
     setMediaStatus(type,'Carregando IA de moderação...');
     state.nsfwModelPromise=waitForGlobal('nsfwjs',20000)
-      .then(lib=>lib.load())
-      .catch(err=>{state.nsfwModelPromise=null;throw err});
+      /* Passa a URL do modelo — obrigatório no nsfwjs v4+ */
+      .then(lib=>lib.load(NSFW_MODEL_URL,{size:224}))
+      .catch(err=>{
+        /* Não bloqueia o upload se o modelo não carregar; registra no console */
+        console.warn('[nsfwjs] Modelo não carregou:',err);
+        state.nsfwModelPromise=null;
+        return null; /* null = skip moderação */
+      });
   }
   return state.nsfwModelPromise;
 }
 function warmNsfwModel(type){
-  getNsfwModel(type).then(()=>setMediaStatus(type,'IA pronta para revisar imagens.')).catch(()=>setMediaStatus(type,'A IA de moderação não carregou. Tente novamente.'));
+  getNsfwModel(type)
+    .then(m=>setMediaStatus(type,m?'IA pronta para revisar imagens.':''))
+    .catch(()=>setMediaStatus(type,''));
 }
 function blobToImage(blob){
   return new Promise((resolve,reject)=>{
@@ -3216,6 +3241,8 @@ function blobToImage(blob){
 }
 async function assertSafeImage(blob,type){
   const model=await getNsfwModel(type);
+  /* Se o modelo não carregou, deixa passar (fail-open) */
+  if(!model) return;
   const {img,url}=await blobToImage(blob);
   try{
     const predictions=await model.classify(img);
@@ -4438,6 +4465,31 @@ function bindEvents(){
     $(`#${type}-ta`)?.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(!$(`#${type}-publish-btn`).disabled)publishPost(type);}});
     $(`#${type}-publish-btn`)?.addEventListener('click',()=>publishPost(type));
     $(`#${type}-media-input`)?.addEventListener('change',e=>{queueMediaFiles(type,e.currentTarget.files||[]);e.currentTarget.value='';});
+
+    /* ── Drag-and-drop de imagens ── */
+    const dropTarget=type==='inline'?$('#inline-composer'):$('#post-modal')?.querySelector('.sheet');
+    if(dropTarget){
+      /* Previne o comportamento padrão do browser (abrir a imagem) */
+      dropTarget.addEventListener('dragenter',e=>{
+        if([...e.dataTransfer.types].includes('Files')){e.preventDefault();dropTarget.classList.add('drag-over');}
+      });
+      dropTarget.addEventListener('dragover',e=>{
+        if([...e.dataTransfer.types].includes('Files')){e.preventDefault();e.dataTransfer.dropEffect='copy';}
+      });
+      dropTarget.addEventListener('dragleave',e=>{
+        /* Só remove se sair do próprio alvo (não de filhos) */
+        if(!dropTarget.contains(e.relatedTarget)) dropTarget.classList.remove('drag-over');
+      });
+      dropTarget.addEventListener('drop',e=>{
+        e.preventDefault();
+        dropTarget.classList.remove('drag-over');
+        const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
+        if(!files.length){toast('warning','Formato inválido','Solte apenas imagens.');return;}
+        queueMediaFiles(type,files);
+        /* Se o post-modal ainda não está aberto, abre-o para o usuário ver o progresso */
+        if(type==='modal'&&!$('#post-modal').classList.contains('show')) openModal('post-modal');
+      });
+    }
   });
   $$('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
   $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.filter)));
