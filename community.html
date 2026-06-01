@@ -2535,6 +2535,7 @@ if (!token) location.replace('login.html');
 /* ======================= STATE ======================= */
 const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
+  feedEvaluationTimestamp:null,
   players:[], notifs:[], notifUnread:0, trendCount:0,
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, mentionSuggestions:[], routeActive:false,
@@ -2980,15 +2981,26 @@ async function loadFeed({reset=false}={}){
   if(state.loading||(!state.hasMore&&!reset))return;
   state.loading=true;
   const list=$('#feed-list');
-  if(reset){state.cursor=null;state.hasMore=true;state.posts=[];list.innerHTML=skels(3)}
+  if(reset){
+    state.cursor=null;
+    state.feedEvaluationTimestamp=new Date().toISOString();
+    state.hasMore=true;
+    state.posts=[];
+    list.innerHTML=skels(3);
+  }
   try{
-    const p=new URLSearchParams({limit:'20',filter:state.filter});
+    if(!state.feedEvaluationTimestamp) state.feedEvaluationTimestamp=new Date().toISOString();
+    const p=new URLSearchParams({limit:'20',filter:state.filter,evaluation_timestamp:state.feedEvaluationTimestamp});
     if(state.searchQuery) p.set('search',state.searchQuery);
     if(state.hashtag) p.set('hashtag',state.hashtag);
-    if(state.cursor) p.set('cursor',state.cursor);
-    const data=await api(`/api/community/posts?${p}`);
+    if(state.cursor&&state.cursor.score!==undefined&&state.cursor.id){
+      p.set('cursor_score',String(state.cursor.score));
+      p.set('cursor_id',String(state.cursor.id));
+    }
+    const data=await api(`/api/community/feed?${p}`);
     const inc=Array.isArray(data.posts)?data.posts:[];
     state.posts=reset?inc:[...state.posts,...inc];
+    state.feedEvaluationTimestamp=data.evaluation_timestamp||state.feedEvaluationTimestamp;
     state.cursor=data.next_cursor||null;
     state.hasMore=Boolean(data.next_cursor||data.has_more);
     renderFeed({append:!reset});
