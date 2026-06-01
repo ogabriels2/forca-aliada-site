@@ -10,10 +10,10 @@
   const key='fa_theme';
   const token=localStorage.getItem('fa_token');
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
-  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'auto'));}
+  function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'dark'));}
   apply();
   if(token){const syncTheme=()=>{fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'auto'));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'dark'));
 })();
 </script>
 

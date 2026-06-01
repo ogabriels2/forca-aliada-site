@@ -337,6 +337,7 @@ const postLimiter = rateLimit({
 // Helpers
 // ─────────────────────────────────────────────
 function sanitize(v)            { return String(v || '').replace(/[<>]/g, '').trim(); }
+function sanitizeText(v)        { return String(v ?? '').replace(/\u0000/g, '').replace(/\r\n?/g, '\n').trim(); }
 function generateVerificationCode() { return crypto.randomInt(100000, 1000000).toString(); }
 function validateEmail(e)       { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 function validatePassword(p)    { return typeof p === 'string' && p.length >= 8 && p.length <= 128; }
@@ -519,10 +520,10 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   public_profile   BOOLEAN DEFAULT TRUE,
   show_online      BOOLEAN DEFAULT TRUE,
   public_history   BOOLEAN DEFAULT FALSE,
-  theme            VARCHAR(20) DEFAULT 'auto',
+  theme            VARCHAR(20) DEFAULT 'dark',
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'auto';
+ALTER TABLE user_preferences ALTER COLUMN theme SET DEFAULT 'dark';
 
 CREATE TABLE IF NOT EXISTS player_balances (
   minecraft_name  VARCHAR(255) PRIMARY KEY,
@@ -964,6 +965,23 @@ function isPrivileged(role) {
   return ['full', 'owner'].includes(role);
 }
 
+function socialRankSql(userAlias = 'u', balanceAlias = 'pb') {
+  return `CASE
+    WHEN ${userAlias}.role = 'owner' THEN 'owner'
+    WHEN ${userAlias}.role = 'full' THEN 'adm'
+    WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN NULL
+    ELSE COALESCE(${balanceAlias}.rank, 'ferro')
+  END`;
+}
+
+function socialMeritSql(userAlias = 'u', balanceAlias = 'pb') {
+  return `CASE
+    WHEN ${userAlias}.role IN ('owner', 'full') THEN COALESCE(${balanceAlias}.merit_total, 0)
+    WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN NULL
+    ELSE COALESCE(${balanceAlias}.merit_total, 0)
+  END`;
+}
+
 function clampInt(value, fallback, min, max) {
   const parsed = parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
@@ -1022,7 +1040,7 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
   );
   if (blocked.length) return null;
 
-  const preview = sanitize(previewText || '').slice(0, 120);
+  const preview = sanitizeText(previewText || '').slice(0, 120);
   const { rows } = await db.query(
     `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text)
      SELECT $1,$2,$3,$4,$5,$6
@@ -1065,7 +1083,7 @@ function directConversationSelect(extraWhere = '') {
            other_u.username AS other_username,
            other_u.minecraft_name AS other_minecraft_name,
            other_u.photo_url AS other_photo_url,
-           COALESCE(pb.rank, 'ferro') AS other_rank,
+           ${socialRankSql('other_u', 'pb')} AS other_rank,
            COALESCE(pb.merit_total, 0) AS other_merit,
            EXISTS(SELECT 1 FROM user_follows f1
                   JOIN user_follows f2 ON f2.follower_id = other_u.id AND f2.following_id = $1
@@ -2183,14 +2201,22 @@ function oauthRedirectError(res, message, provider = 'oauth') {
   return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_provider=${encodeURIComponent(provider)}&oauth_err=${encodeURIComponent(message)}`);
 }
 
-async function createSessionAndRedirect(res, req, userRow, provider = 'oauth', isNew = false) {
+async function issueSessionToken(req, userRow) {
   const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
   await pool.query(
-    `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
-    [userRow.id, tokenHash, req.headers['user-agent'], ip]
+    `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at)
+     VALUES($1,$2,$3,$4,NOW(),NOW())
+     ON CONFLICT(token_hash) DO UPDATE SET last_seen_at=NOW(), revoked=FALSE`,
+    [userRow.id, tokenHash, req.headers['user-agent'] || null, ip]
   );
+  setCachedSession(tokenHash, true);
+  return token;
+}
+
+async function createSessionAndRedirect(res, req, userRow, provider = 'oauth', isNew = false) {
+  const token = await issueSessionToken(req, userRow);
   const actionLabel = isNew ? `Cadastro + login social (${provider})` : `Login social (${provider})`;
   await audit({ actorId: userRow.id, actorName: userRow.username, type: isNew ? 'create' : 'login', message: actionLabel });
   // Se é conta nova via OAuth social (não Microsoft), redireciona para onboarding de cadastro
@@ -2386,14 +2412,8 @@ app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
        DO UPDATE SET user_id=EXCLUDED.user_id, provider_email=EXCLUDED.provider_email, refresh_token=COALESCE(EXCLUDED.refresh_token, social_accounts.refresh_token), updated_at=NOW()`,
       [user.id, provider, providerUserId, providerEmail, payload.refreshToken || null]
     );
-    const appToken = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    const appToken = await issueSessionToken(req, user);
     // Registra a sessão igual aos outros fluxos de login
-    const tokenHash = crypto.createHash('sha256').update(appToken).digest('hex');
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
-    await pool.query(
-      `INSERT INTO user_sessions(user_id, token_hash, user_agent, ip, last_seen_at, created_at) VALUES($1,$2,$3,$4,NOW(),NOW())`,
-      [user.id, tokenHash, req.headers['user-agent'] || null, ip]
-    );
     await audit({ actorId: user.id, actorName: user.username, type: 'login', message: `Conta vinculada e login social (${provider})` });
     res.json({ token: appToken, user: { username: user.username, email: user.email, role: user.role, minecraftName: user.minecraft_name } });
   } catch (_err) {
@@ -2474,7 +2494,7 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
         await audit({ actorId: userRow.id, actorName: userRow.username, type: 'update', message: `${provider} vinculado via account.html` });
 
         // Redireciona para login.html — o popup detecta e fecha com postMessage
-        const token = jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' });
+        const token = await issueSessionToken(req, userRow);
         return res.redirect(oauthFrontendUrl('login.html', {
           oauth_token: token,
           oauth_provider: provider,
@@ -2688,7 +2708,7 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
       });
 
       return res.redirect(oauthFrontendUrl('login.html', {
-            oauth_token: jwt.sign({ sub: userRow.id, role: userRow.role }, JWT_SECRET, { expiresIn: '7d' }),
+            oauth_token: await issueSessionToken(req, userRow),
             oauth_provider: 'microsoft',
           }, stateEntry));
         }
@@ -2932,7 +2952,7 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
     }
   }
 
-  const token = jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  const token = await issueSessionToken(req, user);
   res.json({ token, user: { username: user.username, email: user.email, minecraftName: user.minecraft_name, role: user.role } });
 });
 
@@ -3095,9 +3115,12 @@ app.get('/api/me', auth, async (req, res) => {
               COALESCE(up.display_name, '') AS display_name,
               COALESCE(up.avatar_url, '') AS avatar_url,
               COALESCE(up.cover_url, '') AS cover_url,
-              COALESCE(up.profile_layout, 'posts') AS profile_layout
+              COALESCE(up.profile_layout, 'posts') AS profile_layout,
+              ${socialRankSql('u', 'pb')} AS rank,
+              ${socialMeritSql('u', 'pb')} AS merit
        FROM users u
        LEFT JOIN user_preferences up ON up.user_id = u.id
+       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
        WHERE u.id=$1`,
       [req.user.sub],
     );
@@ -3572,8 +3595,8 @@ app.get('/api/community/players', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(up.bio, '') AS bio,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
@@ -3615,8 +3638,8 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
              COALESCE(up.profile_layout, 'posts') AS profile_layout,
              COALESCE(up.public_profile, TRUE) AS public_profile,
              COALESCE(up.public_history, FALSE) AS public_history,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
@@ -3670,8 +3693,8 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
                au.id AS author_id, au.username, au.minecraft_name, au.photo_url, au.role,
                COALESCE(aup.display_name, '') AS display_name,
                COALESCE(aup.avatar_url, '') AS avatar_url,
-               COALESCE(pb.rank, 'ferro') AS rank,
-               COALESCE(pb.merit_total, 0) AS merit,
+               ${socialRankSql('au', 'pb')} AS rank,
+               ${socialMeritSql('au', 'pb')} AS merit,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
                (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
@@ -3703,8 +3726,8 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
                 ou.role AS repost_original_role,
                 COALESCE(oup.display_name, '') AS repost_original_display_name,
                 COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
-                COALESCE(opb.rank, 'ferro') AS repost_original_rank,
-               COALESCE(opb.merit_total, 0) AS repost_original_merit,
+                ${socialRankSql('ou', 'opb')} AS repost_original_rank,
+               ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
                (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
@@ -3764,8 +3787,8 @@ app.get('/api/community/player/:identifier', auth, async (req, res) => {
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
              COALESCE(up.bio, '') AS bio,
              COALESCE(up.public_profile, TRUE) AS public_profile,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
@@ -3805,7 +3828,7 @@ app.get('/api/community/player/:mc_name', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, up.bio, up.public_profile,
-             COALESCE(pb.rank, 'ferro') AS rank, COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank, ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) AS followers_count,
              (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id) AS following_count,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS is_following
@@ -3832,7 +3855,7 @@ app.get('/api/me/blocks', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, ub.created_at,
-             COALESCE(pb.rank, 'ferro') AS rank
+             ${socialRankSql('u', 'pb')} AS rank
       FROM user_blocks ub
       JOIN users u ON u.id = ub.blocked_id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
@@ -3990,8 +4013,8 @@ app.get('/api/me/friends', auth, async (req, res) => {
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, f1.created_at AS followed_at,
              f2.created_at AS friend_since,
              COALESCE(up.bio, '') AS bio,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              EXISTS(SELECT 1 FROM player_sessions ps WHERE ps.left_at IS NULL AND LOWER(ps.player) = LOWER(u.minecraft_name)) AS is_online
       FROM user_follows f1
@@ -4015,8 +4038,8 @@ app.get('/api/me/friend-requests', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count
       FROM user_follows uf
       JOIN users u ON uf.follower_id = u.id
@@ -4199,7 +4222,7 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
 
 app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
   const conversationId = parseInt(req.params.id, 10);
-  const body = sanitize(req.body?.body || req.body?.content || '');
+  const body = sanitizeText(req.body?.body || req.body?.content || '');
   if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
   if (!body || body.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
 
@@ -4415,7 +4438,7 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
 
 app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
   const groupId = parseInt(req.params.id, 10);
-  const body = sanitize(req.body?.body || '').slice(0, 500);
+  const body = sanitizeText(req.body?.body || '').slice(0, 500);
   if (!groupId) return res.status(400).json({ error: 'Grupo invalido' });
   if (!body) return res.status(400).json({ error: 'Mensagem invalida.' });
   const client = await pool.connect();
@@ -4474,7 +4497,7 @@ function extractMentions(text) {
 
 // Criar uma postagem com suporte a Menções (@)
 app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
-  const content = sanitize(req.body?.content || '');
+  const content = sanitizeText(req.body?.content || '');
   if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
 
@@ -4584,16 +4607,16 @@ app.get('/api/community/posts', auth, async (req, res) => {
              COALESCE(oup.display_name, '') AS repost_original_display_name,
              COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
              ou.role AS repost_original_role,
-             COALESCE(opb.rank, 'ferro') AS repost_original_rank,
-             COALESCE(opb.merit_total, 0) AS repost_original_merit,
+             ${socialRankSql('ou', 'opb')} AS repost_original_rank,
+             ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
              (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(up.cover_url, '') AS cover_url,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
              EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me,
              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
@@ -4644,8 +4667,8 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
       SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count
       FROM user_posts p
@@ -4681,7 +4704,7 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
              c.is_deleted,
              c.created_at,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
-             COALESCE(pb.rank, 'ferro') AS rank
+             ${socialRankSql('u', 'pb')} AS rank
       FROM post_comments c
       JOIN users u ON c.author_id = u.id
       JOIN user_posts p ON p.id = c.post_id
@@ -4709,7 +4732,7 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
 
 app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
-  const quote = sanitize(req.body?.content || req.body?.quote || '').slice(0, 280);
+  const quote = sanitizeText(req.body?.content || req.body?.quote || '').slice(0, 280);
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   if (quote.length > 280) return res.status(400).json({ error: 'Repost excede 280 caracteres.' });
 
@@ -4738,11 +4761,6 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Post nao encontrado para repost.' });
     }
-    if (Number(target.author_id) === Number(req.user.sub)) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'Voce nao pode repostar seu proprio post.' });
-    }
-
     const { rows } = await client.query(
       `INSERT INTO user_posts(author_id, content, repost_of_id)
        VALUES($1, $2, $3)
@@ -4801,7 +4819,7 @@ app.delete('/api/community/posts/:id/repost', auth, async (req, res) => {
 // Criar um comentário com suporte a Menções (@)
 app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
-  const content = sanitize(req.body?.content || '');
+  const content = sanitizeText(req.body?.content || '');
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   if (!content || content.length > 280) return res.status(400).json({ error: 'Comentario invalido' });
 
@@ -4925,13 +4943,13 @@ app.get('/api/community/player/:identifier/followers', auth, async (req, res) =>
   const ident = parseCommunityIdentifier(req.params.identifier);
   const limit = clampInt(req.query.limit, 24, 1, 50);
   const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
-  const where = ident.byId ? 'target.id = $2' : 'LOWER(target.minecraft_name) = $2';
+  const where = ident.byId ? 'target.id = $2' : '(LOWER(target.minecraft_name) = $2 OR LOWER(target.username) = $2)';
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
-             COALESCE(pb.rank, 'ferro') AS rank,
+             ${socialRankSql('u', 'pb')} AS rank,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM user_follows uf
       JOIN users u ON uf.follower_id = u.id
@@ -4961,13 +4979,13 @@ app.get('/api/community/player/:identifier/following', auth, async (req, res) =>
   const ident = parseCommunityIdentifier(req.params.identifier);
   const limit = clampInt(req.query.limit, 24, 1, 50);
   const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
-  const where = ident.byId ? 'target.id = $2' : 'LOWER(target.minecraft_name) = $2';
+  const where = ident.byId ? 'target.id = $2' : '(LOWER(target.minecraft_name) = $2 OR LOWER(target.username) = $2)';
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
-             COALESCE(pb.rank, 'ferro') AS rank,
+             ${socialRankSql('u', 'pb')} AS rank,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM user_follows uf
       JOIN users u ON uf.following_id = u.id
@@ -4996,15 +5014,15 @@ app.get('/api/community/player/:identifier/friends', auth, async (req, res) => {
   const ident = parseCommunityIdentifier(req.params.identifier);
   const limit = clampInt(req.query.limit, 24, 1, 50);
   const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
-  const where = ident.byId ? 'target.id = $2' : 'LOWER(target.minecraft_name) = $2';
+  const where = ident.byId ? 'target.id = $2' : '(LOWER(target.minecraft_name) = $2 OR LOWER(target.username) = $2)';
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
              GREATEST(out_f.created_at, back_f.created_at) AS created_at,
-             COALESCE(pb.rank, 'ferro') AS rank,
-             COALESCE(pb.merit_total, 0) AS merit,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM users target
       JOIN user_follows out_f ON out_f.follower_id = target.id
@@ -5108,7 +5126,7 @@ app.delete('/api/community/posts/:id/like', auth, async (req, res) => {
 // Apagar o próprio post
 app.patch('/api/community/posts/:id', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
-  const content = sanitize(req.body?.content || '');
+  const content = sanitizeText(req.body?.content || '');
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
@@ -5333,6 +5351,34 @@ app.delete('/api/admin/posts/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // ── Integrações Xbox e Mojang (Área Logada) ─────────────────
+app.patch('/api/admin/posts/:id/pin', auth, requireAdmin, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const pinned = Boolean(req.body?.pinned);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE user_posts
+       SET is_pinned=$2, pinned_at=CASE WHEN $2 THEN NOW() ELSE NULL END
+       WHERE id=$1 AND repost_of_id IS NULL
+       RETURNING id, is_pinned, pinned_at`,
+      [postId, pinned],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Post nao encontrado' });
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'moderation',
+      severity: 'info',
+      targetId: postId,
+      message: pinned ? `Post #${postId} fixado` : `Post #${postId} desfixado`,
+    });
+    res.json({ ok: true, post: rows[0] });
+  } catch (e) {
+    console.error('[PATCH /api/admin/posts/:id/pin]', e);
+    res.status(500).json({ error: 'Erro ao atualizar fixacao' });
+  }
+});
+
 app.get('/api/me/social-notifications', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
   const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
@@ -5619,7 +5665,7 @@ const DEFAULT_PREFERENCES = Object.freeze({
   public_profile: true,
   show_online: true,
   public_history: false,
-  theme: 'light',
+  theme: 'dark',
   bio: '',
   display_name: '',
   avatar_url: '',
@@ -6274,6 +6320,8 @@ const RANKS = [
 ];
 const ADM_RANK = { id: 'adm', label: 'Administrador', icon: '👑', minMerit: null, maxMerit: null, color: '#0071E3' };
 
+const OWNER_RANK = { id: 'owner', label: 'Dono', icon: 'DONO', minMerit: null, maxMerit: null, color: '#B91C1C' };
+
 function getRankByMerit(merit) {
   for (let i = RANKS.length - 1; i >= 0; i--) {
     if (merit >= RANKS[i].minMerit) return RANKS[i];
@@ -6283,6 +6331,7 @@ function getRankByMerit(merit) {
 
 function getRankById(id) {
   if (id === 'adm') return ADM_RANK;
+  if (id === 'owner') return OWNER_RANK;
   return RANKS.find(r => r.id === id) || RANKS[0];
 }
 
@@ -6383,16 +6432,17 @@ app.get('/api/me/rank-info', auth, async (req, res) => {
   }
 
   if (['owner', 'full'].includes(req.user.role)) {
+    const staffRank = req.user.role === 'owner' ? OWNER_RANK : ADM_RANK;
     return res.json({
       merit,
       capital,
-      rank: { ...ADM_RANK, benefits: RANK_BENEFITS.adm },
+      rank: { ...staffRank, benefits: RANK_BENEFITS[staffRank.id] || RANK_BENEFITS.adm || [] },
       nextRank: null,
       progress: 100,
       isAdm: true,
       records,
       capitalRecords,
-      allRanks: [...RANKS, ADM_RANK],
+      allRanks: [...RANKS, ADM_RANK, OWNER_RANK],
     });
   }
 

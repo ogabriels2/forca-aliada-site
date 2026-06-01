@@ -15,7 +15,7 @@
                    : 'https://forca-aliada-site.onrender.com';
 
   function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
-  function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'light')); }
+  function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'dark')); }
 
   apply();
 
@@ -33,7 +33,7 @@
     (typeof requestIdleCallback === 'function') ? requestIdleCallback(syncTheme, { timeout: 3000 }) : setTimeout(syncTheme, 800);
   }
 
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'light'));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'dark'));
 })();
 </script>
 <style>
@@ -1861,11 +1861,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
               <p>Escolha entre claro, escuro ou automático (segue seu sistema).</p>
             </div>
             <div class="theme-options">
-              <label class="theme-option active" id="theme-opt-light" onclick="setTheme('light')">
+              <label class="theme-option" id="theme-opt-light" onclick="setTheme('light')">
                 <div class="theme-preview light"></div>
                 <span class="theme-label">Claro</span>
               </label>
-              <label class="theme-option" id="theme-opt-dark" onclick="setTheme('dark')">
+              <label class="theme-option active" id="theme-opt-dark" onclick="setTheme('dark')">
                 <div class="theme-preview dark"></div>
                 <span class="theme-label">Escuro</span>
               </label>
@@ -2627,7 +2627,7 @@ function prefsFromUI() {
     public_profile: document.getElementById('pref-public-profile')?.checked ?? true,
     show_online: document.getElementById('pref-show-online')?.checked ?? true,
     public_history: document.getElementById('pref-public-history')?.checked ?? false,
-    theme: localStorage.getItem(THEME_KEY) || 'light'
+    theme: localStorage.getItem(THEME_KEY) || 'dark'
   };
 }
 function applyPrefsToUI(p = {}) {
@@ -2648,7 +2648,7 @@ function applyPrefsToUI(p = {}) {
   if (profileSecurity && p.public_profile !== undefined) profileSecurity.checked = Boolean(p.public_profile);
   if (historySecurity && p.public_history !== undefined) historySecurity.checked = Boolean(p.public_history);
   if (p.theme) applyTheme(p.theme);
-  else applyTheme(localStorage.getItem(THEME_KEY) || 'light');
+  else applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 }
 
 // ── TEMA ───────────────────────────────────────────────────────

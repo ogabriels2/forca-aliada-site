@@ -28,6 +28,7 @@
     (typeof requestIdleCallback === 'function') ? requestIdleCallback(sync, { timeout: 2500 }) : setTimeout(sync, 500);
   }
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'dark'));
+})();
 </script>
 <style>
 /* ─── DESIGN TOKENS ─── */
@@ -498,6 +499,7 @@ img{display:block}
   border:1px solid color-mix(in srgb,var(--rk) 18%,transparent);
   font-family:var(--ff-mono);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
 }
+.rank-pill:empty{display:none}
 .post-meta{display:flex;align-items:center;gap:5px}
 .post-time{font-family:var(--ff-mono);color:var(--ink-3);font-size:11px;font-weight:500;white-space:nowrap}
 .edited-tag{color:var(--ink-3);font-size:11px;font-style:italic}
@@ -2490,6 +2492,7 @@ const avatar = (p, s=50) => {
   const custom = safeProfileImageUrl(p?.avatar_url || p?.photo_url);
   return custom || skin(p?.minecraft_name || p?.username || 'Steve', s);
 };
+const canModerate = () => ['full','owner'].includes(state.me?.role);
 const num  = v => Number(v||0).toLocaleString('pt-BR');
 const time = v => {
   if(!v) return'';
@@ -2501,14 +2504,17 @@ const time = v => {
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
 };
 function rankInfo(rank='',merit=0){
-  const id=String(rank).toLowerCase();
-  if(id.includes('owner')) return{label:'Owner',color:'var(--rk-owner)',cls:'rk-owner'};
-  if(id.includes('full')||id.includes('admin')) return{label:'Staff',color:'var(--rk-staff)',cls:'rk-staff'};
-  if(id.includes('netherite')||merit>=900) return{label:'Netherite',color:'var(--rk-netherite)',cls:'rk-netherite'};
-  if(id.includes('diamante')||merit>=450) return{label:'Diamante',color:'var(--rk-diamond)',cls:'rk-diamante'};
+  const id=String(rank||'').toLowerCase();
+  if(!id||id==='limited') return{label:'',color:'transparent',cls:'rk-none'};
+  if(id.includes('owner')) return{label:'Dono',color:'var(--rk-owner)',cls:'rk-owner'};
+  if(id.includes('adm')||id.includes('full')||id.includes('admin')||id.includes('staff')) return{label:'Adm',color:'var(--rk-staff)',cls:'rk-staff'};
+  if(id.includes('netherite')||merit>=1000) return{label:'Netherite',color:'var(--rk-netherite)',cls:'rk-netherite'};
+  if(id.includes('diamante')||merit>=500) return{label:'Diamante',color:'var(--rk-diamond)',cls:'rk-diamante'};
   if(id.includes('ouro')||merit>=150) return{label:'Ouro',color:'var(--rk-gold)',cls:'rk-ouro'};
   return{label:rank||'Ferro',color:'var(--rk-iron)',cls:'rk-ferro'};
 }
+function rankPillHTML(rk){return rk?.label?`<span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>`:''}
+function rankSuffix(rank,merit){const rk=rankInfo(rank,merit);return rk.label?` · ${esc(rk.label)}`:''}
 function communityUrl(params={}){
   const url = new URL('/community.html', location.origin);
   Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
@@ -2719,7 +2725,7 @@ function renderMentionBox(type){
   if(!state.mentionSuggestions.length){box.classList.remove('show');return}
   box.innerHTML=state.mentionSuggestions.map(p=>{
     const n=p.minecraft_name||p.username||'Steve';
-    return`<button class="mention-opt" type="button" role="option" data-pick="${esc(n)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><span><strong>@${esc(n)}</strong><small style="color:var(--ink-3)">${esc(rankInfo(p.rank,p.merit).label)}</small></span></button>`;
+    return`<button class="mention-opt" type="button" role="option" data-pick="${esc(n)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><span><strong>@${esc(n)}</strong><small style="color:var(--ink-3)">${esc(rankInfo(p.rank,p.merit).label || 'Perfil')}</small></span></button>`;
   }).join('');
   box.classList.add('show');
 }
@@ -2817,6 +2823,7 @@ function postCardHTML(p){
   const displayContent=isRepost?(p.repost_original_content||''):p.content;
   const quoteContent=isRepost&&p.content?`<div class="repost-quote">${mentionHTML(p.content)}</div>`:'';
   const isMe=state.me&&Number(authorId)===Number(state.me.id);
+  const staff=canModerate();
   const edited=p.updated_at&&new Date(p.updated_at)>new Date(p.created_at);
   const canEdit=!isRepost&&isMe&&((Date.now()-new Date(p.created_at))/60000)<=15;
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
@@ -2831,7 +2838,7 @@ function postCardHTML(p){
             ${p.is_pinned?`<span class="pin-flag">${IC.pin} Fixado</span>`:''}
             <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" style="cursor:pointer">${esc(shown)}</strong>
             <span class="handle">@${esc(username)}</span>
-            <span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>
+            ${rankPillHTML(rk)}
           </div>
           <div class="post-meta">
             <a class="post-time" href="${esc(postUrl)}" data-action="open-thread" aria-label="Abrir post">${esc(time(p.created_at))}</a>
@@ -2841,8 +2848,9 @@ function postCardHTML(p){
                 <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
               </button>
               <div class="post-menu" role="menu">
+                ${staff&&!isRepost?`<button class="pm-item" data-action="${p.is_pinned?'unpin':'pin'}">${IC.pin} ${p.is_pinned?'Desfixar':'Fixar'}</button>`:''}
                 ${canEdit?`<button class="pm-item" data-action="edit">${IC.edit} Editar</button>`:''}
-                ${isMe?`<button class="pm-item danger" data-action="delete">${IC.trash} Excluir</button>`:`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`}
+                ${isMe?`<button class="pm-item danger" data-action="delete">${IC.trash} Excluir</button>`:staff?`<button class="pm-item danger" data-action="admin-delete">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`}
                 <button class="pm-item" data-action="copy">${IC.link} Copiar link</button>
                 <button class="pm-item" data-action="open-thread">${IC.comment} Abrir thread</button>
               </div>
@@ -2939,11 +2947,11 @@ async function loadFriendsBar(){
     }).join('');
     if(reqList) reqList.innerHTML=requests.length?requests.map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label)} quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${rk.label?esc(rk.label)+' · ':''}quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
     }).join(''):'<p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p>';
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label || 'Perfil')}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
     }).join('');
   }catch(e){}
 }
@@ -3009,7 +3017,7 @@ async function toggleRepost(originalId,btn){
   // Optimistic UI
   if(post){ post.reposted_by_me=!reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?-1:1)); }
   btn?.classList.toggle('is-on',!reposted);
-  const span=btn?.querySelector('span'); if(span) span.textContent=num(Number(post?.reposts_count||0)+(reposted?0:1));
+  const span=btn?.querySelector('span'); if(span) span.textContent=num(Number(post?.reposts_count||0));
 
   try{
     if(reposted){
@@ -3026,14 +3034,6 @@ async function toggleRepost(originalId,btn){
           if(post){ post.reposted_by_me=true; }
           btn?.classList.add('is-on');
           toast('info','Já repostado','Este post já estava no seu feed.');
-          return;
-        }
-        // 403 = own post — revert silently with friendly message
-        if(msg.includes('próprio')||msg.includes('proprio')||msg.includes('403')){
-          if(post){ post.reposted_by_me=reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?1:-1)); }
-          btn?.classList.toggle('is-on',reposted);
-          const s3=btn?.querySelector('span'); if(s3) s3.textContent=num(post?.reposts_count||0);
-          toast('info','Não é possível repostar','Você não pode repostar seus próprios posts.');
           return;
         }
         throw err;
@@ -3060,6 +3060,40 @@ async function deletePost(id){
     renderFeed();toast('success','Post excluído','A publicação foi removida.');
     if(state.routeActive) Router.navigate('/community');
   }catch(e){toast('error','Não foi possível excluir',e.message)}
+}
+
+async function moderateDeletePost(id){
+  const ok=await confirmDialog({title:'Remover post',msg:'O post sera removido para toda a comunidade e registrado na auditoria.',confirmText:'Remover',danger:true});
+  if(!ok)return;
+  try{
+    await api(`/api/admin/posts/${encodeURIComponent(id)}`,{method:'DELETE',body:JSON.stringify({reason:'community_moderation'})});
+    state.posts=state.posts.filter(p=>Number(p.id)!==Number(id)&&Number(p.repost_of_id)!==Number(id));
+    renderFeed();toast('success','Post removido','A moderacao foi registrada.');
+    if(state.routeActive) Router.navigate('/community');
+  }catch(e){toast('error','Remocao nao concluida',e.message)}
+}
+async function setPostPinned(id,pinned){
+  try{
+    const data=await api(`/api/admin/posts/${encodeURIComponent(id)}/pin`,{method:'PATCH',body:JSON.stringify({pinned})});
+    const post=findPost(id);
+    if(post){post.is_pinned=Boolean(data.post?.is_pinned);post.pinned_at=data.post?.pinned_at||null;}
+    toast('success',pinned?'Post fixado':'Post desfixado','');
+    loadFeed({reset:true});
+  }catch(e){toast('error','Fixacao nao salva',e.message)}
+}
+async function deleteComment(postId,commentId,post){
+  const ok=await confirmDialog({title:'Remover comentario',msg:'O comentario sera ocultado da thread e a acao ficara registrada.',confirmText:'Remover',danger:true});
+  if(!ok)return;
+  try{
+    await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,{method:'DELETE'});
+    const comments=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`);
+    const list=$('#thread-comments');if(list)list.innerHTML=commentsHTML(comments);
+    const nextCount=Math.max(0,Number(post?.comments_count||0)-1);
+    if(post)post.comments_count=nextCount;
+    const fp=findPost(postId);if(fp)fp.comments_count=nextCount;
+    const tc=$('.thread-count');if(tc)tc.textContent=`${num(nextCount)} respostas`;
+    toast('success','Comentario removido','A thread foi atualizada.');
+  }catch(e){toast('error','Comentario nao removido',e.message)}
 }
 
 /* ======================= EDIT ======================= */
@@ -3124,6 +3158,7 @@ async function renderPostRoute(id){
     const rk=rankInfo(post.rank||post.role,post.merit);
     const edited=post.updated_at&&new Date(post.updated_at)>new Date(post.created_at);
     const isMe=state.me&&Number(post.author_id)===Number(state.me.id);
+    const staff=canModerate();
     const canEdit=isMe&&((Date.now()-new Date(post.created_at))/60000)<=15;
     const routeCol=$('#route-col');
     routeCol.innerHTML=`
@@ -3143,7 +3178,7 @@ async function renderPostRoute(id){
               <div class="post-author">
                 <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(post.author_id)}" style="cursor:pointer;font-size:15px">${esc(mc)}</strong>
                 <span class="handle">@${esc(post.username||mc)}</span>
-                <span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>
+                ${rankPillHTML(rk)}
               </div>
               <div class="post-meta">
                 <time class="post-time" datetime="${esc(post.created_at)}">${esc(time(post.created_at))}</time>
@@ -3153,8 +3188,9 @@ async function renderPostRoute(id){
                     <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                   </button>
                   <div class="post-menu" role="menu">
+                    ${staff?`<button class="pm-item" data-action="${post.is_pinned?'unpin-thread':'pin-thread'}">${IC.pin} ${post.is_pinned?'Desfixar':'Fixar'}</button>`:''}
                     ${canEdit?`<button class="pm-item" data-action="edit-thread">${IC.edit} Editar</button>`:''}
-                    ${isMe?`<button class="pm-item danger" data-action="delete-thread">${IC.trash} Excluir</button>`:`<button class="pm-item" data-action="report-thread">${IC.flag} Denunciar</button>`}
+                    ${isMe?`<button class="pm-item danger" data-action="delete-thread">${IC.trash} Excluir</button>`:staff?`<button class="pm-item danger" data-action="admin-delete-thread">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report-thread">${IC.flag} Denunciar</button>`}
                     <button class="pm-item" data-action="copy-thread">${IC.link} Copiar link</button>
                   </div>
                 </div>
@@ -3187,15 +3223,19 @@ function bindThreadEvents(post,id){
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
     const jp=e.target.closest('.js-profile');
     if(jp&&!e.target.closest('button')){const uid=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
+    const dcb=e.target.closest('[data-delete-comment]');if(dcb){e.stopPropagation();deleteComment(id,dcb.dataset.deleteComment,post);return}
+    const rcb=e.target.closest('[data-report-comment]');if(rcb){e.stopPropagation();reportContent('comment',rcb.dataset.reportComment);return}
     const menu=e.target.closest('[data-action]');
     if(!menu)return;
     const act=menu.dataset.action;
     if(act==='menu'){const m=menu.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
+    if(act==='pin-thread'){setPostPinned(id,true);return}
+    if(act==='unpin-thread'){setPostPinned(id,false);return}
     if(act==='edit-thread'){editThreadPost(post,id);return}
     if(act==='delete-thread'){deletePost(id);return}
+    if(act==='admin-delete-thread'){moderateDeletePost(id);return}
     if(act==='report-thread'){reportContent('post',id);return}
     if(act==='copy-thread'){copyLink(id);return}
-    const rcb=e.target.closest('[data-report-comment]');if(rcb){e.stopPropagation();reportContent('comment',rcb.dataset.reportComment);return}
   });
   $('#thread-like')?.addEventListener('click',async()=>{
     const btn=$('#thread-like');const liked=Boolean(post.liked_by_me);
@@ -3256,7 +3296,12 @@ function commentsHTML(comments){
   return`<div class="comments-list">${comments.map(c=>{
     const mc=c.minecraft_name||c.username||'Steve';const del=Boolean(c.is_deleted);
     const isMyComment=state.me&&Number(c.author_id)===Number(state.me.id);
-    return`<article class="comment-row"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(mc)}</strong><span class="handle">@${esc(c.username||mc)}</span><span class="ts">· ${esc(time(c.created_at))}</span>${!isMyComment&&!del?`<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentário">${IC.flag}</button>`:''}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
+    const canDelete=(isMyComment||canModerate())&&!del;
+    const tools=[
+      canDelete?`<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentario">${IC.trash}</button>`:'',
+      !isMyComment&&!del?`<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentario">${IC.flag}</button>`:''
+    ].filter(Boolean).join('');
+    return`<article class="comment-row"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(mc)}</strong><span class="handle">@${esc(c.username||mc)}</span><span class="ts">· ${esc(time(c.created_at))}</span>${tools}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
   }).join('')}</div>`;
 }
 
@@ -3404,7 +3449,7 @@ async function renderProfileRoute(identifier){
           <div class="profile-name-row">
             <div>
               <h1 class="profile-name">${esc(shown)}</h1>
-              <p class="profile-handle2">@${esc(handle)} · ${mc!==shown?esc(mc)+' · ':''}<span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span> · desde ${esc(time(prof.created_at))}</p>
+              <p class="profile-handle2">@${esc(handle)}${mc!==shown?' · '+esc(mc):''}${rk.label?' · '+rankPillHTML(rk):''} · desde ${esc(time(prof.created_at))}</p>
             </div>
           </div>
           <div class="profile-social-line" aria-label="Resumo social">
@@ -3584,7 +3629,7 @@ async function reportContent(type,id){
 function playerRowHTML(p){
   const mc=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);
   const on=Boolean(p.is_following||p.followed_by_me);
-  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(mc,50)}'"><div><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))} · ${esc(rk.label)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
+  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(mc,50)}'"><div><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
 }
 async function loadPlayers(search=''){
   $('#player-list').innerHTML=Array.from({length:3},()=>'<div class="skel" style="height:52px;border-radius:10px"></div>').join('');
@@ -3636,7 +3681,7 @@ async function openRelModal(type,mc,uid){
     const rk=rankInfo(p.rank,p.merit);
     const fol=Boolean(p.followed_by_me);
     const itsMe=Number(p.id)===Number(state.me?.id);
-    return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label)} · @${esc(handleName(p))}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
+    return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${rk.label?esc(rk.label)+' · ':''}@${esc(handleName(p))}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
   };
   const draw=()=>{
     const list=$('#rel-list');
@@ -3707,7 +3752,7 @@ function openSearchPage(seed=''){
 function searchResultPersonHTML(p){
   const n=p.minecraft_name||p.username||'Steve';
   const rk=rankInfo(p.rank,p.merit);
-  return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><span><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))} · ${esc(rk.label)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`;
+  return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><span><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`;
 }
 function searchResultPostHTML(p){
   const id=p.repost_of_id||p.id;
@@ -3963,8 +4008,11 @@ function bindEvents(){
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
         if(a==='repost'){toggleRepost(id,act.closest('.pa-repost'));return}
+        if(a==='pin'){setPostPinned(id,true);return}
+        if(a==='unpin'){setPostPinned(id,false);return}
         if(a==='edit'){editPostInline(id,postCard);return}
         if(a==='delete'){deletePost(id);return}
+        if(a==='admin-delete'){moderateDeletePost(id);return}
         if(a==='report'){reportContent('post',id);return}
         if(a==='copy'){copyLink(id);return}
         return;
