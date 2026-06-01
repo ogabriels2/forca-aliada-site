@@ -193,7 +193,7 @@
       <section class="fa-chat-panel ${state.open ? 'is-open' : ''}" aria-label="Mensagens diretas">
         <div class="fa-chat-top">
           <div class="fa-chat-title">
-            <span class="fa-chat-peer-av" style="display:grid;place-items:center">${icons.chat}</span>
+            <span class="fa-chat-peer-av">${icons.chat}</span>
             <div><strong>Mensagens</strong><span>${state.current ? 'Conversa direta' : 'Amigos e comunidade'}</span></div>
           </div>
           <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
@@ -261,11 +261,172 @@
   function updateMessagesList({ scroll = false } = {}) {
     const list = root.querySelector('[data-chat-messages]');
     if (!list || !state.current) return;
-    list.innerHTML = renderMessagesContent();
-    if (scroll) updateScroll();
-    // Update cache
+
+    // Update cache first
     const k = cacheKey();
     if (k) state._msgCache[k] = state.messages.slice();
+
+    // If loading or no messages, full replace is fine (no existing nodes to preserve)
+    if (state.loadingMessages || !state.messages.length) {
+      list.innerHTML = renderMessagesContent();
+      if (scroll) updateScroll();
+      return;
+    }
+
+    // Show/update inline error banner without touching messages
+    let errBanner = list.querySelector('.fa-chat-inline-error');
+    if (state.error) {
+      const errHTML = `<div class="fa-chat-inline-error"><strong>Falha no chat</strong>${esc(state.error)}</div>`;
+      if (!errBanner) list.insertAdjacentHTML('afterbegin', errHTML);
+      else errBanner.innerHTML = `<strong>Falha no chat</strong>${esc(state.error)}`;
+    } else {
+      errBanner?.remove();
+    }
+
+    // Remove empty-state placeholder if messages now exist
+    list.querySelector('.fa-chat-empty')?.remove();
+
+    // --- Differential append: only insert truly new messages ---
+    // Build a set of IDs already rendered (data-msg-id) and map tmp→real merges
+    const renderedIds = new Set();
+    const pendingNodes = new Map(); // tmpId → DOM node
+    list.querySelectorAll('[data-msg-id]').forEach(node => {
+      const id = node.dataset.msgId;
+      renderedIds.add(id);
+      if (id.startsWith('tmp-')) pendingNodes.set(id, node);
+    });
+
+    // Compute date-separator awareness
+    let prevDateLabel = null;
+    // Collect existing date labels
+    list.querySelectorAll('[data-date-sep]').forEach(sep => {
+      // mark existing separators by their label
+    });
+
+    const allMsgs = state.messages;
+    for (let i = 0; i < allMsgs.length; i++) {
+      const msg = allMsgs[i];
+      const msgId = String(msg.id);
+      const prevMsg = i > 0 ? allMsgs[i - 1] : null;
+      const nextMsg = i < allMsgs.length - 1 ? allMsgs[i + 1] : null;
+
+      // --- Date pill separator logic ---
+      const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString('pt-BR') : null;
+      if (msgDate && msgDate !== prevDateLabel) {
+        prevDateLabel = msgDate;
+        const sepId = `datesep-${msgDate.replace(/\//g, '-')}`;
+        if (!list.querySelector(`[data-date-sep="${CSS.escape(sepId)}"]`)) {
+          const label = formatDatePill(msg.created_at);
+          const sepHTML = `<div class="fa-chat-date-sep" data-date-sep="${esc(sepId)}"><span>${esc(label)}</span></div>`;
+          list.insertAdjacentHTML('beforeend', sepHTML);
+        }
+      }
+
+      // Grouping context for this message
+      const isMe = Number(msg.sender_id) === Number(state.me?.id);
+      const sameSenderAsPrev = prevMsg && Number(prevMsg.sender_id) === Number(msg.sender_id) && sameMinute(prevMsg.created_at, msg.created_at);
+      const sameSenderAsNext = nextMsg && Number(nextMsg.sender_id) === Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
+      const isGroupFirst = !sameSenderAsPrev;
+      const isGroupLast = !sameSenderAsNext;
+
+      // --- Handle tmp→real merge ---
+      if (!msgId.startsWith('tmp-')) {
+        // Check if a pending node exists for this real message (matched by body+sender, or explicit index match)
+        // Find any pending tmp node that was optimistically sent by me with same body
+        let mergedTmp = null;
+        pendingNodes.forEach((node, tmpId) => {
+          const tmpMsg = state.messages.find(m => m.id === tmpId);
+          // If this real msg replaced a tmp (already swapped in state.messages at sendMessage), node is stale
+          // We detect by checking if a tmp with same content still sits in DOM but not in state
+          if (!mergedTmp && !state.messages.some(m => m.id === tmpId)) {
+            mergedTmp = { node, tmpId };
+          }
+        });
+        if (mergedTmp) {
+          // Upgrade the tmp node in-place to real message
+          const newNode = buildMessageNode(msg, isMe, isGroupFirst, isGroupLast);
+          mergedTmp.node.replaceWith(newNode);
+          pendingNodes.delete(mergedTmp.tmpId);
+          renderedIds.add(msgId);
+          continue;
+        }
+      }
+
+      if (renderedIds.has(msgId)) {
+        // Already rendered — update status/grouping classes in-place
+        const existingNode = list.querySelector(`[data-msg-id="${CSS.escape(msgId)}"]`);
+        if (existingNode) {
+          // Update client_status class
+          existingNode.classList.toggle('is-pending', msg.client_status === 'pending');
+          existingNode.classList.toggle('is-failed', msg.client_status === 'failed');
+          // Update grouping classes
+          existingNode.classList.toggle('is-group-first', isGroupFirst);
+          existingNode.classList.toggle('is-group-last', isGroupLast);
+          existingNode.classList.toggle('is-grouped', !isGroupFirst);
+          // Update avatar visibility (for group-first only)
+          const av = existingNode.querySelector('.fa-chat-bubble-av');
+          if (av) av.style.visibility = isGroupFirst ? 'visible' : 'hidden';
+          // Update time text
+          const timeEl = existingNode.querySelector('time');
+          if (timeEl) {
+            const status = msg.client_status === 'pending' ? 'enviando' : msg.client_status === 'failed' ? 'não enviada' : rel(msg.created_at);
+            timeEl.textContent = status + (msg.client_error ? ` — ${msg.client_error}` : '');
+          }
+          // Update failed alert icon
+          const alertIcon = existingNode.querySelector('.fa-chat-fail-alert');
+          if (msg.client_status === 'failed' && !alertIcon) {
+            existingNode.querySelector('.fa-chat-bubble-wrap')?.insertAdjacentHTML('afterbegin',
+              `<button class="fa-chat-fail-alert" data-chat-retry="${esc(msgId)}" title="Tentar reenviar">⚠</button>`
+            );
+          } else if (msg.client_status !== 'failed') {
+            alertIcon?.remove();
+          }
+        }
+        continue;
+      }
+
+      // New message — append to list
+      const newNode = buildMessageNode(msg, isMe, isGroupFirst, isGroupLast);
+      newNode.classList.add('is-new');
+      list.appendChild(newNode);
+      renderedIds.add(msgId);
+
+      // Trigger fade-in animation via rAF (class added one frame later)
+      requestAnimationFrame(() => newNode.classList.remove('is-new'));
+    }
+
+    if (scroll) updateScroll();
+  }
+
+  // Helper: are two ISO timestamps in the same minute?
+  function sameMinute(a, b) {
+    if (!a || !b) return false;
+    const da = new Date(a), db = new Date(b);
+    return da.getFullYear() === db.getFullYear() &&
+      da.getMonth() === db.getMonth() &&
+      da.getDate() === db.getDate() &&
+      da.getHours() === db.getHours() &&
+      da.getMinutes() === db.getMinutes();
+  }
+
+  // Helper: build a message DOM node (real Element, not just string)
+  function buildMessageNode(msg, isMe, isGroupFirst, isGroupLast) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = renderMessage(msg, isGroupFirst, isGroupLast);
+    return wrapper.firstElementChild;
+  }
+
+  // Helper: date pill label
+  function formatDatePill(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diff = Math.floor((today - msgDay) / 86400000);
+    if (diff === 0) return 'Hoje';
+    if (diff === 1) return 'Ontem';
+    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
   function renderInbox() {
@@ -389,9 +550,12 @@
     const meta = person.bio || (person.is_online ? 'Online agora' : `${person.rank || 'Ferro'} - ${Number(person.followers_count || 0).toLocaleString('pt-BR')} seg.`);
     return `
       <button class="fa-chat-friend" type="button" data-chat-user="${esc(person.id)}" data-chat-name="${esc(name)}">
-        <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
+        <span class="fa-chat-av-wrap">
+          <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
+          ${person.is_online ? '<span class="fa-chat-online-dot"></span>' : ''}
+        </span>
         <span class="fa-chat-friend-meta"><strong>${esc(name)}</strong><small>${esc(meta)}</small></span>
-        ${canFollowBack ? '<span class="fa-chat-pill" data-follow-back>+</span>' : (person.is_online ? '<span class="fa-chat-status"></span>' : '')}
+        ${canFollowBack ? '<span class="fa-chat-pill" data-follow-back>+</span>' : ''}
       </button>`;
   }
 
@@ -403,22 +567,29 @@
     const conv = state.current;
     const isGroup = state.currentKind === 'group';
     const name = isGroup ? groupNameOf(conv) : nameOf(conv);
+    const isOnline = !isGroup && conv.is_online;
+    const onlineDot = isOnline ? '<span class="fa-chat-online-dot fa-chat-online-dot--peer"></span>' : '';
     return `
       <div class="fa-chat-thread">
         <div class="fa-chat-peerbar">
           <button class="fa-chat-icon-btn" type="button" data-chat-back aria-label="Voltar">${icons.back}</button>
-          ${isGroup ? `<span class="fa-chat-peer-av fa-chat-group-av">${icons.group}</span>` : `<img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">` }
-          <div><strong>${esc(name)}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${conv.is_friend ? ' - amigo' : ''}`}</small></div>
+          ${isGroup
+            ? `<span class="fa-chat-peer-av fa-chat-group-av">${icons.group}</span>`
+            : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'"/>${onlineDot}</span>`
+          }
+          <div><strong>${esc(name)}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${isOnline ? ' · online' : conv.is_friend ? ' · amigo' : ''}`}</small></div>
           ${isGroup ? '<span></span>' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>`}
         </div>
         <div class="fa-chat-messages" data-chat-messages>
           ${renderMessagesContent()}
         </div>
         <div class="fa-chat-compose-wrap">
-          <div data-chat-char-counter style="text-align:right;font-size:10px;padding:0 10px 2px;opacity:0;transition:opacity 0.15s;color:var(--fa-chat-muted,#888)"></div>
+          <div data-chat-char-counter></div>
           <form class="fa-chat-compose" data-chat-form>
-            <textarea data-chat-input maxlength="500" rows="1" placeholder="Digite uma mensagem" aria-label="Mensagem"></textarea>
-            <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
+            <div class="fa-chat-compose-pill">
+              <textarea data-chat-input maxlength="500" rows="1" placeholder="Mensagem..." aria-label="Mensagem"></textarea>
+              <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
+            </div>
           </form>
         </div>
       </div>`;
@@ -427,19 +598,72 @@
   function renderMessagesContent() {
     const error = state.error ? `<div class="fa-chat-inline-error"><strong>Falha no chat</strong>${esc(state.error)}</div>` : '';
     if (state.loadingMessages) {
-      return `<div class="fa-chat-message-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--fa-chat-muted,#888)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="animation:faChatSpin .8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="font-size:12px;font-weight:600">Carregando mensagens...</span></div>`;
+      return `<div class="fa-chat-message-loading"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>Carregando...</span></div>`;
     }
-    if (state.messages.length) return error + state.messages.map(message => renderMessage(message)).join('');
-    return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
+    if (!state.messages.length) {
+      return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
+    }
+
+    // Full render with grouping logic (used on initial load / thread switch)
+    let html = error;
+    let prevDateLabel = null;
+    for (let i = 0; i < state.messages.length; i++) {
+      const msg = state.messages[i];
+      const prevMsg = i > 0 ? state.messages[i - 1] : null;
+      const nextMsg = i < state.messages.length - 1 ? state.messages[i + 1] : null;
+      const isMe = Number(msg.sender_id) === Number(state.me?.id);
+      const sameSenderAsPrev = prevMsg && Number(prevMsg.sender_id) === Number(msg.sender_id) && sameMinute(prevMsg.created_at, msg.created_at);
+      const sameSenderAsNext = nextMsg && Number(nextMsg.sender_id) === Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
+      const isGroupFirst = !sameSenderAsPrev;
+      const isGroupLast = !sameSenderAsNext;
+
+      // Date separator
+      const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString('pt-BR') : null;
+      if (msgDate && msgDate !== prevDateLabel) {
+        prevDateLabel = msgDate;
+        const sepId = `datesep-${msgDate.replace(/\//g, '-')}`;
+        const label = formatDatePill(msg.created_at);
+        html += `<div class="fa-chat-date-sep" data-date-sep="${esc(sepId)}"><span>${esc(label)}</span></div>`;
+      }
+
+      html += renderMessage(msg, isGroupFirst, isGroupLast);
+    }
+    return html;
   }
 
-  function renderMessage(message) {
+  function renderMessage(message, isGroupFirst = true, isGroupLast = true) {
     const isMe = Number(message.sender_id) === Number(state.me?.id);
     const sender = message.minecraft_name || message.username || 'Steve';
-    const status = message.client_status === 'pending' ? 'enviando' : message.client_status === 'failed' ? 'nao enviada' : rel(message.created_at);
+    const status = message.client_status === 'pending' ? 'enviando' : message.client_status === 'failed' ? 'não enviada' : rel(message.created_at);
+    const statusText = status + (message.client_error ? ` — ${esc(message.client_error)}` : '');
+    const clientClass = message.client_status ? `is-${esc(message.client_status)}` : '';
+    const groupClasses = [
+      isGroupFirst ? 'is-group-first' : 'is-grouped',
+      isGroupLast ? 'is-group-last' : '',
+    ].filter(Boolean).join(' ');
+
+    const failAlert = message.client_status === 'failed'
+      ? `<button class="fa-chat-fail-alert" data-chat-retry="${esc(message.id)}" title="Tentar reenviar">⚠</button>`
+      : '';
+
+    // Avatar: only show on first of group, hidden otherwise (preserves layout)
+    const showAvatar = !isMe;
+    const avatarHTML = showAvatar
+      ? `<img class="fa-chat-bubble-av" src="${skin(sender, 50)}" alt="${esc(sender)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'" style="visibility:${isGroupFirst ? 'visible' : 'hidden'}">`
+      : `<span class="fa-chat-bubble-av-spacer"></span>`;
+
+    // Show name in group chats, only on first of a block
+    const showName = state.currentKind === 'group' && !isMe && isGroupFirst;
+    const nameHTML = showName ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : '';
+
     return `
-      <div class="fa-chat-bubble-row ${isMe ? 'is-me' : ''} ${message.client_status ? `is-${esc(message.client_status)}` : ''}">
-        <div class="fa-chat-bubble">${state.currentKind === 'group' && !isMe ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : ''}${esc(message.body)}<time>${esc(status)}${message.client_error ? ` - ${esc(message.client_error)}` : ''}</time></div>
+      <div class="fa-chat-bubble-row ${isMe ? 'is-me' : ''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
+        ${!isMe ? avatarHTML : ''}
+        <div class="fa-chat-bubble-wrap">
+          ${failAlert}
+          <div class="fa-chat-bubble ${isGroupFirst ? 'has-tail' : ''}">${nameHTML}${esc(message.body)}<time>${statusText}</time></div>
+        </div>
+        ${isMe ? avatarHTML : ''}
       </div>`;
   }
 
@@ -665,19 +889,32 @@
     const isGroup = state.currentKind === 'group';
     const data = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages?limit=80`);
     const nextMessages = Array.isArray(data.rows) ? data.rows : [];
-    const before = state.messages.map(item => item.id).join(',');
-    const after = nextMessages.map(item => item.id).join(',');
+
+    // Merge: keep pending/failed tmp messages; replace tmp with real if IDs match by index
+    const pendingMsgs = state.messages.filter(m => String(m.id).startsWith('tmp-'));
+    // Merge server messages into state, preserving pending tmp messages that haven't been confirmed
+    const serverIds = new Set(nextMessages.map(m => String(m.id)));
+    const merged = [...nextMessages];
+
+    // Re-append any pending/failed tmp messages that server doesn't know about yet
+    for (const pending of pendingMsgs) {
+      if (!serverIds.has(String(pending.id))) {
+        merged.push(pending);
+      }
+    }
+
+    const before = state.messages.filter(m => !String(m.id).startsWith('tmp-')).map(m => m.id).join(',');
+    const after = nextMessages.map(m => m.id).join(',');
+
     if (before !== after) {
-      const wasNearBottom = (() => {
-        const list = root.querySelector('[data-chat-messages]');
-        return !list || (list.scrollHeight - list.scrollTop - list.clientHeight) < 80;
-      })();
-      state.messages = nextMessages;
-      // Update cache
+      const list = root.querySelector('[data-chat-messages]');
+      const wasNearBottom = !list || (list.scrollHeight - list.scrollTop - list.clientHeight) < 80;
+      state.messages = merged;
       const k = cacheKey();
-      if (k) state._msgCache[k] = nextMessages.slice();
+      if (k) state._msgCache[k] = merged.slice();
       updateMessagesList({ scroll: wasNearBottom });
     }
+
     if (isGroup) {
       await loadGroups();
       state.current = state.groups.find(item => Number(item.id) === Number(state.current.id)) || state.current;
@@ -918,7 +1155,7 @@
         const show = chatInput.value.length > 440;
         counter.textContent = show ? `${remaining} restantes` : '';
         counter.style.opacity = show ? '1' : '0';
-        counter.style.color = remaining < 20 ? 'var(--fa-chat-danger,#e55)' : 'var(--fa-chat-muted,#888)';
+        counter.style.color = remaining < 20 ? 'var(--fc-red,#ff5f52)' : 'var(--fc-ink-3,#7a756a)';
       }
       return;
     }
@@ -988,18 +1225,22 @@
     setTimeout(() => warmChat(), 1400);
   }
   let _chatPollFailures = 0;
+  let _lastPoll = 0;
   setInterval(async () => {
+    const now = Date.now();
+    // In active thread: poll every 8s. Background unread: poll every 20s. Inbox open: 10s.
+    const interval = state.current ? 8000 : (!state.open ? 20000 : 10000);
+    if (now - _lastPoll < interval) return;
     if (document.hidden && !state.current) return;
-    if (_chatPollFailures >= 2 && _chatPollFailures % 2 !== 0) {
-      _chatPollFailures++;
-      return;
+    if (_chatPollFailures >= 3) {
+      // Back-off: skip every other tick after 3 failures
+      if (_chatPollFailures % 2 !== 0) { _chatPollFailures++; return; }
     }
+    _lastPoll = now;
     try {
       if (!state.open) {
         await loadUnread();
       } else if (state.current) {
-        const draft = root.querySelector('[data-chat-input]')?.value || '';
-        if (draft.trim()) return;
         await refreshCurrentMessages();
       } else if (state.open) {
         if (state.tab === 'groups') await loadGroups();
@@ -1007,9 +1248,9 @@
         updateConversationList();
       }
       _chatPollFailures = 0;
-    } catch (e) {
+    } catch {
       _chatPollFailures++;
-      // Don't overwrite state.error on poll failures — they're silent
+      // Poll failures are silent — don't overwrite UI error state
     }
-  }, 25000);
+  }, 2000);
 })();
