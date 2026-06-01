@@ -973,7 +973,7 @@ function socialRankSql(userAlias = 'u', balanceAlias = 'pb') {
   return `CASE
     WHEN ${userAlias}.role = 'owner' THEN 'owner'
     WHEN ${userAlias}.role = 'full' THEN 'adm'
-    WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN 'ferro'
+    WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN NULL
     ELSE COALESCE(${balanceAlias}.rank, 'ferro')
   END`;
 }
@@ -981,7 +981,7 @@ function socialRankSql(userAlias = 'u', balanceAlias = 'pb') {
 function socialMeritSql(userAlias = 'u', balanceAlias = 'pb') {
   return `CASE
     WHEN ${userAlias}.role IN ('owner', 'full') THEN COALESCE(${balanceAlias}.merit_total, 0)
-    WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN 0
+    WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN NULL
     ELSE COALESCE(${balanceAlias}.merit_total, 0)
   END`;
 }
@@ -1031,19 +1031,9 @@ function buildProfileBadges(profile = {}, stats = {}) {
 }
 
 async function createSocialNotification({ recipientId, actorId, type, entityType = null, entityId = null, previewText = '' }, db = pool) {
-  // Garante IDs numéricos válidos — nunca lança por conta de minecraft_name ausente
   const recipient = Number(recipientId);
   const actor = actorId ? Number(actorId) : null;
-  if (!Number.isFinite(recipient) || recipient <= 0) return null;
-  if (!actor || !Number.isFinite(actor) || actor <= 0) return null;
-  if (recipient === actor || !SOCIAL_NOTIFICATION_TYPES.has(type)) return null;
-
-  // entityId deve ser inteiro positivo ou null — nunca string solta nem NaN
-  const safeEntityId = (entityId != null && Number.isFinite(Number(entityId))) ? Number(entityId) : null;
-  // entityType aceita apenas string não-vazia ou null
-  const safeEntityType = (entityType != null && String(entityType).trim()) ? String(entityType).trim() : null;
-  // previewText: texto puro, sem null, sem NUL bytes, truncado — desacoplado de minecraft_name
-  const preview = sanitizeText(String(previewText ?? '')).slice(0, 120);
+  if (!recipient || !actor || recipient === actor || !SOCIAL_NOTIFICATION_TYPES.has(type)) return null;
 
   const { rows: blocked } = await db.query(
     `SELECT 1 FROM user_blocks
@@ -1054,6 +1044,7 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
   );
   if (blocked.length) return null;
 
+  const preview = sanitizeText(previewText || '').slice(0, 120);
   const { rows } = await db.query(
     `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text)
      SELECT $1,$2,$3,$4,$5,$6
@@ -1067,7 +1058,7 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
          AND created_at > NOW() - INTERVAL '1 hour'
      )
      RETURNING id`,
-    [recipient, actor, type, safeEntityType, safeEntityId, preview],
+    [recipient, actor, type, entityType, entityId, preview],
   );
   return rows[0] || null;
 }
@@ -5107,15 +5098,7 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
     res.json({ ok: true, created: rowCount > 0 });
   } catch (e) {
     await client.query('ROLLBACK');
-    console.error('[POST /api/community/posts/:id/like] Erro detalhado:', {
-      message:  e?.message,
-      code:     e?.code,       // código PostgreSQL (ex: 23503 = FK violation)
-      detail:   e?.detail,     // detalhe do constraint violado
-      hint:     e?.hint,
-      table:    e?.table,
-      constraint: e?.constraint,
-      stack:    process.env.NODE_ENV !== 'production' ? e?.stack : undefined,
-    });
+    console.error('[POST /api/community/posts/:id/like]', e);
     res.status(500).json({ error: 'Erro ao curtir' });
   } finally {
     client.release();

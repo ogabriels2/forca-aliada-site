@@ -2576,18 +2576,14 @@ const time = v => {
   return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
 };
 function rankInfo(rank='',merit=0){
-  const id=String(rank||'ferro').toLowerCase();
-  if(!id||id==='limited'||id==='ferro') {
-    // 'ferro' é o rank padrão para contas sem minecraft_name ou sem rank atribuído
-    if(id==='ferro') return{label:'Ferro',color:'var(--rk-iron)',cls:'rk-ferro'};
-    return{label:'',color:'transparent',cls:'rk-none'};
-  }
+  const id=String(rank||'').toLowerCase();
+  if(!id||id==='limited') return{label:'',color:'transparent',cls:'rk-none'};
   if(id.includes('owner')) return{label:'Dono',color:'var(--rk-owner)',cls:'rk-owner'};
   if(id.includes('adm')||id.includes('full')||id.includes('admin')||id.includes('staff')) return{label:'Adm',color:'var(--rk-staff)',cls:'rk-staff'};
   if(id.includes('netherite')||merit>=1000) return{label:'Netherite',color:'var(--rk-netherite)',cls:'rk-netherite'};
   if(id.includes('diamante')||merit>=500) return{label:'Diamante',color:'var(--rk-diamond)',cls:'rk-diamante'};
   if(id.includes('ouro')||merit>=150) return{label:'Ouro',color:'var(--rk-gold)',cls:'rk-ouro'};
-  return{label:'Ferro',color:'var(--rk-iron)',cls:'rk-ferro'};
+  return{label:rank||'Ferro',color:'var(--rk-iron)',cls:'rk-ferro'};
 }
 function rankPillHTML(rk){return rk?.label?`<span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>`:''}
 function rankSuffix(rank,merit){const rk=rankInfo(rank,merit);return rk.label?` · ${esc(rk.label)}`:''}
@@ -2812,7 +2808,7 @@ function renderMentionBox(type){
   if(!state.mentionSuggestions.length){box.classList.remove('show');return}
   box.innerHTML=state.mentionSuggestions.map(p=>{
     const n=p.minecraft_name||p.username||'Steve';
-    return`<button class="mention-opt" type="button" role="option" data-pick="${esc(n)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><span><strong>@${esc(n)}</strong><small style="color:var(--ink-3)">${esc(rankInfo(p.rank||'ferro',Number(p.merit)||0).label || 'Perfil')}</small></span></button>`;
+    return`<button class="mention-opt" type="button" role="option" data-pick="${esc(n)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><span><strong>@${esc(n)}</strong><small style="color:var(--ink-3)">${esc(rankInfo(p.rank,p.merit).label || 'Perfil')}</small></span></button>`;
   }).join('');
   box.classList.add('show');
 }
@@ -2905,7 +2901,7 @@ function postCardHTML(p){
   const username=isRepost?(p.repost_original_username||mc):(p.username||mc);
   const shown=isRepost?(p.repost_original_display_name||mc):(p.display_name||mc);
   const avSrc=isRepost?(p.repost_original_avatar_url||skin(mc,50)):(p.avatar_url||skin(mc,50));
-  const rk=rankInfo(isRepost?(p.repost_original_rank||p.repost_original_role||'ferro'):(p.rank||p.role||'ferro'),Number(isRepost?p.repost_original_merit:p.merit)||0);
+  const rk=rankInfo(isRepost?(p.repost_original_rank||p.repost_original_role):(p.rank||p.role),isRepost?p.repost_original_merit:p.merit);
   const targetPostId=p.repost_of_id||p.id;
   const displayContent=isRepost?(p.repost_original_content||''):p.content;
   const quoteContent=isRepost&&p.content?`<div class="repost-quote">${mentionHTML(p.content)}</div>`:'';
@@ -3034,11 +3030,11 @@ async function loadFriendsBar(){
       return `<div class="friend-item js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><div class="friend-av-wrap"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(shown)}</span></div>`;
     }).join('');
     if(reqList) reqList.innerHTML=requests.length?requests.map(p=>{
-      const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank||'ferro',Number(p.merit)||0);
+      const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
       return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${rk.label?esc(rk.label)+' · ':''}quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
     }).join(''):'<p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p>';
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
-      const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank||'ferro',Number(p.merit)||0);
+      const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
       return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label || 'Perfil')}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
     }).join('');
   }catch(e){}
@@ -3243,7 +3239,7 @@ async function renderPostRoute(id){
     const cached=findPost(id);if(cached)Object.assign(cached,post);else state.posts.unshift(post);
     document.title=`Post de ${post.minecraft_name||post.username||'jogador'} | Força Aliada`;
     const mc=post.minecraft_name||post.username||'Steve';
-    const rk=rankInfo(post.rank||post.role||'ferro',Number(post.merit)||0);
+    const rk=rankInfo(post.rank||post.role,post.merit);
     const edited=post.updated_at&&new Date(post.updated_at)>new Date(post.created_at);
     const isMe=state.me&&Number(post.author_id)===Number(state.me.id);
     const staff=canModerate();
@@ -3463,7 +3459,7 @@ async function renderProfileRoute(identifier){
     const mc=prof.minecraft_name||prof.username||'Steve';
     const shown=displayName(prof);
     const handle=handleName(prof);
-    const rk=rankInfo(prof.rank||prof.role||'ferro',Number(prof.merit)||0);
+    const rk=rankInfo(prof.rank||prof.role,prof.merit);
     const isMe=Number(prof.id)===Number(state.me?.id);
     const profilePosts=posts.map(p=>({
       ...p,
@@ -3622,7 +3618,7 @@ async function openCommunityProfileEditor(){
       </div>
       <div class="sheet-body edit-profile-body">
         <div class="edit-profile-preview">
-          <div class="profile-cover ${rankInfo(prof.rank||prof.role||'ferro',Number(prof.merit)||0).cls}" id="edit-preview-cover"></div>
+          <div class="profile-cover ${rankInfo(prof.rank||prof.role,prof.merit).cls}" id="edit-preview-cover"></div>
           <div class="edit-preview-row">
             <img class="profile-av" id="edit-preview-avatar" src="${esc(avatar({...prof,...prefs},140))}" alt="">
             <div><strong id="edit-preview-name">${esc(prefs.display_name||displayName(prof))}</strong><small>@${esc(handleName(prof))}</small></div>
@@ -3715,7 +3711,7 @@ async function reportContent(type,id){
 
 /* ======================= PLAYERS ======================= */
 function playerRowHTML(p){
-  const mc=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank||'ferro',Number(p.merit)||0);
+  const mc=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);
   const on=Boolean(p.is_following||p.followed_by_me);
   return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(mc,50)}'"><div><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
 }
@@ -3766,7 +3762,7 @@ async function openRelModal(type,mc,uid){
   `;
   const rowHTML=p=>{
     const n=p.minecraft_name||p.username||'Steve';
-    const rk=rankInfo(p.rank||'ferro',Number(p.merit)||0);
+    const rk=rankInfo(p.rank,p.merit);
     const fol=Boolean(p.followed_by_me);
     const itsMe=Number(p.id)===Number(state.me?.id);
     return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${rk.label?esc(rk.label)+' · ':''}@${esc(handleName(p))}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
@@ -3839,7 +3835,8 @@ function openSearchPage(seed=''){
 }
 function searchResultPersonHTML(p){
   const n=p.minecraft_name||p.username||'Steve';
-  const rk=rankInfo(p.rank||'ferro',Number(p.merit)||0); type="button"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><span><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`;
+  const rk=rankInfo(p.rank,p.merit);
+  return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><span><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`;
 }
 function searchResultPostHTML(p){
   const id=p.repost_of_id||p.id;
