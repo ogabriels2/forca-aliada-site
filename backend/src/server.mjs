@@ -683,6 +683,10 @@ CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON user_blocks(blocked_id);
 
 -- Adiciona a coluna Bio/Status nas preferências, se não existir
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT '';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS display_name VARCHAR(40) DEFAULT '';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT '';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS cover_url TEXT DEFAULT '';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS profile_layout VARCHAR(24) DEFAULT 'posts';
 
 -- ─────────────────────────────────────────────
 -- REDE SOCIAL: POSTAGENS E CURTIDAS
@@ -3087,7 +3091,14 @@ app.post('/api/auth/logout', auth, async (req, res) => {
 app.get('/api/me', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, username, email, minecraft_name, photo_url, role, is_verified, created_at FROM users WHERE id=$1',
+      `SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.created_at,
+              COALESCE(up.display_name, '') AS display_name,
+              COALESCE(up.avatar_url, '') AS avatar_url,
+              COALESCE(up.cover_url, '') AS cover_url,
+              COALESCE(up.profile_layout, 'posts') AS profile_layout
+       FROM users u
+       LEFT JOIN user_preferences up ON up.user_id = u.id
+       WHERE u.id=$1`,
       [req.user.sub],
     );
     if (!rows.length) return res.status(401).json({ error: 'user deleted' });
@@ -3549,7 +3560,7 @@ app.get('/api/community/players', auth, async (req, res) => {
 
   if (search) {
     params.push(search);
-    conditions.push(`(LOWER(COALESCE(u.minecraft_name, '')) LIKE $${params.length} OR LOWER(u.username) LIKE $${params.length})`);
+    conditions.push(`(LOWER(COALESCE(up.display_name, '')) LIKE $${params.length} OR LOWER(COALESCE(u.minecraft_name, '')) LIKE $${params.length} OR LOWER(u.username) LIKE $${params.length})`);
   }
 
   if (onlyFollowing) {
@@ -3564,6 +3575,9 @@ app.get('/api/community/players', auth, async (req, res) => {
              COALESCE(pb.rank, 'ferro') AS rank,
              COALESCE(pb.merit_total, 0) AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             COALESCE(up.cover_url, '') AS cover_url,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              (SELECT COUNT(*) FROM user_follows f1
               JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
@@ -3595,6 +3609,10 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
     const { rows: profileRows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
              COALESCE(up.bio, '') AS bio,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             COALESCE(up.cover_url, '') AS cover_url,
+             COALESCE(up.profile_layout, 'posts') AS profile_layout,
              COALESCE(up.public_profile, TRUE) AS public_profile,
              COALESCE(up.public_history, FALSE) AS public_history,
              COALESCE(pb.rank, 'ferro') AS rank,
@@ -3632,7 +3650,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
     const mcName = profile.minecraft_name || profile.username;
     const canSeeHistory = Boolean(profile.public_history) || Number(profile.id) === Number(req.user.sub);
 
-    const [postsResult, statsResult, dailyResult, followResult] = await Promise.all([
+    const [postsResult, repliesResult, repostsResult, statsResult, dailyResult, followResult] = await Promise.all([
       pool.query(`
         SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
@@ -3642,8 +3660,65 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
                EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '') AS reposted_by_me
         FROM user_posts p
         WHERE p.author_id=$2
+          AND p.repost_of_id IS NULL
         ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC
         LIMIT 12
+      `, [req.user.sub, profileUserId]),
+      pool.query(`
+        SELECT pc.id AS comment_id, pc.content AS comment_content, pc.created_at AS comment_created_at,
+               p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
+               au.id AS author_id, au.username, au.minecraft_name, au.photo_url, au.role,
+               COALESCE(aup.display_name, '') AS display_name,
+               COALESCE(aup.avatar_url, '') AS avatar_url,
+               COALESCE(pb.rank, 'ferro') AS rank,
+               COALESCE(pb.merit_total, 0) AS merit,
+               (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+               (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me,
+               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '') AS reposted_by_me
+        FROM post_comments pc
+         JOIN user_posts p ON p.id = pc.post_id
+         JOIN users au ON au.id = p.author_id
+         LEFT JOIN user_preferences aup ON aup.user_id = au.id
+         LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(au.minecraft_name)
+        WHERE pc.author_id = $2
+          AND pc.is_deleted = FALSE
+          AND NOT EXISTS (
+            SELECT 1 FROM user_blocks ub
+            WHERE (ub.blocker_id = $1 AND ub.blocked_id = au.id)
+               OR (ub.blocker_id = au.id AND ub.blocked_id = $1)
+          )
+        ORDER BY pc.created_at DESC
+        LIMIT 20
+      `, [req.user.sub, profileUserId]),
+      pool.query(`
+        SELECT p.id, p.content, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.repost_of_id,
+               op.content AS repost_original_content,
+               op.created_at AS repost_original_created_at,
+               ou.id AS repost_original_author_id,
+                ou.username AS repost_original_username,
+                ou.minecraft_name AS repost_original_minecraft_name,
+                ou.photo_url AS repost_original_photo_url,
+                ou.role AS repost_original_role,
+                COALESCE(oup.display_name, '') AS repost_original_display_name,
+                COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
+                COALESCE(opb.rank, 'ferro') AS repost_original_rank,
+               COALESCE(opb.merit_total, 0) AS repost_original_merit,
+               (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
+               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
+               (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
+               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me
+        FROM user_posts p
+         JOIN user_posts op ON op.id = p.repost_of_id
+         JOIN users ou ON ou.id = op.author_id
+         LEFT JOIN user_preferences oup ON oup.user_id = ou.id
+         LEFT JOIN player_balances opb ON LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
+        WHERE p.author_id = $2
+          AND p.repost_of_id IS NOT NULL
+        ORDER BY p.created_at DESC
+        LIMIT 20
       `, [req.user.sub, profileUserId]),
       canSeeHistory ? pool.query(`
         SELECT COUNT(*)::int AS total_sessions,
@@ -3668,6 +3743,9 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
     res.json({
       profile: { ...profile, rank_benefits: rankBenefits(profile.rank) },
       posts: postsResult.rows,
+      replies: repliesResult.rows,
+      reposts: repostsResult.rows,
+      media: [],
       game_stats: gameStats,
       badges: buildProfileBadges(profile, gameStats || {}),
       follow_since: followResult.rows[0]?.created_at || null,
@@ -4503,12 +4581,17 @@ app.get('/api/community/posts', auth, async (req, res) => {
              ou.username AS repost_original_username,
              ou.minecraft_name AS repost_original_minecraft_name,
              ou.photo_url AS repost_original_photo_url,
+             COALESCE(oup.display_name, '') AS repost_original_display_name,
+             COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
              ou.role AS repost_original_role,
              COALESCE(opb.rank, 'ferro') AS repost_original_rank,
              COALESCE(opb.merit_total, 0) AS repost_original_merit,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
              (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             COALESCE(up.cover_url, '') AS cover_url,
              COALESCE(pb.rank, 'ferro') AS rank,
              COALESCE(pb.merit_total, 0) AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
@@ -4533,9 +4616,11 @@ app.get('/api/community/posts', auth, async (req, res) => {
              ), '[]'::json) AS recent_comments
       FROM user_posts p
       JOIN users u ON p.author_id = u.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       LEFT JOIN user_posts op ON op.id = p.repost_of_id
       LEFT JOIN users ou ON ou.id = op.author_id
+      LEFT JOIN user_preferences oup ON oup.user_id = ou.id
       LEFT JOIN player_balances opb ON LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
       ${whereClause}
       ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
@@ -4839,11 +4924,14 @@ app.get('/api/community/player/:identifier/followers', auth, async (req, res) =>
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(pb.rank, 'ferro') AS rank,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM user_follows uf
       JOIN users u ON uf.follower_id = u.id
       JOIN users target ON uf.following_id = target.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE ${where}
         AND ($3::timestamptz IS NULL OR uf.created_at < $3::timestamptz)
@@ -4872,11 +4960,14 @@ app.get('/api/community/player/:identifier/following', auth, async (req, res) =>
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(pb.rank, 'ferro') AS rank,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM user_follows uf
       JOIN users u ON uf.following_id = u.id
       JOIN users target ON uf.follower_id = target.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE ${where}
         AND ($3::timestamptz IS NULL OR uf.created_at < $3::timestamptz)
@@ -4904,6 +4995,8 @@ app.get('/api/community/player/:identifier/friends', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
              GREATEST(out_f.created_at, back_f.created_at) AS created_at,
              COALESCE(pb.rank, 'ferro') AS rank,
              COALESCE(pb.merit_total, 0) AS merit,
@@ -4913,9 +5006,10 @@ app.get('/api/community/player/:identifier/friends', auth, async (req, res) => {
       JOIN user_follows back_f ON back_f.follower_id = out_f.following_id AND back_f.following_id = target.id
       JOIN users u ON u.id = out_f.following_id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-      LEFT JOIN user_preferences up ON up.user_id = target.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN user_preferences target_up ON target_up.user_id = target.id
       WHERE ${where}
-        AND (COALESCE(up.public_profile, TRUE) = TRUE OR target.id = $1)
+        AND (COALESCE(target_up.public_profile, TRUE) = TRUE OR target.id = $1)
         AND ($3::timestamptz IS NULL OR GREATEST(out_f.created_at, back_f.created_at) < $3::timestamptz)
         AND NOT EXISTS (
           SELECT 1 FROM user_blocks ub
@@ -5522,8 +5616,29 @@ const DEFAULT_PREFERENCES = Object.freeze({
   public_history: false,
   theme: 'light',
   bio: '',
+  display_name: '',
+  avatar_url: '',
+  cover_url: '',
+  profile_layout: 'posts',
 });
 const ALLOWED_THEMES = new Set(['light', 'dark', 'auto']);
+const ALLOWED_PROFILE_LAYOUTS = new Set(['posts', 'replies', 'reposts', 'media']);
+
+function normalizeSocialName(value = '') {
+  return sanitize(value).replace(/\s+/g, ' ').slice(0, 40);
+}
+
+function normalizeProfileImageUrl(value = '') {
+  const raw = sanitize(value).slice(0, 500);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (!['https:', 'http:'].includes(url.protocol)) return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}
 
 function normalizePreferences(input = {}) {
   const prefs = { ...DEFAULT_PREFERENCES };
@@ -5532,14 +5647,18 @@ function normalizePreferences(input = {}) {
   }
   if (ALLOWED_THEMES.has(input.theme)) prefs.theme = input.theme;
   if (input.bio !== undefined) prefs.bio = sanitize(input.bio).slice(0, 160);
+  if (input.display_name !== undefined) prefs.display_name = normalizeSocialName(input.display_name);
+  if (input.avatar_url !== undefined) prefs.avatar_url = normalizeProfileImageUrl(input.avatar_url);
+  if (input.cover_url !== undefined) prefs.cover_url = normalizeProfileImageUrl(input.cover_url);
+  if (ALLOWED_PROFILE_LAYOUTS.has(input.profile_layout)) prefs.profile_layout = input.profile_layout;
   return prefs;
 }
 
 async function ensureUserPreferences(userId, overrides = {}) {
   const prefs = normalizePreferences(overrides);
   const { rows } = await pool.query(
-    `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,updated_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
+    `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
      ON CONFLICT(user_id) DO UPDATE SET
        email_server=$2,
        email_events=$3,
@@ -5549,16 +5668,20 @@ async function ensureUserPreferences(userId, overrides = {}) {
        public_history=$7,
        theme=$8,
        bio=$9,
+       display_name=$10,
+       avatar_url=$11,
+       cover_url=$12,
+       profile_layout=$13,
        updated_at=NOW()
-     RETURNING email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,updated_at`,
-    [userId, prefs.email_server, prefs.email_events, prefs.email_community, prefs.public_profile, prefs.show_online, prefs.public_history, prefs.theme, prefs.bio],
+     RETURNING email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,updated_at`,
+    [userId, prefs.email_server, prefs.email_events, prefs.email_community, prefs.public_profile, prefs.show_online, prefs.public_history, prefs.theme, prefs.bio, prefs.display_name, prefs.avatar_url, prefs.cover_url, prefs.profile_layout],
   );
   return rows[0];
 }
 
 app.get('/api/me/preferences', auth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,updated_at FROM user_preferences WHERE user_id=$1',
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,updated_at FROM user_preferences WHERE user_id=$1',
     [req.user.sub],
   );
   if (rows.length) return res.json(normalizePreferences(rows[0]));
@@ -5568,7 +5691,7 @@ app.get('/api/me/preferences', auth, async (req, res) => {
 
 app.put('/api/me/preferences', auth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio FROM user_preferences WHERE user_id=$1',
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout FROM user_preferences WHERE user_id=$1',
     [req.user.sub],
   );
   const prefs = await ensureUserPreferences(req.user.sub, { ...(rows[0] || {}), ...(req.body || {}) });
