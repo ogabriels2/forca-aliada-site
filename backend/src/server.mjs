@@ -792,6 +792,37 @@ ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 DROP INDEX IF EXISTS idx_comments_post;
 CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id, created_at ASC);
 
+-- ── Polls ──────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS post_polls (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER UNIQUE REFERENCES user_posts(id) ON DELETE CASCADE,
+  ends_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_post_polls_post ON post_polls(post_id);
+
+CREATE TABLE IF NOT EXISTS post_poll_options (
+  id SERIAL PRIMARY KEY,
+  poll_id INTEGER REFERENCES post_polls(id) ON DELETE CASCADE,
+  text VARCHAR(80) NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  votes_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON post_poll_options(poll_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS post_poll_votes (
+  id SERIAL PRIMARY KEY,
+  poll_id INTEGER REFERENCES post_polls(id) ON DELETE CASCADE,
+  option_id INTEGER REFERENCES post_poll_options(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (poll_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_poll_votes_poll ON post_poll_votes(poll_id);
+CREATE INDEX IF NOT EXISTS idx_poll_votes_user ON post_poll_votes(user_id);
+-- ───────────────────────────────────────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS user_tag_affinity (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   tag VARCHAR(64) NOT NULL,
@@ -4750,9 +4781,21 @@ app.post('/api/community/upload', auth, uploadLimiter, communityMediaUploadMiddl
 app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   const content = sanitizeText(req.body?.content || '');
   const mediaUrls = normalizePostMediaUrls(req.body?.media_urls);
-  if (!content && !mediaUrls.length) return res.status(400).json({ error: 'Escreva algo ou adicione uma imagem.' });
-  if (content && content.length < 2 && !mediaUrls.length) return res.status(400).json({ error: 'Post muito curto.' });
+
+  // Poll validation
+  const rawPollOptions = req.body?.poll_options;
+  const pollDurationHours = Number(req.body?.poll_duration_hours) || 24;
+  const hasPoll = Array.isArray(rawPollOptions) && rawPollOptions.length >= 2;
+  const pollOptions = hasPoll
+    ? rawPollOptions.map(o => String(o || '').trim()).filter(Boolean).slice(0, 4)
+    : [];
+
+  if (!content && !mediaUrls.length && !hasPoll) return res.status(400).json({ error: 'Escreva algo ou adicione uma imagem.' });
+  if (content && content.length < 2 && !mediaUrls.length && !hasPoll) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
+  if (hasPoll && pollOptions.length < 2) return res.status(400).json({ error: 'Enquete precisa de pelo menos 2 opcoes.' });
+  if (hasPoll && pollDurationHours < 1) return res.status(400).json({ error: 'Duracao invalida.' });
+  if (hasPoll && pollOptions.some(o => o.length > 80)) return res.status(400).json({ error: 'Opcao de enquete muito longa (max 80 chars).' });
 
   const client = await pool.connect();
   try {
@@ -4764,6 +4807,32 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       [req.user.sub, content, mediaUrls],
     );
     const newPost = rows[0];
+
+    // Create poll if provided
+    let pollData = null;
+    if (hasPoll && pollOptions.length >= 2) {
+      const endsAt = new Date(Date.now() + pollDurationHours * 3600 * 1000);
+      const { rows: pollRows } = await client.query(
+        `INSERT INTO post_polls(post_id, ends_at) VALUES($1, $2) RETURNING id, ends_at`,
+        [newPost.id, endsAt],
+      );
+      const poll = pollRows[0];
+      const insertedOptions = [];
+      for (let i = 0; i < pollOptions.length; i++) {
+        const { rows: optRows } = await client.query(
+          `INSERT INTO post_poll_options(poll_id, text, sort_order) VALUES($1, $2, $3) RETURNING id, text, sort_order`,
+          [poll.id, pollOptions[i], i],
+        );
+        insertedOptions.push({ id: optRows[0].id, text: optRows[0].text, votes: 0 });
+      }
+      pollData = {
+        id: poll.id,
+        ends_at: poll.ends_at,
+        is_closed: false,
+        user_vote_id: null,
+        options: insertedOptions,
+      };
+    }
 
     const mentions = extractMentions(content);
     if (mentions.length > 0) {
@@ -4798,7 +4867,7 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       }
     }
     await client.query('COMMIT');
-    res.status(201).json({ ...newPost, likes_count: 0, comments_count: 0, reposts_count: 0 });
+    res.status(201).json({ ...newPost, likes_count: 0, comments_count: 0, reposts_count: 0, poll: pollData });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts]', e);
@@ -4890,7 +4959,22 @@ app.get('/api/community/posts', auth, async (req, res) => {
                  ORDER BY pc.created_at DESC
                  LIMIT 3
                ) rc
-             ), '[]'::json) AS recent_comments
+             ), '[]'::json) AS recent_comments,
+             (SELECT json_build_object(
+               'id', pp.id,
+               'ends_at', pp.ends_at,
+               'is_closed', (pp.ends_at < NOW()),
+               'user_vote_id', (SELECT ppv.option_id FROM post_poll_votes ppv WHERE ppv.poll_id = pp.id AND ppv.user_id = $1),
+               'options', COALESCE((
+                 SELECT json_agg(json_build_object(
+                   'id', ppo.id,
+                   'text', ppo.text,
+                   'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
+                 ) ORDER BY ppo.sort_order)
+                 FROM post_poll_options ppo
+                 WHERE ppo.poll_id = pp.id
+               ), '[]'::json)
+             ) FROM post_polls pp WHERE pp.post_id = COALESCE(p.repost_of_id, p.id) LIMIT 1) AS poll
       FROM user_posts p
       JOIN users u ON p.author_id = u.id
       LEFT JOIN user_preferences up ON up.user_id = u.id
@@ -5114,7 +5198,8 @@ app.get('/api/community/feed', auth, async (req, res) => {
              f.temporal_gravity,
              f.random_noise,
              f.author_diversity_rank,
-             f.hot_score::text AS hot_score_cursor
+             f.hot_score::text AS hot_score_cursor,
+             poll_lateral.poll_data AS poll
       FROM final f
       LEFT JOIN LATERAL (
         SELECT json_agg(row_to_json(rc)) AS recent_comments
@@ -5133,6 +5218,26 @@ app.get('/api/community/feed', auth, async (req, res) => {
           LIMIT 3
         ) rc
       ) recent ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT json_build_object(
+          'id', pp.id,
+          'ends_at', pp.ends_at,
+          'is_closed', (pp.ends_at < NOW()),
+          'user_vote_id', (SELECT ppv.option_id FROM post_poll_votes ppv WHERE ppv.poll_id = pp.id AND ppv.user_id = $1),
+          'options', COALESCE((
+            SELECT json_agg(json_build_object(
+              'id', ppo.id,
+              'text', ppo.text,
+              'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
+            ) ORDER BY ppo.sort_order)
+            FROM post_poll_options ppo
+            WHERE ppo.poll_id = pp.id
+          ), '[]'::json)
+        ) AS poll_data
+        FROM post_polls pp
+        WHERE pp.post_id = f.target_id
+        LIMIT 1
+      ) poll_lateral ON TRUE
       WHERE ($4::double precision IS NULL OR $5::integer IS NULL OR (f.hot_score, f.id) < ($4::double precision, $5::integer))
       ORDER BY f.hot_score DESC, f.id DESC
       LIMIT $2
@@ -5670,6 +5775,72 @@ app.delete('/api/community/posts/:id', auth, async (req, res) => {
     res.status(500).json({ error: 'Erro ao excluir' });
   }
 });
+
+// ── Poll vote ─────────────────────────────────────────────────────────────────
+app.post('/api/community/posts/:id/poll/vote', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const optionId = parseInt(req.body?.option_id, 10);
+  if (!postId || !optionId) return res.status(400).json({ error: 'Dados invalidos' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Get poll
+    const { rows: pollRows } = await client.query(
+      'SELECT id, ends_at FROM post_polls WHERE post_id=$1 LIMIT 1', [postId]
+    );
+    if (!pollRows.length) return res.status(404).json({ error: 'Enquete nao encontrada' });
+    const poll = pollRows[0];
+    if (new Date(poll.ends_at) < new Date()) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Enquete encerrada' });
+    }
+    // Check option belongs to poll
+    const { rows: optRows } = await client.query(
+      'SELECT id FROM post_poll_options WHERE id=$1 AND poll_id=$2', [optionId, poll.id]
+    );
+    if (!optRows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Opcao nao encontrada' });
+    }
+    // Check already voted
+    const { rows: existingVote } = await client.query(
+      'SELECT option_id FROM post_poll_votes WHERE poll_id=$1 AND user_id=$2', [poll.id, req.user.sub]
+    );
+    if (existingVote.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Voce ja votou nesta enquete', voted_option_id: existingVote[0].option_id });
+    }
+    // Insert vote
+    await client.query(
+      'INSERT INTO post_poll_votes(poll_id, option_id, user_id) VALUES($1,$2,$3)',
+      [poll.id, optionId, req.user.sub]
+    );
+    // Fetch updated poll state
+    const { rows: updatedOptions } = await client.query(
+      `SELECT ppo.id, ppo.text, ppo.sort_order,
+              (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id) AS votes
+       FROM post_poll_options ppo WHERE ppo.poll_id=$1 ORDER BY ppo.sort_order`, [poll.id]
+    );
+    await client.query('COMMIT');
+    res.json({
+      ok: true,
+      poll: {
+        id: poll.id,
+        ends_at: poll.ends_at,
+        is_closed: false,
+        user_vote_id: optionId,
+        options: updatedOptions,
+      }
+    });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[POST /api/community/posts/:id/poll/vote]', e);
+    res.status(500).json({ error: 'Erro ao votar' });
+  } finally {
+    client.release();
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/api/community/report', auth, async (req, res) => {
   const contentType = sanitize(req.body?.content_type);
