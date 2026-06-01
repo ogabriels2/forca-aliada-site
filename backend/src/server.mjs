@@ -237,12 +237,14 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: false }));
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+cloudinary.config(process.env.CLOUDINARY_URL
+  ? { secure: true }
+  : {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
 
 const communityMediaUpload = multer({
   storage: multer.memoryStorage(),
@@ -274,7 +276,7 @@ function communityMediaUploadMiddleware(req, res, next) {
 }
 
 function cloudinaryIsConfigured() {
-  return Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+  return Boolean(process.env.CLOUDINARY_URL || (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET));
 }
 
 // ─────────────────────────────────────────────
@@ -1151,7 +1153,10 @@ function clampInt(value, fallback, min, max) {
 
 function normalizePostMediaUrls(input) {
   const values = Array.isArray(input) ? input : [];
-  const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+  let cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+  if (!cloudName && process.env.CLOUDINARY_URL) {
+    try { cloudName = new URL(process.env.CLOUDINARY_URL).hostname; } catch {}
+  }
   const seen = new Set();
   const urls = [];
   for (const value of values) {
