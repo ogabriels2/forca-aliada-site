@@ -2932,6 +2932,15 @@ const TK_KEY = 'fa_token', THEME_KEY = 'fa_theme';
 const token = localStorage.getItem(TK_KEY);
 if (!token) location.replace('login.html');
 
+/* ── Wake-up ping: acorda o servidor Render.com antes do loadMe ──
+   Disparo imediato e silencioso — não bloqueia nem lida com o resultado.
+   Dá ~5s de head start ao cold start sem impacto algum no UX. */
+(function wakeServer(){
+  if(IS_LOCAL) return;
+  const base=API_BASES[0]||PROD;
+  fetch(`${base}/healthz`,{signal:AbortSignal.timeout(8000)}).catch(()=>{});
+})();
+
 /* ======================= STATE ======================= */
 const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
@@ -3006,7 +3015,8 @@ async function api(path, opts={}){
   const h=new Headers(opts.headers||{});
   h.set('Authorization',`Bearer ${token}`);
   if(opts.body&&!(opts.body instanceof FormData)&&!h.has('Content-Type')) h.set('Content-Type','application/json');
-  const timeoutMs=opts.timeoutMs||25000;
+  /* Timeout generoso: servidor Render.com pode levar ~60s para sair da hibernação */
+  const timeoutMs=opts.timeoutMs||60000;
   const fetchOpts={...opts};delete fetchOpts.timeoutMs;
   let err;
   for(const base of API_BASES){
@@ -3020,7 +3030,7 @@ async function api(path, opts={}){
       const data=txt?JSON.parse(txt):{};
       if(!r.ok) throw new Error(data.error||`HTTP ${r.status}`);
       return data;
-    }catch(e){err=e.name==='AbortError'?new Error('A API demorou para responder. Tente novamente em alguns segundos.'):e;if(e.message==='Sessão inválida') throw e;}
+    }catch(e){err=e.name==='AbortError'?new Error('O servidor está acordando, aguarde alguns segundos e tente novamente.'):e;if(e.message==='Sessão inválida') throw e;}
     finally{clearTimeout(timeout)}
   }
   throw err;
@@ -5383,8 +5393,52 @@ Router.register('/profile/:id',renderProfileRoute);
 
 async function boot(){
   bindEvents(); syncComposer('inline'); syncComposer('modal'); updateThemeIcon(document.documentElement.getAttribute('data-theme'));
-  try{await loadMe();}
-  catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
+  try{
+    await loadMe();
+  }catch(e){
+    /* Só desloga se for realmente sessão inválida (401).
+       Timeout/rede → mostra opção de tentar novamente sem apagar o token. */
+    const isAuthError = e.message==='Sessão inválida';
+    if(isAuthError){
+      toast('error','Sessão expirada','Faça login novamente.');
+      setTimeout(logout,1500);
+      return;
+    }
+    /* Erro de rede / servidor hibernado: exibe aviso no feed e botão de retry */
+    const list=$('#feed-list');
+    if(list) list.innerHTML=`
+      <div class="empty-card" id="boot-error-card">
+        <div class="empty-icon">${IC.err}</div>
+        <h3>Servidor acordando…</h3>
+        <p>${esc(e.message||'Não foi possível conectar.')}<br>
+        O servidor pode levar até 60 segundos para responder na primeira requisição.</p>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" id="boot-retry-btn">
+            <svg viewBox="0 0 24 24" width="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="margin-right:5px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Tentar novamente
+          </button>
+        </div>
+      </div>`;
+    /* Listener do botão de retry */
+    document.addEventListener('click', async function retryHandler(ev){
+      if(!ev.target.closest('#boot-retry-btn')) return;
+      document.removeEventListener('click', retryHandler);
+      const btn=ev.target.closest('#boot-retry-btn');
+      btn.disabled=true; btn.textContent='Conectando…';
+      try{
+        await loadMe();
+        $('#boot-error-card')?.remove();
+        await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]);
+        Router.init();
+      }catch(e2){
+        btn.disabled=false;
+        btn.innerHTML='<svg viewBox="0 0 24 24" width="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="margin-right:5px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Tentar novamente';
+        document.addEventListener('click', retryHandler);
+        toast('error','Ainda sem conexão',e2.message||'Servidor não respondeu.');
+      }
+    });
+    return;
+  }
   await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]);
   Router.init();
 }
