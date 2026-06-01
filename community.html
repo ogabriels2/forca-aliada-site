@@ -164,7 +164,7 @@ img{display:block}
 .brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
 .brand img:not(.brand-logo){width:34px;height:34px;border-radius:9px;object-fit:cover}
 .brand-text strong{font-size:15px;font-weight:700;letter-spacing:0}
-.brand-text small{display:block;font-family:var(--ff-mono);font-size:9px;color:var(--ink-3);letter-spacing:0.12em;text-transform:uppercase;margin-top:1px}
+.brand-text small{display:none}
 /* top search */
 .top-search{
   flex:1;max-width:320px;margin:0 auto;position:relative;
@@ -1122,37 +1122,30 @@ body::after{
 }
 [data-theme=dark] .topbar{background:rgba(10,10,8,.78)}
 .topbar-inner{max-width:1320px;width:calc(100% - 40px);gap:18px}
-.brand{gap:7px}
+.brand{gap:10px}
 .brand-mark{
   display:flex;
   align-items:center;
   justify-content:center;
-  width:36px;
-  height:36px;
+  width:44px;
+  height:44px;
   flex:0 0 auto;
 }
 .brand .brand-logo{
-  width:36px;
-  height:36px;
+  width:44px;
+  height:44px;
   border:0;
   padding:0;
-  border-radius:4px;
+  border-radius:0;
   object-fit:contain;
   background:transparent;
   box-shadow:none;
   display:block;
+  filter:drop-shadow(0 2px 6px rgba(201,168,76,.25));
 }
 
-.brand-text strong{font-family:var(--ff);font-size:15px;font-weight:700;color:var(--ink)}
-.brand-text small{
-  display:inline;
-  font-family:var(--ff);
-  font-size:13px;
-  font-weight:500;
-  color:var(--ink-3);
-  text-transform:none;
-}
-.brand-text small::before{content:'/ ';color:var(--accent)}
+.brand-text strong{font-family:var(--ff);font-size:16px;font-weight:800;color:var(--ink)}
+.brand-text small{display:none}
 .top-search{max-width:360px}
 .top-search input,
 .search-box input,
@@ -2070,9 +2063,10 @@ body::after{
   .topbar{height:64px}
   :root{--topbar-h:64px}
   .brand-text{display:block}
-  .brand-text strong{font-size:14px}
-  .brand-text small{display:block;font-size:10px}
-  .brand-text small::before{content:''}
+  .brand-text strong{font-size:17px;font-weight:800}
+  .brand-text small{display:none}
+  .brand-mark{width:38px;height:38px}
+  .brand .brand-logo{width:38px;height:38px}
   .col-header{display:grid;gap:12px}
   .col-header h1{font-size:38px}
   .col-header p{font-size:17px}
@@ -2129,7 +2123,7 @@ body::after{
       <span class="brand-mark" aria-hidden="true">
         <img class="brand-logo" id="brand-logo-img" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
       </span>
-      <span class="brand-text"><strong>Community</strong><small>Força Aliada</small></span>
+      <span class="brand-text"><strong>Community</strong></span>
     </a>
     <div class="top-search" role="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
