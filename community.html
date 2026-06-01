@@ -31,105 +31,6 @@
 })();
 </script>
 <style>
-/* ─── DESIGN TOKENS ─── */
-:root {
-  color-scheme: light;
-  --ff: 'Outfit', -apple-system, sans-serif;
-  --ff-mono: 'JetBrains Mono', monospace;
-  --bg: #f2f5fb;
-  --bg-2: #e8eef8;
-  --surface: rgba(255,255,255,0.94);
-  --surface-solid: #ffffff;
-  --surface-hover: #f5f8fe;
-  --surface-soft: #f0f4fc;
-  --ink: #0b1524;
-  --ink-2: #3d4f68;
-  --ink-3: #8898b0;
-  --line: rgba(11,21,36,0.08);
-  --line-strong: rgba(11,21,36,0.14);
-  --accent: #1251e0;
-  --accent-h: #0c3eb8;
-  --accent-2: #0a8f74;
-  --accent-soft: rgba(18,81,224,0.08);
-  --accent-mid: rgba(18,81,224,0.18);
-  --danger: #dc2626;
-  --danger-soft: rgba(220,38,38,0.09);
-  --success: #059669;
-  --success-soft: rgba(5,150,105,0.09);
-  --warning: #d97706;
-  --warning-soft: rgba(217,119,6,0.10);
-  --gold: #92400e;
-  --gold-light: #fbbf24;
-  --purple: #6d28d9;
-  --purple-light: #a78bfa;
-  /* rank colors */
-  --rk-iron: #64748b;
-  --rk-gold: #b45309;
-  --rk-diamond: #0a7a64;
-  --rk-netherite: #6d28d9;
-  --rk-staff: #1251e0;
-  --rk-owner: #b91c1c;
-  /* layout */
-  --topbar-h: 62px;
-  --left-w: 254px;
-  --right-w: 300px;
-  /* radii */
-  --r-xs: 6px;
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 20px;
-  --r-xl: 26px;
-  /* shadows */
-  --shadow-xs: 0 1px 3px rgba(11,21,36,0.06);
-  --shadow-sm: 0 2px 8px rgba(11,21,36,0.07), 0 1px 0 rgba(255,255,255,0.9) inset;
-  --shadow-md: 0 6px 20px rgba(11,21,36,0.08), 0 1px 0 rgba(255,255,255,0.95) inset;
-  --shadow-lg: 0 18px 50px rgba(11,21,36,0.14);
-  --shadow-accent: 0 8px 20px rgba(18,81,224,0.22);
-  /* timing */
-  --ease: cubic-bezier(0.16,1,0.3,1);
-  --ease-out: cubic-bezier(0,0,0.3,1);
-  --t-fast: 0.12s;
-  --t-med: 0.22s;
-}
-[data-theme=dark] {
-  color-scheme: dark;
-  --bg: #060c16;
-  --bg-2: #0b1421;
-  --surface: rgba(13,20,34,0.92);
-  --surface-solid: #0d1422;
-  --surface-hover: #14203a;
-  --surface-soft: #162038;
-  --ink: #eef3ff;
-  --ink-2: #a8bacc;
-  --ink-3: #516070;
-  --line: rgba(255,255,255,0.08);
-  --line-strong: rgba(255,255,255,0.14);
-  --accent: #4e8fff;
-  --accent-h: #6ba4ff;
-  --accent-2: #2ec8a8;
-  --accent-soft: rgba(78,143,255,0.12);
-  --accent-mid: rgba(78,143,255,0.22);
-  --danger: #fb7185;
-  --danger-soft: rgba(251,113,133,0.13);
-  --success: #34d399;
-  --success-soft: rgba(52,211,153,0.13);
-  --warning: #fbbf24;
-  --warning-soft: rgba(251,191,36,0.13);
-  --gold: #fcd34d;
-  --purple-light: #c4b5fd;
-  --rk-gold: #f59e0b;
-  --rk-diamond: #10b981;
-  --rk-netherite: #a78bfa;
-  --rk-staff: #60a5fa;
-  --shadow-xs: 0 1px 3px rgba(0,0,0,0.35);
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.32);
-  --shadow-md: 0 6px 24px rgba(0,0,0,0.38);
-  --shadow-lg: 0 22px 60px rgba(0,0,0,0.52);
-  --shadow-accent: 0 8px 20px rgba(78,143,255,0.28);
-}
-
-/* ─── RESET ─── */
-*{box-sizing:border-box;margin:0;padding:0}
 html{min-height:100%;scroll-behavior:smooth}
 body{
   font-family:var(--ff);background:var(--bg);color:var(--ink);
@@ -150,7 +51,7 @@ img{display:block}
 
 /* ─── TOPBAR ─── */
 .topbar{
-  position:fixed;top:0;left:0;right:0;z-index:200;
+  position:fixed;top:0;left:0;right:0;z-index:var(--z-nav);
   height:var(--topbar-h);
   border-bottom:1px solid var(--line);
   background:color-mix(in srgb,var(--surface-solid) 84%,transparent);
@@ -416,7 +317,7 @@ img{display:block}
 .rate-hint{font-size:10.5px;color:var(--ink-3);font-weight:600;margin-top:3px}
 /* mention dropdown */
 .mention-box{
-  position:absolute;left:10px;right:10px;bottom:8px;z-index:6;
+  position:absolute;left:10px;right:10px;bottom:8px;z-index:var(--z-dropdown);
   border:1px solid var(--line);border-radius:var(--r-sm);
   background:var(--surface-solid);box-shadow:var(--shadow-lg);
   display:none;padding:5px;gap:4px;
@@ -544,7 +445,7 @@ img{display:block}
 .more-btn{width:30px;height:30px;display:grid;place-items:center;border-radius:999px;color:var(--ink-3);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
 .more-btn:hover{background:var(--bg);color:var(--accent)}
 .post-menu{
-  position:absolute;right:0;top:calc(100% + 4px);min-width:160px;z-index:40;
+  position:absolute;right:0;top:calc(100% + 4px);min-width:160px;z-index:var(--z-dropdown);
   border:1px solid var(--line);border-radius:var(--r-md);
   background:var(--surface-solid);box-shadow:var(--shadow-lg);
   display:none;padding:4px;
@@ -588,7 +489,7 @@ img{display:block}
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:4px 0;
   position:sticky;top:calc(var(--topbar-h) + 6px);
-  z-index:50;
+  z-index:var(--z-sticky);
   background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:blur(8px);
 }
@@ -772,7 +673,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 /* ─── NOTIFICATIONS ─── */
 .notif-wrap{position:relative}
 .notif-menu{
-  position:absolute;right:0;top:calc(100% + 8px);z-index:300;
+  position:absolute;right:0;top:calc(100% + 8px);z-index:var(--z-modal);
   width:min(340px,calc(100vw - 24px));
   border:1px solid var(--line);border-radius:var(--r-lg);
   background:var(--surface-solid);box-shadow:var(--shadow-lg);
@@ -800,7 +701,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 
 /* ─── MODALS ─── */
 .backdrop{
-  position:fixed;inset:0;z-index:400;
+  position:fixed;inset:0;z-index:var(--z-modal);
   display:none;align-items:center;justify-content:center;
   padding:20px;
   background:rgba(4,9,20,.55);
@@ -855,7 +756,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .rel-row small{display:block;font-size:11px;color:var(--ink-3);font-weight:500;margin-top:1px}
 
 /* ─── TOASTS ─── */
-#toast-stack{position:fixed;right:18px;bottom:18px;z-index:600;display:grid;gap:8px;pointer-events:none;width:min(340px,calc(100vw - 36px))}
+#toast-stack{position:fixed;right:18px;bottom:18px;z-index:var(--z-toast);display:grid;gap:8px;pointer-events:none;width:min(340px,calc(100vw - 36px))}
 .toast{
   display:grid;grid-template-columns:30px minmax(0,1fr) auto;
   align-items:center;gap:9px;padding:10px;
@@ -886,123 +787,10 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .confirm-body p{font-size:13.5px;color:var(--ink-2);line-height:1.5}
 .confirm-footer{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}
 
-/* ─── RESPONSIVE ─── */
-@media(max-width:1100px){.page-body{grid-template-columns:230px minmax(0,1fr) 270px}}
-@media(max-width:960px){
-  .page-body{grid-template-columns:minmax(0,1fr) 260px}
-  .left-rail{display:none}
-  .top-search{display:none}
-}
-@media(max-width:768px){
-  .page-body{grid-template-columns:1fr;width:calc(100% - 20px)}
-  .right-panel{display:none}
-  .hide-sm{display:none}
-  .userbtn span{display:none}
-  /* Hide floating chat launcher on mobile — chat is in the bottom nav */
-  #fa-chat-root .fa-chat-launcher{display:none!important}
-  .userbtn{width:34px;padding:2px}
-  .feed-col,.route-col.show{padding-top:12px}
-  .col-header h1{font-size:20px}
-  .feed-tabs{width:100%}
-  .tab{flex:1;min-width:0}
-  .composer,.thread-hero,.reply-bar,.card{border-radius:var(--r-md)}
-  .profile-stats-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
-  .profile-content-grid{grid-template-columns:1fr}
-  .posts-mini-grid{grid-template-columns:1fr}
-  .profile-topline{align-items:flex-start;flex-direction:column}
-  .profile-name{font-size:23px}
-  .pstat{min-height:48px;padding:7px 6px}
-  .pstat strong{font-size:15px}
-  .pstat small{font-size:7.6px;letter-spacing:0.03em}
-}
-@media(max-width:440px){
-  .topbar-inner{width:calc(100% - 18px);gap:7px}
-  .tbtn{padding:0 9px;font-size:12px}
-  .composer-inner,.post-layout{grid-template-columns:36px minmax(0,1fr)}
-  .av42,.av42-sq{width:36px;height:36px;border-radius:9px}
-  .thread-hero{padding:12px}
-  .reply-bar{grid-template-columns:36px minmax(0,1fr);grid-template-rows:auto auto}
-  .reply-bar .btn{grid-column:2}
-  .post-actions{gap:0}
-}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-
-.mobile-menu-btn{display:none}
-.mobile-bottom-nav{display:none}
-.mobile-drawer-shell{position:fixed;inset:0;z-index:920;display:none;background:rgba(15,23,42,.38);backdrop-filter:blur(10px)}
-.mobile-drawer-shell.show{display:block}
-.mobile-drawer{width:min(330px,calc(100vw - 42px));height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:14px;border-right:1px solid var(--line);background:var(--surface-solid);box-shadow:var(--shadow-lg);transform:translateX(-105%);transition:transform var(--t-med) var(--ease)}
-.mobile-drawer-shell.show .mobile-drawer{transform:translateX(0)}
-.mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.mobile-drawer-profile{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
-.mobile-drawer-profile img{width:48px;height:48px;border-radius:13px}
-.mobile-drawer-profile strong,.mobile-drawer-profile small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mobile-drawer-profile strong{font-size:14px;font-weight:900}.mobile-drawer-profile small{color:var(--ink-3);font-size:12px;font-weight:700}
-.mobile-drawer-nav{display:grid;gap:6px;align-content:start;overflow:auto}
-.mobile-drawer-item{min-height:42px;display:flex;align-items:center;gap:10px;padding:0 11px;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);font-size:13px;font-weight:850;text-align:left;cursor:pointer}
-.mobile-drawer-item svg{width:18px;height:18px;flex:0 0 auto}.mobile-drawer-item:hover,.mobile-drawer-item.is-active{background:var(--accent-soft);color:var(--accent)}
-.mobile-drawer-season{padding:12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
-.mobile-drawer-season h3{font-size:14px;margin:3px 0 4px}.mobile-drawer-season p{color:var(--ink-2);font-size:12px;line-height:1.45}
-.search-panel-intro{display:grid;gap:12px}
-.search-chip-row{display:flex;gap:7px;flex-wrap:wrap}
-.search-chip{min-height:30px;padding:0 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface-soft);color:var(--ink-2);font-size:12px;font-weight:800;cursor:pointer}
-.search-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
-.search-results{display:grid;gap:8px;margin-top:12px}
-.search-result{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:9px;align-items:center;padding:9px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);cursor:pointer;text-align:left}
-.search-result:hover{border-color:var(--accent);background:var(--accent-soft)}
-.search-result img{width:38px;height:38px;border-radius:10px}
-.search-result strong{display:block;font-size:13px;font-weight:900}
-.search-result small{display:block;margin-top:2px;color:var(--ink-3);font-size:11.5px}
-.search-result-post{grid-template-columns:minmax(0,1fr) auto}
-@media(max-width:768px){
-  body{padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
-  body.modal-open{padding-right:0}
-  .brand img{width:34px;height:34px;border-radius:9px}
-  .brand-text small{display:none}
-  .topnav{gap:5px}
-  .tbtn{min-width:34px}
-  .mobile-menu-btn{display:inline-flex}
-  .mobile-bottom-nav{
-    position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));z-index:190;
-    display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
-    padding:6px;border:1px solid var(--line);border-radius:18px;
-    background:color-mix(in srgb,var(--surface-solid) 88%,transparent);
-    box-shadow:var(--shadow-lg);backdrop-filter:blur(20px) saturate(170%);
-  }
-  .mbtn{min-width:0;min-height:46px;display:grid;place-items:center;gap:2px;border-radius:14px;color:var(--ink-2);font-size:9.5px;font-weight:850}
-  .mbtn svg{width:19px;height:19px}
-  .mbtn.is-active,.mbtn:hover{background:var(--accent-soft);color:var(--accent)}
-  .mbtn-post{background:var(--accent);color:#fff}
-  .mbtn-post:hover{background:var(--accent-h);color:#fff}
-  .fab-post{display:none!important}
-}
-/* ─── BOTÃO FLUTUANTE E FALSO EDITOR ─── */
-.fab-post {
-  position: fixed; right: 24px; bottom: 24px; z-index: 100;
-  height: 52px; padding: 0 22px; border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(18,81,224,0.35); border: none;
-  display: flex; align-items: center; gap: 8px;
-  font-size: 15.5px; font-weight: 800; cursor: pointer;
-  transition: transform var(--t-fast), box-shadow var(--t-fast);
-}
-.fab-post:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(18,81,224,0.45); }
-.fab-text { display: block; }
-#toast-stack { bottom: 90px; }
-
-/* Gatilho visual no topo do feed */
-.fake-composer { cursor: pointer; transition: border-color var(--t-fast); }
-.fake-composer:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-.fake-input {
-  flex: 1; height: 42px; border: 1px solid var(--line); border-radius: 999px;
-  background: var(--bg); display: flex; align-items: center; padding: 0 16px;
-  color: var(--ink-3); font-size: 14px; transition: background var(--t-fast);
-}
-.fake-composer:hover .fake-input { background: var(--surface-solid); }
-
 /* --- MANAGER VISUAL SYSTEM FOR COMMUNITY --- */
 :root{
   --ff:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --ff-mono:'DM Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --ff-mono:'DM Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
   --ff-display:'Outfit','Syne',sans-serif;
   --ff-serif:'Instrument Serif',Georgia,serif;
   --bg:#f2eee5;
@@ -1050,6 +838,20 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   --shadow-md:0 1px 0 rgba(255,255,255,.68) inset,0 24px 52px rgba(69,53,25,.16);
   --shadow-lg:0 34px 90px rgba(31,24,12,.28);
   --shadow-accent:0 12px 30px rgba(155,122,45,.22);
+
+  --ease:cubic-bezier(0.16,1,0.3,1);
+  --ease-out:cubic-bezier(0,0,0.3,1);
+  --t-fast:0.12s;
+  --t-med:0.22s;
+  /* Z-index — hierarquia única */
+  --z-sticky:50;
+  --z-dropdown:60;
+  --z-nav:100;
+  --z-fab:110;
+  --z-mobile-nav:120;
+  --z-drawer:200;
+  --z-modal:300;
+  --z-toast:400;
 }
 [data-theme=dark]{
   --bg:#0a0a08;
@@ -1769,7 +1571,7 @@ body::after{
 .profile-tabs2{
   position:sticky;
   top:calc(var(--topbar-h) + 8px);
-  z-index:55;
+  z-index:var(--z-sticky);
   display:flex;
   gap:6px;
   margin:0 0 10px;
@@ -2122,7 +1924,7 @@ body::after{
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
 <!-- TOPBAR -->
-<button class="fab-post btn-primary" id="fab-post" aria-label="Criar novo post">
+<button class="fab-post" id="fab-post" aria-label="Criar novo post">
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
   <span class="fab-text">Postar</span>
 </button>
@@ -2144,10 +1946,7 @@ body::after{
       <button class="tbtn mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <a class="tbtn hide-sm" href="account.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        Conta
-      </a>
+      <!-- Conta removida da topbar — acesso exclusivo via Perfil -->
       <div class="notif-wrap">
         <button class="notif-btn tbtn" id="notif-btn" aria-label="Notificações" aria-expanded="false" aria-haspopup="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2165,7 +1964,7 @@ body::after{
       <button class="tbtn" id="theme-btn" aria-label="Alternar tema">
         <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"/></svg>
       </button>
-      <button class="userbtn tbtn" id="user-btn" aria-label="Minha conta">
+      <button class="userbtn tbtn" id="user-btn" aria-label="Meu perfil">
         <img id="top-av" src="https://minotar.net/helm/Steve/50.png" alt="Avatar" width="50" height="50">
         <span id="top-name" class="hide-sm">•••</span>
       </button>
@@ -2208,192 +2007,7 @@ body::after{
         Notificações
         <span class="rnav-badge" id="nav-notif-badge" hidden>0</span>
       </a>
-      <a class="rnav-item" href="account.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        Minha Conta
-      </a>
-    </div>
-    <div class="card network-card" id="network-card">
-      <p class="eyebrow">Agora na rede</p>
-      <h3 id="network-card-title">Encontre sua próxima conversa</h3>
-      <p id="network-card-copy">Use a busca para achar jogadores, posts e assuntos sem sair da comunidade.</p>
-      <div class="network-metrics">
-        <button type="button" data-open-search-page><strong id="network-player-count">--</strong><span>jogadores</span></button>
-        <button type="button" data-open-search-page><strong id="network-hot-count">--</strong><span>em alta</span></button>
-      </div>
-      <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Abrir busca
-      </button>
-    </div>
-  </aside>
-
-  <!-- FEED COLUMN -->
-  <main class="feed-col" id="feed-col" aria-label="Feed principal">
-    <div class="col-header">
-      <div>
-        <h1>Comunidade</h1>
-        <p>Novidades, conquistas e conversas do servidor.</p>
-      </div>
-      <div class="feed-tabs" role="tablist" aria-label="Filtros do feed">
-        <button class="tab is-active" role="tab" aria-selected="true" data-tab="all">Para você</button>
-        <button class="tab" role="tab" aria-selected="false" data-tab="following">Seguindo</button>
-      </div>
-    </div>
-
-    <section class="community-command" aria-label="Pulso da comunidade">
-      <div class="command-copy">
-        <p class="command-kicker"><span></span>Rede viva</p>
-        <h2>O quartel social da Força Aliada.</h2>
-        <p id="pulse-greeting">Entre, puxe assunto e deixe um rastro bom no servidor.</p>
-        <div class="command-tags" aria-label="Estados da comunidade">
-          <span><i></i>voz humana</span>
-          <span><i></i>mérito visível</span>
-          <span><i></i>amizades em campo</span>
-        </div>
-      </div>
-      <div class="command-panel" aria-hidden="true">
-        <div class="command-titlebar">
-          <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
-          <strong>community.feed</strong>
-        </div>
-        <div class="command-grid">
-          <div class="pulse-card">
-            <small>jogadores vistos</small>
-            <strong id="pulse-player-count">--</strong>
-            <span id="pulse-status-copy">sintonizando a praça</span>
-          </div>
-          <div class="pulse-card">
-            <small>posts carregados</small>
-            <strong id="pulse-post-count">--</strong>
-            <span id="pulse-mode-label">feed geral</span>
-          </div>
-          <div class="pulse-card pulse-card-wide">
-            <small>assuntos quentes</small>
-            <strong id="pulse-hot-count">--</strong>
-            <span>conversas que podem virar história</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- COMPOSER -->
-    <div class="friends-scroll-wrap" id="friends-bar" aria-label="Amigos e Jogadores Online">
-      <div class="friend-item" onclick="openModal('friend-modal')">
-        <div class="friend-add"><svg viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-        <span class="friend-name">Adicionar</span>
-      </div>
-      <div id="friends-list" style="display:flex; gap:12px">
-              </div>
-    </div>
-
-        <div class="composer" id="inline-composer" style="padding:10px 13px;">
-      <div style="display:grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 11px; align-items: end;">
-        <img class="av42" id="inline-comp-av" src="https://minotar.net/helm/Steve/50.png" alt="Avatar" onerror="this.onerror=null; this.src='https://minotar.net/helm/Steve/50.png'">
-        <div class="comp-editor" id="inline-comp-editor" style="min-height:42px; border-radius:var(--r-md);">
-          <div class="comp-mirror" id="inline-mirror" style="min-height:42px; padding:10px 12px; font-size:13.5px;"><span class="pl">O que está acontecendo no servidor?</span></div>
-          <textarea class="comp-ta" id="inline-ta" maxlength="280" aria-label="Escrever post" rows="1" spellcheck="true" style="min-height:42px; padding:10px 12px; font-size:13.5px;"></textarea>
-          <div class="mention-box" id="inline-mention-box" role="listbox"></div>
-        </div>
-        <button class="btn btn-primary" id="inline-publish-btn" disabled style="width:42px; height:42px; padding:0; border-radius:11px;" aria-label="Publicar">
-          <svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- FEED -->
-    <div class="feed-list-wrap" id="feed-wrap">
-      <div class="feed-list" id="feed-list">
-        <div class="post-skel skel"></div>
-        <div class="post-skel skel"></div>
-        <div class="post-skel skel"></div>
-      </div>
-    </div>
-    <div class="load-more-area" id="load-more-wrap" hidden>
-      <button class="btn btn-secondary btn-sm" id="load-more-btn">Carregar mais</button>
-    </div>
-    <div id="feed-sentinel" style="height:1px"></div>
-  </main>
-
-  <!-- ROUTE VIEW — thread/perfil, substitui feed-col -->
-  <section class="route-col" id="route-col" aria-label="Visualização de conteúdo">
-    <!-- populated by JS -->
-  </section>
-
-  <!-- RIGHT PANEL -->
-  <aside class="right-panel" aria-label="Descobrir">
-    <div class="card panel-card">
-      <div class="panel-head">
-        <h2>Jogadores</h2>
-        <button class="btn btn-ghost btn-xs" id="refresh-players" aria-label="Atualizar lista">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-        </button>
-      </div>
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="search" id="player-search" placeholder="Buscar…" aria-label="Buscar jogador">
-      </div>
-      <div class="player-list" id="player-list">
-        <div class="skel" style="height:52px;border-radius:10px"></div>
-        <div class="skel" style="height:52px;border-radius:10px"></div>
-        <div class="skel" style="height:52px;border-radius:10px"></div>
-      </div>
-    </div>
-    <div class="card panel-card">
-      <div class="panel-head"><h2>Em Alta</h2></div>
-      <div id="trending-list">
-        <div class="trend-item"><span class="hashtag">#pvp</span><span class="count">142 posts</span></div>
-        <div class="trend-item"><span class="hashtag">#eventos</span><span class="count">89 posts</span></div>
-        <div class="trend-item"><span class="hashtag">#season2</span><span class="count">74 posts</span></div>
-        <div class="trend-item"><span class="hashtag">#builds</span><span class="count">61 posts</span></div>
-        <div class="trend-item"><span class="hashtag">#trade</span><span class="count">48 posts</span></div>
-      </div>
-    </div>
-  </aside>
-
-</div><!-- /page-body -->
-
-<nav class="mobile-bottom-nav" aria-label="Navegação principal">
-  <button class="mbtn is-active" type="button" id="mobile-home-btn" aria-label="Feed">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
-    Home
-  </button>
-  <button class="mbtn" type="button" id="mobile-search-btn" aria-label="Buscar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    Buscar
-  </button>
-  <button class="mbtn mbtn-post" type="button" id="mobile-post-btn" aria-label="Criar post">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    Postar
-  </button>
-  <button class="mbtn" type="button" id="mobile-chat-btn" aria-label="Mensagens">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-    Chat
-  </button>
-  <button class="mbtn" type="button" id="mobile-profile-btn" aria-label="Meu perfil">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-    Perfil
-  </button>
-</nav>
-
-<div class="mobile-drawer-shell" id="mobile-side-menu" aria-hidden="true">
-  <aside class="mobile-drawer" role="dialog" aria-modal="true" aria-label="Menu da comunidade">
-    <div class="mobile-drawer-head">
-      <strong>Comunidade</strong>
-      <button class="close-btn" data-close-mobile-menu aria-label="Fechar menu">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-      </button>
-    </div>
-    <button class="mobile-drawer-profile" type="button" id="drawer-profile-btn">
-      <img id="drawer-av" src="https://minotar.net/helm/Steve/50.png" alt="Seu avatar">
-      <span><strong id="drawer-name">...</strong><small id="drawer-handle">@...</small></span>
-    </button>
-    <nav class="mobile-drawer-nav" aria-label="Atalhos da comunidade">
-      <button class="mobile-drawer-item is-active" type="button" data-drawer-filter="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Feed geral</span></button>
-      <button class="mobile-drawer-item" type="button" data-drawer-filter="following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg><span>Seguindo</span></button>
-      <button class="mobile-drawer-item" type="button" id="drawer-search-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Buscar</span></button>
-      <a class="mobile-drawer-item" href="account.html?tab=notificacoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificacoes</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
-      <a class="mobile-drawer-item" href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Minha conta</span></a>
+      <!-- Minha Conta removida da left-rail — acesso exclusivo via Perfil -->
     </nav>
     <div class="mobile-drawer-season network-card">
       <p class="eyebrow">Agora na rede</p>
@@ -2715,13 +2329,26 @@ function syncComposer(type){
     const h=ta.scrollHeight; ta.style.height=h+'px'; mirror.style.height=h+'px';
   }
 }
+let _lastMentionToken=null;
 function updateMentions(type){
-  const ta=$(`#${type}-ta`); if(!ta)return;
-  activeTaId=type; const start=ta.selectionStart; const before=ta.value.slice(0,start);
+  const ta=$(`#${type}-ta`); if(!ta) return;
+  activeTaId=type;
+  const start=ta.selectionStart;
+  const before=ta.value.slice(0,start);
   const m=before.match(/(^|\s)@([a-z0-9_]{0,32})$/i);
   const box=$(`#${type}-mention-box`);
-  if(!m){box?.classList.remove('show');return}
-  const term=m[2]; clearTimeout(mentionTimer);
+  if(!m){
+    if(_lastMentionToken !== null){
+      box?.classList.remove('show');
+      _lastMentionToken=null;
+    }
+    clearTimeout(mentionTimer);
+    return;
+  }
+  const term=m[2];
+  if(term === _lastMentionToken) return;
+  _lastMentionToken=term;
+  clearTimeout(mentionTimer);
   mentionTimer=setTimeout(async()=>{
     try{
       const p=new URLSearchParams({limit:'5',following:'true'}); if(term) p.set('search',term);
@@ -2746,7 +2373,7 @@ function insertMention(name){
   const before=ta.value.slice(0,start).replace(/(^|\s)@([a-z0-9_]{1,32})$/i,`$1@${name} `);
   const after=ta.value.slice(start);
   ta.value=before+after; ta.focus(); ta.selectionStart=ta.selectionEnd=before.length;
-  $(`#${activeTaId}-mention-box`)?.classList.remove('show'); syncComposer(activeTaId);
+  $(`#${activeTaId}-mention-box`)?.classList.remove('show'); _lastMentionToken=null; syncComposer(activeTaId);
 }
 
 /* ======================= LOAD ME ======================= */
@@ -3878,7 +3505,7 @@ function showSearchRoute(query){
 /* ======================= EVENT DELEGATION ======================= */
 function bindEvents(){
   $('#theme-btn').addEventListener('click',toggleTheme);
-  $('#user-btn').addEventListener('click',()=>location.href='account.html');
+  $('#user-btn').addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);});
   $('#my-profile-btn').addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
   ['inline','modal'].forEach(type=>{
     $(`#${type}-ta`)?.addEventListener('input',()=>syncComposer(type));
