@@ -163,7 +163,7 @@ img{display:block}
 }
 /* brand */
 .brand{display:flex;align-items:center;gap:9px;flex-shrink:0}
-.brand img{width:34px;height:34px;border-radius:9px;object-fit:cover}
+.brand img:not(.brand-logo){width:34px;height:34px;border-radius:9px;object-fit:cover}
 .brand-text strong{font-size:15px;font-weight:700;letter-spacing:0}
 .brand-text small{display:block;font-family:var(--ff-mono);font-size:9px;color:var(--ink-3);letter-spacing:0.12em;text-transform:uppercase;margin-top:1px}
 /* top search */
@@ -957,7 +957,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 @media(max-width:768px){
   body{padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
   body.modal-open{padding-right:0}
-  .brand img{width:34px;height:34px;border-radius:9px}
+  .brand img:not(.brand-logo){width:34px;height:34px;border-radius:9px}
   .brand-text small{display:none}
   .topnav{gap:5px}
   .tbtn{min-width:34px}
