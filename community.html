@@ -15,7 +15,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/nsfwjs@4.2.1/dist/nsfwjs.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/nsfwjs@4.2.1/dist/browser/nsfwjs.min.js"></script>
 <script>
 (function () {
   const key = 'fa_theme';
@@ -3187,19 +3187,23 @@ function waitForGlobal(name,timeout=9000){
     tick();
   });
 }
-async function ensureMediaLibraries(){
+async function ensureEditorLibraries(){
   await Promise.all([
     waitForGlobal('Cropper'),
     waitForGlobal('imageCompression'),
-    waitForGlobal('nsfwjs',12000),
   ]);
 }
 async function getNsfwModel(type){
   if(!state.nsfwModelPromise){
     setMediaStatus(type,'Carregando IA de moderação...');
-    state.nsfwModelPromise=window.nsfwjs.load();
+    state.nsfwModelPromise=waitForGlobal('nsfwjs',20000)
+      .then(lib=>lib.load())
+      .catch(err=>{state.nsfwModelPromise=null;throw err});
   }
   return state.nsfwModelPromise;
+}
+function warmNsfwModel(type){
+  getNsfwModel(type).then(()=>setMediaStatus(type,'IA pronta para revisar imagens.')).catch(()=>setMediaStatus(type,'A IA de moderação não carregou. Tente novamente.'));
 }
 function blobToImage(blob){
   return new Promise((resolve,reject)=>{
@@ -3233,15 +3237,20 @@ async function openNextCrop(){
   if(!item){closeModal('crop-modal');return}
   state.cropCurrent=item;
   state.cropComposer=item.type;
-  await ensureMediaLibraries();
   const img=$('#crop-image');
+  const confirm=$('#crop-confirm');
+  img.removeAttribute('src');
+  $$('.crop-ratio').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.ratio==='free'));
+  $('#crop-status').textContent='Carregando editor de imagem...';
+  if(confirm){confirm.disabled=true;confirm.dataset.orig=confirm.innerHTML;confirm.innerHTML='<span class="spin"></span> Carregando'}
+  openModal('crop-modal');
+  await ensureEditorLibraries();
   state.cropObjectUrl=URL.createObjectURL(item.file);
   img.src=state.cropObjectUrl;
-  $$('.crop-ratio').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.ratio==='free'));
   $('#crop-status').textContent=`${item.file.name} • ajuste livre`;
-  openModal('crop-modal');
   await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject});
   state.cropper=new window.Cropper(img,{aspectRatio:NaN,viewMode:1,autoCropArea:.94,background:false,responsive:true,checkOrientation:true});
+  if(confirm){confirm.disabled=false;confirm.innerHTML=confirm.dataset.orig||'Confirmar Corte'}
 }
 function queueMediaFiles(type,files){
   const current=(state.composerMedia[type]||[]).length;
@@ -3252,7 +3261,16 @@ function queueMediaFiles(type,files){
   if(selected.length>slots) toast('warning','Limite de mídia',`Só as primeiras ${slots} imagem(ns) foram adicionadas.`);
   state.cropQueue.push(...accepted.map(file=>({type,file})));
   setMediaStatus(type,'Abrindo editor...');
-  if(!state.cropper&&!state.cropCurrent) openNextCrop().catch(e=>{toast('error','Editor indisponível',e.message);setMediaStatus(type,'')});
+  warmNsfwModel(type);
+  if(!state.cropper&&!state.cropCurrent) openNextCrop().catch(e=>{
+    const confirm=$('#crop-confirm');
+    if(confirm){confirm.disabled=false;confirm.innerHTML=confirm.dataset.orig||'Confirmar Corte'}
+    state.cropQueue=[];
+    destroyCropper();
+    closeModal('crop-modal');
+    toast('error','Editor indisponível',e.message);
+    setMediaStatus(type,'');
+  });
 }
 async function confirmCrop(){
   if(!state.cropper||!state.cropCurrent)return;
@@ -3260,12 +3278,15 @@ async function confirmCrop(){
   const btn=$('#crop-confirm');
   setBtnLoad(btn,true,'Processando');
   try{
+    $('#crop-status').textContent='Cortando imagem...';
     setMediaStatus(type,'Cortando e comprimindo...');
     const canvas=state.cropper.getCroppedCanvas({maxWidth:1600,maxHeight:1600,imageSmoothingEnabled:true,imageSmoothingQuality:'high'});
     const rawBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.9));
     if(!rawBlob) throw new Error('Nao foi possivel gerar a imagem.');
     const file=new File([rawBlob],`${Date.now()}-${(state.cropCurrent.file.name||'imagem').replace(/\.[^.]+$/,'')}.webp`,{type:'image/webp'});
+    $('#crop-status').textContent='Comprimindo para upload rápido...';
     const compressed=await window.imageCompression(file,{maxSizeMB:0.1,maxWidthOrHeight:1600,useWebWorker:true,fileType:'image/webp',initialQuality:.78});
+    $('#crop-status').textContent='IA revisando segurança da imagem...';
     setMediaStatus(type,'Moderando imagem...');
     await assertSafeImage(compressed,type);
     const url=URL.createObjectURL(compressed);

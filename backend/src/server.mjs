@@ -4682,6 +4682,20 @@ function extractMentions(text) {
 // Criar uma postagem com suporte a Menções (@)
 function uploadCommunityImage(file, userId) {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const fail = err => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
+    const done = url => {
+      if (settled) return;
+      settled = true;
+      resolve(url);
+    };
+    const timeout = setTimeout(() => {
+      fail(new Error('Cloudinary demorou para responder ao upload.'));
+    }, 30000);
     const folder = process.env.CLOUDINARY_COMMUNITY_FOLDER || 'forca-aliada/community-posts';
     const stream = cloudinary.uploader.upload_stream({
       folder,
@@ -4695,9 +4709,14 @@ function uploadCommunityImage(file, userId) {
         { fetch_format: 'webp', quality: 'auto:eco', flags: 'strip_profile' },
       ],
     }, (err, result) => {
-      if (err) return reject(err);
-      if (!result?.secure_url) return reject(new Error('Cloudinary nao retornou URL segura.'));
-      resolve(result.secure_url);
+      clearTimeout(timeout);
+      if (err) return fail(err);
+      if (!result?.secure_url) return fail(new Error('Cloudinary nao retornou URL segura.'));
+      done(result.secure_url);
+    });
+    stream.on?.('error', err => {
+      clearTimeout(timeout);
+      fail(err);
     });
     stream.end(file.buffer);
   });
