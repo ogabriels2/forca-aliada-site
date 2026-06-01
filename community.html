@@ -236,7 +236,8 @@ img{display:block}
 }
 
 /* profile mini card */
-.profile-mini{overflow:hidden;padding:0}
+.profile-mini{overflow:hidden;padding:0;cursor:pointer;transition:opacity var(--t-fast)}
+.profile-mini:hover{opacity:.88}
 .mini-cover{
   height:64px;
   background:linear-gradient(135deg,
@@ -628,6 +629,34 @@ img{display:block}
 @keyframes shimmer{to{transform:translateX(100%)}}
 .post-skel{height:116px;border-radius:0;border-bottom:1px solid var(--line)}
 .load-more-area{display:grid;place-items:center;padding:13px 0 3px}
+/* ─── NEW POSTS PILL ─── */
+.new-posts-pill{
+  position:sticky;
+  top:calc(var(--topbar-h) + 10px);
+  z-index:80;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  margin:-6px auto 6px;
+  width:fit-content;
+  height:34px;padding:0 16px;
+  border-radius:999px;
+  background:var(--accent);
+  color:#fff;
+  font-size:12.5px;font-weight:800;
+  box-shadow:0 4px 14px rgba(18,81,224,.35);
+  cursor:pointer;
+  border:none;
+  transition:transform var(--t-fast) var(--ease),box-shadow var(--t-fast);
+  animation:pillIn .22s var(--ease);
+}
+[data-theme=dark] .new-posts-pill{background:var(--accent);box-shadow:0 4px 16px rgba(78,143,255,.4)}
+.new-posts-pill[hidden]{display:none}
+.new-posts-pill:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(18,81,224,.44)}
+@keyframes pillIn{from{opacity:0;transform:translateY(-8px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.load-more-spinner{
+  width:24px;height:24px;border:2.5px solid var(--line-strong);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
 /* empty states */
 .empty-card{
   border:1px solid var(--line);border-radius:var(--r-lg);
@@ -1985,6 +2014,29 @@ body::after{
   font-size:11px;
 }
 .edit-profile-body{display:grid;gap:12px}
+/* ─── PROFILE ACTIVITY CHIPS ─── */
+.profile-activity-chips{
+  display:flex;align-items:center;gap:7px;margin-top:9px;flex-wrap:wrap;
+}
+.profile-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  height:24px;padding:0 9px;
+  border-radius:999px;
+  font-size:11px;font-weight:700;
+  letter-spacing:.02em;
+}
+.profile-chip svg{flex-shrink:0;opacity:.75}
+.profile-chip-posts{
+  background:var(--accent-soft);color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 18%,transparent);
+}
+.profile-chip-merit{
+  background:color-mix(in srgb,var(--gold-light) 16%,transparent);
+  color:var(--gold);
+  border:1px solid color-mix(in srgb,var(--gold-light) 28%,transparent);
+}
+[data-theme=dark] .profile-chip-merit{color:var(--gold-light)}
+/* ─── IMPROVED ABOUT CARD ─── */
 .edit-profile-preview{
   overflow:hidden;
   border:1px solid var(--line);
@@ -1992,6 +2044,40 @@ body::after{
   background:var(--surface);
 }
 .edit-profile-preview .profile-cover{height:118px}
+/* NEW EDITOR PREVIEW ZONES */
+.ep-preview-wrap{position:relative;border-bottom:1px solid var(--line)}
+.ep-cover-zone{
+  position:relative;cursor:pointer;overflow:hidden;
+}
+.ep-cover-overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  gap:6px;font-size:12px;font-weight:700;color:#fff;
+  background:rgba(0,0,0,.0);
+  transition:background var(--t-fast);
+}
+.ep-cover-zone:hover .ep-cover-overlay{background:rgba(0,0,0,.38)}
+.ep-avatar-zone{
+  position:absolute;left:16px;bottom:-22px;cursor:pointer;
+  width:72px;height:72px;border-radius:10px;
+  border:3px solid var(--surface-solid);
+  overflow:hidden;
+}
+.ep-avatar-zone img{width:100%;height:100%;object-fit:cover;display:block}
+.ep-av-overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;background:rgba(0,0,0,.0);
+  transition:background var(--t-fast);
+}
+.ep-avatar-zone:hover .ep-av-overlay{background:rgba(0,0,0,.46)}
+.ep-name-block{
+  padding:30px 16px 13px;
+}
+.ep-name-block strong{display:block;font-size:17px;font-weight:800}
+.ep-name-block small{display:block;margin-top:2px;color:var(--ink-3);font-size:12px}
+.ep-toggle-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:6px 0;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;
+}
 .edit-preview-row{
   display:flex;
   align-items:flex-end;
@@ -2729,6 +2815,10 @@ body::after{
 
     <!-- FEED -->
     <div class="feed-list-wrap" id="feed-wrap">
+      <div class="new-posts-pill" id="new-posts-pill" hidden aria-live="polite">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        <span id="new-posts-count">Novas postagens</span>
+      </div>
       <div class="feed-list" id="feed-list">
         <div class="post-skel skel"></div>
         <div class="post-skel skel"></div>
@@ -3522,7 +3612,8 @@ function renderFeed({append=false}={}){
   }else{
     list.innerHTML=state.posts.map(postCardHTML).join('');
   }
-  $('#load-more-wrap').hidden=!state.hasMore||state.loading||!state.posts.length;
+  // hide load-more; auto-scroll via sentinel handles it
+  $('#load-more-wrap').hidden=true;
   updateMiniStats();
   updateCommunityPulse();
 }
@@ -3560,6 +3651,8 @@ async function loadFeed({reset=false}={}){
 }
 function switchTab(filter){
   state.filter=filter;
+  // hide new posts pill when changing tab
+  const pill=$('#new-posts-pill');if(pill) pill.hidden=true;
   $$('.tab').forEach(t=>{
     const isActive = t.dataset.tab === filter;
     t.classList.toggle('is-active', isActive);
@@ -4258,7 +4351,7 @@ async function renderProfileRoute(identifier){
     };
     routeCol.innerHTML=`
       <div class="route-top">
-        <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
+        <button class="btn btn-ghost btn-sm" data-back>${IC.back} ${isMe?'Feed':'Voltar'}</button>
         <span class="crumb-path">@${esc(handle)}</span>
       </div>
       <div class="profile-hero">
@@ -4281,26 +4374,28 @@ async function renderProfileRoute(identifier){
             <button type="button" data-rel="followers" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.followers_count||0)}</strong> seguidores</button>
             <button type="button" data-rel="following" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.following_count||0)}</strong> seguindo</button>
             <button type="button" data-rel="friends" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.friends_count||0)}</strong> amigos</button>
-            <span><strong>${num(prof.posts_count||0)}</strong> posts</span>
-            <span><strong>${num(prof.merit||0)}</strong> mérito</span>
+          </div>
+          <div class="profile-activity-chips" aria-label="Atividade do perfil">
+            <span class="profile-chip profile-chip-posts"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${num(prof.posts_count||0)} posts</span>
+            <span class="profile-chip profile-chip-merit"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${num(prof.merit||0)} mérito</span>
           </div>
         </div>
       </div>
       <div class="profile-insights">
         <section class="profile-about-card">
-          <div class="profile-section-title"><strong>Sobre</strong><span>perfil</span></div>
-          <p>${esc(prof.bio||'Sem bio pública por enquanto.')}</p>
-          <div class="profile-about-grid" style="margin-top:12px">
-            <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'Privado'}</div></div>
+          <div class="profile-section-title"><strong>Sobre</strong></div>
+          ${prof.bio?`<p style="margin-top:7px">${esc(prof.bio)}</p>`:`<p style="margin-top:7px;font-style:italic;opacity:.6">Sem bio pública por enquanto.</p>`}
+          <div class="profile-about-grid" style="margin-top:11px">
+            <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'—'}</div></div>
             <div class="stat-block"><div class="lbl">Capital</div><div class="val">${num(prof.capital||0)}</div></div>
           </div>
-          <div class="mini-bars2">${bars}</div>
+          ${bars?`<div class="mini-bars2" title="Atividade dos últimos dias">${bars}</div>`:''}
         </section>
         <section class="profile-about-card">
-          <div class="profile-section-title"><strong>Conquistas</strong><span>${num(badges.length)}</span></div>
-          <p>${rankBenefits.length?esc(rankBenefits.join(' · ')):'Progresso inicial da comunidade.'}</p>
-          <div class="profile-badges-row">
-            ${badges.map(b=>`<div class="badge-mini" title="${esc(b.description)}"><strong>${esc(b.label)}</strong><span>${esc(b.description)} · ${num(b.progress||0)}%</span></div>`).join('')||'<div class="badge-mini"><strong>Começando</strong><span>As conquistas aparecem conforme a comunidade ganha vida.</span></div>'}
+          <div class="profile-section-title"><strong>Conquistas</strong>${badges.length?`<span class="profile-chip profile-chip-posts" style="font-size:10px;height:20px;padding:0 7px">${num(badges.length)}</span>`:''}</div>
+          ${rankBenefits.length?`<p style="margin-top:6px;font-size:12px;color:var(--ink-3);line-height:1.5">${esc(rankBenefits.slice(0,3).join(' · '))}</p>`:''}
+          <div class="profile-badges-row" style="margin-top:${rankBenefits.length?8:10}px">
+            ${badges.map(b=>`<div class="badge-mini" title="${esc(b.description)}"><strong>${esc(b.label)}</strong><span>${esc(b.description)}</span>${b.progress!==undefined?`<span style="font-size:10px;color:var(--accent);font-weight:700;margin-top:2px">${num(b.progress||0)}%</span>`:''}</div>`).join('')||'<div class="badge-mini"><strong>Começando</strong><span>As conquistas aparecem conforme a comunidade ganha vida.</span></div>'}
           </div>
         </section>
       </div>
@@ -4352,58 +4447,175 @@ async function openCommunityProfileEditor(){
     const back=document.createElement('div');
     back.className='backdrop show';
     const currentLayout=PROFILE_TABS.some(([id])=>id===prefs.profile_layout)?prefs.profile_layout:'posts';
-    back.innerHTML=`<div class="sheet sheet-md" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
+    // State for pending image uploads
+    let pendingAvatar=null; // {blob, objectUrl}
+    let pendingCover=null;  // {blob, objectUrl}
+
+    back.innerHTML=`<div class="sheet sheet-md" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title" style="max-height:min(88vh,720px)">
       <div class="sheet-header">
-        <h2 id="edit-profile-title">Editar perfil social</h2>
+        <h2 id="edit-profile-title">Editar perfil</h2>
         <button class="close-btn" data-edit-close aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
-      <div class="sheet-body edit-profile-body">
-        <div class="edit-profile-preview">
-          <div class="profile-cover ${rankInfo(prof.rank||prof.role,prof.merit).cls}" id="edit-preview-cover"></div>
-          <div class="edit-preview-row">
+      <div class="sheet-body edit-profile-body" style="gap:18px;padding:0">
+
+        <!-- PREVIEW INTERATIVO -->
+        <div class="ep-preview-wrap">
+          <div class="ep-cover-zone" id="ep-cover-zone" title="Clique para trocar a capa">
+            <div class="profile-cover ${rankInfo(prof.rank||prof.role,prof.merit).cls}" id="edit-preview-cover" style="height:110px;border-radius:0"></div>
+            <div class="ep-cover-overlay">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Trocar capa
+            </div>
+          </div>
+          <div class="ep-avatar-zone" id="ep-avatar-zone" title="Clique para trocar o avatar">
             <img class="profile-av" id="edit-preview-avatar" src="${esc(avatar({...prof,...prefs},140))}" alt="">
-            <div><strong id="edit-preview-name">${esc(prefs.display_name||displayName(prof))}</strong><small>@${esc(handleName(prof))}</small></div>
+            <div class="ep-av-overlay"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          </div>
+          <div class="ep-name-block">
+            <strong id="edit-preview-name">${esc(prefs.display_name||displayName(prof))}</strong>
+            <small>@${esc(handleName(prof))}</small>
           </div>
         </div>
-        <label class="edit-field">Nome exibido<input id="community-edit-name" maxlength="40" value="${esc(prefs.display_name||'')}" placeholder="${esc(displayName(prof))}"></label>
-        <label class="edit-field">Descrição<textarea class="sheet-ta" id="community-edit-bio" maxlength="160" placeholder="Conte um pouco sobre você na comunidade.">${esc(prefs.bio??prof.bio??'')}</textarea></label>
-        <label class="edit-field">Foto de perfil<input id="community-edit-avatar" type="url" inputmode="url" value="${esc(prefs.avatar_url||'')}" placeholder="https://.../avatar.png"></label>
-        <label class="edit-field">Plano de fundo<input id="community-edit-cover" type="url" inputmode="url" value="${esc(prefs.cover_url||'')}" placeholder="https://.../capa.jpg"></label>
-        <label class="edit-field">Aba inicial do perfil<select id="community-edit-layout">${PROFILE_TABS.map(([id,label])=>`<option value="${id}" ${id===currentLayout?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
-        <div class="edit-toggle-row"><span>Perfil público</span><input type="checkbox" id="community-edit-public" ${prefs.public_profile?'checked':''}></div>
-        <div class="edit-toggle-row"><span>Histórico público</span><input type="checkbox" id="community-edit-history" ${prefs.public_history?'checked':''}></div>
+        <input type="file" id="ep-avatar-input" accept="image/*" hidden>
+        <input type="file" id="ep-cover-input" accept="image/*" hidden>
+
+        <!-- CAMPOS -->
+        <div style="padding:0 16px 16px;display:grid;gap:13px">
+          <label class="edit-field">
+            <span>Nome exibido</span>
+            <input id="community-edit-name" maxlength="40" value="${esc(prefs.display_name||'')}" placeholder="${esc(displayName(prof))}">
+          </label>
+          <label class="edit-field">
+            <span>Descrição <small style="font-weight:500;color:var(--ink-3);margin-left:4px">até 160 chars</small></span>
+            <textarea class="sheet-ta" id="community-edit-bio" maxlength="160" placeholder="Conte um pouco sobre você na comunidade.">${esc(prefs.bio??prof.bio??'')}</textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:2px"><span id="ep-bio-count" style="font-size:10px;color:var(--ink-3);font-weight:600">0/160</span></div>
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label class="edit-field">
+              <span>Aba inicial</span>
+              <select id="community-edit-layout">${PROFILE_TABS.map(([id,label])=>`<option value="${id}" ${id===currentLayout?'selected':''}>${esc(label)}</option>`).join('')}</select>
+            </label>
+            <div style="display:grid;gap:7px">
+              <span style="font-size:12px;font-weight:800;color:var(--ink-2)">Visibilidade</span>
+              <div style="display:grid;gap:6px">
+                <label class="ep-toggle-row"><span>Perfil público</span><input type="checkbox" id="community-edit-public" ${prefs.public_profile?'checked':''}></label>
+                <label class="ep-toggle-row"><span>Histórico público</span><input type="checkbox" id="community-edit-history" ${prefs.public_history?'checked':''}></label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="sheet-footer"><span style="font-size:12px;color:var(--ink-3);align-self:center">Use URLs https/http para imagens. O servidor valida antes de salvar.</span><button class="btn btn-primary" data-edit-save>Salvar</button></div>
+      <div class="sheet-footer">
+        <button class="btn btn-ghost" data-edit-close>Cancelar</button>
+        <button class="btn btn-primary" data-edit-save>Salvar alterações</button>
+      </div>
     </div>`;
-    const close=()=>{document.removeEventListener('keydown',onKey);back.remove();document.body.classList.remove('modal-open')};
-    const onKey=e=>{if(e.key==='Escape')close()};
-    const preview=()=>{
-      const draft={...prof,...prefs,display_name:back.querySelector('#community-edit-name')?.value.trim(),avatar_url:back.querySelector('#community-edit-avatar')?.value.trim(),cover_url:back.querySelector('#community-edit-cover')?.value.trim()};
-      const av=back.querySelector('#edit-preview-avatar');
-      const name=back.querySelector('#edit-preview-name');
-      const cover=back.querySelector('#edit-preview-cover');
-      if(av) av.src=avatar(draft,140);
-      if(name) name.textContent=displayName(draft);
-      if(cover){
-        cover.style.backgroundImage='';
-        const coverUrl=safeProfileImageUrl(draft.cover_url);
-        if(coverUrl) cover.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.34)),url("${coverUrl.replace(/"/g,'%22')}")`;
-      }
+
+    const close=()=>{
+      document.removeEventListener('keydown',onKey);
+      // cleanup object URLs
+      if(pendingAvatar){URL.revokeObjectURL(pendingAvatar.objectUrl);pendingAvatar=null}
+      if(pendingCover){URL.revokeObjectURL(pendingCover.objectUrl);pendingCover=null}
+      back.remove();document.body.classList.remove('modal-open');
     };
-    back.addEventListener('input',preview);
+    const onKey=e=>{if(e.key==='Escape')close()};
+
+    // bio char counter
+    const bioTa=back.querySelector('#community-edit-bio');
+    const bioCount=back.querySelector('#ep-bio-count');
+    const updateBioCount=()=>{if(bioCount)bioCount.textContent=`${(bioTa?.value||'').length}/160`};
+    bioTa?.addEventListener('input',updateBioCount);
+    updateBioCount();
+
+    // preview updater (for text fields only)
+    const preview=()=>{
+      const draft={...prof,...prefs,display_name:back.querySelector('#community-edit-name')?.value.trim()};
+      const name=back.querySelector('#edit-preview-name');
+      if(name) name.textContent=displayName(draft);
+    };
+    back.querySelector('#community-edit-name')?.addEventListener('input',preview);
+
+    // init preview cover
+    const coverEl=back.querySelector('#edit-preview-cover');
+    const initCoverUrl=safeProfileImageUrl(prefs.cover_url);
+    if(coverEl&&initCoverUrl){
+      coverEl.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.34)),url("${initCoverUrl.replace(/"/g,'%22')}")`;
+      coverEl.style.backgroundSize='cover';coverEl.style.backgroundPosition='center';
+    }
+
+    // image upload helpers
+    async function handleImageFile(file,target){
+      if(!file||!file.type.startsWith('image/'))return;
+      setMediaStatus('inline','Preparando imagem...');
+      try{
+        await ensureEditorLibraries();
+        let processed=file;
+        // compress if needed
+        if(file.size>1.5*1024*1024){
+          const opt={maxSizeMB:1.2,maxWidthOrHeight:target==='avatar'?600:1400,useWebWorker:true};
+          try{processed=await imageCompression(file,opt);}catch{}
+        }
+        const url=URL.createObjectURL(processed);
+        if(target==='avatar'){
+          if(pendingAvatar) URL.revokeObjectURL(pendingAvatar.objectUrl);
+          pendingAvatar={blob:processed,objectUrl:url};
+          const av=back.querySelector('#edit-preview-avatar');
+          if(av) av.src=url;
+        }else{
+          if(pendingCover) URL.revokeObjectURL(pendingCover.objectUrl);
+          pendingCover={blob:processed,objectUrl:url};
+          const cv=back.querySelector('#edit-preview-cover');
+          if(cv){cv.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.3)),url("${url}")`;cv.style.backgroundSize='cover';cv.style.backgroundPosition='center';}
+        }
+      }catch(err){toast('error','Erro ao processar imagem',err.message)}
+      setMediaStatus('inline','');
+    }
+
+    // avatar zone click
+    back.querySelector('#ep-avatar-zone')?.addEventListener('click',()=>back.querySelector('#ep-avatar-input')?.click());
+    back.querySelector('#ep-avatar-input')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)handleImageFile(f,'avatar');e.target.value='';});
+
+    // cover zone click
+    back.querySelector('#ep-cover-zone')?.addEventListener('click',()=>back.querySelector('#ep-cover-input')?.click());
+    back.querySelector('#ep-cover-input')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)handleImageFile(f,'cover');e.target.value='';});
+
+    // upload blob to cloudinary (reusing existing upload infrastructure)
+    async function uploadImageBlob(blob,folder='profile'){
+      const form=new FormData();
+      form.append('file',blob,`${folder}_${Date.now()}.jpg`);
+      const res=await fetch(`${state.base||'https://forca-aliada-site.onrender.com'}/api/upload`,{
+        method:'POST',headers:{Authorization:`Bearer ${localStorage.getItem('fa_token')}`},body:form
+      });
+      if(!res.ok){const j=await res.json().catch(()=>({}));throw new Error(j.error||'Falha no upload');}
+      const j=await res.json();
+      return j.url||j.secure_url||j.public_url;
+    }
+
     back.addEventListener('click',async e=>{
       if(e.target===back||e.target.closest('[data-edit-close]')){close();return}
       const save=e.target.closest('[data-edit-save]');
       if(!save)return;
       const display_name=back.querySelector('#community-edit-name').value.trim();
       const bio=back.querySelector('#community-edit-bio').value.trim();
-      const avatar_url=back.querySelector('#community-edit-avatar').value.trim();
-      const cover_url=back.querySelector('#community-edit-cover').value.trim();
       const profile_layout=back.querySelector('#community-edit-layout').value;
       const publicProfile=back.querySelector('#community-edit-public').checked;
       const publicHistory=back.querySelector('#community-edit-history').checked;
-      setBtnLoad(save,true,'Salvando');
+
+      setBtnLoad(save,true,'Salvando…');
       try{
+        let avatar_url=prefs.avatar_url||'';
+        let cover_url=prefs.cover_url||'';
+        // upload pending images if any
+        if(pendingAvatar){
+          toast('info','Enviando foto de perfil…','');
+          try{avatar_url=await uploadImageBlob(pendingAvatar.blob,'avatar');}
+          catch(err){toast('error','Falha ao enviar avatar',err.message);setBtnLoad(save,false,'Salvar alterações');return}
+        }
+        if(pendingCover){
+          toast('info','Enviando capa…','');
+          try{cover_url=await uploadImageBlob(pendingCover.blob,'cover');}
+          catch(err){toast('error','Falha ao enviar capa',err.message);setBtnLoad(save,false,'Salvar alterações');return}
+        }
         const current=await api('/api/me/preferences');
         const saved=await api('/api/me/preferences',{method:'PUT',body:JSON.stringify({...current,display_name,bio,avatar_url,cover_url,profile_layout,public_profile:publicProfile,public_history:publicHistory})});
         Object.assign(state.me||{},saved);
@@ -4414,13 +4626,12 @@ async function openCommunityProfileEditor(){
         renderProfileRoute(state.profileIdentifier||state.me?.minecraft_name||`id:${state.me?.id}`);
       }catch(err){
         toast('error','Não foi possível salvar',err.message);
-        setBtnLoad(save,false,'Salvar');
+        setBtnLoad(save,false,'Salvar alterações');
       }
     });
     document.addEventListener('keydown',onKey);
     document.body.appendChild(back);
     document.body.classList.add('modal-open');
-    preview();
     requestAnimationFrame(()=>back.querySelector('#community-edit-name')?.focus());
   }catch(e){
     toast('error','Editor indisponível',e.message);
@@ -4890,6 +5101,11 @@ function bindEvents(){
   $('#theme-btn').addEventListener('click',toggleTheme);
   $('#user-btn').addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
   $('#my-profile-btn').addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
+  // entire profile-mini card is clickable
+  document.querySelector('.profile-mini')?.addEventListener('click',e=>{
+    if(e.target.closest('[data-filter]')||e.target.closest('.mini-stat')||e.target.closest('.mini-profile-link'))return;
+    if(state.me) navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);
+  });
   ['inline','modal'].forEach(type=>{
     $(`#${type}-ta`)?.addEventListener('input',()=>syncComposer(type));
     $(`#${type}-ta`)?.addEventListener('keyup',()=>updateMentions(type));
@@ -5079,14 +5295,67 @@ function bindEvents(){
     setTimeout(() => $('#modal-ta')?.focus(), 100);
   });
 
-  // infinite scroll
+  // infinite scroll — auto-loads more when sentinel enters view
   const sentinel=$('#feed-sentinel');
   if(sentinel){
     const obs=new IntersectionObserver(entries=>{
-      if(entries.some(en=>en.isIntersecting)&&!state.routeActive) loadFeed({reset:false});
-    },{rootMargin:'600px 0px'});
+      if(entries.some(en=>en.isIntersecting)&&!state.routeActive&&state.hasMore&&!state.loading){
+        const wrap=$('#load-more-wrap');
+        if(wrap) wrap.innerHTML='<div class="load-more-spinner"></div>';
+        wrap.hidden=false;
+        loadFeed({reset:false}).then(()=>{
+          if(wrap) wrap.innerHTML='';
+          wrap.hidden=true;
+        });
+      }
+    },{rootMargin:'400px 0px'});
     obs.observe(sentinel);
   }
+
+  // new posts pill — poll every 35s when feed is visible
+  let newPostsPoll=null;
+  let newPostsQueue=[];
+  const pill=$('#new-posts-pill');
+  const pillCount=$('#new-posts-count');
+  function startNewPostsPoll(){
+    if(newPostsPoll) return;
+    newPostsPoll=setInterval(async()=>{
+      if(state.routeActive||state.loading||document.hidden) return;
+      try{
+        const p=new URLSearchParams({limit:'5',filter:state.filter,evaluation_timestamp:new Date().toISOString()});
+        const data=await api(`/api/community/feed?${p}`);
+        const incoming=Array.isArray(data.posts)?data.posts:[];
+        const existingIds=new Set(state.posts.map(p=>String(p.repost_of_id||p.id)));
+        const truly_new=incoming.filter(p=>!existingIds.has(String(p.repost_of_id||p.id)));
+        if(truly_new.length>0){
+          newPostsQueue=[...truly_new,...newPostsQueue];
+          const n=newPostsQueue.length;
+          if(pillCount) pillCount.textContent=n===1?'1 nova postagem':`${n} novas postagens`;
+          if(pill) pill.hidden=false;
+        }
+      }catch{}
+    },35000);
+  }
+  function stopNewPostsPoll(){clearInterval(newPostsPoll);newPostsPoll=null}
+  document.addEventListener('visibilitychange',()=>document.hidden?stopNewPostsPoll():startNewPostsPoll());
+  startNewPostsPoll();
+
+  // clicking the pill scrolls to top and merges new posts
+  pill?.addEventListener('click',()=>{
+    pill.hidden=true;
+    window.scrollTo({top:0,behavior:'smooth'});
+    setTimeout(()=>{
+      if(newPostsQueue.length){
+        const existingIds=new Set(state.posts.map(p=>String(p.repost_of_id||p.id)));
+        const toAdd=newPostsQueue.filter(p=>!existingIds.has(String(p.repost_of_id||p.id)));
+        if(toAdd.length){
+          state.posts=[...toAdd,...state.posts];
+          renderFeed();
+        }
+        newPostsQueue=[];
+      }
+    },400);
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════
