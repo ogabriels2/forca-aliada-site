@@ -1155,7 +1155,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .sheet-body{flex:1;overflow:auto;padding:13px}
 .sheet-footer{
   padding:11px 15px;border-top:1px solid var(--line);
-  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;
+  display:flex;align-items:center;justify-content:flex-end;gap:9px;
   background:var(--surface);flex-shrink:0;
 }
 .sheet-ta{
@@ -2231,10 +2231,10 @@ body::after{
 }
 .ep-cover-zone:hover .ep-cover-overlay{background:rgba(0,0,0,.38)}
 .ep-avatar-zone{
-  position:absolute;left:16px;bottom:-22px;cursor:pointer;
-  width:72px;height:72px;border-radius:10px;
+  position:absolute;left:16px;bottom:-28px;cursor:pointer;
+  width:68px;height:68px;border-radius:10px;
   border:3px solid var(--surface-solid);
-  overflow:hidden;
+  overflow:hidden;z-index:2;
 }
 .ep-avatar-zone img{width:100%;height:100%;object-fit:cover;display:block}
 .ep-av-overlay{
@@ -2244,10 +2244,12 @@ body::after{
 }
 .ep-avatar-zone:hover .ep-av-overlay{background:rgba(0,0,0,.46)}
 .ep-name-block{
-  padding:30px 16px 13px;
+  display:flex;align-items:flex-end;gap:10px;
+  padding:10px 16px 14px 96px;
+  min-height:46px;
 }
-.ep-name-block strong{display:block;font-size:17px;font-weight:800}
-.ep-name-block small{display:block;margin-top:2px;color:var(--ink-3);font-size:12px}
+.ep-name-block strong{display:block;font-size:16px;font-weight:800;line-height:1.1}
+.ep-name-block small{display:block;margin-top:2px;color:var(--ink-3);font-size:11.5px}
 .ep-toggle-row{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:6px 0;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;
@@ -3576,30 +3578,29 @@ function reportDialog(){
 let _openMenu = null;
 
 function openPostMenu(btn) {
-  // Close any existing open menu first
-  if (_openMenu && _openMenu !== btn) {
-    closeAllPostMenus();
-  }
-
   const wrap = btn.closest('.post-more-wrap');
   if (!wrap) return;
 
-  // Menu may already be portaled to body - find it by stored ref or in wrap
-  let menu = wrap._portaledMenu || wrap.querySelector('.post-menu');
-  if (!menu) return;
+  // Read post data directly from the current card in the DOM
+  // The wrap itself may have data-post-id (e.g. thread view), or it lives inside a .post-card
+  const postId = wrap.dataset.postId || wrap.closest('[data-post-id]')?.dataset.postId || wrap.closest('.post-card')?.dataset.postId || null;
 
-  const isOpen = menu.classList.contains('show');
-  if (isOpen) {
+  // Build menu HTML fresh from the card's existing menu template
+  const srcMenu = wrap.querySelector('.post-menu');
+  if (!srcMenu) return;
+
+  // Toggle: if already open for this button, close it
+  const portal = getOrCreateMenuPortal();
+  if (_openMenu === btn && portal.classList.contains('show')) {
     closeAllPostMenus();
     return;
   }
 
-  // Portal: move to body so it's never clipped by overflow:hidden ancestors
-  if (menu.parentElement !== document.body) {
-    menu._originalParent = wrap;
-    document.body.appendChild(menu);
-    wrap._portaledMenu = menu;
-  }
+  // Copy menu contents into the singleton portal
+  portal.innerHTML = srcMenu.innerHTML;
+  portal._postId = postId;
+  portal.classList.add('show');
+  _openMenu = btn;
 
   // Position using fixed coords based on button
   const rect = btn.getBoundingClientRect();
@@ -3608,32 +3609,29 @@ function openPostMenu(btn) {
   let left = rect.right - menuW;
   if (left < 8) left = 8;
   if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
-  // Flip up if not enough space below
-  if (top + 180 > window.innerHeight - 10) top = rect.top - 180;
-  menu.style.cssText = `position:fixed;top:${top}px;left:${left}px;right:auto;z-index:9999`;
+  if (top + 200 > window.innerHeight - 10) top = rect.top - 200;
+  portal.style.cssText = `position:fixed;top:${top}px;left:${left}px;right:auto;z-index:9999;min-width:172px;`;
+}
 
-  menu.classList.add('show');
-  _openMenu = btn;
+function getOrCreateMenuPortal() {
+  let portal = document.getElementById('_post_menu_portal');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = '_post_menu_portal';
+    portal.className = 'post-menu';
+    portal.setAttribute('role', 'menu');
+    document.body.appendChild(portal);
+  }
+  return portal;
 }
 
 function closeAllPostMenus() {
-  document.querySelectorAll('.post-menu.show').forEach(m => {
-    m.classList.remove('show');
-    // Return to original parent
-    if (m._originalParent) {
-      m._originalParent.appendChild(m);
-      m._originalParent._portaledMenu = null;
-      m._originalParent = null;
-    }
-  });
-  // Also catch any lingering menus on body that aren't .show
-  document.querySelectorAll('body > .post-menu').forEach(m => {
-    if (m._originalParent) {
-      m._originalParent.appendChild(m);
-      m._originalParent._portaledMenu = null;
-      m._originalParent = null;
-    }
-  });
+  const portal = document.getElementById('_post_menu_portal');
+  if (portal) {
+    portal.classList.remove('show');
+    portal.innerHTML = '';
+    portal._postId = null;
+  }
   _openMenu = null;
 }
 
@@ -3671,7 +3669,8 @@ function syncComposer(type){
   if(!ta)return;
   const val=ta.value, len=val.length, max=280;
   const mediaCount=state.composerMedia?.[type]?.length||0;
-  if(btn) btn.disabled = (len<2&&!mediaCount)||len>max;
+  const hasPoll=Boolean(pollState[type]?.active&&pollState[type]?.options?.filter(o=>String(o).trim()).length>=2);
+  if(btn) btn.disabled = (len<2&&!mediaCount&&!hasPoll)||len>max;
   if(type === 'modal'){
     const ring=$('#modal-ring-circle'), label=$('#modal-ring-label'), wrap=$('#modal-char-ring');
     const r=15.9; const circum=2*Math.PI*r; const pct=Math.min(1,len/max);
@@ -4164,7 +4163,18 @@ async function publishPost(type){
     const body={content,media_urls};
     if(pollData) Object.assign(body,{poll_options:pollData.options,poll_duration_hours:pollData.duration_hours});
     const created=await api('/api/community/posts',{method:'POST',body:JSON.stringify(body)});
-    const post={...created,author_id:state.me.id,username:state.me.username,minecraft_name:state.me.minecraft_name,liked_by_me:false,likes_count:0,comments_count:0};
+    // Build poll object locally if API didn't return one (or supplement missing data)
+    let localPoll = created.poll || null;
+    if(!localPoll && pollData) {
+      localPoll = {
+        id: null,
+        options: pollData.options.map((text,i)=>({id:`temp-${i}`,text,votes:0})),
+        ends_at: new Date(Date.now() + pollData.duration_hours*3600000).toISOString(),
+        is_closed: false,
+        user_vote_id: null,
+      };
+    }
+    const post={...created,author_id:state.me.id,username:state.me.username,minecraft_name:state.me.minecraft_name,liked_by_me:false,likes_count:0,comments_count:0,poll:localPoll};
     state.posts.unshift(post); ta.value=''; clearComposerMedia(type); clearPoll(type); syncComposer(type); renderFeed();
     if(type==='modal') closeModal('post-modal');
     requestAnimationFrame(()=>{
@@ -4345,12 +4355,12 @@ async function castPollVote(postId, optionId) {
   try {
     const result = await api(`/api/community/posts/${encodeURIComponent(postId)}/poll/vote`, {
       method: 'POST',
-      body: JSON.stringify({ option_id: optionId }),
+      body: JSON.stringify({ option_id: Number(optionId) }),
     });
     // Update local state
     const post = findPost(postId);
-    if (post && result) {
-      post.poll = result.poll || post.poll;
+    if (post && result?.poll) {
+      post.poll = result.poll;
       post.poll_voted_option_id = String(optionId);
     }
     renderFeed();
@@ -4571,7 +4581,7 @@ async function renderPostRoute(id){
               <div class="post-meta">
                 <time class="post-time" datetime="${esc(post.created_at)}">${esc(time(post.created_at))}</time>
                 ${edited?'<span class="edited-tag">(editado)</span>':''}
-                <div class="post-more-wrap">
+                <div class="post-more-wrap" data-post-id="${esc(id)}">
                   <button class="more-btn" data-action="menu" aria-label="Mais opções" aria-haspopup="menu">
                     <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                   </button>
@@ -5860,6 +5870,34 @@ function bindEvents(){
     if(prow&&!e.target.closest('button')){const uid=prow.dataset.uid;const mc=prow.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
     const jp=e.target.closest('.js-profile');
     if(jp&&!e.target.closest('button')){const uid=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
+
+    // Handle portaled post-menu items (singleton portal on body)
+    const menuEl=e.target.closest('#_post_menu_portal');
+    if(menuEl){
+      const act=e.target.closest('[data-action]');
+      if(act){
+        e.stopPropagation();
+        const id=menuEl._postId;
+        const a=act.dataset.action;
+        closeAllPostMenus();
+        const card=document.querySelector(`.post-card[data-post-id="${id}"]`);
+        // Feed card actions
+        if(a==='delete'||a==='delete-thread'){deletePost(id);return}
+        if(a==='admin-delete'||a==='admin-delete-thread'){moderateDeletePost(id);return}
+        if(a==='edit'){if(card)editPostInline(id,card);return}
+        if(a==='edit-thread'){editThreadPost(findPost(id),id);return}
+        if(a==='pin'||a==='pin-thread'){setPostPinned(id,true);return}
+        if(a==='unpin'||a==='unpin-thread'){setPostPinned(id,false);return}
+        if(a==='report'||a==='report-thread'){reportContent('post',id);return}
+        if(a==='copy'||a==='copy-thread'){copyLink(id);return}
+        if(a==='open-thread'){navigatePost(id);return}
+        return;
+      }
+      // Click on portal background (not on an item) — close it
+      closeAllPostMenus();
+      return;
+    }
+
     const postCard=e.target.closest('.post-card');
     if(postCard){
       const id=postCard.dataset.postId;
