@@ -594,9 +594,140 @@ img{display:block}
 .pa-comment:hover{background:var(--accent-soft);color:var(--accent)}
 .pa-share:hover{background:var(--success-soft);color:var(--success)}
 .pa-repost:hover,.pa-repost.is-on{background:var(--success-soft);color:var(--success)}
-.repost-label{display:flex;align-items:center;gap:6px;margin:0 0 5px 54px;color:var(--ink-3);font-size:11.5px;font-weight:800}
-.repost-label svg{width:14px;height:14px}
-.repost-quote{margin:7px 0 8px;padding:8px 10px;border-left:3px solid var(--accent-2);border-radius:0 var(--r-sm) var(--r-sm) 0;background:var(--surface-soft);color:var(--ink-2);font-size:13px;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere}
+/* ─── POLLS ─── */
+.poll-container{
+  margin-top:10px;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  overflow:hidden;
+  background:var(--surface-soft);
+}
+.poll-options{display:grid;gap:1px;background:var(--line)}
+.poll-option{
+  position:relative;
+  display:flex;align-items:center;gap:8px;
+  min-height:40px;padding:8px 12px;
+  background:var(--surface-solid);
+  cursor:pointer;
+  transition:background var(--t-fast);
+  overflow:hidden;
+  user-select:none;
+}
+.poll-option:hover:not(.voted):not(.is-winner){background:var(--accent-soft)}
+.poll-option.voted{cursor:default}
+.poll-bar{
+  position:absolute;inset:0;
+  transform-origin:left center;
+  transform:scaleX(0);
+  background:color-mix(in srgb,var(--accent) 13%,transparent);
+  transition:transform .6s cubic-bezier(.16,1,.3,1);
+  pointer-events:none;
+}
+.poll-option.is-winner .poll-bar{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+.poll-label{position:relative;z-index:1;flex:1;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.3}
+.poll-pct{
+  position:relative;z-index:1;
+  font-family:var(--ff-mono);font-size:11.5px;font-weight:700;color:var(--ink-2);
+  min-width:34px;text-align:right;transition:color var(--t-fast);
+  opacity:0;transform:translateX(4px);
+  transition:opacity .3s,transform .3s;
+}
+.poll-option.voted .poll-pct{opacity:1;transform:none}
+.poll-check{
+  position:relative;z-index:1;
+  width:16px;height:16px;border-radius:50%;flex-shrink:0;
+  border:1.5px solid var(--line);
+  background:var(--surface-solid);
+  display:grid;place-items:center;
+  transition:all var(--t-fast);
+}
+.poll-check svg{width:8px;height:8px;opacity:0;transform:scale(.5);transition:all var(--t-fast)}
+.poll-option.voted .poll-check{border-color:var(--accent);background:var(--accent)}
+.poll-option.voted .poll-check svg{opacity:1;transform:scale(1)}
+.poll-option.is-winner .poll-label{font-weight:800;color:var(--accent)}
+.poll-footer{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:6px 12px;background:var(--surface-solid);
+  font-size:11px;color:var(--ink-3);font-weight:700;
+  border-top:1px solid var(--line);
+}
+.poll-footer-votes{display:flex;align-items:center;gap:4px}
+.poll-footer-votes svg{width:12px;height:12px}
+.poll-closed-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  height:18px;padding:0 6px;border-radius:999px;
+  background:var(--surface-soft);color:var(--ink-3);
+  font-size:10px;font-weight:800;
+  border:1px solid var(--line);
+}
+/* Poll composer UI */
+.poll-builder{
+  margin-top:9px;
+  border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface-soft);overflow:hidden;
+}
+.poll-builder-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 11px;border-bottom:1px solid var(--line);
+  background:var(--surface-solid);
+}
+.poll-builder-head strong{font-size:12.5px;font-weight:800;display:flex;align-items:center;gap:5px;color:var(--accent)}
+.poll-builder-head strong svg{width:14px;height:14px}
+.poll-options-list{display:grid;gap:6px;padding:10px 11px}
+.poll-opt-row{
+  display:flex;align-items:center;gap:6px;
+}
+.poll-opt-input{
+  flex:1;height:34px;padding:0 10px;
+  border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--surface-solid);color:var(--ink);outline:none;
+  font:inherit;font-size:13px;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast);
+}
+.poll-opt-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.poll-opt-input::placeholder{color:var(--ink-3)}
+.poll-opt-remove{
+  width:26px;height:26px;flex-shrink:0;border-radius:999px;
+  display:grid;place-items:center;color:var(--ink-3);cursor:pointer;
+  transition:background var(--t-fast),color var(--t-fast);
+}
+.poll-opt-remove:hover{background:var(--danger-soft);color:var(--danger)}
+.poll-opt-remove svg{width:13px;height:13px}
+.poll-add-opt{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 11px;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;
+  transition:background var(--t-fast);border-top:1px solid var(--line);
+}
+.poll-add-opt:hover{background:var(--accent-soft)}
+.poll-add-opt svg{width:13px;height:13px}
+.poll-duration{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 11px;border-top:1px solid var(--line);
+  background:var(--surface-solid);
+}
+.poll-duration label{font-size:11.5px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.poll-duration select{
+  flex:1;height:30px;padding:0 8px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:var(--surface-soft);
+  color:var(--ink);font:inherit;font-size:12px;outline:none;cursor:pointer;
+}
+.poll-duration select:focus{border-color:var(--accent)}
+/* poll toggle btn in composer */
+.poll-toggle-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  height:26px;padding:0 9px;border-radius:999px;
+  font-size:11px;font-weight:700;color:var(--ink-2);cursor:pointer;
+  border:1px solid var(--line);background:transparent;
+  transition:all var(--t-fast);
+}
+.poll-toggle-btn:hover,.poll-toggle-btn.is-on{
+  border-color:color-mix(in srgb,var(--accent) 40%,transparent);
+  color:var(--accent);background:var(--accent-soft);
+}
+.poll-toggle-btn svg{width:13px;height:13px}
+/* voted my-choice indicator */
+.poll-option.my-vote .poll-check{border-color:var(--accent);background:var(--accent)}
+.poll-option.my-vote .poll-bar{background:color-mix(in srgb,var(--accent) 18%,transparent)}
 @keyframes likePop{0%{transform:scale(.8)}55%{transform:scale(1.3) rotate(-8deg)}100%{transform:scale(1)}}
 @keyframes countBounce{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
 .pa span.bouncing{animation:countBounce 0.25s ease}
@@ -606,10 +737,11 @@ img{display:block}
 .more-btn{width:30px;height:30px;display:grid;place-items:center;border-radius:999px;color:var(--ink-3);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
 .more-btn:hover{background:var(--bg);color:var(--accent)}
 .post-menu{
-  position:absolute;right:0;top:calc(100% + 4px);min-width:160px;z-index:40;
+  position:fixed;min-width:168px;z-index:9990;
   border:1px solid var(--line);border-radius:var(--r-md);
   background:var(--surface-solid);box-shadow:var(--shadow-lg);
   display:none;padding:4px;
+  top:0;right:0; /* overridden by JS positioner */
 }
 .post-menu.show{display:block;animation:fadeIn var(--t-fast) var(--ease)}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
@@ -862,14 +994,30 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 /* ─── NOTIFICATIONS ─── */
 .notif-wrap{position:relative}
 .notif-menu{
-  position:absolute;right:0;top:calc(100% + 8px);z-index:300;
-  width:min(340px,calc(100vw - 24px));
+  position:absolute;right:0;top:calc(100% + 8px);z-index:9990;
+  width:min(340px,calc(100vw - 16px));
+  max-width:calc(100vw - 8px);
   border:1px solid var(--line);border-radius:var(--r-lg);
   background:var(--surface-solid);box-shadow:var(--shadow-lg);
   display:none;overflow:hidden;
+  transform-origin:top right;
 }
-.notif-menu.show{display:block;animation:fadeIn var(--t-fast) var(--ease)}
-.notif-head{
+@media(max-width:600px){
+  .notif-menu{
+    position:fixed;
+    right:8px;
+    left:auto;
+    top:calc(var(--topbar-h) + 6px);
+    width:calc(100vw - 16px);
+    max-width:calc(100vw - 16px);
+    max-height:min(480px,calc(100dvh - var(--topbar-h) - 80px));
+    border-radius:var(--r-lg);
+    overflow:hidden;
+    display:none;
+  }
+  .notif-menu.show{display:block}
+}
+.notif-menu.show{display:block;animation:fadeIn var(--t-fast) var(--ease)}.notif-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:11px 13px;border-bottom:1px solid var(--line);
 }
@@ -1772,6 +1920,18 @@ body::after{
   background:var(--surface-solid);
 }
 .pm-item{border-radius:6px}
+/* ── Post menu portal fix ── */
+#post-menu-portal{
+  position:fixed;
+  z-index:9999;
+  pointer-events:none;
+}
+#post-menu-portal .post-menu{
+  position:static;
+  pointer-events:auto;
+  display:block;
+}
+#post-menu-portal .post-menu:not(.show){display:none}
 .skel{background:color-mix(in srgb,var(--surface-soft) 88%,transparent)}
 .empty-card{
   padding:42px 24px;
@@ -2806,10 +2966,15 @@ body::after{
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-4.5-4.5L5 21"/></svg>
           <span id="inline-media-count">0/4</span>
         </button>
+        <button class="poll-toggle-btn" type="button" id="inline-poll-toggle" aria-label="Adicionar enquete" title="Criar enquete">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          Enquete
+        </button>
         <span class="media-status" id="inline-media-status"></span>
         <span style="font-size:11px;color:var(--ink-3);margin-left:auto;pointer-events:none" id="inline-drop-hint">arraste imagens aqui</span>
         <input class="media-input" id="inline-media-input" type="file" multiple accept="image/*" hidden>
       </div>
+      <div id="inline-poll-builder"></div>
       <div class="media-preview-container" id="inline-media-preview" aria-live="polite"></div>
     </div>
 
@@ -2950,12 +3115,16 @@ body::after{
         </div>
       </div>
       <div class="media-preview-container media-preview-modal" id="modal-media-preview" aria-live="polite"></div>
+      <div id="modal-poll-builder"></div>
     </div>
     <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-solid)">
       <div class="modal-media-tools">
         <button class="btn btn-ghost btn-sm" type="button" data-media-pick="modal" title="Mídia"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span id="modal-media-count">0/4</span></button>
         <input class="media-input" id="modal-media-input" type="file" multiple accept="image/*" hidden>
-        <button class="btn btn-ghost btn-sm" disabled title="Enquete"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+        <button class="poll-toggle-btn" type="button" id="modal-poll-toggle" aria-label="Adicionar enquete" title="Criar enquete">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          Enquete
+        </button>
         <span class="media-status" id="modal-media-status"></span>
         <span style="font-size:11px;color:var(--ink-3);pointer-events:none">arraste imagens</span>
       </div>
@@ -3361,7 +3530,72 @@ function reportDialog(){
   });
 }
 
-/* ======================= ROUTE VIEW MANAGEMENT ======================= */
+/* ======================= POST MENU PORTAL POSITIONING ======================= */
+let _openMenu = null;
+
+function openPostMenu(btn) {
+  // Close any existing open menu first
+  if (_openMenu && _openMenu !== btn) {
+    closeAllPostMenus();
+  }
+
+  const wrap = btn.closest('.post-more-wrap');
+  if (!wrap) return;
+
+  // Menu may already be portaled to body - find it by stored ref or in wrap
+  let menu = wrap._portaledMenu || wrap.querySelector('.post-menu');
+  if (!menu) return;
+
+  const isOpen = menu.classList.contains('show');
+  if (isOpen) {
+    closeAllPostMenus();
+    return;
+  }
+
+  // Portal: move to body so it's never clipped by overflow:hidden ancestors
+  if (menu.parentElement !== document.body) {
+    menu._originalParent = wrap;
+    document.body.appendChild(menu);
+    wrap._portaledMenu = menu;
+  }
+
+  // Position using fixed coords based on button
+  const rect = btn.getBoundingClientRect();
+  const menuW = 172;
+  let top = rect.bottom + 6;
+  let left = rect.right - menuW;
+  if (left < 8) left = 8;
+  if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+  // Flip up if not enough space below
+  if (top + 180 > window.innerHeight - 10) top = rect.top - 180;
+  menu.style.cssText = `position:fixed;top:${top}px;left:${left}px;right:auto;z-index:9999`;
+
+  menu.classList.add('show');
+  _openMenu = btn;
+}
+
+function closeAllPostMenus() {
+  document.querySelectorAll('.post-menu.show').forEach(m => {
+    m.classList.remove('show');
+    // Return to original parent
+    if (m._originalParent) {
+      m._originalParent.appendChild(m);
+      m._originalParent._portaledMenu = null;
+      m._originalParent = null;
+    }
+  });
+  // Also catch any lingering menus on body that aren't .show
+  document.querySelectorAll('body > .post-menu').forEach(m => {
+    if (m._originalParent) {
+      m._originalParent.appendChild(m);
+      m._originalParent._portaledMenu = null;
+      m._originalParent = null;
+    }
+  });
+  _openMenu = null;
+}
+
+
 function showFeedUI(){
   state.routeActive=false;
   const feedCol=$('#feed-col'),routeCol=$('#route-col');
@@ -3582,6 +3816,7 @@ function postCardHTML(p){
         ${quoteContent}
         <div class="post-content">${mentionHTML(displayContent)}</div>
         ${mediaHTML}
+        ${p.poll ? pollHTML(p) : ''}
         ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>`<div class="preview-row">${IC.comment}<strong>${esc(c.minecraft_name||c.username||'?')}:</strong><span>${mentionHTML(c.content)}</span></div>`).join('')}${p.comments_count>2?`<button class="btn btn-ghost btn-xs" style="margin-top:3px" data-action="open-thread">Ver ${num(p.comments_count)} respostas →</button>`:''}</div>`:''}
         <div class="post-actions">
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
@@ -3650,6 +3885,12 @@ async function loadFeed({reset=false}={}){
   }finally{state.loading=false;$('#load-more-wrap').hidden=!state.hasMore||!state.posts.length}
 }
 function switchTab(filter){
+  // If we're in profile/thread route and user clicks a feed tab → go to community home first
+  if(state.routeActive){
+    state.filter=filter;
+    Router.navigate('/community');
+    return;
+  }
   state.filter=filter;
   // hide new posts pill when changing tab
   const pill=$('#new-posts-pill');if(pill) pill.hidden=true;
@@ -3866,15 +4107,23 @@ async function uploadComposerMedia(type){
 async function publishPost(type){
   const ta=$(`#${type}-ta`); const content=ta.value.trim();
   const mediaCount=state.composerMedia[type]?.length||0;
-  if((content.length<2&&!mediaCount)||content.length>280)return;
+  const pollData=getPollData(type);
+  // If poll is active, must have at least 2 non-empty options and a question (content)
+  if(pollData&&(!content||pollData.options.length<2)){
+    toast('warning','Enquete incompleta','Adicione uma pergunta e pelo menos 2 opções para criar uma enquete.');
+    return;
+  }
+  if((content.length<2&&!mediaCount&&!pollData)||content.length>280)return;
   const btn=$(`#${type}-publish-btn`);
   setMediaStatus(type,mediaCount?'Enviando imagens...':'');
   setBtnLoad(btn,true,type==='inline'?'':(mediaCount?'Enviando fotos':'Publicando'));
   try{
     const media_urls=await uploadComposerMedia(type);
-    const created=await api('/api/community/posts',{method:'POST',body:JSON.stringify({content,media_urls})});
+    const body={content,media_urls};
+    if(pollData) Object.assign(body,{poll_options:pollData.options,poll_duration_hours:pollData.duration_hours});
+    const created=await api('/api/community/posts',{method:'POST',body:JSON.stringify(body)});
     const post={...created,author_id:state.me.id,username:state.me.username,minecraft_name:state.me.minecraft_name,liked_by_me:false,likes_count:0,comments_count:0};
-    state.posts.unshift(post); ta.value=''; clearComposerMedia(type); syncComposer(type); renderFeed();
+    state.posts.unshift(post); ta.value=''; clearComposerMedia(type); clearPoll(type); syncComposer(type); renderFeed();
     if(type==='modal') closeModal('post-modal');
     requestAnimationFrame(()=>{
       const card=$(`.post-card[data-post-id="${created.id}"]`);
@@ -3889,6 +4138,192 @@ async function publishPost(type){
     syncComposer(type);
   }
 }
+
+/* ======================= POLL SYSTEM ======================= */
+// Per-composer poll state
+const pollState = {
+  inline: { active: false, options: ['', ''], duration_hours: 24 },
+  modal:  { active: false, options: ['', ''], duration_hours: 24 },
+};
+const POLL_DURATIONS = [
+  [1,   '1 hora'],
+  [6,   '6 horas'],
+  [12,  '12 horas'],
+  [24,  '1 dia'],
+  [48,  '2 dias'],
+  [72,  '3 dias'],
+  [168, '7 dias'],
+];
+
+function getPollData(type) {
+  const ps = pollState[type];
+  if (!ps?.active) return null;
+  const opts = ps.options.map(o => String(o).trim()).filter(Boolean);
+  if (opts.length < 2) return null;
+  return { options: opts, duration_hours: ps.duration_hours };
+}
+
+function clearPoll(type) {
+  if (!pollState[type]) return;
+  pollState[type].active = false;
+  pollState[type].options = ['', ''];
+  pollState[type].duration_hours = 24;
+  const btn = $(`#${type}-poll-toggle`);
+  if (btn) btn.classList.remove('is-on');
+  renderPollBuilder(type);
+}
+
+function renderPollBuilder(type) {
+  const wrap = $(`#${type}-poll-builder`);
+  if (!wrap) return;
+  const ps = pollState[type];
+  if (!ps?.active) { wrap.innerHTML = ''; return; }
+
+  const optRows = ps.options.map((val, i) => `
+    <div class="poll-opt-row">
+      <input class="poll-opt-input" type="text" maxlength="80" placeholder="${i < 2 ? `Opção ${i + 1}` : `Opção ${i + 1} (opcional)`}"
+        value="${esc(val)}" data-poll-opt="${i}" autocomplete="off">
+      ${i >= 2 ? `<button class="poll-opt-remove" type="button" data-poll-remove="${i}" aria-label="Remover opção">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>` : '<span style="width:26px"></span>'}
+    </div>`).join('');
+
+  const durationOpts = POLL_DURATIONS.map(([h, label]) =>
+    `<option value="${h}" ${h === ps.duration_hours ? 'selected' : ''}>${esc(label)}</option>`).join('');
+
+  wrap.innerHTML = `<div class="poll-builder">
+    <div class="poll-builder-head">
+      <strong>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        Enquete
+      </strong>
+      <button class="close-btn" type="button" data-poll-close="${type}" aria-label="Remover enquete">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="poll-options-list">${optRows}</div>
+    ${ps.options.length < 4 ? `<button class="poll-add-opt" type="button" data-poll-add="${type}">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Adicionar opção (${ps.options.length}/4)
+    </button>` : `<div style="padding:6px 11px;font-size:11px;color:var(--ink-3);border-top:1px solid var(--line)">Máximo de 4 opções atingido</div>`}
+    <div class="poll-duration">
+      <label>Duração:</label>
+      <select data-poll-duration="${type}">${durationOpts}</select>
+    </div>
+  </div>`;
+
+  // Bind inputs on this builder
+  wrap.querySelectorAll('[data-poll-opt]').forEach(input => {
+    input.addEventListener('input', () => {
+      pollState[type].options[Number(input.dataset.pollOpt)] = input.value;
+      syncComposer(type);
+    });
+  });
+}
+
+function togglePoll(type) {
+  if (!pollState[type]) return;
+  pollState[type].active = !pollState[type].active;
+  if (!pollState[type].active) {
+    pollState[type].options = ['', ''];
+    pollState[type].duration_hours = 24;
+  }
+  const btn = $(`#${type}-poll-toggle`);
+  if (btn) btn.classList.toggle('is-on', pollState[type].active);
+  renderPollBuilder(type);
+  // Focus first option input
+  if (pollState[type].active) {
+    setTimeout(() => $(`#${type}-poll-builder .poll-opt-input`)?.focus(), 50);
+  }
+  syncComposer(type);
+}
+
+// Render poll on a post card (display)
+function pollHTML(p) {
+  const poll = p.poll;
+  if (!poll || !Array.isArray(poll.options) || !poll.options.length) return '';
+  const total = poll.options.reduce((s, o) => s + Number(o.votes || 0), 0);
+  const voted = Boolean(p.poll_voted_option_id || poll.user_vote_id);
+  const closed = poll.is_closed || (poll.ends_at && new Date(poll.ends_at) < new Date());
+  const showResults = voted || closed;
+  const maxVotes = Math.max(...poll.options.map(o => Number(o.votes || 0)), 1);
+
+  const optionsHTML = poll.options.map(opt => {
+    const votes = Number(opt.votes || 0);
+    const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
+    const isWinner = showResults && votes === maxVotes && total > 0;
+    const isMyVote = String(opt.id) === String(p.poll_voted_option_id || poll.user_vote_id);
+    const cls = [
+      showResults ? 'voted' : '',
+      isWinner && showResults ? 'is-winner' : '',
+      isMyVote ? 'my-vote' : '',
+    ].filter(Boolean).join(' ');
+
+    return `<button class="poll-option ${cls}" type="button"
+        data-poll-vote="${esc(p.id)}" data-opt-id="${esc(opt.id)}"
+        ${showResults || closed ? 'disabled' : ''}
+        aria-label="${esc(opt.text)}: ${pct}%">
+      <div class="poll-bar" style="transform:scaleX(${showResults ? pct / 100 : 0})"></div>
+      <span class="poll-check" aria-hidden="true">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>
+      </span>
+      <span class="poll-label">${esc(opt.text)}${isWinner && showResults ? ' 🏆' : ''}</span>
+      <span class="poll-pct">${showResults ? pct + '%' : ''}</span>
+    </button>`;
+  }).join('');
+
+  const timeLeft = poll.ends_at ? formatPollTimeLeft(poll.ends_at) : '';
+  return `<div class="poll-container">
+    <div class="poll-options">${optionsHTML}</div>
+    <div class="poll-footer">
+      <span class="poll-footer-votes">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        ${num(total)} voto${total !== 1 ? 's' : ''}
+      </span>
+      ${closed
+        ? '<span class="poll-closed-badge">✓ Encerrada</span>'
+        : timeLeft
+          ? `<span style="font-size:10.5px">${esc(timeLeft)}</span>`
+          : ''}
+    </div>
+  </div>`;
+}
+
+function formatPollTimeLeft(endsAt) {
+  const diff = new Date(endsAt) - new Date();
+  if (diff <= 0) return 'Encerrada';
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return 'Menos de 1h';
+  if (h < 24) return `${h}h restante${h !== 1 ? 's' : ''}`;
+  const d = Math.floor(h / 24);
+  return `${d}d restante${d !== 1 ? 's' : ''}`;
+}
+
+async function castPollVote(postId, optionId) {
+  try {
+    const result = await api(`/api/community/posts/${encodeURIComponent(postId)}/poll/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ option_id: optionId }),
+    });
+    // Update local state
+    const post = findPost(postId);
+    if (post && result) {
+      post.poll = result.poll || post.poll;
+      post.poll_voted_option_id = String(optionId);
+    }
+    renderFeed();
+    // Also update thread if open
+    const threadPoll = $('#thread-hero .poll-container');
+    if (threadPoll && post) {
+      const newHtml = pollHTML(post);
+      threadPoll.outerHTML = newHtml || '';
+    }
+  } catch (e) {
+    toast('error', 'Voto não registrado', e.message);
+  }
+}
+
+
 
 /* ======================= LIKE ======================= */
 function findPost(id){
@@ -4109,6 +4544,7 @@ async function renderPostRoute(id){
             </div>
             <div class="post-content" id="thread-content" style="font-size:15px;margin-top:7px">${mentionHTML(post.content)}</div>
             ${threadMediaHTML}
+            ${post.poll ? pollHTML(post) : ''}
             <div class="post-actions" style="margin-top:10px">
               <button class="pa pa-like ${post.liked_by_me?'is-on':''}" id="thread-like" aria-label="${post.liked_by_me?'Descurtir':'Curtir'}">${IC.heart}<span>${num(post.likes_count)}</span></button>
               <button class="pa pa-share" id="thread-share" aria-label="Compartilhar">${IC.share}</button>
@@ -4140,7 +4576,7 @@ function bindThreadEvents(post,id){
     const menu=e.target.closest('[data-action]');
     if(!menu)return;
     const act=menu.dataset.action;
-    if(act==='menu'){const m=menu.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
+    if(act==='menu'){openPostMenu(menu.closest('.more-btn')||menu);return}
     if(act==='pin-thread'){setPostPinned(id,true);return}
     if(act==='unpin-thread'){setPostPinned(id,false);return}
     if(act==='edit-thread'){editThreadPost(post,id);return}
@@ -5080,8 +5516,18 @@ function showFeedRoute(){
   showFeedUI();document.title='Comunidade | Força Aliada';
   const header=$('.col-header h1'); if(header) header.textContent='Comunidade';
   const sub=$('.col-header p'); if(sub) sub.textContent='Novidades, conquistas e conversas do servidor.';
+  // Restore active tab visual state
+  const activeFilter = state.filter || 'all';
+  $$('.tab').forEach(t=>{
+    const isActive = t.dataset.tab === activeFilter;
+    t.classList.toggle('is-active', isActive);
+    t.setAttribute('aria-selected', String(isActive));
+  });
+  $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===activeFilter));
+  setRailActive(activeFilter);
   updateCommunityPulse();
   if(hadScope) loadFeed({reset:true});
+  else if(!state.posts.length) loadFeed({reset:true});
 }
 function showHashtagRoute(tag){
   state.searchQuery='';state.hashtag=String(tag||'').replace(/^#/,'').trim();
@@ -5150,6 +5596,26 @@ function bindEvents(){
     e.stopPropagation();
     try{await api('/api/me/social-notifications/read-all',{method:'POST'});await loadNotifs();}catch{}
   });
+  // Poll toggle buttons
+  $('#inline-poll-toggle')?.addEventListener('click',()=>togglePoll('inline'));
+  $('#modal-poll-toggle')?.addEventListener('click',()=>togglePoll('modal'));
+  // Poll builder delegation (add option, remove option, duration change, close)
+  document.addEventListener('click',e=>{
+    const addOpt=e.target.closest('[data-poll-add]');
+    if(addOpt){const t=addOpt.dataset.pollAdd;if(pollState[t]&&pollState[t].options.length<4){pollState[t].options.push('');renderPollBuilder(t);syncComposer(t);}return}
+    const removeOpt=e.target.closest('[data-poll-remove]');
+    if(removeOpt){const t=removeOpt.closest('.poll-builder')?.querySelector('[data-poll-duration]')?.dataset.pollDuration||'inline';const idx=Number(removeOpt.dataset.pollRemove);if(pollState[t]&&idx>=2){pollState[t].options.splice(idx,1);renderPollBuilder(t);syncComposer(t);}return}
+    const closePoll=e.target.closest('[data-poll-close]');
+    if(closePoll){clearPoll(closePoll.dataset.pollClose);syncComposer(closePoll.dataset.pollClose);return}
+    // Poll vote
+    const voteBtn=e.target.closest('[data-poll-vote]');
+    if(voteBtn&&!voteBtn.disabled){e.stopPropagation();castPollVote(voteBtn.dataset.pollVote,voteBtn.dataset.optId);return}
+  });
+  // Poll duration select delegation
+  document.addEventListener('change',e=>{
+    const dur=e.target.closest('[data-poll-duration]');
+    if(dur){const t=dur.dataset.pollDuration;if(pollState[t])pollState[t].duration_hours=Number(dur.value);return}
+  });
   $('#refresh-players').addEventListener('click',()=>loadPlayers($('#player-search').value.trim()));
   let pTimer=null;
   $('#player-search').addEventListener('input',e=>{
@@ -5198,7 +5664,7 @@ function bindEvents(){
 
   document.addEventListener('click',e=>{
     if(!e.target.closest('.notif-wrap')) $('#notif-menu')?.classList.remove('show');
-    if(!e.target.closest('.post-more-wrap')) $$('.post-menu.show').forEach(m=>m.classList.remove('show'));
+    if(!e.target.closest('.post-more-wrap') && !e.target.closest('.post-menu')) closeAllPostMenus();
     const notificationRoute=e.target.closest('[data-notification-route]');
     if(notificationRoute){e.preventDefault();$('#notif-menu')?.classList.remove('show');Router.navigate(communityUrl({notifications:'1'}));return}
     const notifFilter=e.target.closest('[data-notif-filter]');
@@ -5269,7 +5735,7 @@ function bindEvents(){
       if(act){
         e.stopPropagation();
         const a=act.dataset.action;
-        if(a==='menu'){const m=act.closest('.post-more-wrap')?.querySelector('.post-menu');m?.classList.toggle('show');return}
+        if(a==='menu'){openPostMenu(act.closest('.more-btn'));return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
         if(a==='repost'){toggleRepost(id,act.closest('.pa-repost'));return}

@@ -383,9 +383,73 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
   border-radius: var(--r-sm);
   background: var(--surface-soft);
 }
+.rel-row:last-child { border-bottom: none; }
 .rel-row img { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; }
 .rel-row strong { display: block; overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
 .rel-row small { display: block; overflow: hidden; margin-top: 2px; color: var(--ink-3); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── PROFILE LINKS ─── */
+.profile-links{
+  display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;
+}
+.profile-link-item{
+  display:inline-flex;align-items:center;gap:5px;
+  height:26px;padding:0 10px;
+  border:1px solid var(--line);border-radius:999px;
+  background:var(--surface-soft);
+  color:var(--ink-2);font-size:12px;font-weight:700;
+  text-decoration:none;
+  transition:all var(--t-fast);
+  max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.profile-link-item:hover{
+  border-color:var(--accent);color:var(--accent);background:var(--accent-soft);
+  transform:translateY(-1px);
+}
+.profile-link-item svg{width:12px;height:12px;flex-shrink:0}
+/* Link editor in profile editor modal */
+.link-editor-list{display:grid;gap:8px;margin-top:6px}
+.link-editor-row{
+  border:1.5px solid var(--line);border-radius:10px;
+  background:var(--surface-soft);
+  padding:0;overflow:hidden;
+  transition:border-color var(--t-fast);
+}
+.link-editor-row:focus-within{border-color:var(--accent)}
+.link-row-handle{display:grid;grid-template-columns:1fr;gap:0}
+.link-row-top{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  border-bottom:1px solid var(--line);
+}
+.link-row-bottom{display:grid}
+.link-field-input{
+  height:36px;padding:0 11px;
+  border:none;border-radius:0;
+  background:transparent;color:var(--ink);outline:none;
+  font:inherit;font-size:12.5px;width:100%;box-sizing:border-box;
+}
+.link-field-input::placeholder{color:var(--ink-3)}
+.link-field-input:focus{background:color-mix(in srgb,var(--accent-soft) 60%,transparent)}
+.link-field-label{
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--ink-3);padding:4px 11px 0;line-height:1;
+}
+.link-editor-row .link-remove-btn{
+  width:34px;height:36px;
+  display:grid;place-items:center;color:var(--ink-3);cursor:pointer;
+  transition:background var(--t-fast),color var(--t-fast);
+  background:transparent;border:none;border-left:1px solid var(--line);flex-shrink:0;
+}
+.link-editor-row .link-remove-btn:hover{background:var(--danger-soft);color:var(--danger)}
+.link-editor-row .link-remove-btn svg{width:12px;height:12px}
+.link-add-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:7px 0;color:var(--accent);font-size:12px;font-weight:750;cursor:pointer;
+  background:none;border:none;margin-top:4px;
+}
+.link-add-btn:hover{opacity:.78}
+.link-add-btn svg{width:13px;height:13px}
+.link-add-btn:disabled{opacity:.38;cursor:not-allowed}
 .toast-stack { position: fixed; right: 20px; bottom: 20px; z-index: 120; display: grid; gap: 8px; width: min(360px, calc(100vw - 40px)); pointer-events: none; }
 .toast {
   padding: 12px 13px;
@@ -452,9 +516,9 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
 </main>
 
 <div class="backdrop" id="edit-modal">
-  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title" style="max-width:480px">
     <div class="modal-head">
-      <h2 id="edit-title">Editar perfil publico</h2>
+      <h2 id="edit-title">Editar perfil</h2>
       <button class="icon-btn" type="button" data-close-modal aria-label="Fechar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
@@ -462,9 +526,27 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
     <div class="modal-body">
       <div class="form-grid">
         <label class="field">
-          Descricao
-          <textarea id="edit-bio" maxlength="160" placeholder="Conte um pouco sobre voce na comunidade."></textarea>
+          Nome exibido
+          <input type="text" id="edit-display-name" maxlength="40" placeholder="Como voce quer ser chamado" autocomplete="off" style="height:38px;padding:0 11px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:var(--surface-solid);color:var(--ink);font:inherit;font-size:13.5px;transition:border-color var(--t-fast),box-shadow var(--t-fast);outline:none;width:100%;box-sizing:border-box" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-soft)'" onblur="this.style.borderColor='var(--line)';this.style.boxShadow='none'">
         </label>
+        <label class="field">
+          Descricao <span style="font-weight:400;text-transform:none;opacity:.6" id="bio-char-count">0/160</span>
+          <textarea id="edit-bio" maxlength="160" placeholder="Conte um pouco sobre voce na comunidade." oninput="document.getElementById('bio-char-count').textContent=this.value.length+'/160'"></textarea>
+        </label>
+
+        <!-- Links section -->
+        <div class="field" style="gap:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span>Links do perfil</span>
+            <span style="font-size:11px;font-weight:400;text-transform:none;color:var(--ink-3)" id="links-count-label">0 / 5</span>
+          </div>
+          <div class="link-editor-list" id="link-editor-list"></div>
+          <button class="link-add-btn" type="button" id="add-link-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar link
+          </button>
+        </div>
+
         <label class="toggle-row">
           <span><strong>Perfil publico</strong><span>Permite que jogadores encontrem seu perfil.</span></span>
           <input type="checkbox" id="edit-public-profile">
@@ -477,7 +559,7 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
     </div>
     <div class="modal-foot">
       <button class="btn secondary" type="button" data-close-modal>Cancelar</button>
-      <button class="btn primary" type="button" id="save-profile">Salvar</button>
+      <button class="btn primary" type="button" id="save-profile">Salvar alteracoes</button>
     </div>
   </section>
 </div>
@@ -633,7 +715,7 @@ function relationLabel(type) {
   return type === 'followers' ? 'Seguidores' : type === 'friends' ? 'Amigos' : 'Seguindo';
 }
 function profileName(profile) {
-  return profile?.minecraft_name || profile?.username || 'Steve';
+  return profile?.display_name || profile?.minecraft_name || profile?.username || 'Steve';
 }
 function profileIdentifier(profile = state.data?.profile) {
   return profile?.minecraft_name || profile?.username || `id:${profile?.id}`;
@@ -641,6 +723,32 @@ function profileIdentifier(profile = state.data?.profile) {
 window.navigateProfile = identifier => {
   location.href = `profile.html?id=${encodeURIComponent(identifier)}`;
 };
+
+function getLinkIcon(url) {
+  try {
+    const host = new URL(url).hostname.replace('www.', '');
+    if (host.includes('twitter') || host.includes('x.com')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.258 5.632 5.906-5.632Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+    if (host.includes('youtube')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+    if (host.includes('twitch')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>`;
+    if (host.includes('instagram')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>`;
+    if (host.includes('github')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>`;
+    if (host.includes('discord')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>`;
+    if (host.includes('tiktok')) return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`;
+    // Default globe icon
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+  } catch { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`; }
+}
+function renderProfileLinks(links) {
+  if (!Array.isArray(links) || !links.length) return '';
+  return `<div class="profile-links">${links.map(link => {
+    if (!link || !link.url) return '';
+    const label = link.label || (link.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) || 'Link';
+    return `<a class="profile-link-item" href="${esc(link.url)}" target="_blank" rel="noopener noreferrer" title="${esc(link.url)}">
+      ${getLinkIcon(link.url)}
+      ${esc(label)}
+    </a>`;
+  }).filter(Boolean).join('')}</div>`;
+}
 
 function renderProfile(data) {
   state.data = data;
@@ -680,6 +788,7 @@ function renderProfile(data) {
           <div class="profile-actions">${actionHtml}</div>
         </div>
         <p class="bio">${esc(p.bio || (isMe ? 'Adicione uma descricao para ajudar outros jogadores a conhecerem voce.' : 'Sem bio publica por enquanto.'))}</p>
+        ${renderProfileLinks(p.profile_links)}
         <div class="stats">
           <button class="stat" type="button" data-rel="followers"><strong>${num(p.followers_count)}</strong><span>Seguidores</span></button>
           <button class="stat" type="button" data-rel="following"><strong>${num(p.following_count)}</strong><span>Seguindo</span></button>
@@ -773,35 +882,131 @@ async function reportUser(userId) {
   }
 }
 
+// ── Links editor state ──
+let _editLinks = [];
+
+function renderLinkEditor() {
+  const list = $('#link-editor-list');
+  const addBtn = $('#add-link-btn');
+  const countLabel = $('#links-count-label');
+  if (!list) return;
+  countLabel && (countLabel.textContent = `${_editLinks.length} / 5`);
+  addBtn && (addBtn.disabled = _editLinks.length >= 5);
+
+  list.innerHTML = _editLinks.map((lk, i) => `
+    <div class="link-editor-row" data-link-idx="${i}">
+      <div class="link-row-handle">
+        <div class="link-row-top">
+          <div>
+            <div class="link-field-label">Título exibido</div>
+            <input class="link-field-input" type="text" maxlength="40"
+              placeholder="ex: Meu YouTube"
+              value="${esc(lk.label || '')}"
+              data-lk-label="${i}" autocomplete="off">
+          </div>
+          <button class="link-remove-btn" type="button" data-lk-remove="${i}" aria-label="Remover link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div class="link-row-bottom">
+          <div class="link-field-label">URL</div>
+          <input class="link-field-input" type="url" maxlength="300"
+            placeholder="https://..."
+            value="${esc(lk.url || '')}"
+            data-lk-url="${i}" autocomplete="off">
+        </div>
+      </div>
+    </div>`).join('');
+
+  // Live-sync inputs
+  list.querySelectorAll('[data-lk-label]').forEach(inp => {
+    inp.addEventListener('input', () => { _editLinks[Number(inp.dataset.lkLabel)].label = inp.value; });
+  });
+  list.querySelectorAll('[data-lk-url]').forEach(inp => {
+    inp.addEventListener('input', () => { _editLinks[Number(inp.dataset.lkUrl)].url = inp.value; });
+  });
+  list.querySelectorAll('[data-lk-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _editLinks.splice(Number(btn.dataset.lkRemove), 1);
+      renderLinkEditor();
+    });
+  });
+}
+
 async function openEditor() {
   try {
     const prefs = await api('/api/me/preferences');
-    $('#edit-bio').value = prefs.bio ?? state.data?.profile?.bio ?? '';
-    $('#edit-public-profile').checked = Boolean(prefs.public_profile);
-    $('#edit-public-history').checked = Boolean(prefs.public_history);
+    const profile = state.data?.profile || {};
+    // Display name
+    const nameInput = $('#edit-display-name');
+    if (nameInput) nameInput.value = prefs.display_name ?? profile.display_name ?? '';
+    // Bio
+    const bioEl = $('#edit-bio');
+    if (bioEl) {
+      bioEl.value = prefs.bio ?? profile.bio ?? '';
+      const cc = $('#bio-char-count');
+      if (cc) cc.textContent = bioEl.value.length + '/160';
+    }
+    // Checkboxes
+    const pubProfile = $('#edit-public-profile');
+    const pubHistory = $('#edit-public-history');
+    if (pubProfile) pubProfile.checked = Boolean(prefs.public_profile);
+    if (pubHistory) pubHistory.checked = Boolean(prefs.public_history);
+    // Links
+    _editLinks = Array.isArray(prefs.profile_links) ? prefs.profile_links.map(l => ({ label: l.label || '', url: l.url || '' }))
+      : Array.isArray(profile.profile_links) ? profile.profile_links.map(l => ({ label: l.label || '', url: l.url || '' }))
+      : [];
+    renderLinkEditor();
+    // Add link button
+    const addBtn = $('#add-link-btn');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        if (_editLinks.length < 5) { _editLinks.push({ label: '', url: '' }); renderLinkEditor(); }
+      };
+    }
     $('#edit-modal').classList.add('show');
     document.body.style.overflow = 'hidden';
-    $('#edit-bio').focus();
+    setTimeout(() => $('#edit-display-name')?.focus(), 60);
   } catch (e) {
     toast('Editor indisponivel', e.message, 'error');
   }
 }
+
 async function saveEditor() {
   const button = $('#save-profile');
-  const bio = $('#edit-bio').value.trim();
-  const publicProfile = $('#edit-public-profile').checked;
-  const publicHistory = $('#edit-public-history').checked;
+  const displayName = ($('#edit-display-name')?.value || '').trim();
+  const bio = ($('#edit-bio')?.value || '').trim();
+  const publicProfile = $('#edit-public-profile')?.checked ?? true;
+  const publicHistory = $('#edit-public-history')?.checked ?? false;
+
+  // Validate links
+  const validLinks = _editLinks.filter(l => l.url && l.url.trim());
+  for (const lk of validLinks) {
+    try { new URL(lk.url.startsWith('http') ? lk.url : 'https://' + lk.url); }
+    catch { toast('Link inválido', 'Verifique os URLs dos seus links.', 'error'); return; }
+    if (!lk.url.startsWith('http')) lk.url = 'https://' + lk.url;
+  }
+
   setButtonBusy(button, true, 'Salvando');
   try {
     const current = await api('/api/me/preferences');
     const saved = await api('/api/me/preferences', {
       method: 'PUT',
-      body: JSON.stringify({ ...current, bio, public_profile: publicProfile, public_history: publicHistory }),
+      body: JSON.stringify({
+        ...current,
+        ...(displayName ? { display_name: displayName } : {}),
+        bio,
+        public_profile: publicProfile,
+        public_history: publicHistory,
+        profile_links: validLinks,
+      }),
     });
     Object.assign(state.data.profile, {
-      bio: saved.bio,
+      display_name: saved.display_name ?? displayName,
+      bio: saved.bio ?? bio,
       public_profile: saved.public_profile,
       public_history: saved.public_history,
+      profile_links: saved.profile_links ?? validLinks,
     });
     closeModals();
     renderProfile(state.data);
@@ -809,7 +1014,7 @@ async function saveEditor() {
   } catch (e) {
     toast('Nao foi possivel salvar', e.message, 'error');
   } finally {
-    setButtonBusy(button, false, 'Salvar');
+    setButtonBusy(button, false, 'Salvar alteracoes');
   }
 }
 function closeModals() {
