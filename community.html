@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/social-chat.css">
 <script>
 (function () {
@@ -1003,7 +1003,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 :root{
   --ff:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --ff-mono:'DM Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
-  --ff-display:'Outfit','Syne',sans-serif;
+  --ff-display:'Bebas Neue','Syne',sans-serif;
   --ff-serif:'Instrument Serif',Georgia,serif;
   --bg:#f2eee5;
   --bg-2:#e8e0cf;
@@ -1122,33 +1122,18 @@ body::after{
 [data-theme=dark] .topbar{background:rgba(10,10,8,.78)}
 .topbar-inner{max-width:1320px;width:calc(100% - 40px);gap:18px}
 .brand{gap:12px}
-.brand-mark{
-  position:relative;
-  display:grid;
-  place-items:center;
+.brand img{
   width:42px;
   height:42px;
   padding:2px;
   border-radius:6px;
+  object-fit:contain;
   border:1px solid var(--line-strong);
   background:color-mix(in srgb,var(--surface-solid) 18%,transparent);
   box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent);
-  overflow:hidden;
-  flex:0 0 auto;
 }
-.brand .brand-logo{
-  width:100%;
-  height:100%;
-  border:0;
-  padding:0;
-  border-radius:4px;
-  object-fit:contain;
-  background:transparent;
-  box-shadow:none;
-}
-.brand-logo-light{display:none}
-[data-theme=light] .brand-logo-dark{display:none}
-[data-theme=light] .brand-logo-light{display:block}
+.brand img{content:url('assets/images/fa-icon-dark.png')}
+[data-theme=light] .brand img{content:url('assets/images/fa-icon-light.png')}
 .brand-text{display:flex;align-items:baseline;gap:8px}
 .brand-text strong{font-family:var(--ff);font-size:15px;font-weight:700;color:var(--ink)}
 .brand-text small{
@@ -1230,9 +1215,9 @@ body::after{
 }
 .col-header h1{
   font-family:var(--ff-display);
-  font-size:40px;
-  line-height:1.04;
-  font-weight:900;
+  font-size:44px;
+  line-height:.92;
+  font-weight:400;
   color:var(--ink);
 }
 .col-header p{
@@ -1315,9 +1300,9 @@ body::after{
   max-width:520px;
   margin:0;
   font-family:var(--ff-display);
-  font-size:56px;
-  line-height:1;
-  font-weight:900;
+  font-size:64px;
+  line-height:.92;
+  font-weight:400;
   color:var(--ink);
 }
 .command-copy > p:not(.command-kicker){
@@ -1474,42 +1459,6 @@ body::after{
   font-weight:700;
   color:var(--ink);
 }
-.network-card{
-  padding:14px;
-  display:grid;
-  gap:10px;
-  background:
-    linear-gradient(135deg,var(--accent-soft),transparent 64%),
-    var(--surface);
-}
-.network-card h3{
-  font-family:var(--ff);
-  font-size:15px;
-  line-height:1.25;
-  font-weight:800;
-}
-.network-card p{
-  color:var(--ink-2);
-  font-size:12.5px;
-  line-height:1.5;
-}
-.network-metrics{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:7px;
-}
-.network-metrics button{
-  min-width:0;
-  padding:9px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  background:color-mix(in srgb,var(--surface-soft) 75%,transparent);
-  text-align:left;
-  cursor:pointer;
-}
-.network-metrics strong{display:block;font-size:18px;font-weight:800;color:var(--ink)}
-.network-metrics span{display:block;margin-top:1px;font-size:10.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase}
-.network-search-btn{width:100%}
 .progress-track{height:7px;border-color:var(--line);background:color-mix(in srgb,var(--bg) 72%,#000 8%)}
 .progress-bar{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
 .friends-scroll-wrap{
@@ -1690,335 +1639,6 @@ body::after{
   font-weight:700;
 }
 .trend-item .count{flex:0 0 auto;white-space:nowrap}
-.profile-hero{overflow:hidden}
-.profile-cover{
-  height:160px;
-  background-size:cover;
-  background-position:center;
-}
-.profile-hero-body{padding:0 18px 18px}
-.profile-topline{align-items:flex-end}
-.profile-av{
-  width:96px;
-  height:96px;
-  border-radius:8px;
-}
-.profile-name-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
-}
-.profile-name{font-family:var(--ff);font-size:28px;font-weight:800}
-.profile-social-line{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  flex-wrap:wrap;
-  margin-top:12px;
-  color:var(--ink-2);
-  font-size:13px;
-}
-.profile-social-line button,
-.profile-social-line span{
-  display:inline-flex;
-  align-items:baseline;
-  gap:5px;
-  color:var(--ink-2);
-}
-.profile-social-line button{cursor:pointer}
-.profile-social-line button:hover{color:var(--accent)}
-.profile-social-line strong{
-  color:var(--ink);
-  font-weight:800;
-}
-.profile-stats-grid{display:none}
-.profile-insights{
-  display:grid;
-  grid-template-columns:minmax(0,1.1fr) minmax(260px,.9fr);
-  gap:12px;
-  margin-top:12px;
-}
-.profile-about-card{
-  min-width:0;
-  border-radius:8px;
-  padding:14px;
-}
-.profile-about-card p{
-  margin-top:8px;
-  color:var(--ink-2);
-  font-size:13px;
-  line-height:1.55;
-}
-.profile-badges-row{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  padding:2px 0 2px;
-  scrollbar-width:thin;
-}
-.badge-mini{
-  min-width:190px;
-  border-radius:8px;
-}
-.profile-content-grid{
-  display:block;
-  margin-top:12px;
-}
-.profile-tabs2{
-  position:sticky;
-  top:calc(var(--topbar-h) + 8px);
-  z-index:55;
-  display:flex;
-  gap:6px;
-  margin:0 0 10px;
-  padding:6px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:color-mix(in srgb,var(--surface-solid) 84%,transparent);
-  backdrop-filter:blur(14px);
-}
-.profile-tabs2 button{
-  min-height:36px;
-  flex:1;
-  border-radius:6px;
-  font-family:var(--ff);
-  font-size:13px;
-  font-weight:800;
-}
-.profile-tabs2 button:hover,
-.profile-tabs2 button.is-active{
-  border-color:transparent;
-  background:var(--accent);
-  color:#0a0a08;
-}
-[data-theme=light] .profile-tabs2 button:hover,
-[data-theme=light] .profile-tabs2 button.is-active{color:#fff}
-.profile-tab-content{
-  display:grid;
-  gap:10px;
-  min-height:280px;
-}
-.reply-card{
-  display:grid;
-  gap:10px;
-  padding:14px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:var(--surface);
-  box-shadow:var(--shadow-sm);
-}
-.reply-card blockquote{
-  margin:0;
-  padding:10px 12px;
-  border-left:3px solid var(--accent);
-  border-radius:0 6px 6px 0;
-  background:color-mix(in srgb,var(--surface-soft) 62%,transparent);
-  color:var(--ink);
-  line-height:1.5;
-}
-.reply-card .reply-context{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  flex-wrap:wrap;
-  color:var(--ink-3);
-  font-size:12px;
-}
-.profile-inline-link{
-  color:var(--accent);
-  font-weight:800;
-  cursor:pointer;
-}
-.profile-inline-link:hover{text-decoration:underline}
-.profile-media-grid{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:8px;
-}
-.media-tile{
-  position:relative;
-  aspect-ratio:1;
-  overflow:hidden;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:var(--surface);
-}
-.media-tile img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
-.media-tile span{
-  position:absolute;
-  left:8px;
-  bottom:8px;
-  padding:3px 6px;
-  border-radius:5px;
-  background:rgba(0,0,0,.58);
-  color:#fff;
-  font-size:11px;
-}
-.edit-profile-body{display:grid;gap:12px}
-.edit-profile-preview{
-  overflow:hidden;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:var(--surface);
-}
-.edit-profile-preview .profile-cover{height:118px}
-.edit-preview-row{
-  display:flex;
-  align-items:flex-end;
-  gap:12px;
-  padding:0 14px 14px;
-  margin-top:-36px;
-}
-.edit-preview-row .profile-av{width:76px;height:76px}
-.edit-preview-row strong{display:block;font-size:20px;font-weight:800}
-.edit-preview-row small{display:block;margin-top:2px;color:var(--ink-3)}
-.edit-field{
-  display:grid;
-  gap:7px;
-  font-size:12px;
-  font-weight:800;
-  color:var(--ink-2);
-}
-.edit-field input,
-.edit-field select{
-  width:100%;
-  height:40px;
-  padding:0 11px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  background:var(--surface-soft);
-  outline:none;
-}
-.edit-field textarea{min-height:92px}
-.edit-field input:focus,
-.edit-field select:focus,
-.edit-field textarea:focus{
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
-}
-.edit-toggle-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
-  padding:9px 11px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  background:var(--surface-soft);
-  font-size:13px;
-  font-weight:800;
-}
-.search-page{
-  display:grid;
-  gap:14px;
-  padding:20px 0 0;
-}
-.search-hero{
-  border:1px solid var(--line);
-  border-radius:8px;
-  padding:22px;
-  background:
-    linear-gradient(135deg,var(--accent-soft),transparent 58%),
-    var(--surface);
-  box-shadow:var(--shadow-md);
-}
-.search-hero h1{
-  margin:0 0 8px;
-  font-family:var(--ff-display);
-  font-size:44px;
-  line-height:1.05;
-  font-weight:900;
-}
-.search-hero p{color:var(--ink-2);line-height:1.55}
-.search-page-input{
-  position:relative;
-  margin-top:16px;
-}
-.search-page-input svg{
-  position:absolute;
-  left:14px;
-  top:50%;
-  transform:translateY(-50%);
-  color:var(--ink-3);
-}
-.search-page-input input{
-  width:100%;
-  height:48px;
-  padding:0 14px 0 42px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:var(--surface-solid);
-  outline:none;
-}
-.search-page-input input:focus{
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
-}
-.search-layout{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 260px;
-  gap:14px;
-  align-items:start;
-}
-.search-results-panel,
-.search-side-panel{
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:var(--surface);
-  box-shadow:var(--shadow-sm);
-  padding:14px;
-}
-.search-results{margin-top:0}
-.search-section{
-  display:grid;
-  gap:8px;
-}
-.search-section + .search-section{margin-top:16px}
-.search-section h2{
-  font-size:14px;
-  font-weight:800;
-  text-transform:uppercase;
-}
-.search-result{
-  width:100%;
-  text-align:left;
-}
-.graph-tabs{
-  display:flex;
-  gap:6px;
-  padding:10px 12px 0;
-}
-.graph-tabs button{
-  flex:1;
-  min-height:34px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  font-weight:800;
-  color:var(--ink-2);
-  cursor:pointer;
-}
-.graph-tabs button.is-active{
-  border-color:transparent;
-  background:var(--accent);
-  color:#0a0a08;
-}
-.graph-search{padding:10px 12px}
-.graph-search input{
-  width:100%;
-  height:38px;
-  padding:0 11px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  background:var(--surface-soft);
-  outline:none;
-}
 .notif-row,
 .comment-row{
   border-color:var(--line);
@@ -2093,17 +1713,6 @@ body::after{
   .friends-scroll-wrap{margin-bottom:4px}
   .post-card{padding:14px 12px}
   .fab-post{right:14px;bottom:92px}
-  .profile-insights,
-  .search-layout{grid-template-columns:1fr}
-  .profile-cover{height:128px}
-  .profile-topline{align-items:flex-start;flex-direction:column}
-  .profile-av{width:84px;height:84px}
-  .profile-tabs2{top:calc(var(--topbar-h) + 6px);overflow-x:auto}
-  .profile-tabs2 button{min-width:104px}
-  .profile-media-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .search-hero{padding:18px}
-  .search-hero h1{font-size:40px}
-  .search-side-panel{order:-1}
 }
 @media(max-width:440px){
   .community-command{padding:14px}
@@ -2129,12 +1738,9 @@ body::after{
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="community.html" aria-label="Início da comunidade">
-      <span class="brand-mark" aria-hidden="true">
-        <img class="brand-logo brand-logo-dark" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
-        <img class="brand-logo brand-logo-light" src="assets/images/fa-icon-light.png" alt="" width="72" height="72">
-      </span>
-      <span class="brand-text"><strong>FA Community</strong><small>Força Aliada</small></span>
+    <a class="brand" href="index.html" aria-label="Início">
+      <img src="assets/images/fa-icon-dark.png" alt="Força Aliada" width="72" height="72">
+      <span class="brand-text"><strong>Força Aliada</strong><small>Comunidade</small></span>
     </a>
     <div class="top-search" role="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -2213,18 +1819,11 @@ body::after{
         Minha Conta
       </a>
     </div>
-    <div class="card network-card" id="network-card">
-      <p class="eyebrow">Agora na rede</p>
-      <h3 id="network-card-title">Encontre sua próxima conversa</h3>
-      <p id="network-card-copy">Use a busca para achar jogadores, posts e assuntos sem sair da comunidade.</p>
-      <div class="network-metrics">
-        <button type="button" data-open-search-page><strong id="network-player-count">--</strong><span>jogadores</span></button>
-        <button type="button" data-open-search-page><strong id="network-hot-count">--</strong><span>em alta</span></button>
-      </div>
-      <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Abrir busca
-      </button>
+    <div class="card season-card">
+      <p class="eyebrow">Temporada Ativa</p>
+      <h3>Season II</h3>
+      <p>Ganhe Mérito jogando e suba no ranking da comunidade.</p>
+      <div class="progress-track"><div class="progress-bar" style="width:38%"></div></div>
     </div>
   </aside>
 
@@ -2395,13 +1994,41 @@ body::after{
       <a class="mobile-drawer-item" href="account.html?tab=notificacoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificacoes</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
       <a class="mobile-drawer-item" href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Minha conta</span></a>
     </nav>
-    <div class="mobile-drawer-season network-card">
-      <p class="eyebrow">Agora na rede</p>
-      <h3>Busca inteligente</h3>
-      <p>Encontre pessoas, respostas e assuntos antes de postar.</p>
-      <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>Buscar na comunidade</button>
+    <div class="mobile-drawer-season">
+      <p class="eyebrow">Temporada ativa</p>
+      <h3>Season II</h3>
+      <p>Ganhe merito participando, fazendo amigos e puxando boas conversas no feed.</p>
+      <div class="progress-track"><div class="progress-bar" style="width:38%"></div></div>
     </div>
   </aside>
+</div>
+
+<div class="backdrop" id="search-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="search-title">
+    <div class="sheet-header">
+      <h2 id="search-title">Buscar na comunidade</h2>
+      <button class="close-btn" data-close="search-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="search-box" style="margin-bottom:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="search" id="modal-search-input" placeholder="Buscar perfis, posts, hashtags..." autocomplete="off">
+      </div>
+      <div class="search-panel-intro" id="search-empty-state">
+        <div>
+          <p class="profile-section-title"><strong>Em alta</strong><span>hashtags</span></p>
+          <div class="search-chip-row" id="search-trend-chips"></div>
+        </div>
+        <div>
+          <p class="profile-section-title"><strong>Buscas recentes</strong><span>salvas</span></p>
+          <div class="search-chip-row" id="search-recent-chips"></div>
+        </div>
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
 </div>
 
 <!-- RELATION MODAL -->
@@ -2495,20 +2122,6 @@ const mentionHTML = t => esc(t||'')
   .replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-token">@$2</span>')
   .replace(/(^|[\s([{])#([a-z0-9_A-ZÀ-ÿ]{2,32})/gi,'$1<button class="mention-token hashtag-token" data-hashtag="$2" type="button">#$2</button>');
 const skin = (n,s=50) => `https://minotar.net/helm/${encodeURIComponent((n||'Steve').trim()||'Steve')}/${s}.png`;
-const safeProfileImageUrl = v => {
-  const raw=String(v||'').trim();
-  if(!raw) return '';
-  try{
-    const url=new URL(raw);
-    return ['http:','https:'].includes(url.protocol)?url.href:'';
-  }catch{return ''}
-};
-const displayName = p => String(p?.display_name || p?.minecraft_name || p?.username || 'Steve').trim();
-const handleName = p => String(p?.username || p?.minecraft_name || 'jogador').trim();
-const avatar = (p, s=50) => {
-  const custom = safeProfileImageUrl(p?.avatar_url || p?.photo_url);
-  return custom || skin(p?.minecraft_name || p?.username || 'Steve', s);
-};
 const num  = v => Number(v||0).toLocaleString('pt-BR');
 const time = v => {
   if(!v) return'';
@@ -2579,7 +2192,6 @@ const Router={
     const query = url.searchParams;
     if(query.get('post')) return this.routes['/community/post/:id']?.(query.get('post'));
     if(query.get('profile')) return this.routes['/profile/:id']?.(query.get('profile'));
-    if(query.get('search') === '1') return showSearchPage('');
     if(query.get('tag')) return showHashtagRoute(query.get('tag'));
     if(query.get('q')) return showSearchRoute(query.get('q'));
     const p=(url.pathname.replace(/\/+$/,'')||'/community');
@@ -2754,30 +2366,20 @@ async function loadMe(){
   const me=await api('/api/me');
   state.me=me;
   const n=me.minecraft_name||me.username||'Steve';
-  const shown=displayName(me);
   const rk=rankInfo(me.rank||me.role,me.merit);
-  $('#top-av').src=avatar(me,50);
-  $('#top-name').textContent=shown;
-  if($('#inline-comp-av')) $('#inline-comp-av').src=avatar(me,50);
-  if($('#modal-comp-av')) $('#modal-comp-av').src=avatar(me,50);
-  $('#mini-av').src=avatar(me,100);
-  $('#mini-name').textContent=shown;
+  $('#top-av').src=skin(n,50);
+  $('#top-name').textContent=n;
+  if($('#inline-comp-av')) $('#inline-comp-av').src=skin(n,50);
+  if($('#modal-comp-av')) $('#modal-comp-av').src=skin(n,50);
+  $('#mini-av').src=skin(n,100);
+  $('#mini-name').textContent=n;
   $('#mini-handle').textContent=`@${me.username||n}`;
-  if($('#drawer-av')) $('#drawer-av').src=avatar(me,50);
-  if($('#drawer-name')) $('#drawer-name').textContent=shown;
+  if($('#drawer-av')) $('#drawer-av').src=skin(n,50);
+  if($('#drawer-name')) $('#drawer-name').textContent=n;
   if($('#drawer-handle')) $('#drawer-handle').textContent=`@${me.username||n}`;
   // Rank color cover
   const cover=$('#mini-cover');
-  if(cover){
-    const coverUrl=safeProfileImageUrl(me.cover_url);
-    if(coverUrl){
-      cover.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.3)),url("${coverUrl.replace(/"/g,'%22')}")`;
-      cover.style.backgroundSize='cover';
-      cover.style.backgroundPosition='center';
-    }else{
-      cover.style.background=`linear-gradient(135deg,color-mix(in srgb,${rk.color} 85%,#000),color-mix(in srgb,var(--accent-2) 70%,#000))`;
-    }
-  }
+  if(cover) cover.style.background=`linear-gradient(135deg,color-mix(in srgb,${rk.color} 85%,#000),color-mix(in srgb,var(--accent-2) 70%,#000))`;
   updateThemeIcon(document.documentElement.getAttribute('data-theme'));
   updateCommunityPulse();
 }
@@ -2803,20 +2405,12 @@ function updateCommunityPulse(){
   const hot=$('#pulse-hot-count');
   const status=$('#pulse-status-copy');
   const mode=$('#pulse-mode-label');
-  const netPlayers=$('#network-player-count');
-  const netHot=$('#network-hot-count');
-  const netTitle=$('#network-card-title');
-  const netCopy=$('#network-card-copy');
   if(greeting) greeting.textContent=copy;
   if(players) players.textContent=state.players?.length?num(state.players.length):'--';
   if(posts) posts.textContent=num(state.posts.length||0);
   if(hot) hot.textContent=state.trendCount?num(Math.min(state.trendCount,9)):'--';
   if(status) status.textContent=state.players?.length?'gente real para chamar pelo nome':'procurando sinais de vida';
   if(mode) mode.textContent=scope;
-  if(netPlayers) netPlayers.textContent=state.players?.length?num(state.players.length):'--';
-  if(netHot) netHot.textContent=state.trendCount?num(state.trendCount):'--';
-  if(netTitle) netTitle.textContent=state.notifUnread>0?'Você tem movimento novo':'Encontre sua próxima conversa';
-  if(netCopy) netCopy.textContent=state.notifUnread>0?`${num(state.notifUnread)} notificação${state.notifUnread>1?'ões':''} esperando sua atenção.`:'Busque jogadores, posts e assuntos sem abrir popups.';
 }
 
 /* ======================= FEED ======================= */
@@ -2827,8 +2421,6 @@ function postCardHTML(p){
   const mc=isRepost?(p.repost_original_minecraft_name||p.repost_original_username||'Steve'):reposter;
   const authorId=isRepost?p.repost_original_author_id:p.author_id;
   const username=isRepost?(p.repost_original_username||mc):(p.username||mc);
-  const shown=isRepost?(p.repost_original_display_name||mc):(p.display_name||mc);
-  const avSrc=isRepost?(p.repost_original_avatar_url||skin(mc,50)):(p.avatar_url||skin(mc,50));
   const rk=rankInfo(isRepost?(p.repost_original_rank||p.repost_original_role):(p.rank||p.role),isRepost?p.repost_original_merit:p.merit);
   const targetPostId=p.repost_of_id||p.id;
   const displayContent=isRepost?(p.repost_original_content||''):p.content;
@@ -2839,14 +2431,14 @@ function postCardHTML(p){
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
   const postUrl=communityUrl({post:targetPostId});
   return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
-    ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(p.display_name||reposter)} repostou</span></div>`:''}
+    ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(reposter)} repostou</span></div>`:''}
     <div class="post-layout">
-      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${esc(avSrc)}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${skin(mc,50)}'">
+      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">
       <div>
         <div class="post-head">
           <div class="post-author">
             ${p.is_pinned?`<span class="pin-flag">${IC.pin} Fixado</span>`:''}
-            <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" style="cursor:pointer">${esc(shown)}</strong>
+            <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" style="cursor:pointer">${esc(mc)}</strong>
             <span class="handle">@${esc(username)}</span>
             <span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>
           </div>
@@ -2950,17 +2542,16 @@ async function loadFriendsBar(){
     const barRows=(friends.length?friends:players).slice(0,8);
     list.innerHTML=barRows.map((p)=>{
       const n=p.minecraft_name||p.username||'Steve'; 
-      const shown=displayName(p);
       const isOnline = p.is_online === true; // AGORA USA O DADO REAL DO BANCO!
-      return `<div class="friend-item js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><div class="friend-av-wrap"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(shown)}</span></div>`;
+      return `<div class="friend-item js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><div class="friend-av-wrap"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'">${isOnline?`<div class="status-dot playing"></div>`:''}</div><span class="friend-name">${esc(n)}</span></div>`;
     }).join('');
     if(reqList) reqList.innerHTML=requests.length?requests.map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label)} quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
     }).join(''):'<p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p>';
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
       const n=p.minecraft_name||p.username||'Steve'; const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
     }).join('');
   }catch(e){}
 }
@@ -3278,50 +2869,6 @@ function commentsHTML(comments){
 }
 
 /* ======================= RENDER PROFILE ROUTE ======================= */
-const PROFILE_TABS=[
-  ['posts','Posts'],
-  ['replies','Respostas'],
-  ['reposts','Reposts'],
-  ['media','Mídia'],
-];
-function profileEmptyHTML(title,msg){
-  return`<div class="empty-card"><div class="empty-icon">${IC.empty}</div><h3>${esc(title)}</h3><p>${esc(msg)}</p></div>`;
-}
-function extractMediaItems(rows=[]){
-  const re=/https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s"'<>]*)?/gi;
-  const seen=new Set();
-  return rows.flatMap(p=>{
-    const text=[p.content,p.repost_original_content].filter(Boolean).join(' ');
-    return [...text.matchAll(re)].map(match=>{
-      const url=match[0];
-      if(seen.has(url)) return null;
-      seen.add(url);
-      return{url,post_id:p.repost_of_id||p.id,label:displayName(p),created_at:p.created_at};
-    }).filter(Boolean);
-  });
-}
-function replyCardHTML(reply,prof){
-  const postId=reply.id;
-  const authorMc=reply.minecraft_name||reply.username||'Steve';
-  const authorName=displayName(reply);
-  const profileName=displayName(prof);
-  return`<article class="reply-card" data-search-post="${esc(postId)}">
-    <div class="reply-context">
-      <span><strong>${esc(profileName)}</strong> respondeu ${esc(time(reply.comment_created_at))} em um post de</span>
-      <span class="profile-inline-link js-profile" role="button" tabindex="0" data-mc="${esc(authorMc)}" data-uid="${esc(reply.author_id)}">${esc(authorName)}</span>
-    </div>
-    <blockquote>${mentionHTML(reply.comment_content||'')}</blockquote>
-    <button class="search-result search-result-post" type="button" data-search-post="${esc(postId)}">
-      <span><strong>${esc(authorName)}</strong><small>${esc(String(reply.content||'').slice(0,160))}</small></span>
-      <span>${esc(time(reply.created_at))}</span>
-    </button>
-  </article>`;
-}
-function mediaGridHTML(items){
-  if(!items.length) return profileEmptyHTML('Nenhuma mídia pública','Quando posts com imagens aparecerem no perfil, eles ficam organizados aqui.');
-  return`<div class="profile-media-grid">${items.map(item=>`<button class="media-tile" type="button" data-search-post="${esc(item.post_id)}"><img src="${esc(item.url)}" alt="${esc(item.label)}" loading="lazy"><span>${esc(time(item.created_at))}</span></button>`).join('')}</div>`;
-}
-
 async function renderProfileRoute(identifier){
   showRouteUI(`
     <div class="route-top">
@@ -3338,15 +2885,9 @@ async function renderProfileRoute(identifier){
     const data=await api(`/api/community/player/${encodeURIComponent(identifier)}/full-profile`);
     state.profileIdentifier=identifier;
     state.profileData=data;
-    const prof=data.profile||{};
-    const posts=Array.isArray(data.posts)?data.posts:[];
-    const replies=Array.isArray(data.replies)?data.replies:[];
-    const reposts=Array.isArray(data.reposts)?data.reposts:[];
-    const stats=data.game_stats;
-    const badges=Array.isArray(data.badges)?data.badges:[];
+    const prof=data.profile||{};const posts=Array.isArray(data.posts)?data.posts:[];
+    const stats=data.game_stats;const badges=Array.isArray(data.badges)?data.badges:[];
     const mc=prof.minecraft_name||prof.username||'Steve';
-    const shown=displayName(prof);
-    const handle=handleName(prof);
     const rk=rankInfo(prof.rank||prof.role,prof.merit);
     const isMe=Number(prof.id)===Number(state.me?.id);
     const profilePosts=posts.map(p=>({
@@ -3354,8 +2895,6 @@ async function renderProfileRoute(identifier){
       author_id:prof.id,
       username:prof.username,
       minecraft_name:mc,
-      display_name:prof.display_name,
-      avatar_url:prof.avatar_url,
       role:prof.role,
       rank:prof.rank,
       merit:prof.merit,
@@ -3364,130 +2903,96 @@ async function renderProfileRoute(identifier){
       likes_count:Number(p.likes_count||0),
       reposts_count:Number(p.reposts_count||0),
     }));
-    const profileReposts=reposts.map(p=>({
-      ...p,
-      author_id:prof.id,
-      username:prof.username,
-      minecraft_name:mc,
-      display_name:prof.display_name,
-      avatar_url:prof.avatar_url,
-      role:prof.role,
-      rank:prof.rank,
-      merit:prof.merit,
-      recent_comments:Array.isArray(p.recent_comments)?p.recent_comments:[],
-      comments_count:Number(p.comments_count||0),
-      likes_count:Number(p.likes_count||0),
-      reposts_count:Number(p.reposts_count||0),
-    }));
-    [...profilePosts,...profileReposts].forEach(post=>{
+    profilePosts.forEach(post=>{
       const idx=state.posts.findIndex(item=>Number(item.id)===Number(post.id));
       if(idx>=0) state.posts[idx]={...state.posts[idx],...post};
       else state.posts.push(post);
     });
-    const mediaItems=Array.isArray(data.media)&&data.media.length?data.media:extractMediaItems([...profilePosts,...profileReposts]);
-    const defaultTab=PROFILE_TABS.some(([id])=>id===prof.profile_layout)?prof.profile_layout:'posts';
-    document.title=`${shown} | FA Community`;
+    document.title=`${mc} | Força Aliada`;
     const bars=stats?.daily_hours?.length
       ?stats.daily_hours.map(d=>`<span style="height:${Math.max(4,Math.min(44,Number(d.hours||0)*10))}px"></span>`).join('')
       :Array.from({length:7},()=>'<span style="height:4px"></span>').join('');
-    const rankBenefits=Array.isArray(prof.rank_benefits)?prof.rank_benefits:[];
-    const renderTab=tab=>{
-      if(tab==='replies') return replies.length
-        ?`<div class="profile-feed-stack">${replies.map(r=>replyCardHTML(r,prof)).join('')}</div>`
-        :profileEmptyHTML('Sem respostas públicas','As respostas deste perfil vão aparecer aqui.');
-      if(tab==='reposts') return profileReposts.length
-        ?`<div class="profile-feed-stack">${profileReposts.map(postCardHTML).join('')}</div>`
-        :profileEmptyHTML('Nenhum repost ainda','Quando este perfil repostar algo, o conteúdo aparece aqui.');
-      if(tab==='media') return mediaGridHTML(mediaItems);
-      return profilePosts.length
-        ?`<div class="profile-feed-stack">${profilePosts.map(postCardHTML).join('')}</div>`
-        :profileEmptyHTML('Nenhum post público','Este perfil ainda não publicou no feed.');
-    };
     routeCol.innerHTML=`
       <div class="route-top">
         <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
-        <span class="crumb-path">@${esc(handle)}</span>
+        <span class="crumb-path">@${esc(prof.username||mc)}</span>
       </div>
       <div class="profile-hero">
-        <div class="profile-cover ${rk.cls}" data-profile-cover="${esc(safeProfileImageUrl(prof.cover_url)||'')}"></div>
+        <div class="profile-cover ${rk.cls}"></div>
         <div class="profile-hero-body">
           <div class="profile-topline">
-            <img class="profile-av" src="${esc(avatar(prof,140))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${skin(mc,140)}'">
+            <img class="profile-av" src="${skin(mc,140)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',140)}'">
             <div class="profile-actions-row">
               ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
               ${isMe?'':`<button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
             </div>
           </div>
-          <div class="profile-name-row">
-            <div>
-              <h1 class="profile-name">${esc(shown)}</h1>
-              <p class="profile-handle2">@${esc(handle)} · ${mc!==shown?esc(mc)+' · ':''}<span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span> · desde ${esc(time(prof.created_at))}</p>
-            </div>
+          <h1 class="profile-name">${esc(mc)}</h1>
+          <p class="profile-handle2">@${esc(prof.username||mc)} · <span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span> · desde ${esc(time(prof.created_at))}</p>
+          <p class="profile-bio2">${esc(prof.bio||'Sem bio pública.')}</p>
+          <div class="profile-stats-grid">
+            <button class="pstat" data-rel="followers" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.followers_count||0)}</strong><small>Seguidores</small></button>
+            <button class="pstat" data-rel="following" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.following_count||0)}</strong><small>Seguindo</small></button>
+            <button class="pstat" data-rel="friends" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.friends_count||0)}</strong><small>Amigos</small></button>
+            <div class="pstat"><strong>${num(prof.posts_count||0)}</strong><small>Posts</small></div>
+            <div class="pstat"><strong>${num(prof.merit||0)}</strong><small>Mérito</small></div>
           </div>
-          <div class="profile-social-line" aria-label="Resumo social">
-            <button type="button" data-rel="followers" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.followers_count||0)}</strong> seguidores</button>
-            <button type="button" data-rel="following" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.following_count||0)}</strong> seguindo</button>
-            <button type="button" data-rel="friends" data-mc="${esc(mc)}" data-uid="${esc(prof.id)}"><strong>${num(prof.friends_count||0)}</strong> amigos</button>
-            <span><strong>${num(prof.posts_count||0)}</strong> posts</span>
-            <span><strong>${num(prof.merit||0)}</strong> mérito</span>
+          <div class="profile-tabs2" role="tablist" aria-label="Seções do perfil">
+            <button class="is-active" type="button" data-profile-jump="posts">Posts</button>
+            <button type="button" data-profile-jump="about">Sobre</button>
+            <button type="button" data-profile-jump="badges">Conquistas</button>
           </div>
         </div>
-      </div>
-      <div class="profile-insights">
-        <section class="profile-about-card">
-          <div class="profile-section-title"><strong>Sobre</strong><span>perfil</span></div>
-          <p>${esc(prof.bio||'Sem bio pública por enquanto.')}</p>
-          <div class="profile-about-grid" style="margin-top:12px">
-            <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'Privado'}</div></div>
-            <div class="stat-block"><div class="lbl">Capital</div><div class="val">${num(prof.capital||0)}</div></div>
-          </div>
-          <div class="mini-bars2">${bars}</div>
-        </section>
-        <section class="profile-about-card">
-          <div class="profile-section-title"><strong>Conquistas</strong><span>${num(badges.length)}</span></div>
-          <p>${rankBenefits.length?esc(rankBenefits.join(' · ')):'Progresso inicial da comunidade.'}</p>
-          <div class="profile-badges-row">
-            ${badges.map(b=>`<div class="badge-mini" title="${esc(b.description)}"><strong>${esc(b.label)}</strong><span>${esc(b.description)} · ${num(b.progress||0)}%</span></div>`).join('')||'<div class="badge-mini"><strong>Começando</strong><span>As conquistas aparecem conforme a comunidade ganha vida.</span></div>'}
-          </div>
-        </section>
       </div>
       <div class="profile-content-grid">
-        <div class="profile-tabs2" role="tablist" aria-label="Conteúdo do perfil">
-          ${PROFILE_TABS.map(([id,label])=>`<button class="${id===defaultTab?'is-active':''}" type="button" role="tab" aria-selected="${id===defaultTab?'true':'false'}" data-profile-tab="${id}">${esc(label)}</button>`).join('')}
-        </div>
-        <section class="profile-tab-content" id="profile-tab-content">${renderTab(defaultTab)}</section>
+        <section class="profile-main-feed" id="profile-posts-section">
+          <div class="profile-section-title"><strong>Posts</strong><span>${num(profilePosts.length)} visíveis</span></div>
+          <div class="profile-feed-stack">
+            ${profilePosts.length?profilePosts.map(postCardHTML).join(''):'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhum post público.</p></div>'}
+          </div>
+        </section>
+        <aside class="profile-side">
+          <div class="profile-about-card" id="profile-about-section">
+            <div class="profile-section-title"><strong>Servidor</strong><span>Status</span></div>
+            <div class="profile-about-grid" style="margin-top:10px">
+              <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'Privado'}</div></div>
+              <div class="stat-block"><div class="lbl">Capital</div><div class="val">${num(prof.capital||0)}</div></div>
+            </div>
+            <div class="mini-bars2">${bars}</div>
+          </div>
+          <div class="stat-block">
+            <div class="lbl">Rank atual</div>
+            <div class="val" style="color:${rk.color}">${esc(rk.label)}</div>
+            <p style="font-size:12px;color:var(--ink-2);margin-top:5px;line-height:1.35">${esc((prof.rank_benefits||[]).join(' · ')||'Progresso inicial da comunidade.')}</p>
+          </div>
+          <div class="profile-section-title"><strong>Conquistas</strong><span>${num(badges.length)}</span></div>
+          <div class="badge-list" id="profile-badges-section">
+            ${badges.map(b=>`<div class="badge-mini" title="${esc(b.description)}"><strong>${esc(b.label)}</strong><span>${esc(b.description)} · ${num(b.progress||0)}%</span></div>`).join('')||'<div class="empty-card"><p style="font-size:13px;color:var(--ink-2)">Nenhuma conquista.</p></div>'}
+          </div>
+        </aside>
       </div>
     `;
-    const cover=routeCol.querySelector('[data-profile-cover]');
-    if(cover?.dataset.profileCover){
-      cover.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.34)),url("${cover.dataset.profileCover.replace(/"/g,'%22')}")`;
-    }
     routeCol.onclick=e=>{
       if(e.target.closest('[data-back]')){Router.navigate('/community');return}
-      const tabBtn=e.target.closest('[data-profile-tab]');
-      if(tabBtn){
-        const tab=tabBtn.dataset.profileTab;
-        routeCol.querySelectorAll('[data-profile-tab]').forEach(btn=>{
-          const active=btn===tabBtn;
-          btn.classList.toggle('is-active',active);
-          btn.setAttribute('aria-selected',String(active));
-        });
-        const target=routeCol.querySelector('#profile-tab-content');
-        if(target) target.innerHTML=renderTab(tab);
-        return;
-      }
+      const bt=e.target.closest('[data-post-id]');if(bt&&e.target.closest('.post-tile')){navigatePost(bt.dataset.postId);return}
       const rf=e.target.closest('[data-pf-follow]');
       if(rf){const on=rf.dataset.on==='1';rf.dataset.on=on?'0':'1';rf.innerHTML=on?'Seguir':'Seguindo';toggleFollowUser(rf.dataset.uid,on,null);return}
       const msg=e.target.closest('[data-pf-message]');
       if(msg){window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
       if(e.target.closest('[data-profile-edit]')){openCommunityProfileEditor();return}
+      const jump=e.target.closest('[data-profile-jump]');
+      if(jump){
+        $$('.profile-tabs2 button').forEach(btn=>btn.classList.toggle('is-active',btn===jump));
+        const targetId=jump.dataset.profileJump==='about'?'#profile-about-section':jump.dataset.profileJump==='badges'?'#profile-badges-section':'#profile-posts-section';
+        routeCol.querySelector(targetId)?.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
       const rr=e.target.closest('[data-pf-report]');if(rr){reportContent('user',rr.dataset.uid);return}
       const rb=e.target.closest('[data-pf-block]');
       if(rb){const unblock=rb.textContent.trim().toLowerCase().includes('desbloquear');blockUser(rb.dataset.uid,unblock);return}
       const rl=e.target.closest('[data-rel]');if(rl){openRelModal(rl.dataset.rel,rl.dataset.mc,rl.dataset.uid);return}
       const jp=e.target.closest('.js-profile');
       if(jp&&!e.target.closest('button')){const uid2=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc2=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier2=uid2?`id:${uid2}`:mc2;if(identifier2)navigateProfile(identifier2);return}
-      const searchPost=e.target.closest('[data-search-post]');if(searchPost){navigatePost(searchPost.dataset.searchPost);return}
     };
   }catch(e){
     showRouteUI(`<div class="route-top"><button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button></div><div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Perfil indisponível</h3><p>${esc(e.message)}</p></div>`);
@@ -3498,82 +3003,35 @@ async function renderProfileRoute(identifier){
 async function openCommunityProfileEditor(){
   try{
     const prefs=await api('/api/me/preferences');
-    const prof=state.profileData?.profile||state.me||{};
+    const prof=state.profileData?.profile||{};
     const back=document.createElement('div');
     back.className='backdrop show';
-    const currentLayout=PROFILE_TABS.some(([id])=>id===prefs.profile_layout)?prefs.profile_layout:'posts';
-    back.innerHTML=`<div class="sheet sheet-md" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
-      <div class="sheet-header">
-        <h2 id="edit-profile-title">Editar perfil social</h2>
-        <button class="close-btn" data-edit-close aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-      </div>
-      <div class="sheet-body edit-profile-body">
-        <div class="edit-profile-preview">
-          <div class="profile-cover ${rankInfo(prof.rank||prof.role,prof.merit).cls}" id="edit-preview-cover"></div>
-          <div class="edit-preview-row">
-            <img class="profile-av" id="edit-preview-avatar" src="${esc(avatar({...prof,...prefs},140))}" alt="">
-            <div><strong id="edit-preview-name">${esc(prefs.display_name||displayName(prof))}</strong><small>@${esc(handleName(prof))}</small></div>
-          </div>
-        </div>
-        <label class="edit-field">Nome exibido<input id="community-edit-name" maxlength="40" value="${esc(prefs.display_name||'')}" placeholder="${esc(displayName(prof))}"></label>
-        <label class="edit-field">Descrição<textarea class="sheet-ta" id="community-edit-bio" maxlength="160" placeholder="Conte um pouco sobre você na comunidade.">${esc(prefs.bio??prof.bio??'')}</textarea></label>
-        <label class="edit-field">Foto de perfil<input id="community-edit-avatar" type="url" inputmode="url" value="${esc(prefs.avatar_url||'')}" placeholder="https://.../avatar.png"></label>
-        <label class="edit-field">Plano de fundo<input id="community-edit-cover" type="url" inputmode="url" value="${esc(prefs.cover_url||'')}" placeholder="https://.../capa.jpg"></label>
-        <label class="edit-field">Aba inicial do perfil<select id="community-edit-layout">${PROFILE_TABS.map(([id,label])=>`<option value="${id}" ${id===currentLayout?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
-        <div class="edit-toggle-row"><span>Perfil público</span><input type="checkbox" id="community-edit-public" ${prefs.public_profile?'checked':''}></div>
-        <div class="edit-toggle-row"><span>Histórico público</span><input type="checkbox" id="community-edit-history" ${prefs.public_history?'checked':''}></div>
-      </div>
-      <div class="sheet-footer"><span style="font-size:12px;color:var(--ink-3);align-self:center">Use URLs https/http para imagens. O servidor valida antes de salvar.</span><button class="btn btn-primary" data-edit-save>Salvar</button></div>
-    </div>`;
-    const close=()=>{document.removeEventListener('keydown',onKey);back.remove();document.body.classList.remove('modal-open')};
-    const onKey=e=>{if(e.key==='Escape')close()};
-    const preview=()=>{
-      const draft={...prof,...prefs,display_name:back.querySelector('#community-edit-name')?.value.trim(),avatar_url:back.querySelector('#community-edit-avatar')?.value.trim(),cover_url:back.querySelector('#community-edit-cover')?.value.trim()};
-      const av=back.querySelector('#edit-preview-avatar');
-      const name=back.querySelector('#edit-preview-name');
-      const cover=back.querySelector('#edit-preview-cover');
-      if(av) av.src=avatar(draft,140);
-      if(name) name.textContent=displayName(draft);
-      if(cover){
-        cover.style.backgroundImage='';
-        const coverUrl=safeProfileImageUrl(draft.cover_url);
-        if(coverUrl) cover.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.34)),url("${coverUrl.replace(/"/g,'%22')}")`;
-      }
-    };
-    back.addEventListener('input',preview);
+    back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title"><div class="sheet-header"><h2 id="edit-profile-title">Editar perfil publico</h2><button class="close-btn" data-edit-close aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div><div class="sheet-body" style="display:grid;gap:12px"><label style="display:grid;gap:7px;font-size:12px;font-weight:800;color:var(--ink-2)">Descricao<textarea class="sheet-ta" id="community-edit-bio" maxlength="160" style="min-height:96px" placeholder="Conte um pouco sobre voce na comunidade.">${esc(prefs.bio??prof.bio??'')}</textarea></label><label style="display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:13px;font-weight:800"><span>Perfil publico</span><input type="checkbox" id="community-edit-public" ${prefs.public_profile?'checked':''}></label><label style="display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:13px;font-weight:800"><span>Historico publico</span><input type="checkbox" id="community-edit-history" ${prefs.public_history?'checked':''}></label></div><div class="sheet-footer"><span style="font-size:12px;color:var(--ink-3);align-self:center">Aparece no seu perfil social.</span><button class="btn btn-primary" data-edit-save>Salvar</button></div></div>`;
+    const close=()=>{back.remove();document.body.classList.remove('modal-open')};
     back.addEventListener('click',async e=>{
       if(e.target===back||e.target.closest('[data-edit-close]')){close();return}
       const save=e.target.closest('[data-edit-save]');
       if(!save)return;
-      const display_name=back.querySelector('#community-edit-name').value.trim();
       const bio=back.querySelector('#community-edit-bio').value.trim();
-      const avatar_url=back.querySelector('#community-edit-avatar').value.trim();
-      const cover_url=back.querySelector('#community-edit-cover').value.trim();
-      const profile_layout=back.querySelector('#community-edit-layout').value;
       const publicProfile=back.querySelector('#community-edit-public').checked;
       const publicHistory=back.querySelector('#community-edit-history').checked;
       setBtnLoad(save,true,'Salvando');
       try{
         const current=await api('/api/me/preferences');
-        const saved=await api('/api/me/preferences',{method:'PUT',body:JSON.stringify({...current,display_name,bio,avatar_url,cover_url,profile_layout,public_profile:publicProfile,public_history:publicHistory})});
-        Object.assign(state.me||{},saved);
-        if(state.profileData?.profile&&Number(state.profileData.profile.id)===Number(state.me?.id)) Object.assign(state.profileData.profile,saved);
+        await api('/api/me/preferences',{method:'PUT',body:JSON.stringify({...current,bio,public_profile:publicProfile,public_history:publicHistory})});
         close();
-        await loadMe().catch(()=>{});
-        toast('success','Perfil atualizado','Suas informações públicas foram salvas.');
+        toast('success','Perfil atualizado','Suas informacoes publicas foram salvas.');
         renderProfileRoute(state.profileIdentifier||state.me?.minecraft_name||`id:${state.me?.id}`);
       }catch(err){
-        toast('error','Não foi possível salvar',err.message);
+        toast('error','Nao foi possivel salvar',err.message);
         setBtnLoad(save,false,'Salvar');
       }
     });
-    document.addEventListener('keydown',onKey);
     document.body.appendChild(back);
     document.body.classList.add('modal-open');
-    preview();
-    requestAnimationFrame(()=>back.querySelector('#community-edit-name')?.focus());
+    requestAnimationFrame(()=>back.querySelector('#community-edit-bio')?.focus());
   }catch(e){
-    toast('error','Editor indisponível',e.message);
+    toast('error','Editor indisponivel',e.message);
   }
 }
 
@@ -3604,7 +3062,7 @@ async function reportContent(type,id){
 function playerRowHTML(p){
   const mc=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);
   const on=Boolean(p.is_following||p.followed_by_me);
-  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(mc,50)}'"><div><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))} · ${esc(rk.label)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
+  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${skin(mc,50)}" alt="${esc(mc)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(mc)}</strong><small>${esc(rk.label)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
 }
 async function loadPlayers(search=''){
   $('#player-list').innerHTML=Array.from({length:3},()=>'<div class="skel" style="height:52px;border-radius:10px"></div>').join('');
@@ -3635,61 +3093,19 @@ async function toggleFollowBtn(uid,currently,btn){
 
 /* ======================= RELATION MODAL ======================= */
 async function openRelModal(type,mc,uid){
-  const labels={followers:'Seguidores',following:'Seguindo',friends:'Amigos'};
-  let active=labels[type]?type:'followers';
-  const identifier=mc||`id:${uid}`;
-  const modal=$('#rel-modal');
-  const body=modal?.querySelector('.sheet-body');
-  const cache={followers:null,following:null,friends:null};
-  let term='';
-  if(!body)return;
-  $('#rel-title').textContent=`Conexões de ${mc||'jogador'}`;
-  body.innerHTML=`
-    <div class="graph-tabs" role="tablist" aria-label="Conexões">
-      ${Object.entries(labels).map(([id,label])=>`<button class="${id===active?'is-active':''}" type="button" data-graph-tab="${id}">${label}</button>`).join('')}
-    </div>
-    <div class="graph-search"><input type="search" id="rel-search-input" placeholder="Filtrar por nome ou @usuario..." autocomplete="off"></div>
-    <div class="relation-list2" id="rel-list"></div>
-  `;
-  const rowHTML=p=>{
-    const n=p.minecraft_name||p.username||'Steve';
-    const rk=rankInfo(p.rank,p.merit);
-    const fol=Boolean(p.followed_by_me);
-    const itsMe=Number(p.id)===Number(state.me?.id);
-    return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><div><strong>${esc(displayName(p))}</strong><small>${esc(rk.label)} · @${esc(handleName(p))}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
-  };
-  const draw=()=>{
-    const list=$('#rel-list');
-    const rows=cache[active]||[];
-    const q=term.toLowerCase();
-    const filtered=q?rows.filter(p=>[displayName(p),handleName(p),p.minecraft_name].join(' ').toLowerCase().includes(q)):rows;
-    list.innerHTML=filtered.length
-      ?filtered.map(rowHTML).join('')
-      :`<p style="padding:18px 0;text-align:center;color:var(--ink-3);font-size:13px">${term?'Nada encontrado nesse filtro.':'Nenhum jogador nesta lista.'}</p>`;
-  };
-  const load=async nextType=>{
-    active=nextType;
-    modal.querySelectorAll('[data-graph-tab]').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.graphTab===active));
-    const list=$('#rel-list');
-    if(!cache[active]){
-      list.innerHTML=Array.from({length:4},()=>'<div class="skel" style="height:54px;border-radius:8px;margin-bottom:8px"></div>').join('');
-      try{
-        const payload=await api(`/api/community/player/${encodeURIComponent(identifier)}/${active}?limit=50`);
-        cache[active]=Array.isArray(payload)?payload:(payload.rows||[]);
-      }catch(e){
-        list.innerHTML=`<p style="padding:18px 0;text-align:center;color:var(--danger);font-size:13px">${esc(e.message)}</p>`;
-        return;
-      }
-    }
-    draw();
-  };
-  body.onclick=e=>{
-    const tab=e.target.closest('[data-graph-tab]');
-    if(tab) load(tab.dataset.graphTab);
-  };
-  body.querySelector('#rel-search-input')?.addEventListener('input',e=>{term=e.currentTarget.value.trim();draw()});
+  const title=type==='followers'?'Seguidores':type==='friends'?'Amigos':'Seguindo';
+  $('#rel-title').textContent=`${title} de ${mc||'jogador'}`;
+  $('#rel-list').innerHTML=Array.from({length:4},()=>'<div class="skel" style="height:54px;border-radius:10px"></div>').join('');
   openModal('rel-modal');
-  load(active);
+  const identifier=mc||`id:${uid}`;
+  try{
+    const payload=await api(`/api/community/player/${encodeURIComponent(identifier)}/${type}`);
+    const rows=Array.isArray(payload)?payload:(payload.rows||[]);
+    $('#rel-list').innerHTML=rows.length?rows.map(p=>{
+      const n=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank);const fol=Boolean(p.followed_by_me);const itsMe=Number(p.id)===Number(state.me?.id);
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${skin(n,50)}" alt="${esc(n)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(n)}</strong><small>${esc(rk.label)} · @${esc(p.username||n)}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
+    }).join(''):`<p style="padding:18px 0;text-align:center;color:var(--ink-3);font-size:13px">Nenhum jogador nesta lista.</p>`;
+  }catch(e){$('#rel-list').innerHTML=`<p style="padding:18px 0;text-align:center;color:var(--danger);font-size:13px">${esc(e.message)}</p>`}
 }
 
 /* ======================= TRENDING (HASHTAGS REAIS) ======================= */
@@ -3720,110 +3136,42 @@ function saveSearch(term){
   const next=[clean,...recentSearches().filter(item=>item.toLowerCase()!==clean.toLowerCase())].slice(0,8);
   localStorage.setItem(SEARCH_KEY,JSON.stringify(next));
 }
-function openSearchPage(seed=''){
-  const q=String(seed||'').trim();
-  Router.navigate(communityUrl(q?{q}:{search:'1'}));
+async function openSearchModal(seed=''){
+  openModal('search-modal');
+  const input=$('#modal-search-input');
+  input.value=seed||'';
+  renderSearchHome();
+  setTimeout(()=>input.focus(),80);
+  if(seed) runGlobalSearch(seed);
 }
-function searchResultPersonHTML(p){
-  const n=p.minecraft_name||p.username||'Steve';
-  const rk=rankInfo(p.rank,p.merit);
-  return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${skin(n,50)}'"><span><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))} · ${esc(rk.label)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`;
-}
-function searchResultPostHTML(p){
-  const id=p.repost_of_id||p.id;
-  const n=p.repost_original_minecraft_name||p.minecraft_name||p.username||'Steve';
-  const shown=p.repost_original_display_name||p.display_name||n;
-  const text=p.repost_original_content||p.content||'';
-  return`<button class="search-result search-result-post" data-search-post="${esc(id)}" type="button"><span><strong>${esc(shown)}</strong><small>${esc(text.slice(0,140))}</small></span><span>${esc(time(p.created_at))}</span></button>`;
-}
-function showSearchPage(seed=''){
-  const term=String(seed||'').trim();
-  state.routeActive=true;
-  document.title=term?`Busca: ${term} | FA Community`:'Buscar | FA Community';
-  const top=$('#global-search'); if(top) top.value=term;
-  showRouteUI(`
-    <section class="search-page" aria-label="Busca da comunidade">
-      <div class="route-top">
-        <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
-        <span class="crumb-path">Busca</span>
-      </div>
-      <div class="search-hero">
-        <h1>Buscar na comunidade</h1>
-        <p>Encontre jogadores, posts, respostas e hashtags em uma página própria, sem janelas por cima do feed.</p>
-        <div class="search-page-input">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input id="search-page-input" type="search" value="${esc(term)}" placeholder="Buscar jogadores, posts ou #hashtags..." autocomplete="off">
-        </div>
-      </div>
-      <div class="search-layout">
-        <div class="search-results-panel" id="search-page-results">
-          <div class="empty-card"><div class="empty-icon">${IC.empty}</div><h3>Digite algo para começar</h3><p>Ou use um dos atalhos ao lado.</p></div>
-        </div>
-        <aside class="search-side-panel">
-          <div class="search-section">
-            <h2>Em alta</h2>
-            <div class="search-chip-row" id="search-page-trends"></div>
-          </div>
-          <div class="search-section">
-            <h2>Recentes</h2>
-            <div class="search-chip-row" id="search-page-recents"></div>
-          </div>
-        </aside>
-      </div>
-    </section>
-  `);
-  hydrateSearchPage(term);
-}
-async function hydrateSearchPage(term=''){
-  const input=$('#search-page-input');
-  const results=$('#search-page-results');
-  const recents=$('#search-page-recents');
-  const trends=$('#search-page-trends');
-  if(recents) recents.innerHTML=recentSearches().map(t=>`<button class="search-chip" data-search-term="${esc(t)}" type="button">${esc(t)}</button>`).join('')||'<span style="font-size:12px;color:var(--ink-3)">Nenhuma busca salva ainda.</span>';
+async function renderSearchHome(){
+  $('#search-results').innerHTML='';
+  $('#search-empty-state').style.display='grid';
+  $('#search-recent-chips').innerHTML=recentSearches().map(t=>`<button class="search-chip" data-search-term="${esc(t)}" type="button">${esc(t)}</button>`).join('')||'<span style="font-size:12px;color:var(--ink-3)">Nenhuma busca salva ainda.</span>';
   try{
     const data=await api('/api/community/trending-hashtags');
-    const rows=(data.trends||data||[]).slice(0,8);
-    if(trends) trends.innerHTML=rows.map(t=>`<button class="search-chip" data-hashtag="${esc(t.tag||t.hashtag)}" type="button">#${esc(t.tag||t.hashtag)}</button>`).join('')||'<span style="font-size:12px;color:var(--ink-3)">Sem assuntos em alta.</span>';
-  }catch{if(trends) trends.innerHTML='<span style="font-size:12px;color:var(--ink-3)">Indisponível.</span>'}
-  let timer=null;
-  const run=(q)=>{clearTimeout(timer);timer=setTimeout(()=>runSearchPage(q),220)};
-  input?.addEventListener('input',e=>run(e.currentTarget.value.trim()));
-  input?.addEventListener('keydown',e=>{
-    if(e.key==='Enter'){
-      const q=e.currentTarget.value.trim();
-      if(q){saveSearch(q);Router.navigate(communityUrl({q}),{replace:true});}
-    }
-  });
-  setTimeout(()=>input?.focus({preventScroll:true}),60);
-  if(term) runSearchPage(term);
-  else if(results) results.innerHTML='<div class="empty-card"><div class="empty-icon">'+IC.empty+'</div><h3>Digite algo para começar</h3><p>Procure por jogadores, hashtags ou palavras dos posts.</p></div>';
+    const trends=(data.trends||[]).slice(0,8);
+    $('#search-trend-chips').innerHTML=trends.map(t=>`<button class="search-chip" data-hashtag="${esc(t.tag)}" type="button">#${esc(t.tag)}</button>`).join('')||'<span style="font-size:12px;color:var(--ink-3)">Sem assuntos em alta.</span>';
+  }catch{$('#search-trend-chips').innerHTML='<span style="font-size:12px;color:var(--ink-3)">Indisponível.</span>'}
 }
-async function runSearchPage(term){
+async function runGlobalSearch(term){
   const q=String(term||'').trim();
-  const box=$('#search-page-results');
-  if(!box)return;
-  if(!q){box.innerHTML='<div class="empty-card"><div class="empty-icon">'+IC.empty+'</div><h3>Digite algo para começar</h3><p>Procure por jogadores, hashtags ou palavras dos posts.</p></div>';return}
-  box.innerHTML=Array.from({length:5},()=>'<div class="skel" style="height:58px;border-radius:8px;margin-bottom:8px"></div>').join('');
+  const box=$('#search-results');
+  if(!q){renderSearchHome();return}
+  $('#search-empty-state').style.display='none';
+  box.innerHTML=Array.from({length:4},()=>'<div class="skel" style="height:56px;border-radius:10px"></div>').join('');
   try{
     const [players,posts]=await Promise.all([
-      api(`/api/community/players?limit=8&search=${encodeURIComponent(q)}`),
-      api(`/api/community/posts?limit=12&search=${encodeURIComponent(q)}`)
+      api(`/api/community/players?limit=6&search=${encodeURIComponent(q)}`),
+      api(`/api/community/posts?limit=8&search=${encodeURIComponent(q)}`)
     ]);
     const prow=Array.isArray(players)?players:[];
     const postRows=Array.isArray(posts.posts)?posts.posts:[];
-    box.innerHTML=`
-      <div class="search-section">
-        <h2>Pessoas</h2>
-        ${prow.length?prow.map(searchResultPersonHTML).join(''):'<p style="font-size:13px;color:var(--ink-3)">Nenhum jogador encontrado.</p>'}
-      </div>
-      <div class="search-section">
-        <h2>Posts</h2>
-        ${postRows.length?postRows.map(searchResultPostHTML).join(''):'<p style="font-size:13px;color:var(--ink-3)">Nenhum post encontrado.</p>'}
-      </div>`;
-  }catch(e){box.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Busca indisponível</h3><p>${esc(e.message)}</p></div>`}
-}
-function openSearchModal(seed=''){
-  openSearchPage(seed);
+    box.innerHTML=[
+      ...prow.map(p=>{const n=p.minecraft_name||p.username||'Steve';const rk=rankInfo(p.rank,p.merit);return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${skin(n,50)}" alt="${esc(n)}"><span><strong>${esc(n)}</strong><small>@${esc(p.username||n)} · ${esc(rk.label)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`}),
+      ...postRows.map(p=>{const id=p.repost_of_id||p.id;const n=p.repost_original_minecraft_name||p.minecraft_name||p.username||'Steve';const text=p.repost_original_content||p.content||'';return`<button class="search-result search-result-post" data-search-post="${esc(id)}" type="button"><span><strong>${esc(n)}</strong><small>${esc(text.slice(0,120))}</small></span><span>${esc(time(p.created_at))}</span></button>`})
+    ].join('')||'<div class="empty-card"><p>Nenhum resultado encontrado.</p></div>';
+  }catch(e){box.innerHTML=`<div class="empty-card"><p>${esc(e.message)}</p></div>`}
 }
 
 /* ======================= NOTIFICATIONS ======================= */
@@ -3837,7 +3185,6 @@ async function loadNotifs(){
     const[list,unread]=await Promise.all([api('/api/me/social-notifications?limit=8'),api('/api/me/social-notifications/unread-count')]);
     state.notifs=list.rows||[];state.notifUnread=unread.count||0;renderNotifs();
   }catch{renderNotifs()}
-  updateCommunityPulse();
 }
 function renderNotifs(){
   const dot=$('#notif-dot');const badge=$('#nav-notif-badge');const drawerBadge=$('#drawer-notif-badge');
@@ -3872,7 +3219,11 @@ function showHashtagRoute(tag){
 }
 function showSearchRoute(query){
   state.hashtag='';state.searchQuery=String(query||'').trim();
-  showSearchPage(state.searchQuery);
+  showFeedUI();document.title=`Busca: ${state.searchQuery} | Força Aliada`;
+  const header=$('.col-header h1'); if(header) header.textContent='Resultados';
+  const sub=$('.col-header p'); if(sub) sub.textContent=`Busca por "${state.searchQuery}" em posts e perfis.`;
+  updateCommunityPulse();
+  loadFeed({reset:true});
 }
 
 /* ======================= EVENT DELEGATION ======================= */
@@ -3904,14 +3255,32 @@ function bindEvents(){
     $('#player-list').innerHTML=Array.from({length:4},()=>'<div class="skel" style="height:52px;border-radius:10px"></div>').join('');
     clearTimeout(pTimer);pTimer=setTimeout(()=>loadPlayers(e.target.value.trim()),260);
   });
-  // global search opens the dedicated search route, not a popup
+  // global search
+  let gTimer=null;
+  $('#global-search')?.addEventListener('input',e=>{
+    clearTimeout(gTimer);gTimer=setTimeout(()=>{
+      const v=e.target.value.trim();
+      if(v) loadPlayers(v);
+    },280);
+  });
   $('#global-search')?.addEventListener('keydown',e=>{
     if(e.key==='Enter'){
       const q=e.currentTarget.value.trim();
       if(q){saveSearch(q);Router.navigate(communityUrl({q}));}
     }
   });
-  $('#global-search')?.addEventListener('focus',e=>openSearchPage(e.currentTarget.value.trim()));
+  $('#global-search')?.addEventListener('focus',e=>openSearchModal(e.currentTarget.value.trim()));
+  let modalSearchTimer=null;
+  $('#modal-search-input')?.addEventListener('input',e=>{
+    clearTimeout(modalSearchTimer);
+    modalSearchTimer=setTimeout(()=>runGlobalSearch(e.target.value.trim()),220);
+  });
+  $('#modal-search-input')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      const q=e.currentTarget.value.trim(); if(!q)return;
+      saveSearch(q); closeModal('search-modal'); Router.navigate(communityUrl({q}));
+    }
+  });
   $('#mobile-home-btn')?.addEventListener('click',()=>Router.navigate('/community'));
   $('#mobile-search-btn')?.addEventListener('click',()=>openSearchModal());
   $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
@@ -3938,21 +3307,19 @@ function bindEvents(){
       $$('.mobile-drawer-item[data-drawer-filter]').forEach(btn=>btn.classList.toggle('is-active',btn===filter));
       return;
     }
-    if(e.target.closest('#drawer-search-btn')||e.target.closest('[data-open-search-page]')){closeMobileMenu();openSearchModal();return}
+    if(e.target.closest('#drawer-search-btn')){closeMobileMenu();openSearchModal();return}
     if(e.target.closest('#drawer-profile-btn')){closeMobileMenu();if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);return}
   });
 
   document.addEventListener('click',e=>{
     if(!e.target.closest('.notif-wrap')) $('#notif-menu')?.classList.remove('show');
     if(!e.target.closest('.post-more-wrap')) $$('.post-menu.show').forEach(m=>m.classList.remove('show'));
-    const openSearch=e.target.closest('[data-open-search-page]');
-    if(openSearch){e.preventDefault();openSearchPage();return}
     const hash=e.target.closest('[data-hashtag]');
-    if(hash){e.preventDefault();e.stopPropagation();navigateHashtag(hash.dataset.hashtag);return}
+    if(hash){e.preventDefault();e.stopPropagation();closeModal('search-modal');navigateHashtag(hash.dataset.hashtag);return}
     const searchTerm=e.target.closest('[data-search-term]');
-    if(searchTerm){const q=searchTerm.dataset.searchTerm;saveSearch(q);Router.navigate(communityUrl({q}));return}
+    if(searchTerm){const q=searchTerm.dataset.searchTerm;$('#modal-search-input').value=q;runGlobalSearch(q);return}
     const searchPost=e.target.closest('[data-search-post]');
-    if(searchPost){navigatePost(searchPost.dataset.searchPost);return}
+    if(searchPost){closeModal('search-modal');navigatePost(searchPost.dataset.searchPost);return}
     const trend=e.target.closest('.trend-item');
     if(trend?.dataset.tag){e.preventDefault();navigateHashtag(trend.dataset.tag);return}
     const closeBtn=e.target.closest('[data-close]');if(closeBtn){closeModal(closeBtn.dataset.close);return}
