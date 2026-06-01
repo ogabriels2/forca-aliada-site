@@ -28,7 +28,6 @@
     (typeof requestIdleCallback === 'function') ? requestIdleCallback(sync, { timeout: 2500 }) : setTimeout(sync, 500);
   }
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'dark'));
-})();
 </script>
 <style>
 /* ─── DESIGN TOKENS ─── */
@@ -511,6 +510,8 @@ img{display:block}
 .mention-token{color:var(--accent);font-weight:700}
 .hashtag-token{display:inline;padding:0;color:var(--accent-2);font-weight:800;vertical-align:baseline;cursor:pointer}
 .hashtag-token:hover{text-decoration:underline;text-underline-offset:2px}
+.post-link{color:var(--accent);text-decoration:underline;text-underline-offset:2px;word-break:break-all}
+.post-link:hover{color:var(--accent-h)}
 /* preview comments */
 .preview-comments{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:4px}
 .preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;align-items:flex-start;gap:4px}
@@ -583,7 +584,7 @@ img{display:block}
 
 /* ─── ROUTE VIEW (thread / profile) ─── */
 .route-col{display:none}
-.route-col.show{display:grid;gap:12px;padding:16px 0 0;min-height:calc(100vh - var(--topbar-h))}
+.route-col.show{display:grid;gap:8px;padding:14px 0 0;min-height:0}
 .route-top{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:4px 0;
@@ -602,20 +603,20 @@ img{display:block}
 .thread-hero{
   border:1px solid var(--line);border-radius:var(--r-lg);
   background:var(--surface);box-shadow:var(--shadow-sm);
-  padding:16px;
+  padding:13px;
 }
 .thread-title-row{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
-  margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid var(--line);
+  margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid var(--line);
 }
-.thread-title-row h1{font-size:18px;font-weight:900;letter-spacing:0}
+.thread-title-row h1{font-size:17px;font-weight:900;letter-spacing:0}
 .thread-count{font-family:var(--ff-mono);color:var(--ink-3);font-size:11.5px;font-weight:600}
 /* reply bar */
 .reply-bar{
-  display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:9px;align-items:end;
+  display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:8px;align-items:end;
   border:1px solid var(--line);border-radius:var(--r-lg);
   background:var(--surface);box-shadow:var(--shadow-sm);
-  padding:11px;
+  padding:9px;
 }
 .reply-ta{
   width:100%;min-height:40px;max-height:130px;resize:none;outline:none;
@@ -630,8 +631,8 @@ img{display:block}
   overflow:hidden;box-shadow:var(--shadow-sm);
 }
 .comment-row{
-  display:grid;grid-template-columns:36px minmax(0,1fr);gap:9px;
-  padding:11px 13px;background:var(--surface-solid);
+  display:grid;grid-template-columns:36px minmax(0,1fr);gap:8px;
+  padding:9px 12px;background:var(--surface-solid);
   border-bottom:1px solid var(--line);
   transition:background var(--t-fast);
 }
@@ -643,7 +644,7 @@ img{display:block}
 .comment-author strong:hover{color:var(--accent)}
 .comment-author .handle{font-size:11px;color:var(--ink-3);font-weight:500}
 .comment-author .ts{font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
-.comment-row p{margin-top:4px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.comment-row p{margin-top:3px;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .deleted{color:var(--ink-3);font-style:italic}
 
 /* ─── PROFILE ROUTE ─── */
@@ -1121,35 +1122,27 @@ body::after{
 }
 [data-theme=dark] .topbar{background:rgba(10,10,8,.78)}
 .topbar-inner{max-width:1320px;width:calc(100% - 40px);gap:18px}
-.brand{gap:12px}
+.brand{gap:7px}
 .brand-mark{
-  position:relative;
-  display:grid;
-  place-items:center;
-  width:42px;
-  height:42px;
-  padding:2px;
-  border-radius:6px;
-  border:none;
-  background:transparent;
-  box-shadow:none;
-  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:36px;
+  height:36px;
   flex:0 0 auto;
 }
 .brand .brand-logo{
-  width:100%;
-  height:100%;
+  width:36px;
+  height:36px;
   border:0;
   padding:0;
   border-radius:4px;
   object-fit:contain;
   background:transparent;
   box-shadow:none;
+  display:block;
 }
-.brand-logo-light{display:none}
-[data-theme=light] .brand-logo-dark{display:none}
-[data-theme=light] .brand-logo-light{display:block}
-.brand-text{display:flex;align-items:baseline;gap:8px}
+
 .brand-text strong{font-family:var(--ff);font-size:15px;font-weight:700;color:var(--ink)}
 .brand-text small{
   display:inline;
@@ -1694,8 +1687,11 @@ body::after{
 .profile-cover{
   height:160px;
   background-size:cover;
-  background-position:center;
+  background-position:center top;
+  overflow:hidden;
 }
+.profile-cover.has-img{height:auto;min-height:80px}
+.profile-cover .cover-img{width:100%;height:auto;display:block;position:relative;z-index:1}
 .profile-hero-body{padding:0 18px 18px}
 .profile-topline{align-items:flex-end}
 .profile-av{
@@ -2131,8 +2127,7 @@ body::after{
   <div class="topbar-inner">
     <a class="brand" href="community.html" aria-label="Início da comunidade">
       <span class="brand-mark" aria-hidden="true">
-        <img class="brand-logo brand-logo-dark" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
-        <img class="brand-logo brand-logo-light" src="assets/images/fa-icon-light.png" alt="" width="72" height="72">
+        <img class="brand-logo" id="brand-logo-img" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
       </span>
       <span class="brand-text"><strong>Community</strong><small>Força Aliada</small></span>
     </a>
@@ -2483,6 +2478,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = v => String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const mentionHTML = t => esc(t||'')
+  .replace(/(https?:\/\/[^\s<>"'&]+)/gi,'<a href="$1" class="post-link" target="_blank" rel="noopener noreferrer">$1</a>')
   .replace(/(^|[\s([{])@([a-z0-9_]{3,32})/gi,'$1<span class="mention-token">@$2</span>')
   .replace(/(^|[\s([{])#([a-z0-9_A-ZÀ-ÿ]{2,32})/gi,'$1<button class="mention-token hashtag-token" data-hashtag="$2" type="button">#$2</button>');
 const skin = (n,s=50) => `https://minotar.net/helm/${encodeURIComponent((n||'Steve').trim()||'Steve')}/${s}.png`;
@@ -2623,12 +2619,14 @@ function removeToast(el){el.classList.add('leaving');setTimeout(()=>el.remove(),
 
 /* ======================= THEME ======================= */
 function applyTheme(t){document.documentElement.setAttribute('data-theme',t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light')}
-function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme')||'light';const next=cur==='dark'?'light':'dark';localStorage.setItem(THEME_KEY,next);applyTheme(next);updateThemeIcon(next)}
+function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme')||'dark';const next=cur==='dark'?'light':'dark';localStorage.setItem(THEME_KEY,next);applyTheme(next);updateThemeIcon(next);api('/api/me/preferences').then(prefs=>api('/api/me/preferences',{method:'PUT',body:JSON.stringify({...prefs,theme:next})})).catch(()=>{})}
 function updateThemeIcon(t){
   const icon=$('#theme-icon');if(!icon)return;
   icon.innerHTML=t==='dark'
     ?'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
     :'<path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"/>';
+  const logo=$('#brand-logo-img');
+  if(logo) logo.src=t==='dark'?'assets/images/fa-icon-dark.png':'assets/images/fa-icon-light.png';
 }
 
 /* ======================= AUTH ======================= */
@@ -3400,7 +3398,7 @@ async function renderProfileRoute(identifier){
         <span class="crumb-path">@${esc(handle)}</span>
       </div>
       <div class="profile-hero">
-        <div class="profile-cover ${rk.cls}" data-profile-cover="${esc(safeProfileImageUrl(prof.cover_url)||'')}"></div>
+        <div class="profile-cover ${rk.cls}${safeProfileImageUrl(prof.cover_url)?' has-img':''}" data-profile-cover="${esc(safeProfileImageUrl(prof.cover_url)||'')}">${safeProfileImageUrl(prof.cover_url)?`<img class="cover-img" src="${esc(safeProfileImageUrl(prof.cover_url))}" alt="" onerror="this.style.display='none';this.closest('.profile-cover').classList.remove('has-img')">`:''}</div>
         <div class="profile-hero-body">
           <div class="profile-topline">
             <img class="profile-av" src="${esc(avatar(prof,140))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${skin(mc,140)}'">
@@ -3449,10 +3447,7 @@ async function renderProfileRoute(identifier){
         <section class="profile-tab-content" id="profile-tab-content">${renderTab(defaultTab)}</section>
       </div>
     `;
-    const cover=routeCol.querySelector('[data-profile-cover]');
-    if(cover?.dataset.profileCover){
-      cover.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.34)),url("${cover.dataset.profileCover.replace(/"/g,'%22')}")`;
-    }
+    // cover já renderizada via img tag
     routeCol.onclick=e=>{
       if(e.target.closest('[data-back]')){Router.navigate('/community');return}
       const tabBtn=e.target.closest('[data-profile-tab]');

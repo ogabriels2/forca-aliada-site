@@ -169,9 +169,21 @@ button { border: 0; }
   box-shadow: var(--shadow-md);
 }
 .cover {
+  min-height: 80px;
   height: 152px;
   position: relative;
   background: linear-gradient(135deg, #667085, #d0d5dd);
+  overflow: hidden;
+}
+.cover.has-img {
+  height: auto;
+}
+.cover-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  position: relative;
+  z-index: 1;
 }
 .cover::after {
   content: "";
@@ -633,7 +645,9 @@ function renderProfile(data) {
 
   $('#app').innerHTML = `
     <section class="profile-hero">
-      <div class="cover ${rank.cls}"></div>
+      <div class="cover ${rank.cls}${p.cover_url ? ' has-img' : ''}" id="profile-cover-el">${
+        p.cover_url ? `<img src="${esc(p.cover_url)}" alt="" class="cover-img" onerror="this.style.display='none';this.closest('.cover').classList.remove('has-img')">` : ''
+      }</div>
       <div class="hero-body">
         <div class="hero-row">
           <div class="identity">
