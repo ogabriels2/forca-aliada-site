@@ -4714,6 +4714,7 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
   if (quote.length > 280) return res.status(400).json({ error: 'Repost excede 280 caracteres.' });
 
   const client = await pool.connect();
+  let committed = false;
   try {
     await client.query('BEGIN');
     const { rows: targetRows } = await client.query(
@@ -4753,18 +4754,22 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Voce ja repostou este post.' });
     }
-    await createSocialNotification({
+    // Commita antes da notificação: evita que falha em createSocialNotification
+    // desfaça o repost já inserido (a notificação é operação não-crítica).
+    await client.query('COMMIT');
+    committed = true;
+    // Fire-and-forget: notificação não deve bloquear nem reverter o repost.
+    createSocialNotification({
       recipientId: target.author_id,
       actorId: req.user.sub,
       type: 'repost',
       entityType: 'post',
       entityId: target.target_id,
       previewText: quote || target.content,
-    }, client);
-    await client.query('COMMIT');
+    }).catch(err => console.warn('[repost notification skipped]', err?.message || err));
     res.status(201).json({ ok: true, repost: rows[0] });
   } catch (e) {
-    await client.query('ROLLBACK');
+    if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/repost]', e);
     res.status(500).json({ error: 'Erro ao repostar.' });
   } finally {
@@ -6641,7 +6646,7 @@ app.get('/api/admin/players-with-balances', auth, requireAdmin, async (req, res)
 app.post('/api/me/session/ping', auth, async (req, res) => {
   try {
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
-    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     await pool.query(
       'UPDATE user_sessions SET last_seen_at=NOW() WHERE token_hash=$1 AND revoked=FALSE',
       [tokenHash]
@@ -6656,7 +6661,7 @@ app.post('/api/me/session/ping', auth, async (req, res) => {
 app.get('/api/me/sessions', auth, async (req, res) => {
   try {
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
-    const currentHash = createHash('sha256').update(rawToken).digest('hex');
+    const currentHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
     const { rows } = await pool.query(
       `SELECT id, token_hash, user_agent, ip, city, region, country, isp,
@@ -6690,7 +6695,7 @@ app.get('/api/me/sessions', auth, async (req, res) => {
 app.delete('/api/me/sessions/:id', auth, async (req, res) => {
   try {
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
-    const currentHash = createHash('sha256').update(rawToken).digest('hex');
+    const currentHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
     const { rows } = await pool.query(
       'SELECT id, token_hash FROM user_sessions WHERE id=$1 AND user_id=$2',
@@ -6716,7 +6721,7 @@ app.delete('/api/me/sessions/:id', auth, async (req, res) => {
 app.delete('/api/me/sessions', auth, async (req, res) => {
   try {
     const rawToken = (req.headers.authorization || '').replace('Bearer ', '');
-    const currentHash = createHash('sha256').update(rawToken).digest('hex');
+    const currentHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
     const { rowCount } = await pool.query(
       'UPDATE user_sessions SET revoked=TRUE WHERE user_id=$1 AND token_hash!=$2 AND revoked=FALSE',
