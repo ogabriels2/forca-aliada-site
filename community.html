@@ -11,6 +11,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/social-chat.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/nsfwjs@4.2.1/dist/nsfwjs.min.js"></script>
 <script>
 (function () {
   const key = 'fa_theme';
@@ -369,6 +374,33 @@ img{display:block}
 }
 .comp-ta::selection{background:color-mix(in srgb,var(--accent) 20%,transparent)}
 .comp-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px}
+.composer-media-row{display:flex;align-items:center;gap:8px;margin-top:8px;margin-left:53px;min-height:30px;flex-wrap:wrap}
+.media-tool-btn,.crop-ratio{
+  min-height:30px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:0 10px;border:1px solid var(--line);border-radius:999px;
+  background:var(--surface-solid);color:var(--ink-2);font-size:12px;font-weight:800;
+  transition:background var(--t-fast),border-color var(--t-fast),color var(--t-fast),transform var(--t-fast);
+}
+.media-tool-btn:hover,.crop-ratio:hover{transform:translateY(-1px);border-color:var(--line-strong);color:var(--accent);background:var(--accent-soft)}
+.media-status{font-size:11.5px;color:var(--ink-3);font-weight:650}
+.media-preview-container{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:8px 0 0 53px}
+.media-preview-container:empty{display:none}
+.media-preview-modal{margin:12px 0 0 53px}
+.media-preview-item{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--bg)}
+.media-preview-item img{width:100%;height:100%;object-fit:cover;display:block}
+.media-remove{
+  position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:999px;
+  display:grid;place-items:center;background:rgba(5,10,20,.72);color:#fff;
+  border:1px solid rgba(255,255,255,.18);font-size:15px;font-weight:900;
+}
+.modal-media-tools{display:flex;align-items:center;gap:8px;color:var(--accent);flex-wrap:wrap}
+.sheet-crop{width:min(760px,100%);max-height:min(880px,calc(100vh - 32px))}
+.crop-stage{height:min(62vh,560px);background:#070b12;display:grid;place-items:center;overflow:hidden}
+.crop-stage img{max-width:100%;max-height:100%;display:block}
+.crop-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;border-top:1px solid var(--line);background:var(--surface-solid)}
+.crop-ratios{display:flex;gap:7px;flex-wrap:wrap}
+.crop-ratio.is-active{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-h));border-color:transparent}
+.cropper-view-box,.cropper-face{border-radius:8px}
 
 /* ─── BARRA DE AMIGOS HORIZONTAL ─── */
 .friends-scroll-wrap {
@@ -514,6 +546,20 @@ img{display:block}
 .hashtag-token:hover{text-decoration:underline;text-underline-offset:2px}
 .post-link{color:var(--accent);text-decoration:underline;text-underline-offset:2px;word-break:break-all}
 .post-link:hover{color:var(--accent-h)}
+.post-collage{
+  margin-top:9px;display:grid;gap:3px;overflow:hidden;
+  border:1px solid var(--line);border-radius:16px;background:var(--bg);
+  max-height:520px;
+}
+.post-collage[data-count="1"]{display:block}
+.post-collage[data-count="2"]{grid-template-columns:repeat(2,minmax(0,1fr));aspect-ratio:2/1}
+.post-collage[data-count="3"]{grid-template-columns:1.12fr .88fr;grid-template-rows:repeat(2,minmax(0,1fr));aspect-ratio:16/10}
+.post-collage[data-count="3"] .post-media:first-child{grid-row:1/3}
+.post-collage[data-count="4"]{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));aspect-ratio:1.45/1}
+.post-media{display:block;min-width:0;min-height:0;background:var(--surface-soft)}
+.post-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform var(--t-med) var(--ease)}
+.post-collage[data-count="1"] .post-media img{max-height:520px;object-fit:contain;background:var(--bg)}
+.post-card:hover .post-media img{transform:scale(1.015)}
 /* preview comments */
 .preview-comments{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:4px}
 .preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;align-items:flex-start;gap:4px}
@@ -994,6 +1040,9 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .tbtn{padding:0 9px;font-size:12px}
   .composer-inner,.post-layout{grid-template-columns:36px minmax(0,1fr)}
   .av42,.av42-sq{width:36px;height:36px;border-radius:9px}
+  .composer-media-row,.media-preview-container,.media-preview-modal{margin-left:47px}
+  .media-preview-container{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .crop-toolbar{align-items:stretch;flex-direction:column}
   .thread-hero{padding:12px}
   .reply-bar{grid-template-columns:36px minmax(0,1fr);grid-template-rows:auto auto}
   .reply-bar .btn{grid-column:2}
@@ -2353,6 +2402,15 @@ body::after{
           <svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
       </div>
+      <div class="composer-media-row">
+        <button class="media-tool-btn" type="button" data-media-pick="inline" aria-label="Adicionar imagens">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-4.5-4.5L5 21"/></svg>
+          <span id="inline-media-count">0/4</span>
+        </button>
+        <span class="media-status" id="inline-media-status"></span>
+        <input class="media-input" id="inline-media-input" type="file" multiple accept="image/*" hidden>
+      </div>
+      <div class="media-preview-container" id="inline-media-preview" aria-live="polite"></div>
     </div>
 
     <!-- FEED -->
@@ -2487,16 +2545,43 @@ body::after{
           </div>
         </div>
       </div>
+      <div class="media-preview-container media-preview-modal" id="modal-media-preview" aria-live="polite"></div>
     </div>
     <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-solid)">
-      <div style="display:flex; gap:8px; color:var(--accent)">
-        <button class="btn btn-ghost btn-sm" disabled title="Mídia"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+      <div class="modal-media-tools">
+        <button class="btn btn-ghost btn-sm" type="button" data-media-pick="modal" title="Mídia"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span id="modal-media-count">0/4</span></button>
+        <input class="media-input" id="modal-media-input" type="file" multiple accept="image/*" hidden>
         <button class="btn btn-ghost btn-sm" disabled title="Enquete"><svg width="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+        <span class="media-status" id="modal-media-status"></span>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <div class="ring-wrap" id="modal-char-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="modal-ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg><span id="modal-ring-label"></span></div>
         <button class="btn btn-primary" id="modal-publish-btn" disabled>Publicar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="crop-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-crop" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+    <div class="sheet-header">
+      <div>
+        <h2 id="crop-title">Ajustar imagem</h2>
+        <span class="media-status" id="crop-status">Escolha o enquadramento antes de publicar.</span>
+      </div>
+      <button class="close-btn" type="button" data-crop-cancel aria-label="Cancelar corte"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="crop-stage">
+      <img id="crop-image" alt="Imagem selecionada">
+    </div>
+    <div class="crop-toolbar">
+      <div class="crop-ratios" role="group" aria-label="Proporção do corte">
+        <button class="crop-ratio is-active" type="button" data-ratio="free">Livre</button>
+        <button class="crop-ratio" type="button" data-ratio="1">1:1</button>
+        <button class="crop-ratio" type="button" data-ratio="0.8">4:5</button>
+        <button class="crop-ratio" type="button" data-ratio="1.7777777778">16:9</button>
+      </div>
+      <button class="btn btn-primary" type="button" id="crop-confirm">Confirmar Corte</button>
     </div>
   </div>
 </div>
@@ -2539,7 +2624,9 @@ const state = {
   players:[], notifs:[], notifUnread:0, trendCount:0,
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, mentionSuggestions:[], routeActive:false,
-  searchQuery:'', hashtag:''
+  searchQuery:'', hashtag:'',
+  composerMedia:{inline:[],modal:[]},
+  cropQueue:[], cropper:null, cropObjectUrl:null, cropComposer:'inline', nsfwModelPromise:null
 };
 
 /* ======================= HELPERS ======================= */
@@ -2603,7 +2690,7 @@ function communityShareUrl(params={}){
 async function api(path, opts={}){
   const h=new Headers(opts.headers||{});
   h.set('Authorization',`Bearer ${token}`);
-  if(opts.body&&!h.has('Content-Type')) h.set('Content-Type','application/json');
+  if(opts.body&&!(opts.body instanceof FormData)&&!h.has('Content-Type')) h.set('Content-Type','application/json');
   const timeoutMs=opts.timeoutMs||25000;
   const fetchOpts={...opts};delete fetchOpts.timeoutMs;
   let err;
@@ -2771,7 +2858,8 @@ function syncComposer(type){
   const ta=$(`#${type}-ta`), mirror=$(`#${type}-mirror`), btn=$(`#${type}-publish-btn`);
   if(!ta)return;
   const val=ta.value, len=val.length, max=280;
-  if(btn) btn.disabled = len<2||len>max;
+  const mediaCount=state.composerMedia?.[type]?.length||0;
+  if(btn) btn.disabled = (len<2&&!mediaCount)||len>max;
   if(type === 'modal'){
     const ring=$('#modal-ring-circle'), label=$('#modal-ring-label'), wrap=$('#modal-char-ring');
     const r=15.9; const circum=2*Math.PI*r; const pct=Math.min(1,len/max);
@@ -2894,6 +2982,19 @@ function updateCommunityPulse(){
 
 /* ======================= FEED ======================= */
 function skels(n=3){return Array.from({length:n},()=>'<div class="post-skel skel"></div>').join('')}
+function mediaUrlsFromPost(p){
+  const raw=Array.isArray(p?.media_urls)?p.media_urls:[];
+  const original=Array.isArray(p?.repost_original_media_urls)?p.repost_original_media_urls:[];
+  const urls=(p?.repost_of_id?original.length?original:raw:raw)
+    .map(v=>String(v||'').trim())
+    .filter(v=>/^https:\/\/res\.cloudinary\.com\/.+\/image\/upload\//i.test(v));
+  return [...new Set(urls)].slice(0,4);
+}
+function postCollageHTML(urls=[]){
+  const safe=urls.slice(0,4);
+  if(!safe.length)return'';
+  return`<div class="post-collage" data-count="${safe.length}">${safe.map((url,i)=>`<a class="post-media" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-no-post-nav aria-label="Abrir imagem ${i+1}"><img src="${esc(url)}" alt="Imagem do post ${i+1}" loading="lazy" decoding="async"></a>`).join('')}</div>`;
+}
 function postCardHTML(p){
   const isRepost=Boolean(p.repost_of_id);
   const reposter=p.minecraft_name||p.username||'Steve';
@@ -2906,6 +3007,7 @@ function postCardHTML(p){
   const targetPostId=p.repost_of_id||p.id;
   const displayContent=isRepost?(p.repost_original_content||''):p.content;
   const quoteContent=isRepost&&p.content?`<div class="repost-quote">${mentionHTML(p.content)}</div>`:'';
+  const mediaHTML=postCollageHTML(mediaUrlsFromPost(p));
   const isMe=state.me&&Number(authorId)===Number(state.me.id);
   const staff=canModerate();
   const edited=p.updated_at&&new Date(p.updated_at)>new Date(p.created_at);
@@ -2943,6 +3045,7 @@ function postCardHTML(p){
         </div>
         ${quoteContent}
         <div class="post-content">${mentionHTML(displayContent)}</div>
+        ${mediaHTML}
         ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>`<div class="preview-row">${IC.comment}<strong>${esc(c.minecraft_name||c.username||'?')}:</strong><span>${mentionHTML(c.content)}</span></div>`).join('')}${p.comments_count>2?`<button class="btn btn-ghost btn-xs" style="margin-top:3px" data-action="open-thread">Ver ${num(p.comments_count)} respostas →</button>`:''}</div>`:''}
         <div class="post-actions">
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
@@ -3053,15 +3156,152 @@ async function loadFriendsBar(){
 }
 
 /* ======================= PUBLISH ======================= */
+function setMediaStatus(type,msg=''){
+  const el=$(`#${type}-media-status`);
+  if(el) el.textContent=msg;
+}
+function updateMediaPreview(type){
+  const list=state.composerMedia[type]||[];
+  const wrap=$(`#${type}-media-preview`);
+  const count=$(`#${type}-media-count`);
+  if(count) count.textContent=`${list.length}/4`;
+  if(wrap){
+    wrap.innerHTML=list.map((item,i)=>`<div class="media-preview-item"><img src="${esc(item.url)}" alt="Imagem ${i+1} pronta"><button class="media-remove" type="button" data-remove-media="${type}" data-media-index="${i}" aria-label="Remover imagem">×</button></div>`).join('');
+  }
+  syncComposer(type);
+}
+function clearComposerMedia(type){
+  (state.composerMedia[type]||[]).forEach(item=>{try{URL.revokeObjectURL(item.url)}catch{}});
+  state.composerMedia[type]=[];
+  setMediaStatus(type,'');
+  updateMediaPreview(type);
+}
+function waitForGlobal(name,timeout=9000){
+  return new Promise((resolve,reject)=>{
+    const start=Date.now();
+    const tick=()=>{
+      if(window[name]) return resolve(window[name]);
+      if(Date.now()-start>timeout) return reject(new Error(`${name} demorou para carregar.`));
+      setTimeout(tick,120);
+    };
+    tick();
+  });
+}
+async function ensureMediaLibraries(){
+  await Promise.all([
+    waitForGlobal('Cropper'),
+    waitForGlobal('imageCompression'),
+    waitForGlobal('nsfwjs',12000),
+  ]);
+}
+async function getNsfwModel(type){
+  if(!state.nsfwModelPromise){
+    setMediaStatus(type,'Carregando IA de moderação...');
+    state.nsfwModelPromise=window.nsfwjs.load();
+  }
+  return state.nsfwModelPromise;
+}
+function blobToImage(blob){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(blob);
+    const img=new Image();
+    img.onload=()=>resolve({img,url});
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Nao foi possivel analisar a imagem.'))};
+    img.src=url;
+  });
+}
+async function assertSafeImage(blob,type){
+  const model=await getNsfwModel(type);
+  const {img,url}=await blobToImage(blob);
+  try{
+    const predictions=await model.classify(img);
+    const blocked=new Set(['Porn','Hentai','Sexy']);
+    const hit=predictions.find(p=>blocked.has(p.className)&&Number(p.probability)>=0.6);
+    if(hit) throw new Error('Imagem barrada pela moderação automática.');
+  }finally{
+    URL.revokeObjectURL(url);
+  }
+}
+function destroyCropper(){
+  if(state.cropper){state.cropper.destroy();state.cropper=null}
+  if(state.cropObjectUrl){URL.revokeObjectURL(state.cropObjectUrl);state.cropObjectUrl=null}
+  state.cropCurrent=null;
+}
+async function openNextCrop(){
+  destroyCropper();
+  const item=state.cropQueue.shift();
+  if(!item){closeModal('crop-modal');return}
+  state.cropCurrent=item;
+  state.cropComposer=item.type;
+  await ensureMediaLibraries();
+  const img=$('#crop-image');
+  state.cropObjectUrl=URL.createObjectURL(item.file);
+  img.src=state.cropObjectUrl;
+  $$('.crop-ratio').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.ratio==='free'));
+  $('#crop-status').textContent=`${item.file.name} • ajuste livre`;
+  openModal('crop-modal');
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject});
+  state.cropper=new window.Cropper(img,{aspectRatio:NaN,viewMode:1,autoCropArea:.94,background:false,responsive:true,checkOrientation:true});
+}
+function queueMediaFiles(type,files){
+  const current=(state.composerMedia[type]||[]).length;
+  const selected=[...files].filter(f=>f&&f.type?.startsWith('image/'));
+  const slots=Math.max(0,4-current);
+  if(!slots){toast('warning','Limite atingido','Cada post pode ter até 4 imagens.');return}
+  const accepted=selected.slice(0,slots);
+  if(selected.length>slots) toast('warning','Limite de mídia',`Só as primeiras ${slots} imagem(ns) foram adicionadas.`);
+  state.cropQueue.push(...accepted.map(file=>({type,file})));
+  setMediaStatus(type,'Abrindo editor...');
+  if(!state.cropper&&!state.cropCurrent) openNextCrop().catch(e=>{toast('error','Editor indisponível',e.message);setMediaStatus(type,'')});
+}
+async function confirmCrop(){
+  if(!state.cropper||!state.cropCurrent)return;
+  const type=state.cropComposer;
+  const btn=$('#crop-confirm');
+  setBtnLoad(btn,true,'Processando');
+  try{
+    setMediaStatus(type,'Cortando e comprimindo...');
+    const canvas=state.cropper.getCroppedCanvas({maxWidth:1600,maxHeight:1600,imageSmoothingEnabled:true,imageSmoothingQuality:'high'});
+    const rawBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.9));
+    if(!rawBlob) throw new Error('Nao foi possivel gerar a imagem.');
+    const file=new File([rawBlob],`${Date.now()}-${(state.cropCurrent.file.name||'imagem').replace(/\.[^.]+$/,'')}.webp`,{type:'image/webp'});
+    const compressed=await window.imageCompression(file,{maxSizeMB:0.1,maxWidthOrHeight:1600,useWebWorker:true,fileType:'image/webp',initialQuality:.78});
+    setMediaStatus(type,'Moderando imagem...');
+    await assertSafeImage(compressed,type);
+    const url=URL.createObjectURL(compressed);
+    state.composerMedia[type].push({blob:compressed,url,name:file.name});
+    updateMediaPreview(type);
+    setMediaStatus(type,'Imagem pronta.');
+  }catch(e){
+    toast('error','Imagem descartada',e.message||'Nao foi possivel processar a imagem.');
+    setMediaStatus(type,'');
+  }finally{
+    setBtnLoad(btn,false,'Confirmar Corte');
+    openNextCrop().catch(e=>{toast('error','Editor indisponível',e.message);closeModal('crop-modal')});
+  }
+}
+async function uploadComposerMedia(type){
+  const items=state.composerMedia[type]||[];
+  if(!items.length)return[];
+  const form=new FormData();
+  items.forEach((item,i)=>form.append('media',item.blob,item.name||`post-${i+1}.webp`));
+  const data=await api('/api/community/upload',{method:'POST',body:form,timeoutMs:90000});
+  const urls=Array.isArray(data.urls)?data.urls:[];
+  if(urls.length!==items.length) throw new Error('Upload incompleto. Tente novamente.');
+  return urls;
+}
 async function publishPost(type){
   const ta=$(`#${type}-ta`); const content=ta.value.trim();
-  if(content.length<2||content.length>280)return;
+  const mediaCount=state.composerMedia[type]?.length||0;
+  if((content.length<2&&!mediaCount)||content.length>280)return;
   const btn=$(`#${type}-publish-btn`);
-  setBtnLoad(btn,true,type==='inline'?'':'Publicando');
+  setMediaStatus(type,mediaCount?'Enviando imagens...':'');
+  setBtnLoad(btn,true,type==='inline'?'':(mediaCount?'Enviando fotos':'Publicando'));
   try{
-    const created=await api('/api/community/posts',{method:'POST',body:JSON.stringify({content})});
+    const media_urls=await uploadComposerMedia(type);
+    const created=await api('/api/community/posts',{method:'POST',body:JSON.stringify({content,media_urls})});
     const post={...created,author_id:state.me.id,username:state.me.username,minecraft_name:state.me.minecraft_name,liked_by_me:false,likes_count:0,comments_count:0};
-    state.posts.unshift(post); ta.value=''; syncComposer(type); renderFeed();
+    state.posts.unshift(post); ta.value=''; clearComposerMedia(type); syncComposer(type); renderFeed();
     if(type==='modal') closeModal('post-modal');
     requestAnimationFrame(()=>{
       const card=$(`.post-card[data-post-id="${created.id}"]`);
@@ -3070,9 +3310,10 @@ async function publishPost(type){
     toast('success','Post publicado!','Sua mensagem entrou no feed.');
   }catch(e){toast('error','Falha ao publicar',e.message)}
   finally{
+    setMediaStatus(type,'');
     if(type==='inline') btn.innerHTML=`<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
     else setBtnLoad(btn,false,'Publicar');
-    btn.disabled=false;
+    syncComposer(type);
   }
 }
 
@@ -3256,6 +3497,7 @@ async function renderPostRoute(id){
     const isMe=state.me&&Number(post.author_id)===Number(state.me.id);
     const staff=canModerate();
     const canEdit=isMe&&((Date.now()-new Date(post.created_at))/60000)<=15;
+    const threadMediaHTML=postCollageHTML(mediaUrlsFromPost(post));
     const routeCol=$('#route-col');
     routeCol.innerHTML=`
       <div class="route-top">
@@ -3293,6 +3535,7 @@ async function renderPostRoute(id){
               </div>
             </div>
             <div class="post-content" id="thread-content" style="font-size:15px;margin-top:7px">${mentionHTML(post.content)}</div>
+            ${threadMediaHTML}
             <div class="post-actions" style="margin-top:10px">
               <button class="pa pa-like ${post.liked_by_me?'is-on':''}" id="thread-like" aria-label="${post.liked_by_me?'Descurtir':'Curtir'}">${IC.heart}<span>${num(post.likes_count)}</span></button>
               <button class="pa pa-share" id="thread-share" aria-label="Compartilhar">${IC.share}</button>
@@ -3415,13 +3658,19 @@ function extractMediaItems(rows=[]){
   const re=/https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|gif|webp)(?:\?[^\s"'<>]*)?/gi;
   const seen=new Set();
   return rows.flatMap(p=>{
+    const direct=mediaUrlsFromPost(p).map(url=>{
+      if(seen.has(url)) return null;
+      seen.add(url);
+      return{url,post_id:p.repost_of_id||p.id,label:displayName(p),created_at:p.created_at};
+    }).filter(Boolean);
     const text=[p.content,p.repost_original_content].filter(Boolean).join(' ');
-    return [...text.matchAll(re)].map(match=>{
+    const linked=[...text.matchAll(re)].map(match=>{
       const url=match[0];
       if(seen.has(url)) return null;
       seen.add(url);
       return{url,post_id:p.repost_of_id||p.id,label:displayName(p),created_at:p.created_at};
     }).filter(Boolean);
+    return [...direct,...linked];
   });
 }
 function replyCardHTML(reply,prof){
@@ -4167,6 +4416,7 @@ function bindEvents(){
     $(`#${type}-ta`)?.addEventListener('click',()=>updateMentions(type));
     $(`#${type}-ta`)?.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(!$(`#${type}-publish-btn`).disabled)publishPost(type);}});
     $(`#${type}-publish-btn`)?.addEventListener('click',()=>publishPost(type));
+    $(`#${type}-media-input`)?.addEventListener('change',e=>{queueMediaFiles(type,e.currentTarget.files||[]);e.currentTarget.value='';});
   });
   $$('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
   $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.filter)));
@@ -4249,6 +4499,28 @@ function bindEvents(){
     if(openSearch){e.preventDefault();openSearchPage();return}
     const hash=e.target.closest('[data-hashtag]');
     if(hash){e.preventDefault();e.stopPropagation();navigateHashtag(hash.dataset.hashtag);return}
+    const mediaPick=e.target.closest('[data-media-pick]');
+    if(mediaPick){e.preventDefault();$(`#${mediaPick.dataset.mediaPick}-media-input`)?.click();return}
+    const removeMedia=e.target.closest('[data-remove-media]');
+    if(removeMedia){
+      e.preventDefault();e.stopPropagation();
+      const type=removeMedia.dataset.removeMedia, idx=Number(removeMedia.dataset.mediaIndex);
+      const item=state.composerMedia[type]?.splice(idx,1)?.[0];
+      if(item?.url) URL.revokeObjectURL(item.url);
+      updateMediaPreview(type);
+      return;
+    }
+    if(e.target.closest('[data-crop-cancel]')){e.preventDefault();state.cropQueue=[];destroyCropper();closeModal('crop-modal');return}
+    const ratioBtn=e.target.closest('[data-ratio]');
+    if(ratioBtn){
+      e.preventDefault();
+      const ratio=ratioBtn.dataset.ratio==='free'?NaN:Number(ratioBtn.dataset.ratio);
+      state.cropper?.setAspectRatio(ratio);
+      $$('.crop-ratio').forEach(btn=>btn.classList.toggle('is-active',btn===ratioBtn));
+      $('#crop-status').textContent=ratioBtn.dataset.ratio==='free'?'Corte livre':'Proporção fixa selecionada';
+      return;
+    }
+    if(e.target.closest('#crop-confirm')){e.preventDefault();confirmCrop();return}
     const searchTerm=e.target.closest('[data-search-term]');
     if(searchTerm){const q=searchTerm.dataset.searchTerm;saveSearch(q);Router.navigate(communityUrl({q}));return}
     const searchPost=e.target.closest('[data-search-post]');
@@ -4256,6 +4528,7 @@ function bindEvents(){
     const trend=e.target.closest('.trend-item');
     if(trend?.dataset.tag){e.preventDefault();navigateHashtag(trend.dataset.tag);return}
     const closeBtn=e.target.closest('[data-close]');if(closeBtn){closeModal(closeBtn.dataset.close);return}
+    if(e.target.classList.contains('backdrop')&&e.target.id==='crop-modal'){state.cropQueue=[];destroyCropper();closeModal('crop-modal');return}
     if(e.target.classList.contains('backdrop')&&e.target.id) closeModal(e.target.id);
     const pick=e.target.closest('[data-pick]');if(pick){e.preventDefault();insertMention(pick.dataset.pick);return}
     const nrow=e.target.closest('[data-nid]');
@@ -4288,11 +4561,11 @@ function bindEvents(){
         if(a==='copy'){copyLink(id);return}
         return;
       }
-      if(!e.target.closest('button')&&!e.target.closest('.js-profile')) navigatePost(id);
+      if(!e.target.closest('button')&&!e.target.closest('a')&&!e.target.closest('.js-profile')&&!e.target.closest('[data-no-post-nav]')) navigatePost(id);
     }
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
   });
-  document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>closeModal(m.id))});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>{if(m.id==='crop-modal'){state.cropQueue=[];destroyCropper()}closeModal(m.id)})});
 
   // Ativar modal de postagem (FAB)
   $('#fab-post')?.addEventListener('click', () => {
