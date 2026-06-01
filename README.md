@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/images/logo.JPG" width="80" height="80" style="border-radius:16px" alt="Força Aliada Logo">
+<img src="assets/images/fa-icon-light.png" width="80" height="80" style="border-radius:16px" alt="Força Aliada Logo">
 
 # Força Aliada — Site Oficial
 

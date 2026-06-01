@@ -391,7 +391,7 @@ id            SERIAL PRIMARY KEY,
 username      VARCHAR(255) UNIQUE NOT NULL,
 email         VARCHAR(255) UNIQUE NOT NULL,
 minecraft_name VARCHAR(255),
-photo_url     VARCHAR(255) DEFAULT 'logo.JPG',
+photo_url     VARCHAR(255) DEFAULT 'assets/images/fa-icon-light.png',
 password_hash VARCHAR(255) NOT NULL,
 role          VARCHAR(50)  NOT NULL DEFAULT 'limited',
 is_verified   BOOLEAN      DEFAULT TRUE,
@@ -400,6 +400,10 @@ created_at    TIMESTAMPTZ  DEFAULT NOW()
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'));
+UPDATE users
+SET photo_url = 'assets/images/fa-icon-light.png'
+WHERE photo_url IS NULL
+   OR lower(photo_url) IN ('logo.jpg','logo.jpeg','assets/images/logo.jpg','assets/images/logo.jpeg','/assets/images/logo.jpg','/assets/images/logo.jpeg');
 
 CREATE TABLE IF NOT EXISTS player_sessions (
   id            SERIAL PRIMARY KEY,
@@ -5382,15 +5386,32 @@ app.patch('/api/admin/posts/:id/pin', auth, requireAdmin, async (req, res) => {
 app.get('/api/me/social-notifications', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
   const cursor = req.query.cursor ? sanitize(req.query.cursor) : null;
+  const type = sanitize(req.query.type || '').toLowerCase();
+  const unreadOnly = String(req.query.unread || '').toLowerCase() === 'true';
   try {
+    const params = [req.user.sub];
+    const conditions = ['sn.recipient_id = $1'];
+    if (cursor) {
+      params.push(cursor);
+      conditions.push(`sn.created_at < $${params.length}::timestamptz`);
+    }
+    if (unreadOnly) conditions.push('sn.is_read = FALSE');
+    if (type === 'mentions') {
+      conditions.push("sn.type IN ('mention_post','mention_comment')");
+    } else if (SOCIAL_NOTIFICATION_TYPES.has(type)) {
+      params.push(type);
+      conditions.push(`sn.type = $${params.length}`);
+    }
+    params.push(limit + 1);
+    const limitParam = params.length;
+
     const { rows } = await pool.query(`
       SELECT sn.id, sn.type, sn.entity_type, sn.entity_id, sn.preview_text, sn.is_read, sn.created_at,
              actor.id AS actor_id, actor.username AS actor_username, actor.minecraft_name AS actor_minecraft_name,
              actor.photo_url AS actor_photo_url
       FROM social_notifications sn
       LEFT JOIN users actor ON actor.id = sn.actor_id
-      WHERE sn.recipient_id = $1
-        AND ($2::timestamptz IS NULL OR sn.created_at < $2::timestamptz)
+      WHERE ${conditions.join(' AND ')}
         AND (
           actor.id IS NULL OR NOT EXISTS (
             SELECT 1 FROM user_blocks ub
@@ -5399,8 +5420,8 @@ app.get('/api/me/social-notifications', auth, async (req, res) => {
           )
         )
       ORDER BY sn.created_at DESC
-      LIMIT $3
-    `, [req.user.sub, cursor, limit + 1]);
+      LIMIT $${limitParam}
+    `, params);
     const page = rows.slice(0, limit);
     res.json({ rows: page, next_cursor: rows.length > limit ? page.at(-1)?.created_at : null, has_more: rows.length > limit });
   } catch (e) {
@@ -5434,17 +5455,34 @@ app.post('/api/me/social-notifications/read-all', auth, async (req, res) => {
 
 app.patch('/api/me/social-notifications/:id/read', auth, async (req, res) => {
   const id = parseInt(req.params.id, 10);
+  const isRead = req.body?.read === false ? false : true;
   if (!id) return res.status(400).json({ error: 'ID invalido' });
   try {
     const { rowCount } = await pool.query(
-      'UPDATE social_notifications SET is_read=TRUE WHERE id=$1 AND recipient_id=$2',
-      [id, req.user.sub],
+      'UPDATE social_notifications SET is_read=$3 WHERE id=$1 AND recipient_id=$2',
+      [id, req.user.sub, isRead],
     );
     if (!rowCount) return res.status(404).json({ error: 'Notificacao nao encontrada' });
     res.json({ ok: true });
   } catch (e) {
     console.error('[PATCH /api/me/social-notifications/:id/read]', e);
     res.status(500).json({ error: 'Erro ao marcar notificacao social' });
+  }
+});
+
+app.delete('/api/me/social-notifications/:id', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rowCount } = await pool.query(
+      'DELETE FROM social_notifications WHERE id=$1 AND recipient_id=$2',
+      [id, req.user.sub],
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Notificacao nao encontrada' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/me/social-notifications/:id]', e);
+    res.status(500).json({ error: 'Erro ao excluir notificacao social' });
   }
 });
 
@@ -6221,7 +6259,7 @@ if (!id) return res.status(400).json({ error: 'invalid id' });
 const username      = sanitize(req.body?.username).toLowerCase();
 const email         = sanitize(req.body?.email).toLowerCase();
 const minecraftName = sanitize(req.body?.minecraftName || username);
-const photoUrl      = sanitize(req.body?.photoUrl || 'logo.JPG');
+const photoUrl      = sanitize(req.body?.photoUrl || 'assets/images/fa-icon-light.png');
 const ALLOWED_ROLES = ['owner','full','limited'];
 const role          = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : 'limited';
 

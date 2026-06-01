@@ -801,6 +801,77 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .notif-row small{display:block;margin-top:2px;color:var(--ink-2);font-size:11px;line-height:1.35}
 .notif-foot{display:block;padding:9px 13px;color:var(--accent);font-size:12px;font-weight:700;text-align:center;border-top:1px solid var(--line)}
 
+.notif-center{display:grid;gap:14px}
+.notif-center-hero{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;
+  border:1px solid var(--line);border-radius:var(--r-xl);
+  background:
+    radial-gradient(circle at 92% 8%,color-mix(in srgb,var(--gold) 20%,transparent),transparent 34%),
+    var(--surface-solid);
+  box-shadow:var(--shadow-sm);padding:18px;overflow:hidden;
+}
+.notif-center-main{display:grid;grid-template-columns:62px minmax(0,1fr);gap:14px;align-items:center}
+.notif-center-mark{
+  width:62px;height:62px;border-radius:18px;display:grid;place-items:center;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 18%,var(--surface-solid)),var(--surface-solid));
+  border:1px solid color-mix(in srgb,var(--gold) 32%,var(--line));
+}
+.notif-center-mark img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 8px 12px rgba(0,0,0,.22))}
+.notif-center-hero h1{font-size:clamp(24px,5vw,42px);line-height:.95;letter-spacing:0;margin:3px 0 8px}
+.notif-center-hero p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.5;max-width:660px}
+.notif-center-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.notif-center-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.notif-stat{
+  border:1px solid var(--line);border-radius:var(--r-md);padding:12px;background:var(--surface-solid);
+}
+.notif-stat strong{display:block;font-size:22px;line-height:1;font-weight:900}
+.notif-stat span{display:block;margin-top:6px;color:var(--ink-3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.notif-filterbar{
+  display:flex;align-items:center;gap:8px;overflow:auto;padding:2px 0 6px;scrollbar-width:none;
+}
+.notif-filterbar::-webkit-scrollbar{display:none}
+.notif-filter{
+  flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-solid);
+  color:var(--ink-2);padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer;
+  transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast),transform var(--t-fast);
+}
+.notif-filter:hover{transform:translateY(-1px);background:var(--surface-hover)}
+.notif-filter.is-active{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.notif-full-list{display:grid;gap:8px}
+.notif-full-row{
+  display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;
+  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-solid);
+  padding:12px;text-align:left;color:inherit;cursor:pointer;transition:background var(--t-fast),border-color var(--t-fast),transform var(--t-fast);
+}
+.notif-full-row:hover{transform:translateY(-1px);background:var(--surface-hover)}
+.notif-full-row.unread{border-color:color-mix(in srgb,var(--accent) 38%,var(--line));background:color-mix(in srgb,var(--accent-soft) 60%,var(--surface-solid))}
+.notif-full-row img{width:46px;height:46px;border-radius:13px;object-fit:cover}
+.notif-full-copy{min-width:0}
+.notif-full-title{display:flex;align-items:center;gap:8px;min-width:0}
+.notif-full-title strong{font-size:14px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-unread-chip{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);flex:0 0 auto}
+.notif-full-copy p{margin:4px 0 0;color:var(--ink-2);font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notif-full-copy small{display:block;margin-top:5px;color:var(--ink-3);font-size:11px}
+.notif-full-actions{display:flex;gap:6px;align-items:center}
+.notif-action-icon{
+  width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface-solid);
+  color:var(--ink-2);display:grid;place-items:center;cursor:pointer;transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast);
+}
+.notif-action-icon:hover{background:var(--accent-soft);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 32%,var(--line))}
+.notif-action-icon.danger:hover{background:rgba(239,68,68,.10);color:#ef4444;border-color:rgba(239,68,68,.26)}
+.notif-load-area{display:flex;justify-content:center;padding:8px 0 2px}
+@media(max-width:720px){
+  .notif-center-hero{grid-template-columns:1fr;padding:14px}
+  .notif-center-main{grid-template-columns:48px minmax(0,1fr)}
+  .notif-center-mark{width:48px;height:48px;border-radius:14px}
+  .notif-center-mark img{width:32px;height:32px}
+  .notif-center-actions{justify-content:flex-start}
+  .notif-center-stats{grid-template-columns:1fr}
+  .notif-full-row{grid-template-columns:40px minmax(0,1fr);align-items:flex-start}
+  .notif-full-row img{width:40px;height:40px;border-radius:11px}
+  .notif-full-actions{grid-column:2;justify-content:flex-start;margin-top:6px}
+}
+
 /* ─── MODALS ─── */
 .backdrop{
   position:fixed;inset:0;z-index:400;
@@ -2146,7 +2217,7 @@ body::after{
             <button class="btn btn-ghost btn-sm" id="mark-read-btn">Ler tudo</button>
           </div>
           <div class="notif-list" id="notif-list"></div>
-          <a class="notif-foot" href="account.html?tab=notificacoes-sociais">Ver todas →</a>
+          <a class="notif-foot" href="community.html?notifications=1" data-notification-route>Ver todas →</a>
         </div>
       </div>
       <button class="tbtn" id="theme-btn" aria-label="Alternar tema">
@@ -2190,7 +2261,7 @@ body::after{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg>
         Seguindo
       </button>
-      <a class="rnav-item" href="account.html?tab=notificacoes">
+      <a class="rnav-item" id="social-notif-nav" href="community.html?notifications=1" data-notification-route>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Notificações
         <span class="rnav-badge" id="nav-notif-badge" hidden>0</span>
@@ -2375,7 +2446,7 @@ body::after{
       <button class="mobile-drawer-item is-active" type="button" data-drawer-filter="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Feed geral</span></button>
       <button class="mobile-drawer-item" type="button" data-drawer-filter="following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg><span>Seguindo</span></button>
       <button class="mobile-drawer-item" type="button" id="drawer-search-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Buscar</span></button>
-      <a class="mobile-drawer-item" href="account.html?tab=notificacoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificacoes</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
+      <a class="mobile-drawer-item" href="community.html?notifications=1" data-notification-route><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificações</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
     </nav>
     <div class="mobile-drawer-season network-card">
       <p class="eyebrow">Agora na rede</p>
@@ -2465,6 +2536,7 @@ if (!token) location.replace('login.html');
 const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
   players:[], notifs:[], notifUnread:0, trendCount:0,
+  notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, mentionSuggestions:[], routeActive:false,
   searchQuery:'', hashtag:''
 };
@@ -2566,6 +2638,7 @@ const Router={
     const query = url.searchParams;
     if(query.get('post')) return this.routes['/community/post/:id']?.(query.get('post'));
     if(query.get('profile')) return this.routes['/profile/:id']?.(query.get('profile'));
+    if(query.get('notifications') === '1') return renderNotificationsRoute();
     if(query.get('search') === '1') return showSearchPage('');
     if(query.get('tag')) return showHashtagRoute(query.get('tag'));
     if(query.get('q')) return showSearchRoute(query.get('q'));
@@ -2670,6 +2743,7 @@ function showFeedUI(){
   const feedCol=$('#feed-col'),routeCol=$('#route-col');
   feedCol.style.display='';routeCol.classList.remove('show');routeCol.innerHTML='';
   document.title='Comunidade | Força Aliada';
+  setRailActive(state.filter);
 }
 function showRouteUI(html){
   state.routeActive=true;
@@ -2678,6 +2752,15 @@ function showRouteUI(html){
   routeCol.innerHTML=html;
   routeCol.scrollTop=0;
   window.scrollTo({top:0,behavior:'instant'});
+}
+function setRailActive(mode){
+  $$('.rnav-item').forEach(item=>{
+    const active = mode === 'notifications'
+      ? item.id === 'social-notif-nav'
+      : item.dataset.filter === mode;
+    item.classList.toggle('is-active', active);
+  });
+  $$('.mobile-drawer-item[data-drawer-filter]').forEach(item=>item.classList.toggle('is-active', item.dataset.drawerFilter === mode));
 }
 
 /* ======================= COMPOSER ======================= */
@@ -2922,6 +3005,7 @@ function switchTab(filter){
     t.setAttribute('aria-selected', String(isActive));
   });
   $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===filter));
+  setRailActive(filter);
   updateCommunityPulse();
   loadFeed({reset:true});
 }
@@ -3873,8 +3957,168 @@ function renderNotifs(){
   const list=$('#notif-list');
   list.innerHTML=state.notifs.length?state.notifs.map(n=>{
     const nm=n.actor_minecraft_name||n.actor_username||'Steve';
-    return`<button class="notif-row ${n.is_read?'':'unread'}" data-nid="${n.id}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}"><img src="${skin(nm,50)}" alt="${esc(nm)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(notifText(n))}</strong><small>${esc(n.preview_text||'')} · ${esc(time(n.created_at))}</small></div></button>`;
+    return`<button class="notif-row ${n.is_read?'':'unread'}" data-nid="${n.id}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}"><img src="${skin(nm,50)}" alt="${esc(nm)}" onerror="this.onerror=null; this.src='${skin('Steve',50)}'"><div><strong>${esc(notifText(n))}</strong><small>${esc(n.preview_text||'')} · ${esc(time(n.created_at))}</small></div></button>`;
   }).join(''):`<div style="padding:18px 13px;text-align:center;color:var(--ink-3);font-size:13px">Nenhuma notificação recente.</div>`;
+}
+
+const NOTIF_FILTERS=[
+  ['all','Todas'],
+  ['unread','Novas'],
+  ['new_follower','Seguidores'],
+  ['post_like','Curtidas'],
+  ['comment','Respostas'],
+  ['mentions','Menções'],
+  ['repost','Reposts'],
+  ['direct_message','Mensagens']
+];
+function notifFilterLabel(id){
+  return (NOTIF_FILTERS.find(f=>f[0]===id)||NOTIF_FILTERS[0])[1];
+}
+function notifQueryForFilter(filter, cursor){
+  const p=new URLSearchParams({limit:'20'});
+  if(filter==='unread') p.set('unread','true');
+  else if(filter&&filter!=='all') p.set('type',filter);
+  if(cursor) p.set('cursor',cursor);
+  return p.toString();
+}
+function notifRouteEntity(n){
+  if(n.entity_type==='post'&&n.entity_id) return 'Abrir post';
+  if(n.entity_type==='user'&&n.entity_id) return 'Abrir perfil';
+  if(n.type==='direct_message'&&n.actor_id) return 'Abrir chat';
+  return 'Ver';
+}
+function renderNotificationsRoute(){
+  state.searchQuery='';state.hashtag='';
+  state.notifPageFilter='all';state.notifPageRows=[];state.notifPageCursor=null;state.notifPageHasMore=true;
+  document.title='Notificações da rede | Força Aliada';
+  setRailActive('notifications');
+  showRouteUI(`
+    <div class="route-top">
+      <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
+      <span class="crumb-path">Rede / Notificações</span>
+    </div>
+    <section class="notif-center" aria-label="Central de notificações da rede">
+      <div class="notif-center-hero">
+        <div class="notif-center-main">
+          <div class="notif-center-mark"><img src="assets/images/fa-icon-light.png" alt=""></div>
+          <div>
+            <p class="eyebrow">Radar social</p>
+            <h1>O que aconteceu enquanto você estava fora.</h1>
+            <p>Curtidas, respostas, menções, seguidores, reposts e mensagens ficam aqui, separados das notificações gerais do site para você voltar rápido para a conversa certa.</p>
+          </div>
+        </div>
+        <div class="notif-center-actions">
+          <button class="btn btn-secondary btn-sm" type="button" data-notif-refresh>Atualizar</button>
+          <button class="btn btn-primary btn-sm" type="button" data-notif-mark-all>Ler tudo</button>
+        </div>
+      </div>
+      <div class="notif-center-stats">
+        <div class="notif-stat"><strong id="notif-page-unread">${num(state.notifUnread||0)}</strong><span>novas agora</span></div>
+        <div class="notif-stat"><strong id="notif-page-loaded">0</strong><span>carregadas</span></div>
+        <div class="notif-stat"><strong id="notif-page-filter">${esc(notifFilterLabel(state.notifPageFilter))}</strong><span>filtro ativo</span></div>
+      </div>
+      <div class="notif-filterbar" role="tablist" aria-label="Filtros de notificações">
+        ${NOTIF_FILTERS.map(([id,label])=>`<button class="notif-filter ${id==='all'?'is-active':''}" type="button" role="tab" aria-selected="${id==='all'?'true':'false'}" data-notif-filter="${esc(id)}">${esc(label)}</button>`).join('')}
+      </div>
+      <div class="notif-full-list" id="notif-page-list">${skels(3)}</div>
+      <div class="notif-load-area"><button class="btn btn-secondary btn-sm" id="notif-page-more" type="button" data-notif-more hidden>Carregar mais</button></div>
+    </section>
+  `);
+  loadNotificationsPage({reset:true});
+}
+async function loadNotificationsPage({reset=false}={}){
+  if(state.notifPageLoading||(!state.notifPageHasMore&&!reset))return;
+  state.notifPageLoading=true;
+  const list=$('#notif-page-list');
+  if(reset){
+    state.notifPageRows=[];state.notifPageCursor=null;state.notifPageHasMore=true;
+    if(list)list.innerHTML=skels(3);
+  }
+  try{
+    const q=notifQueryForFilter(state.notifPageFilter,state.notifPageCursor);
+    const payload=await api(`/api/me/social-notifications?${q}`);
+    const rows=payload.rows||[];
+    state.notifPageRows=reset?rows:[...state.notifPageRows,...rows];
+    state.notifPageCursor=payload.next_cursor||null;
+    state.notifPageHasMore=Boolean(payload.has_more);
+    renderNotificationsPageList();
+  }catch(e){
+    if(list)list.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Notificações indisponíveis</h3><p>${esc(e.message)}</p></div>`;
+  }finally{
+    state.notifPageLoading=false;
+    const more=$('#notif-page-more');if(more)more.hidden=!state.notifPageHasMore;
+  }
+}
+function renderNotificationsPageList(){
+  const list=$('#notif-page-list');if(!list)return;
+  const loaded=$('#notif-page-loaded');if(loaded)loaded.textContent=num(state.notifPageRows.length);
+  const unread=$('#notif-page-unread');if(unread)unread.textContent=num(state.notifUnread||0);
+  const filter=$('#notif-page-filter');if(filter)filter.textContent=notifFilterLabel(state.notifPageFilter);
+  $$('.notif-filter').forEach(btn=>{
+    const active=btn.dataset.notifFilter===state.notifPageFilter;
+    btn.classList.toggle('is-active',active);
+    btn.setAttribute('aria-selected',String(active));
+  });
+  if(!state.notifPageRows.length){
+    const title=state.notifPageFilter==='unread'?'Nenhuma notificação nova':'Nada por aqui ainda';
+    const msg=state.notifPageFilter==='all'?'Quando alguém interagir com você na rede, aparece aqui.':'Este filtro está quieto agora.';
+    list.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.empty}</div><h3>${title}</h3><p>${msg}</p></div>`;
+    return;
+  }
+  list.innerHTML=state.notifPageRows.map(n=>{
+    const actor=n.actor_minecraft_name||n.actor_username||'Steve';
+    const photo=String(n.actor_photo_url||'');
+    const av=photo&&!/logo\.jpe?g$/i.test(photo)?photo:skin(actor,50);
+    const read=Boolean(n.is_read);
+    return`<article class="notif-full-row ${read?'':'unread'}" data-open-social-notif="${esc(n.id)}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}">
+      <img src="${esc(av)}" alt="${esc(actor)}" onerror="this.onerror=null; this.src='${skin(actor,50)}'">
+      <div class="notif-full-copy">
+        <div class="notif-full-title">${read?'':'<span class="notif-unread-chip" aria-hidden="true"></span>'}<strong>${esc(notifText(n))}</strong></div>
+        <p>${esc(n.preview_text||'Interacao social na comunidade.')}</p>
+        <small>${esc(time(n.created_at))} · ${esc(notifRouteEntity(n))}</small>
+      </div>
+      <div class="notif-full-actions">
+        <button class="notif-action-icon" type="button" data-notif-action="${read?'unread':'read'}" data-id="${esc(n.id)}" aria-label="${read?'Marcar como nova':'Marcar como lida'}">${read?IC.info:IC.ok}</button>
+        <button class="notif-action-icon danger" type="button" data-notif-action="delete" data-id="${esc(n.id)}" aria-label="Excluir notificação">${IC.trash}</button>
+      </div>
+    </article>`;
+  }).join('');
+}
+async function setNotificationFilter(filter){
+  state.notifPageFilter=NOTIF_FILTERS.some(f=>f[0]===filter)?filter:'all';
+  await loadNotificationsPage({reset:true});
+}
+async function markSocialNotification(id,read=true){
+  await api(`/api/me/social-notifications/${encodeURIComponent(id)}/read`,{method:'PATCH',body:JSON.stringify({read})});
+  state.notifPageRows=state.notifPageRows.map(n=>String(n.id)===String(id)?{...n,is_read:read}:n);
+  await loadNotifs();
+  renderNotificationsPageList();
+}
+async function deleteSocialNotification(id){
+  const ok=await confirmDialog({title:'Excluir notificação',msg:'Ela some apenas da sua central da rede.',confirmText:'Excluir',danger:true});
+  if(!ok)return;
+  await api(`/api/me/social-notifications/${encodeURIComponent(id)}`,{method:'DELETE'});
+  state.notifPageRows=state.notifPageRows.filter(n=>String(n.id)!==String(id));
+  await loadNotifs();
+  renderNotificationsPageList();
+  toast('success','Notificação excluída','Sua central foi atualizada.');
+}
+async function markAllSocialNotificationsRead(){
+  await api('/api/me/social-notifications/read-all',{method:'POST'});
+  state.notifPageRows=state.notifPageRows.map(n=>({...n,is_read:true}));
+  state.notifUnread=0;
+  await loadNotifs();
+  renderNotificationsPageList();
+  toast('success','Tudo lido','Seu radar social ficou em dia.');
+}
+async function openSocialNotification(row){
+  const id=row.dataset.openSocialNotif||row.dataset.nid;
+  if(id) api(`/api/me/social-notifications/${encodeURIComponent(id)}/read`,{method:'PATCH'}).catch(()=>{});
+  $('#notif-menu')?.classList.remove('show');
+  if(row.dataset.et==='post'&&row.dataset.eid) navigatePost(row.dataset.eid);
+  else if(row.dataset.et==='user'&&row.dataset.eid) navigateProfile(`id:${row.dataset.eid}`);
+  else if(row.dataset.ntype==='direct_message'&&row.dataset.actor) window.FAChat?.openWithUser({id:row.dataset.actor});
+  await loadNotifs();
 }
 
 /* ======================= ROUTE HANDLERS ======================= */
@@ -3963,6 +4207,8 @@ function bindEvents(){
       $$('.mobile-drawer-item[data-drawer-filter]').forEach(btn=>btn.classList.toggle('is-active',btn===filter));
       return;
     }
+    const notificationRoute=e.target.closest('[data-notification-route]');
+    if(notificationRoute){e.preventDefault();closeMobileMenu();Router.navigate(communityUrl({notifications:'1'}));return}
     if(e.target.closest('#drawer-search-btn')||e.target.closest('[data-open-search-page]')){closeMobileMenu();openSearchModal();return}
     if(e.target.closest('#drawer-profile-btn')){closeMobileMenu();if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);return}
   });
@@ -3970,6 +4216,23 @@ function bindEvents(){
   document.addEventListener('click',e=>{
     if(!e.target.closest('.notif-wrap')) $('#notif-menu')?.classList.remove('show');
     if(!e.target.closest('.post-more-wrap')) $$('.post-menu.show').forEach(m=>m.classList.remove('show'));
+    const notificationRoute=e.target.closest('[data-notification-route]');
+    if(notificationRoute){e.preventDefault();$('#notif-menu')?.classList.remove('show');Router.navigate(communityUrl({notifications:'1'}));return}
+    const notifFilter=e.target.closest('[data-notif-filter]');
+    if(notifFilter){e.preventDefault();setNotificationFilter(notifFilter.dataset.notifFilter).catch(err=>toast('error','Filtro indisponivel',err.message));return}
+    if(e.target.closest('[data-notif-more]')){e.preventDefault();loadNotificationsPage({reset:false});return}
+    if(e.target.closest('[data-notif-refresh]')){e.preventDefault();loadNotificationsPage({reset:true});loadNotifs();return}
+    if(e.target.closest('[data-notif-mark-all]')){e.preventDefault();markAllSocialNotificationsRead().catch(err=>toast('error','Nao foi possivel marcar tudo',err.message));return}
+    const notifAction=e.target.closest('[data-notif-action]');
+    if(notifAction){
+      e.preventDefault();e.stopPropagation();
+      const id=notifAction.dataset.id;
+      if(notifAction.dataset.notifAction==='delete') deleteSocialNotification(id).catch(err=>toast('error','Nao foi possivel excluir',err.message));
+      else markSocialNotification(id,notifAction.dataset.notifAction==='read').catch(err=>toast('error','Nao foi possivel atualizar',err.message));
+      return;
+    }
+    const socialNotif=e.target.closest('[data-open-social-notif]');
+    if(socialNotif){e.preventDefault();openSocialNotification(socialNotif).catch(err=>toast('error','Notificacao indisponivel',err.message));return}
     const openSearch=e.target.closest('[data-open-search-page]');
     if(openSearch){e.preventDefault();openSearchPage();return}
     const hash=e.target.closest('[data-hashtag]');
@@ -3985,11 +4248,7 @@ function bindEvents(){
     const pick=e.target.closest('[data-pick]');if(pick){e.preventDefault();insertMention(pick.dataset.pick);return}
     const nrow=e.target.closest('[data-nid]');
     if(nrow){
-      e.preventDefault();$('#notif-menu').classList.remove('show');
-      api(`/api/me/social-notifications/${encodeURIComponent(nrow.dataset.nid)}/read`,{method:'PATCH'}).catch(()=>{});
-      if(nrow.dataset.et==='post'&&nrow.dataset.eid) navigatePost(nrow.dataset.eid);
-      else if(nrow.dataset.et==='user'&&nrow.dataset.eid) navigateProfile(`id:${nrow.dataset.eid}`);
-      loadNotifs();return;
+      e.preventDefault();openSocialNotification(nrow).catch(()=>{});return;
     }
     const folBtn=e.target.closest('[data-fol]');
     if(folBtn){e.stopPropagation();toggleFollowBtn(folBtn.dataset.uid,folBtn.dataset.on==='1',folBtn);return}
@@ -4044,6 +4303,7 @@ function bindEvents(){
 Router.register('/community',showFeedRoute);
 Router.register('/community.html',showFeedRoute);
 Router.register('/community/post/:id',renderPostRoute);
+Router.register('/community/notifications',renderNotificationsRoute);
 Router.register('/profile/:id',renderProfileRoute);
 
 async function boot(){

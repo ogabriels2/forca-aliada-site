@@ -596,7 +596,7 @@ header {
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/logo.JPG"
+    <img src="assets/images/fa-icon-light.png"
          onerror="this.src='https://minotar.net/helm/Steve/100.png'"
          alt="FA Logo" class="logo-img" width="30" height="30">
     <span>Força Aliada</span>
@@ -610,7 +610,7 @@ header {
     <!-- ── View: já logado ─────────────────────────── -->
     <div id="view-loggedin">
       <img id="avatar-loggedin" class="loggedin-avatar"
-           src="assets/images/logo.JPG"
+           src="assets/images/fa-icon-light.png"
            onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
       <div id="loggedin-username" class="loggedin-name"></div>
       <div class="loggedin-sub">Você já está conectado.</div>
@@ -627,7 +627,7 @@ header {
       <div class="card-head">
         <div class="avatar-wrap">
           <img id="avatar-login" class="avatar-img"
-               src="assets/images/logo.JPG"
+               src="assets/images/fa-icon-light.png"
                onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logo">
         </div>
         <h1 class="card-title">Bem-vindo de volta</h1>
@@ -1343,11 +1343,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     const skinUrl = me.minecraft_name
       ? `https://minotar.net/helm/${encodeURIComponent(me.minecraft_name)}/100.png`
-      : 'assets/images/logo.JPG';
+      : 'assets/images/fa-icon-light.png';
 
     const img = document.getElementById('avatar-loggedin');
     img.src = skinUrl;
-    img.onerror = () => { img.src = 'assets/images/logo.JPG'; };
+    img.onerror = () => { img.src = 'assets/images/fa-icon-light.png'; };
     document.getElementById('loggedin-username').textContent = me.username;
 
     const headerRight = document.getElementById('header-right');

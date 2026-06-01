@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Força Aliada: O servidor Minecraft Survival Vanilla feito para durar. Sem resets, economia real e ativo desde 2021. Jogue no PC, Mobile e Console.">
 <title>Força Aliada | Construa para Sempre</title>
-<link rel="icon" type="image/jpeg" href="assets/images/logo.JPG">
-<link rel="apple-touch-icon" href="assets/images/logo.JPG">
+<link rel="icon" type="image/png" href="assets/images/fa-icon-light.png">
+<link rel="apple-touch-icon" href="assets/images/fa-icon-light.png">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://forcaaliada.ogabriels.com/">
 <meta property="og:title" content="Força Aliada | Construa para Sempre">
@@ -231,9 +231,171 @@ header {
 .hero-content { position: relative; z-index: 10; color: #fff; max-width: 800px; padding: 20px; }
 .hero h1 { font-size: 5.5rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 16px; line-height: 1; text-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 .hero p { font-size: 1.4rem; font-weight: 400; opacity: 0.9; margin-bottom: 32px; text-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.hero-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
 .btn { padding: 16px 32px; border-radius: 980px; font-weight: 600; font-size: 16px; cursor: pointer; border: none; transition: all 0.2s; }
 .btn-primary { background-color: var(--text-primary); color: #fff; }
 .btn-primary:hover { background-color: #000; transform: scale(1.02); }
+.btn-secondary { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.24); }
+.btn-secondary:hover { background: rgba(255,255,255,0.18); transform: translateY(-1px); }
+
+/* --- REDE SOCIAL --- */
+.community-entry {
+  padding: 76px 5%;
+  background:
+    linear-gradient(180deg, rgba(245,245,247,0.98), rgba(255,255,255,0.96));
+  border-bottom: 1px solid var(--border);
+}
+.community-entry-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0,1.15fr) minmax(320px,.85fr);
+  gap: 28px;
+  align-items: stretch;
+}
+.community-entry-copy {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255,255,255,0.78);
+  box-shadow: var(--shadow-soft);
+  padding: clamp(28px,4vw,46px);
+  display: grid;
+  align-content: center;
+  min-height: 360px;
+}
+.community-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border-radius: 980px;
+  background: rgba(201,168,76,0.14);
+  color: #9a7625;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.community-kicker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34c759;
+  box-shadow: 0 0 0 4px rgba(52,199,89,0.14);
+}
+.community-entry h2 {
+  font-size: clamp(2.35rem,5vw,4.6rem);
+  line-height: .94;
+  letter-spacing: -0.045em;
+  margin-bottom: 18px;
+}
+.community-entry p {
+  max-width: 680px;
+  color: var(--text-secondary);
+  font-size: clamp(1rem,1.8vw,1.2rem);
+  line-height: 1.55;
+}
+.community-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+.community-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 18px;
+}
+.community-actions .btn-primary { background: #111827; }
+.community-actions .btn-primary:hover { background: #000; }
+.community-actions .btn-secondary {
+  color: var(--text-primary);
+  background: transparent;
+  border-color: var(--border);
+}
+.community-actions .btn-secondary:hover { background: rgba(0,0,0,0.04); }
+.community-proof {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 28px;
+}
+.community-proof span {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(0,0,0,0.025);
+}
+.community-proof strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.1;
+}
+.community-proof small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.community-preview {
+  border: 1px solid rgba(201,168,76,0.24);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(201,168,76,0.18), transparent 48%),
+    #111827;
+  color: #fff;
+  box-shadow: var(--shadow-float);
+  padding: 20px;
+  min-height: 360px;
+  display: grid;
+  align-content: space-between;
+  overflow: hidden;
+  position: relative;
+}
+.community-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,.9), transparent 82%);
+  pointer-events: none;
+}
+.community-preview > * { position: relative; z-index: 1; }
+.community-logo-stage {
+  display: grid;
+  place-items: center;
+  min-height: 168px;
+}
+.community-logo-stage img {
+  width: min(190px,56%);
+  height: auto;
+  filter: drop-shadow(0 18px 28px rgba(0,0,0,0.38));
+}
+.community-post-stack {
+  display: grid;
+  gap: 10px;
+}
+.community-post {
+  display: grid;
+  grid-template-columns: 36px minmax(0,1fr);
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(12px);
+}
+.community-post img { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; }
+.community-post strong { display: block; font-size: 13px; }
+.community-post small { display: block; margin-top: 3px; color: rgba(255,255,255,0.68); line-height: 1.35; }
+.community-post:nth-child(2) { transform: translateX(18px); width: calc(100% - 18px); }
 
 /* --- STATS --- */
 .stats-strip { display: flex; justify-content: center; gap: 80px; padding: 60px 5%; background: #fff; border-bottom: 1px solid #e5e5ea; }
@@ -354,6 +516,12 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   .user-dropdown { right: -10px; min-width: 240px; }
   
   .stats-strip { flex-direction: column; gap: 30px; }
+  .community-entry { padding: 48px 5%; }
+  .community-entry-wrap { grid-template-columns: 1fr; }
+  .community-entry-copy, .community-preview { min-height: auto; }
+  .community-entry h2 { font-size: clamp(2.2rem,13vw,3.7rem); }
+  .community-proof { grid-template-columns: 1fr; }
+  .community-post:nth-child(2) { transform: none; width: 100%; }
   .connection-info { grid-template-columns: 1fr; }
   .devices-container { flex-direction: column; align-items: center; gap: 30px; }
   .monitor { width: 90%; order: unset; }
@@ -542,6 +710,11 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 [data-theme="dark"] .nav-cta, [data-theme="dark"] .status-pill { background: rgba(0,113,227,0.18); border-color: rgba(0,113,227,0.32); }
 [data-theme="dark"] .section-header p, [data-theme="dark"] .footer-links a, [data-theme="dark"] footer { color: var(--text-secondary); }
 [data-theme="dark"] .sistema-section { background: var(--bg-color); }
+[data-theme="dark"] .community-entry { background: linear-gradient(180deg, rgba(8,13,24,0.98), rgba(13,20,35,0.96)); border-color: var(--border); }
+[data-theme="dark"] .community-entry-copy { background: rgba(17,24,39,0.82); border-color: rgba(148,163,184,0.14); box-shadow: none; }
+[data-theme="dark"] .community-actions .btn-secondary { color: var(--text-primary); background: rgba(255,255,255,0.06); border-color: rgba(148,163,184,0.16); }
+[data-theme="dark"] .community-actions .btn-secondary:hover { background: rgba(255,255,255,0.10); }
+[data-theme="dark"] .community-proof span { background: rgba(255,255,255,0.04); border-color: rgba(148,163,184,0.12); }
 [data-theme="dark"] .pillar-card.capital-card { background: rgba(14,165,233,0.06); border-color: rgba(14,165,233,0.2); }
 [data-theme="dark"] .pillar-card.merit-card { background: rgba(168,85,247,0.06); border-color: rgba(168,85,247,0.2); }
 [data-theme="dark"] .pillar-card p { color: var(--text-secondary); }
@@ -759,6 +932,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <li><a href="#sobre" onclick="toggleMenu()">Legado</a></li>
     <li><a href="#cidades" onclick="toggleMenu()">Tríade</a></li>
     <li><a href="#sistema" onclick="toggleMenu()">Sistema</a></li>
+    <li><a href="community.html" onclick="toggleMenu()">Rede</a></li>
     <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
@@ -779,7 +953,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <header>
   <a href="#inicio" class="brand-link" aria-label="Início - Força Aliada">
-    <img src="assets/images/logo.JPG" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
+    <img src="assets/images/fa-icon-light.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
     <span class="logo-text">Força Aliada</span>
   </a>
   
@@ -788,6 +962,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <li><a href="#sobre">Legado</a></li>
       <li><a href="#cidades">Tríade</a></li>
       <li><a href="#sistema">Sistema</a></li>
+      <li><a href="community.html">Rede</a></li>
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
@@ -818,7 +993,47 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   <div class="hero-content">
     <h1>Construa para sempre.</h1>
     <p>O único servidor Survival Vanilla onde sua obra dura anos, não temporadas.<br>Ativo e estável desde 2021.</p>
-    <button class="btn btn-primary" onclick="document.getElementById('status').scrollIntoView({behavior:'smooth'});">Começar a Jogar</button>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="community.html">Entrar na Rede</a>
+      <button class="btn btn-secondary" onclick="document.getElementById('status').scrollIntoView({behavior:'smooth'});">Começar a Jogar</button>
+    </div>
+  </div>
+</section>
+
+<section class="community-entry reveal" id="rede" aria-label="Rede social Força Aliada">
+  <div class="community-entry-wrap">
+    <div class="community-entry-copy">
+      <span class="community-kicker">Nova rede da comunidade</span>
+      <h2>A vida do servidor agora tem uma praça própria.</h2>
+      <p>Publique conquistas, siga jogadores, responda threads, receba notificações sociais e acompanhe reputação sem sair do site. A rede foi pensada para transformar cada interação em continuidade: menos grupo perdido, mais memória coletiva.</p>
+      <div class="community-actions">
+        <a class="btn btn-primary" href="community.html" aria-label="Abrir rede social da Força Aliada">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+          Abrir a rede
+        </a>
+        <a class="btn btn-secondary" href="login.html">Entrar na conta</a>
+      </div>
+      <div class="community-proof" aria-label="Recursos da rede">
+        <span><strong>Posts</strong><small>conversas, reposts e threads</small></span>
+        <span><strong>Social</strong><small>seguir, curtir e comentar</small></span>
+        <span><strong>Notificações</strong><small>avisos da rede no lugar certo</small></span>
+      </div>
+    </div>
+    <div class="community-preview" aria-hidden="true">
+      <div class="community-logo-stage">
+        <img src="assets/images/fa-icon-light.png" alt="">
+      </div>
+      <div class="community-post-stack">
+        <div class="community-post">
+          <img src="assets/images/fa-icon-light.png" alt="">
+          <div><strong>Quartel social aberto</strong><small>Novos posts, respostas e seguidores aparecem em tempo real.</small></div>
+        </div>
+        <div class="community-post">
+          <img src="assets/images/fa-icon-light.png" alt="">
+          <div><strong>Notificações da rede</strong><small>Curtidas, comentários, menções e reposts em uma área própria.</small></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -1310,7 +1525,7 @@ function renderAuthMenu(session) {
   if (session) {
     const skinUrl = session.minecraftName
       ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
-      : 'assets/images/logo.JPG';
+      : 'assets/images/fa-icon-light.png';
 
     const rankColor = session.rank ? getRankColor(session.rank.id) : '#8E8E93';
     const rankBadgeHtml = session.rank ? getRankDisplay(session.rank) : '';
@@ -1343,6 +1558,9 @@ function renderAuthMenu(session) {
           <div class="dropdown-divider"></div>
           <a href="account.html" class="dropdown-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
+          </a>
+          <a href="community.html" class="dropdown-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg> Abrir Rede
           </a>
           ${adminLink}
           <div class="dropdown-divider"></div>
