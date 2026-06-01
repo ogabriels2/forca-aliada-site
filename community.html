@@ -597,42 +597,43 @@ img{display:block}
 /* ─── POLLS ─── */
 .poll-container{
   margin-top:10px;
-  border:1px solid var(--line);
-  border-radius:var(--r-md);
-  overflow:hidden;
-  background:var(--surface-soft);
+  border:0;
+  border-radius:0;
+  overflow:visible;
+  background:transparent;
 }
-.poll-options{display:grid;gap:1px;background:var(--line)}
+.poll-options{display:grid;gap:8px;background:transparent}
 .poll-option{
   position:relative;
-  display:flex;align-items:center;gap:8px;
-  min-height:40px;padding:8px 12px;
-  background:var(--surface-solid);
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;
+  min-height:42px;padding:9px 12px;
+  background:var(--bg);
+  border-radius:12px;
   cursor:pointer;
-  transition:background var(--t-fast);
+  transition:background var(--t-fast),transform var(--t-fast) var(--ease),box-shadow var(--t-fast);
   overflow:hidden;
   user-select:none;
 }
-.poll-option:hover:not(.voted):not(.is-winner){background:var(--accent-soft)}
-.poll-option.voted{cursor:default}
+.poll-option:hover:not(.is-locked){transform:translateY(-1px);box-shadow:var(--shadow-xs)}
+.poll-option.is-locked{cursor:default}
 .poll-bar{
   position:absolute;inset:0;
   transform-origin:left center;
   transform:scaleX(0);
-  background:color-mix(in srgb,var(--accent) 13%,transparent);
+  background:color-mix(in srgb,var(--accent) 42%,transparent);
   transition:transform .6s cubic-bezier(.16,1,.3,1);
   pointer-events:none;
 }
-.poll-option.is-winner .poll-bar{background:color-mix(in srgb,var(--accent) 22%,transparent)}
-.poll-label{position:relative;z-index:1;flex:1;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.3}
+.poll-option.is-winner .poll-bar{background:color-mix(in srgb,var(--accent) 56%,transparent)}
+.poll-label{position:relative;z-index:1;flex:1;font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.3;text-align:right}
 .poll-pct{
   position:relative;z-index:1;
-  font-family:var(--ff-mono);font-size:11.5px;font-weight:700;color:var(--ink-2);
+  font-family:var(--ff-mono);font-size:11.5px;font-weight:900;color:var(--ink);
   min-width:34px;text-align:right;transition:color var(--t-fast);
   opacity:0;transform:translateX(4px);
   transition:opacity .3s,transform .3s;
 }
-.poll-option.voted .poll-pct{opacity:1;transform:none}
+.poll-option.has-results .poll-pct{opacity:1;transform:none}
 .poll-check{
   position:relative;z-index:1;
   width:16px;height:16px;border-radius:50%;flex-shrink:0;
@@ -642,14 +643,14 @@ img{display:block}
   transition:all var(--t-fast);
 }
 .poll-check svg{width:8px;height:8px;opacity:0;transform:scale(.5);transition:all var(--t-fast)}
-.poll-option.voted .poll-check{border-color:var(--accent);background:var(--accent)}
-.poll-option.voted .poll-check svg{opacity:1;transform:scale(1)}
+.poll-option.my-vote .poll-check{border-color:var(--accent);background:var(--accent)}
+.poll-option.my-vote .poll-check svg{opacity:1;transform:scale(1)}
 .poll-option.is-winner .poll-label{font-weight:800;color:var(--accent)}
 .poll-footer{
   display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:6px 12px;background:var(--surface-solid);
+  padding:7px 2px 0;background:transparent;
   font-size:11px;color:var(--ink-3);font-weight:700;
-  border-top:1px solid var(--line);
+  border-top:0;
 }
 .poll-footer-votes{display:flex;align-items:center;gap:4px}
 .poll-footer-votes svg{width:12px;height:12px}
@@ -727,7 +728,7 @@ img{display:block}
 .poll-toggle-btn svg{width:13px;height:13px}
 /* voted my-choice indicator */
 .poll-option.my-vote .poll-check{border-color:var(--accent);background:var(--accent)}
-.poll-option.my-vote .poll-bar{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.poll-option.my-vote .poll-bar{background:color-mix(in srgb,var(--accent) 62%,transparent)}
 @keyframes likePop{0%{transform:scale(.8)}55%{transform:scale(1.3) rotate(-8deg)}100%{transform:scale(1)}}
 @keyframes countBounce{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
 .pa span.bouncing{animation:countBounce 0.25s ease}
@@ -3372,7 +3373,7 @@ const state = {
   feedEvaluationTimestamp:null,
   players:[], notifs:[], notifUnread:0, trendCount:0,
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
-  activePostId: null, mentionSuggestions:[], routeActive:false,
+  activePostId: null, activeThreadPost:null, mentionSuggestions:[], routeActive:false,
   searchQuery:'', hashtag:'',
   composerMedia:{inline:[],modal:[]},
   cropQueue:[], cropper:null, cropObjectUrl:null, cropComposer:'inline', nsfwModelPromise:null
@@ -3638,6 +3639,7 @@ function closeAllPostMenus() {
 
 function showFeedUI(){
   state.routeActive=false;
+  state.activeThreadPost=null;
   const feedCol=$('#feed-col'),routeCol=$('#route-col');
   feedCol.style.display='';routeCol.classList.remove('show');routeCol.innerHTML='';
   document.title='Comunidade | Força Aliada';
@@ -4295,26 +4297,29 @@ function pollHTML(p) {
   const poll = p.poll;
   if (!poll || !Array.isArray(poll.options) || !poll.options.length) return '';
   const total = poll.options.reduce((s, o) => s + Number(o.votes || 0), 0);
-  const voted = Boolean(p.poll_voted_option_id || poll.user_vote_id);
+  const userVoteId = p.poll_voted_option_id || poll.user_vote_id;
+  const voted = Boolean(userVoteId);
   const closed = poll.is_closed || (poll.ends_at && new Date(poll.ends_at) < new Date());
-  const showResults = voted || closed;
+  const showResults = voted || closed || total > 0;
   const maxVotes = Math.max(...poll.options.map(o => Number(o.votes || 0)), 1);
+  const postId = p.repost_of_id || p.id;
 
   const optionsHTML = poll.options.map(opt => {
     const votes = Number(opt.votes || 0);
     const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
     const isWinner = showResults && votes === maxVotes && total > 0;
-    const isMyVote = String(opt.id) === String(p.poll_voted_option_id || poll.user_vote_id);
+    const isMyVote = String(opt.id) === String(userVoteId);
     const cls = [
-      showResults ? 'voted' : '',
+      showResults ? 'has-results' : '',
+      (voted || closed) ? 'is-locked' : '',
       isWinner && showResults ? 'is-winner' : '',
       isMyVote ? 'my-vote' : '',
     ].filter(Boolean).join(' ');
 
     return `<button class="poll-option ${cls}" type="button"
-        data-poll-vote="${esc(p.id)}" data-opt-id="${esc(opt.id)}"
-        ${showResults || closed ? 'disabled' : ''}
-        aria-label="${esc(opt.text)}: ${pct}%">
+        data-poll-vote="${esc(postId)}" data-opt-id="${esc(opt.id)}"
+        ${voted || closed ? 'disabled' : ''}
+        aria-label="${esc(opt.text)}${showResults ? `: ${pct}%` : ''}">
       <div class="poll-bar" style="transform:scaleX(${showResults ? pct / 100 : 0})"></div>
       <span class="poll-check" aria-hidden="true">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>
@@ -4325,7 +4330,7 @@ function pollHTML(p) {
   }).join('');
 
   const timeLeft = poll.ends_at ? formatPollTimeLeft(poll.ends_at) : '';
-  return `<div class="poll-container">
+  return `<div class="poll-container" data-poll-post-id="${esc(postId)}" data-poll-id="${esc(poll.id)}">
     <div class="poll-options">${optionsHTML}</div>
     <div class="poll-footer">
       <span class="poll-footer-votes">
@@ -4351,26 +4356,157 @@ function formatPollTimeLeft(endsAt) {
   return `${d}d restante${d !== 1 ? 's' : ''}`;
 }
 
+function pollSignature(poll) {
+  if (!poll || !Array.isArray(poll.options)) return '';
+  return [
+    poll.id,
+    poll.user_vote_id || '',
+    poll.is_closed ? 1 : 0,
+    ...poll.options.map(o => `${o.id}:${Number(o.votes || 0)}`),
+  ].join('|');
+}
+
+function setPostPollState(postId, poll) {
+  const target = Number(postId);
+  let touched = null;
+  state.posts.forEach(post => {
+    if (Number(post.id) === target || Number(post.repost_of_id) === target) {
+      post.poll = poll;
+      post.poll_voted_option_id = poll?.user_vote_id ? String(poll.user_vote_id) : null;
+      touched ||= post;
+    }
+  });
+  if (state.activeThreadPost && Number(state.activePostId) === target) {
+    state.activeThreadPost.poll = poll;
+    state.activeThreadPost.poll_voted_option_id = poll?.user_vote_id ? String(poll.user_vote_id) : null;
+    touched ||= state.activeThreadPost;
+  }
+  return touched || findPost(target) || (state.activeThreadPost && Number(state.activePostId) === target ? state.activeThreadPost : null);
+}
+
+function paintPollElement(el, post) {
+  if (!el || !post?.poll || !Array.isArray(post.poll.options)) return false;
+  const poll = post.poll;
+  const buttons = [...el.querySelectorAll('.poll-option')];
+  if (buttons.length !== poll.options.length) return false;
+
+  const total = poll.options.reduce((s, o) => s + Number(o.votes || 0), 0);
+  const userVoteId = post.poll_voted_option_id || poll.user_vote_id;
+  const voted = Boolean(userVoteId);
+  const closed = poll.is_closed || (poll.ends_at && new Date(poll.ends_at) < new Date());
+  const showResults = voted || closed || total > 0;
+  const maxVotes = Math.max(...poll.options.map(o => Number(o.votes || 0)), 1);
+
+  poll.options.forEach((opt, i) => {
+    const btn = buttons[i];
+    const votes = Number(opt.votes || 0);
+    const pct = total > 0 ? Math.round((votes / total) * 100) : 0;
+    const isWinner = showResults && votes === maxVotes && total > 0;
+    const isMyVote = String(opt.id) === String(userVoteId);
+    btn.dataset.optId = String(opt.id);
+    btn.disabled = voted || closed;
+    btn.classList.toggle('has-results', showResults);
+    btn.classList.toggle('is-locked', voted || closed);
+    btn.classList.toggle('is-winner', isWinner);
+    btn.classList.toggle('my-vote', isMyVote);
+    btn.setAttribute('aria-label', `${opt.text}${showResults ? `: ${pct}%` : ''}`);
+    const bar = btn.querySelector('.poll-bar');
+    if (bar) bar.style.transform = `scaleX(${showResults ? pct / 100 : 0})`;
+    const label = btn.querySelector('.poll-label');
+    if (label) label.textContent = opt.text;
+    const pctEl = btn.querySelector('.poll-pct');
+    if (pctEl) pctEl.textContent = showResults ? `${pct}%` : '';
+  });
+
+  const votesEl = el.querySelector('.poll-footer-votes');
+  if (votesEl) {
+    votesEl.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>${num(total)} voto${total !== 1 ? 's' : ''}`;
+  }
+  const footer = el.querySelector('.poll-footer');
+  if (footer) {
+    const oldStatus = [...footer.children].find(child => !child.classList.contains('poll-footer-votes'));
+    const status = closed
+      ? '<span class="poll-closed-badge">Encerrada</span>'
+      : (poll.ends_at ? `<span style="font-size:10.5px">${esc(formatPollTimeLeft(poll.ends_at))}</span>` : '');
+    if (oldStatus && status) oldStatus.outerHTML = status;
+    else if (oldStatus) oldStatus.remove();
+    else if (status) footer.insertAdjacentHTML('beforeend', status);
+  }
+  return true;
+}
+
+function refreshPollInDOM(postId, post) {
+  const target = Number(postId);
+  document.querySelectorAll(`.poll-container[data-poll-post-id="${target}"]`).forEach(el => {
+    if (!paintPollElement(el, post)) {
+      const html = pollHTML(post);
+      if (html) el.outerHTML = html;
+    }
+  });
+}
+
+function applyPollUpdate(postId, poll) {
+  const post = setPostPollState(postId, poll);
+  if (post) refreshPollInDOM(postId, post);
+}
+
+let pollSyncTimer = null;
+let pollSyncInFlight = false;
+
+function visiblePollPostIds() {
+  const ids = new Set();
+  document.querySelectorAll('.poll-container[data-poll-post-id]').forEach(el => {
+    const rect = el.getBoundingClientRect();
+    const visible = rect.bottom >= -120 && rect.top <= window.innerHeight + 120;
+    const id = Number(el.dataset.pollPostId);
+    if (visible && id) ids.add(id);
+  });
+  return [...ids].slice(0, 25);
+}
+
+async function syncVisiblePolls() {
+  if (pollSyncInFlight || document.hidden) return;
+  const ids = visiblePollPostIds();
+  if (!ids.length) return;
+  pollSyncInFlight = true;
+  try {
+    const data = await api(`/api/community/polls?post_ids=${ids.join(',')}`, { timeoutMs: 10000 });
+    const rows = Array.isArray(data.polls) ? data.polls : [];
+    rows.forEach(row => {
+      if (!row?.post_id || !row?.poll) return;
+      const current = findPost(row.post_id) || (state.activeThreadPost && Number(state.activePostId) === Number(row.post_id) ? state.activeThreadPost : null);
+      if (!current || pollSignature(current.poll) !== pollSignature(row.poll)) applyPollUpdate(row.post_id, row.poll);
+    });
+  } catch {
+    // Poll sync is opportunistic; manual feed refresh still works if the network is unstable.
+  } finally {
+    pollSyncInFlight = false;
+  }
+}
+
+function startPollSync() {
+  if (pollSyncTimer) return;
+  pollSyncTimer = setInterval(syncVisiblePolls, 4500);
+  syncVisiblePolls();
+}
+
+function stopPollSync() {
+  clearInterval(pollSyncTimer);
+  pollSyncTimer = null;
+}
+document.addEventListener('visibilitychange', () => document.hidden ? stopPollSync() : startPollSync());
+
 async function castPollVote(postId, optionId) {
+  const pollEl = document.querySelector(`.poll-container[data-poll-post-id="${Number(postId)}"]`);
+  pollEl?.querySelectorAll('.poll-option').forEach(btn => { btn.disabled = true; });
   try {
     const result = await api(`/api/community/posts/${encodeURIComponent(postId)}/poll/vote`, {
       method: 'POST',
       body: JSON.stringify({ option_id: Number(optionId) }),
     });
-    // Update local state
-    const post = findPost(postId);
-    if (post && result?.poll) {
-      post.poll = result.poll;
-      post.poll_voted_option_id = String(optionId);
-    }
-    renderFeed();
-    // Also update thread if open
-    const threadPoll = $('#thread-hero .poll-container');
-    if (threadPoll && post) {
-      const newHtml = pollHTML(post);
-      threadPoll.outerHTML = newHtml || '';
-    }
+    if (result?.poll) applyPollUpdate(postId, result.poll);
   } catch (e) {
+    pollEl?.querySelectorAll('.poll-option').forEach(btn => { btn.disabled = false; });
     toast('error', 'Voto não registrado', e.message);
   }
 }
@@ -4498,12 +4634,13 @@ async function editPostInline(id,card){
   const post=findPost(id);if(!post||!card)return;
   const contentEl=card.querySelector('.post-content');if(!contentEl)return;
   const orig=post.content||'';
+  contentEl.setAttribute('data-no-post-nav','edit');
   contentEl.innerHTML=`<div style="border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);overflow:hidden"><textarea style="width:100%;min-height:88px;padding:10px 11px;border:none;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:14px;resize:none" maxlength="280" aria-label="Editar post">${esc(orig)}</textarea></div><div style="display:flex;gap:7px;justify-content:flex-end;margin-top:8px"><button class="btn btn-secondary btn-sm" data-ec>Cancelar</button><button class="btn btn-primary btn-sm" data-es>Salvar</button></div>`;
   const ta=contentEl.querySelector('textarea');
   ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';
   ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,240)+'px';});
   ta.focus();ta.selectionStart=ta.selectionEnd=ta.value.length;
-  contentEl.querySelector('[data-ec]').addEventListener('click',e=>{e.stopPropagation();contentEl.innerHTML=mentionHTML(orig)});
+  contentEl.querySelector('[data-ec]').addEventListener('click',e=>{e.stopPropagation();contentEl.removeAttribute('data-no-post-nav');contentEl.innerHTML=mentionHTML(orig)});
   contentEl.querySelector('[data-es]').addEventListener('click',async e=>{
     e.stopPropagation();const next=ta.value.trim();
     if(next.length<2||next.length>280)return toast('warning','Texto inválido','Use entre 2 e 280 caracteres.');
@@ -4550,6 +4687,7 @@ async function renderPostRoute(id){
       api(`/api/community/posts/${encodeURIComponent(id)}/comments`)
     ]);
     const cached=findPost(id);if(cached)Object.assign(cached,post);else state.posts.unshift(post);
+    state.activeThreadPost = post;
     document.title=`Post de ${post.minecraft_name||post.username||'jogador'} | Força Aliada`;
     const mc=post.minecraft_name||post.username||'Steve';
     const rk=rankInfo(post.rank||post.role,post.merit);
@@ -4628,7 +4766,7 @@ function bindThreadEvents(post,id){
     const menu=e.target.closest('[data-action]');
     if(!menu)return;
     const act=menu.dataset.action;
-    if(act==='menu'){openPostMenu(menu.closest('.more-btn')||menu);return}
+    if(act==='menu'){e.stopPropagation();openPostMenu(menu.closest('.more-btn')||menu);return}
     if(act==='pin-thread'){setPostPinned(id,true);return}
     if(act==='unpin-thread'){setPostPinned(id,false);return}
     if(act==='edit-thread'){editThreadPost(post,id);return}
@@ -4674,6 +4812,7 @@ function bindThreadEvents(post,id){
   });
 }
 function editThreadPost(post,id){
+  if(!post) return toast('error','Post indisponivel','Reabra a thread e tente novamente.');
   const el=$('#thread-content');if(!el)return;
   const orig=post.content||'';
   el.innerHTML=`<div style="border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);overflow:hidden"><textarea style="width:100%;min-height:88px;padding:10px 11px;border:none;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:15px;resize:none" maxlength="280" aria-label="Editar post">${esc(orig)}</textarea></div><div style="display:flex;gap:7px;justify-content:flex-end;margin-top:8px"><button class="btn btn-secondary btn-sm" data-tec>Cancelar</button><button class="btn btn-primary btn-sm" data-tes>Salvar</button></div>`;
@@ -5885,7 +6024,7 @@ function bindEvents(){
         if(a==='delete'||a==='delete-thread'){deletePost(id);return}
         if(a==='admin-delete'||a==='admin-delete-thread'){moderateDeletePost(id);return}
         if(a==='edit'){if(card)editPostInline(id,card);return}
-        if(a==='edit-thread'){editThreadPost(findPost(id),id);return}
+        if(a==='edit-thread'){editThreadPost(findPost(id)||state.activeThreadPost,id);return}
         if(a==='pin'||a==='pin-thread'){setPostPinned(id,true);return}
         if(a==='unpin'||a==='unpin-thread'){setPostPinned(id,false);return}
         if(a==='report'||a==='report-thread'){reportContent('post',id);return}
@@ -5905,7 +6044,7 @@ function bindEvents(){
       if(act){
         e.stopPropagation();
         const a=act.dataset.action;
-        if(a==='menu'){openPostMenu(act.closest('.more-btn'));return}
+        if(a==='menu'){e.stopPropagation();openPostMenu(act.closest('.more-btn'));return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
         if(a==='repost'){toggleRepost(id,act.closest('.pa-repost'));return}
@@ -6423,6 +6562,7 @@ async function boot(){
   catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
   await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]);
   Router.init();
+  startPollSync();
 }
 boot();
 </script>

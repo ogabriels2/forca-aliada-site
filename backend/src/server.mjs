@@ -974,6 +974,15 @@ CREATE TABLE IF NOT EXISTS social_notifications (
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50) NOT NULL DEFAULT 'post_like';
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS entity_type VARCHAR(20);
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS entity_id INTEGER;
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS preview_text TEXT;
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+ALTER TABLE social_notifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE social_notifications ALTER COLUMN actor_id DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_social_notif_recipient ON social_notifications(recipient_id, is_read, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_social_notif_entity ON social_notifications(entity_type, entity_id);
 
@@ -1279,6 +1288,22 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
     [recipient, actor, type, entityType, entityId, preview],
   );
   return rows[0] || null;
+}
+
+let optionalTxSeq = 0;
+async function optionalTransactionStep(client, label, fn) {
+  const savepoint = `optional_step_${++optionalTxSeq}`;
+  await client.query(`SAVEPOINT ${savepoint}`);
+  try {
+    const result = await fn();
+    await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+    return result;
+  } catch (err) {
+    await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`).catch(() => {});
+    await client.query(`RELEASE SAVEPOINT ${savepoint}`).catch(() => {});
+    console.warn(`[${label} skipped]`, err?.message || err);
+    return null;
+  }
 }
 
 async function assertNoSocialBlock(viewerId, targetId) {
@@ -4157,6 +4182,9 @@ app.post('/api/me/follows/:targetId', auth, async (req, res) => {
   const targetId = parseInt(req.params.targetId, 10);
   if (!targetId || targetId === req.user.sub) return res.status(400).json({ error: 'ID invalido' });
   try {
+    const { rows: target } = await pool.query('SELECT id, username, minecraft_name FROM users WHERE id=$1', [targetId]);
+    if (!target.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+
     const allowed = await assertNoSocialBlock(req.user.sub, targetId);
     if (!allowed) return res.status(403).json({ error: 'Nao e possivel seguir este usuario.' });
 
@@ -4164,27 +4192,24 @@ app.post('/api/me/follows/:targetId', auth, async (req, res) => {
       'INSERT INTO user_follows(follower_id, following_id) VALUES($1, $2) ON CONFLICT DO NOTHING',
       [req.user.sub, targetId],
     );
-    const { rows: target } = await pool.query('SELECT id, username, minecraft_name FROM users WHERE id=$1', [targetId]);
-    if (!target.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
-
     if (rowCount > 0) {
-      await createSocialNotification({
+      createSocialNotification({
         recipientId: targetId,
         actorId: req.user.sub,
         type: 'new_follower',
         entityType: 'user',
         entityId: req.user.sub,
         previewText: `${req.user.minecraft_name || req.user.username} comecou a seguir voce.`,
-      });
+      }).catch(err => console.warn('[follow notification skipped]', err?.message || err));
       if (target[0]?.minecraft_name) {
-        await createMinecraftNotification({
+        createMinecraftNotification({
           minecraftName: target[0].minecraft_name,
           title: 'Novo Seguidor!',
           body: `${req.user.minecraft_name || req.user.username} comecou a seguir voce.`,
           type: 'social',
           icon: '👤',
           createdBy: req.user.sub,
-        });
+        }).catch(err => console.warn('[follow minecraft notification skipped]', err?.message || err));
       }
     }
     res.json({ ok: true, created: rowCount > 0 });
@@ -4846,24 +4871,24 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
           "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('post', $1, $2) ON CONFLICT DO NOTHING",
           [newPost.id, mUser.id],
         );
-        await createSocialNotification({
+        await optionalTransactionStep(client, 'post mention notification', () => createSocialNotification({
           recipientId: mUser.id,
           actorId: req.user.sub,
           type: 'mention_post',
           entityType: 'post',
           entityId: newPost.id,
           previewText: content,
-        }, client);
+        }, client));
         const targetName = mUser.minecraft_name || mUser.username;
         const authorName = req.user.minecraft_name || req.user.username;
-        await createMinecraftNotification({
+        createMinecraftNotification({
           minecraftName: targetName,
           title: 'Voce foi mencionado!',
           body: `${authorName} mencionou voce em uma postagem: "${content.substring(0, 40)}..."`,
           type: 'social',
           icon: '💬',
           createdBy: req.user.sub,
-        });
+        }).catch(err => console.warn('[post minecraft mention notification skipped]', err?.message || err));
       }
     }
     await client.query('COMMIT');
@@ -5269,7 +5294,22 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
-             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
+             (SELECT json_build_object(
+               'id', pp.id,
+               'ends_at', pp.ends_at,
+               'is_closed', (pp.ends_at < NOW()),
+               'user_vote_id', (SELECT ppv.option_id FROM post_poll_votes ppv WHERE ppv.poll_id = pp.id AND ppv.user_id = $1),
+               'options', COALESCE((
+                 SELECT json_agg(json_build_object(
+                   'id', ppo.id,
+                   'text', ppo.text,
+                   'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
+                 ) ORDER BY ppo.sort_order)
+                 FROM post_poll_options ppo
+                 WHERE ppo.poll_id = pp.id
+               ), '[]'::json)
+             ) FROM post_polls pp WHERE pp.post_id = p.id LIMIT 1) AS poll
       FROM user_posts p
       JOIN users u ON p.author_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
@@ -5457,14 +5497,14 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
     );
     const newComment = rows[0];
 
-    await createSocialNotification({
+    await optionalTransactionStep(client, 'comment notification', () => createSocialNotification({
       recipientId: post.author_id,
       actorId: req.user.sub,
       type: 'comment',
       entityType: 'post',
       entityId: postId,
       previewText: content,
-    }, client);
+    }, client));
 
     const mentions = extractMentions(content);
     if (mentions.length > 0) {
@@ -5478,24 +5518,24 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
           "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('comment', $1, $2) ON CONFLICT DO NOTHING",
           [newComment.id, mUser.id],
         );
-        await createSocialNotification({
+        await optionalTransactionStep(client, 'comment mention notification', () => createSocialNotification({
           recipientId: mUser.id,
           actorId: req.user.sub,
           type: 'mention_comment',
           entityType: 'comment',
           entityId: newComment.id,
           previewText: content,
-        }, client);
+        }, client));
         const targetName = mUser.minecraft_name || mUser.username;
         const authorName = req.user.minecraft_name || req.user.username;
-        await createMinecraftNotification({
+        createMinecraftNotification({
           minecraftName: targetName,
           title: 'Voce foi mencionado!',
           body: `${authorName} mencionou voce em um comentario: "${content.substring(0, 40)}..."`,
           type: 'social',
           icon: '💬',
           createdBy: req.user.sub,
-        });
+        }).catch(err => console.warn('[comment minecraft mention notification skipped]', err?.message || err));
       }
     }
     await client.query('COMMIT');
@@ -5680,16 +5720,18 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
     const { rowCount } = await client.query('INSERT INTO post_likes(post_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING', [postId, req.user.sub]);
     if (rowCount > 0) {
       await client.query('UPDATE user_posts SET likes_count = likes_count + 1 WHERE id = $1', [postId]);
-      await createSocialNotification({
+    }
+    await client.query('COMMIT');
+    if (rowCount > 0) {
+      createSocialNotification({
         recipientId: post.author_id,
         actorId: req.user.sub,
         type: 'post_like',
         entityType: 'post',
         entityId: postId,
         previewText: post.content,
-      }, client);
+      }).catch(err => console.warn('[like notification skipped]', err?.message || err));
     }
-    await client.query('COMMIT');
     res.json({ ok: true, created: rowCount > 0 });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -5777,6 +5819,50 @@ app.delete('/api/community/posts/:id', auth, async (req, res) => {
 });
 
 // ── Poll vote ─────────────────────────────────────────────────────────────────
+app.get('/api/community/polls', auth, async (req, res) => {
+  const ids = String(req.query.post_ids || '')
+    .split(',')
+    .map(id => parseInt(id, 10))
+    .filter(Boolean);
+  const postIds = [...new Set(ids)].slice(0, 25);
+  if (!postIds.length) return res.json({ polls: [] });
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT p.id AS post_id,
+             json_build_object(
+               'id', pp.id,
+               'ends_at', pp.ends_at,
+               'is_closed', (pp.ends_at < NOW()),
+               'user_vote_id', (SELECT ppv.option_id FROM post_poll_votes ppv WHERE ppv.poll_id = pp.id AND ppv.user_id = $1),
+               'options', COALESCE((
+                 SELECT json_agg(json_build_object(
+                   'id', ppo.id,
+                   'text', ppo.text,
+                   'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
+                 ) ORDER BY ppo.sort_order)
+                 FROM post_poll_options ppo
+                 WHERE ppo.poll_id = pp.id
+               ), '[]'::json)
+             ) AS poll
+      FROM user_posts p
+      JOIN users u ON u.id = p.author_id
+      JOIN post_polls pp ON pp.post_id = p.id
+      WHERE p.id = ANY($2::int[])
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      ORDER BY array_position($2::int[], p.id)
+    `, [req.user.sub, postIds]);
+    res.json({ polls: rows });
+  } catch (e) {
+    console.error('[GET /api/community/polls]', e);
+    res.status(500).json({ error: 'Erro ao sincronizar enquetes' });
+  }
+});
+
 app.post('/api/community/posts/:id/poll/vote', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   const optionId = parseInt(req.body?.option_id, 10);
@@ -5788,7 +5874,10 @@ app.post('/api/community/posts/:id/poll/vote', auth, async (req, res) => {
     const { rows: pollRows } = await client.query(
       'SELECT id, ends_at FROM post_polls WHERE post_id=$1 LIMIT 1', [postId]
     );
-    if (!pollRows.length) return res.status(404).json({ error: 'Enquete nao encontrada' });
+    if (!pollRows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Enquete nao encontrada' });
+    }
     const poll = pollRows[0];
     if (new Date(poll.ends_at) < new Date()) {
       await client.query('ROLLBACK');
