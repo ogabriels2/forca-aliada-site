@@ -1529,6 +1529,16 @@ function publicPageUrl(path = '/') {
 
 const PUBLIC_SHARE_BASE_URL = (process.env.PUBLIC_SHARE_BASE_URL || '').replace(/\/+$/, '');
 
+function absolutePublicUrl(value = '') {
+  if (!value) return '';
+  try {
+    const url = new URL(String(value), `${FRONTEND_BASE_URL}/`);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
 function publicShareBaseUrl(req) {
   if (PUBLIC_SHARE_BASE_URL) return PUBLIC_SHARE_BASE_URL;
   if (req) return `${req.protocol}://${req.get('host')}`;
@@ -1542,13 +1552,7 @@ function publicSharePageUrl(req, path = '/') {
 function firstMediaUrl(mediaUrls) {
   const list = Array.isArray(mediaUrls) ? mediaUrls : [];
   const raw = list.find(Boolean);
-  if (!raw) return '';
-  try {
-    const url = new URL(String(raw), `${FRONTEND_BASE_URL}/`);
-    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
-  } catch {
-    return '';
-  }
+  return absolutePublicUrl(raw);
 }
 
 function renderShareHtml({ title, description, image, canonical, redirectUrl, type = 'website', jsonLd = {} }) {
@@ -1592,7 +1596,6 @@ function renderShareHtml({ title, description, image, canonical, redirectUrl, ty
 <p>${htmlEscape(safeDescription)}</p>
 <p><a href="${htmlEscape(safeRedirect)}">Abrir na Forca Aliada</a></p>
 </main>
-<script>location.replace(${JSON.stringify(safeRedirect)});</script>
 </body>
 </html>`;
 }
@@ -1727,7 +1730,7 @@ app.get('/share/post/:id', async (req, res) => {
     if (!post) return res.redirect(publicPageUrl('/community.html'));
     const author = post.display_name || post.minecraft_name || post.username || 'Jogador';
     const description = plainText(post.content, 220) || `${author} publicou na comunidade Forca Aliada.`;
-    const image = firstMediaUrl(post.media_urls) || post.avatar_url || post.photo_url || publicAssetUrl('/assets/images/og-image.jpg');
+    const image = firstMediaUrl(post.media_urls) || absolutePublicUrl(post.avatar_url) || absolutePublicUrl(post.photo_url) || publicAssetUrl('/assets/images/og-image.jpg');
     const canonical = publicSharePageUrl(req, `/share/post/${encodeURIComponent(post.id)}`);
     const redirectUrl = publicPageUrl(`/post.html?id=${encodeURIComponent(post.id)}`);
     res.type('html').send(renderShareHtml({
@@ -1762,7 +1765,7 @@ app.get('/share/profile/:identifier', async (req, res) => {
     if (!profile) return res.redirect(publicPageUrl('/community.html'));
     const name = profile.display_name || profile.minecraft_name || profile.username || 'Jogador';
     const description = plainText(profile.bio, 200) || `${name} na comunidade Forca Aliada. ${Number(profile.followers_count || 0)} seguidores e ${Number(profile.posts_count || 0)} posts.`;
-    const image = profile.avatar_url || profile.photo_url || publicAssetUrl('/assets/images/og-image.jpg');
+    const image = absolutePublicUrl(profile.avatar_url) || absolutePublicUrl(profile.photo_url) || publicAssetUrl('/assets/images/og-image.jpg');
     const identifier = profile.minecraft_name || profile.username || `id:${profile.id}`;
     const canonical = publicSharePageUrl(req, `/share/profile/${encodeURIComponent(identifier)}`);
     const redirectUrl = publicPageUrl(`/profile.html?id=${encodeURIComponent(identifier)}`);
