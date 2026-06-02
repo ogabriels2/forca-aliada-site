@@ -291,8 +291,8 @@ function cloudinaryIsConfigured() {
 //
 // Lógica de 3 camadas:
 //   REJEITAR  → conteúdo claramente impróprio (LIKELY / VERY_LIKELY)
-//   SUSPEITO  → zona cinza (POSSIBLE) → publica mas entra na fila de moderação
-//   APROVADO  → UNLIKELY / VERY_UNLIKELY → sobe normalmente
+//   SUSPEITO  → zona cinza (LIKELY sem chegar a VERY_LIKELY em racy) → publica mas entra na fila de moderação
+//   APROVADO  → UNLIKELY / VERY_UNLIKELY / POSSIBLE → sobe normalmente
 //
 // A moderação só roda se GOOGLE_VISION_API_KEY estiver configurada.
 // Sem a chave, o upload prossegue normalmente (fail-open intencional
@@ -390,7 +390,7 @@ async function moderateImageBuffer(buffer) {
   }
 
   // SUSPEITO: zona cinza — publica mas entra na fila de revisão do admin
-  const SUSPICIOUS_THRESHOLD = 3; // POSSIBLE
+  const SUSPICIOUS_THRESHOLD = 4; // LIKELY (POSSIBLE ignorado — muitos falsos positivos em fotos de praia/bikini)
   if (
     scores.adult >= SUSPICIOUS_THRESHOLD ||
     scores.violence >= SUSPICIOUS_THRESHOLD ||
