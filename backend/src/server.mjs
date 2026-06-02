@@ -1924,6 +1924,7 @@ function directConversationSelect(extraWhere = '') {
            other_u.username AS other_username,
            other_u.minecraft_name AS other_minecraft_name,
            other_u.photo_url AS other_photo_url,
+           other_u.is_platform_verified,
            ${socialRankSql('other_u', 'pb')} AS other_rank,
            COALESCE(pb.merit_total, 0) AS other_merit,
            EXISTS(SELECT 1 FROM user_follows f1
@@ -4865,7 +4866,8 @@ app.get('/api/me/friends', auth, async (req, res) => {
 
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, f1.created_at AS followed_at,
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
+             f1.created_at AS followed_at,
              f2.created_at AS friend_since,
              COALESCE(up.bio, '') AS bio,
              COALESCE(up.display_name, '') AS display_name,
@@ -4895,7 +4897,8 @@ app.get('/api/me/friend-requests', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
+             uf.created_at,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
              ${primaryIntegrationFieldsSql('u')} AS integration,
@@ -6268,6 +6271,7 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
              c.is_deleted,
              c.created_at,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
+             u.is_platform_verified,
              COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(up.display_name, '') AS display_name,
              ${primaryIntegrationFieldsSql('u')} AS integration,
