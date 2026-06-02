@@ -1,4 +1,7 @@
 (function () {
+  // Versão do script — deve coincidir com o ?v= do <script> em community.html
+  window._faChatScriptVersion = 'chat7-20260602';
+
   if (window.FAChat) return;
 
   const safeStorage = (() => {
@@ -103,7 +106,7 @@
     headers.set('Authorization', `Bearer ${token}`);
     if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     const timeoutMs = options.timeoutMs || 35000;
-    const fetchOptions = { ...options };
+    const fetchOptions = { ...options, cache: 'no-store' };
     delete fetchOptions.timeoutMs;
     let err;
     for (const base of bases) {
