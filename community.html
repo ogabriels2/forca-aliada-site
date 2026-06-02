@@ -5620,6 +5620,10 @@ async function openCommunityProfileEditor(){
           const opt={maxSizeMB:1.2,maxWidthOrHeight:target==='avatar'?600:1400,useWebWorker:true};
           try{processed=await imageCompression(file,opt);}catch{}
         }
+        // ── Moderação local (nsfwjs) antes de aceitar a imagem ───────────────
+        setMediaStatus('inline','IA revisando segurança da imagem...');
+        await assertSafeImage(processed,'inline');
+        // ────────────────────────────────────────────────────────────────────
         const url=URL.createObjectURL(processed);
         if(target==='avatar'){
           if(pendingAvatar) URL.revokeObjectURL(pendingAvatar.objectUrl);
@@ -5632,7 +5636,7 @@ async function openCommunityProfileEditor(){
           const cv=back.querySelector('#edit-preview-cover');
           if(cv){cv.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.3)),url("${url}")`;cv.style.backgroundSize='cover';cv.style.backgroundPosition='center';}
         }
-      }catch(err){toast('error','Erro ao processar imagem',err.message)}
+      }catch(err){toast('error','Imagem recusada',err.message||'Não foi possível processar a imagem.')}
       setMediaStatus('inline','');
     }
 
