@@ -6774,7 +6774,7 @@ function bindEvents(){
   function openChat(){
     if(window.FAChat){window.FAChat.open();return;}
     let elapsed=0;
-    const tick=150,max=20000;
+    const tick=150,max=45000;
     const retry=setInterval(()=>{
       elapsed+=tick;
       if(window.FAChat){clearInterval(retry);window.FAChat.open();return;}
@@ -7491,6 +7491,6 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/social-chat.js?v=chat7-20260602" defer></script>
+<script src="assets/js/social-chat.js?v=chat7-20260602"></script>
 </body>
 </html>
