@@ -4442,13 +4442,13 @@ async function confirmCrop(){
 }
 async function uploadComposerMedia(type){
   const items=state.composerMedia[type]||[];
-  if(!items.length)return[];
+  if(!items.length)return{urls:[],flagged:false};
   const form=new FormData();
   items.forEach((item,i)=>form.append('media',item.blob,item.name||`post-${i+1}.webp`));
   const data=await api('/api/community/upload',{method:'POST',body:form,timeoutMs:90000});
   const urls=Array.isArray(data.urls)?data.urls:[];
   if(urls.length!==items.length) throw new Error('Upload incompleto. Tente novamente.');
-  return urls;
+  return{urls,flagged:!!data.flagged};
 }
 async function publishPost(type){
   const ta=$(`#${type}-ta`); const content=ta.value.trim();
@@ -4464,7 +4464,9 @@ async function publishPost(type){
   setMediaStatus(type,mediaCount?'Enviando imagens...':'');
   setBtnLoad(btn,true,type==='inline'?'':(mediaCount?'Enviando fotos':'Publicando'));
   try{
-    const media_urls=await uploadComposerMedia(type);
+    const uploadResult=await uploadComposerMedia(type);
+    const media_urls=uploadResult.urls;
+    const uploadFlagged=uploadResult.flagged;
     const identity=activePublishIdentity()||state.me;
     const body={content,media_urls};
     if(identity&&state.me&&Number(identity.id)!==Number(state.me.id)) body.publish_as_user_id=Number(identity.id);
@@ -4505,7 +4507,13 @@ async function publishPost(type){
       const card=$(`.post-card[data-post-id="${created.id}"]`);
       if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.classList.add('flash');setTimeout(()=>card.classList.remove('flash'),2400);}
     });
-    toast('success','Post publicado!','Sua mensagem entrou no feed.');
+    if(uploadFlagged){
+      toast('warning','Post publicado — imagens em revisão',
+        'Uma ou mais imagens foram sinalizadas automaticamente como possivelmente inapropriadas. O post está visível, mas as imagens passarão por revisão do admin. Se forem confirmadas como conteúdo impróprio (nudez, violência, gore, etc.), o post será removido.',
+        9000);
+    } else {
+      toast('success','Post publicado!','Sua mensagem entrou no feed.');
+    }
   }catch(e){toast('error','Falha ao publicar',e.message)}
   finally{
     setMediaStatus(type,'');
@@ -5679,7 +5687,7 @@ async function openCommunityProfileEditor(){
       });
       if(!res.ok){const j=await res.json().catch(()=>({}));throw new Error(j.error||'Falha no upload');}
       const j=await res.json();
-      return j.url||j.secure_url||j.public_url;
+      return{url:j.url||j.secure_url||j.public_url,flagged:!!j.flagged};
     }
 
     back.addEventListener('click',async e=>{
@@ -5706,15 +5714,16 @@ async function openCommunityProfileEditor(){
       try{
         let avatar_url=prefs.avatar_url||'';
         let cover_url=prefs.cover_url||'';
+        let profileFlagged=false;
         // upload pending images if any
         if(pendingAvatar){
           toast('info','Enviando foto de perfil…','');
-          try{avatar_url=await uploadImageBlob(pendingAvatar.blob,'avatar');}
+          try{const r=await uploadImageBlob(pendingAvatar.blob,'avatar');avatar_url=r.url;if(r.flagged)profileFlagged=true;}
           catch(err){toast('error','Falha ao enviar avatar',err.message);setBtnLoad(save,false,'Salvar alterações');return}
         }
         if(pendingCover){
           toast('info','Enviando capa…','');
-          try{cover_url=await uploadImageBlob(pendingCover.blob,'cover');}
+          try{const r=await uploadImageBlob(pendingCover.blob,'cover');cover_url=r.url;if(r.flagged)profileFlagged=true;}
           catch(err){toast('error','Falha ao enviar capa',err.message);setBtnLoad(save,false,'Salvar alterações');return}
         }
         const current=await api('/api/me/preferences');
@@ -5723,7 +5732,13 @@ async function openCommunityProfileEditor(){
         if(state.profileData?.profile&&Number(state.profileData.profile.id)===Number(state.me?.id)) Object.assign(state.profileData.profile,saved);
         close();
         await loadMe().catch(()=>{});
-        toast('success','Perfil atualizado','Suas informações públicas foram salvas.');
+        if(profileFlagged){
+          toast('warning','Perfil salvo — imagem em revisão',
+            'Uma ou mais fotos foram sinalizadas como possivelmente inapropriadas e passarão por revisão do admin. Se confirmadas como conteúdo impróprio, serão removidas.',
+            9000);
+        } else {
+          toast('success','Perfil atualizado','Suas informações públicas foram salvas.');
+        }
         renderProfileRoute(state.profileIdentifier||state.me?.minecraft_name||`id:${state.me?.id}`);
       }catch(err){
         toast('error','Não foi possível salvar',err.message);
