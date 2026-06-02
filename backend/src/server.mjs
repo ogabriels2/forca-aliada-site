@@ -772,6 +772,7 @@ ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS display_name VARCHAR(40) D
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT '';
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS cover_url TEXT DEFAULT '';
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS profile_layout VARCHAR(24) DEFAULT 'posts';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS profile_links JSONB DEFAULT '[]'::jsonb;
 
 -- ─────────────────────────────────────────────
 -- REDE SOCIAL: POSTAGENS E CURTIDAS
@@ -3990,6 +3991,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
              COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(up.cover_url, '') AS cover_url,
              COALESCE(up.profile_layout, 'posts') AS profile_layout,
+             COALESCE(up.profile_links, '[]'::jsonb) AS profile_links,
              COALESCE(up.public_profile, TRUE) AS public_profile,
              COALESCE(up.public_history, FALSE) AS public_history,
              ${primaryIntegrationFieldsSql('u')} AS integration,
@@ -5085,6 +5087,71 @@ app.post('/api/community/upload', auth, uploadLimiter, communityMediaUploadMiddl
   } catch (e) {
     console.error('[POST /api/community/upload]', e);
     res.status(502).json({ error: 'Nao foi possivel enviar as imagens agora.' });
+  }
+});
+
+// ── Upload de imagem de perfil (avatar / capa) ─────────────────────────────
+// Endpoint único que recebe o campo 'file', faz upload para o Cloudinary e
+// retorna { url } — compatível com o uploadImageBlob() do frontend.
+const profileImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { files: 1, fileSize: 10 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    if (!/^image\/(png|jpe?g|webp|gif|avif|bmp|heic|heif)$/i.test(file.mimetype || '')) {
+      return cb(new Error('Envie apenas imagens.'));
+    }
+    cb(null, true);
+  },
+});
+
+function profileImageUploadMiddleware(req, res, next) {
+  profileImageUpload.single('file')(req, res, err => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'A imagem pode ter no máximo 10MB.'
+        : `Upload inválido (${err.code}).`;
+      return res.status(400).json({ error: message });
+    }
+    return res.status(400).json({ error: err.message || 'Upload inválido.' });
+  });
+}
+
+app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async (req, res) => {
+  if (!cloudinaryIsConfigured()) {
+    return res.status(503).json({ error: 'Upload de imagens ainda não está configurado.' });
+  }
+  if (!req.file) return res.status(400).json({ error: 'Selecione uma imagem.' });
+
+  try {
+    const folder = process.env.CLOUDINARY_PROFILE_FOLDER || 'forca-aliada/profile-images';
+    const url = await new Promise((resolve, reject) => {
+      let settled = false;
+      const done = u => { if (!settled) { settled = true; resolve(u); } };
+      const fail = e => { if (!settled) { settled = true; reject(e); } };
+      const timeout = setTimeout(() => fail(new Error('Timeout no upload.')), 30000);
+      const stream = cloudinary.uploader.upload_stream({
+        folder,
+        resource_type: 'image',
+        format: 'webp',
+        use_filename: false,
+        unique_filename: true,
+        overwrite: false,
+        context: { uploaded_by: String(req.user.sub || '') },
+        transformation: [{ fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' }],
+      }, (err, result) => {
+        clearTimeout(timeout);
+        if (err) return fail(err);
+        if (!result?.secure_url) return fail(new Error('Cloudinary não retornou URL.'));
+        done(result.secure_url);
+      });
+      stream.on?.('error', e => { clearTimeout(timeout); fail(e); });
+      stream.end(req.file.buffer);
+    });
+    res.status(201).json({ url });
+  } catch (e) {
+    console.error('[POST /api/upload]', e);
+    res.status(502).json({ error: 'Não foi possível enviar a imagem agora.' });
   }
 });
 
@@ -6843,7 +6910,7 @@ const DEFAULT_PREFERENCES = Object.freeze({
   avatar_url: '',
   cover_url: '',
   profile_layout: 'posts',
-});
+  profile_links: [],
 const ALLOWED_THEMES = new Set(['light', 'dark', 'auto']);
 const ALLOWED_PROFILE_LAYOUTS = new Set(['posts', 'replies', 'reposts', 'media']);
 
@@ -6874,14 +6941,20 @@ function normalizePreferences(input = {}) {
   if (input.avatar_url !== undefined) prefs.avatar_url = normalizeProfileImageUrl(input.avatar_url);
   if (input.cover_url !== undefined) prefs.cover_url = normalizeProfileImageUrl(input.cover_url);
   if (ALLOWED_PROFILE_LAYOUTS.has(input.profile_layout)) prefs.profile_layout = input.profile_layout;
+  if (Array.isArray(input.profile_links)) {
+    prefs.profile_links = input.profile_links
+      .filter(l => l && typeof l === 'object' && typeof l.url === 'string' && l.url.trim())
+      .slice(0, 5)
+      .map(l => ({ label: sanitize(String(l.label || '')).slice(0, 40), url: sanitize(String(l.url || '')).slice(0, 300) }));
+  }
   return prefs;
 }
 
 async function ensureUserPreferences(userId, overrides = {}) {
   const prefs = normalizePreferences(overrides);
   const { rows } = await pool.query(
-    `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,updated_at)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
+    `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())
      ON CONFLICT(user_id) DO UPDATE SET
        email_server=$2,
        email_events=$3,
@@ -6895,16 +6968,17 @@ async function ensureUserPreferences(userId, overrides = {}) {
        avatar_url=$11,
        cover_url=$12,
        profile_layout=$13,
+       profile_links=$14,
        updated_at=NOW()
-     RETURNING email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,updated_at`,
-    [userId, prefs.email_server, prefs.email_events, prefs.email_community, prefs.public_profile, prefs.show_online, prefs.public_history, prefs.theme, prefs.bio, prefs.display_name, prefs.avatar_url, prefs.cover_url, prefs.profile_layout],
+     RETURNING email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at`,
+    [userId, prefs.email_server, prefs.email_events, prefs.email_community, prefs.public_profile, prefs.show_online, prefs.public_history, prefs.theme, prefs.bio, prefs.display_name, prefs.avatar_url, prefs.cover_url, prefs.profile_layout, JSON.stringify(prefs.profile_links)],
   );
   return rows[0];
 }
 
 app.get('/api/me/preferences', auth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,updated_at FROM user_preferences WHERE user_id=$1',
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at FROM user_preferences WHERE user_id=$1',
     [req.user.sub],
   );
   if (rows.length) return res.json(normalizePreferences(rows[0]));
@@ -6914,7 +6988,7 @@ app.get('/api/me/preferences', auth, async (req, res) => {
 
 app.put('/api/me/preferences', auth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout FROM user_preferences WHERE user_id=$1',
+    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links FROM user_preferences WHERE user_id=$1',
     [req.user.sub],
   );
   const prefs = await ensureUserPreferences(req.user.sub, { ...(rows[0] || {}), ...(req.body || {}) });
