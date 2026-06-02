@@ -8225,6 +8225,160 @@ app.use((req, res, next) => {
 });
 
 // ─────────────────────────────────────────────
+// Moderação — Fila de IA + Denúncias
+// ─────────────────────────────────────────────
+
+// GET /api/admin/moderation-queue
+// Devolve itens pendentes da fila de moderação da IA (community_upload_user e profile_image_user).
+// Para community_upload_user, busca o post mais recente com mídia do utilizador.
+// Para profile_image_user, devolve avatar/capa actuais do utilizador.
+app.get('/api/admin/moderation-queue', auth, requireAdmin, async (req, res) => {
+  const status = sanitize(req.query.status || 'pending');
+  const page   = clampInt(req.query.page,  0, 0, 100000);
+  const limit  = clampInt(req.query.limit, 20, 1, 100);
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        mq.id,
+        mq.content_type,
+        mq.content_id,
+        mq.reason,
+        mq.report_count,
+        mq.status,
+        mq.created_at,
+        mq.reviewed_at,
+        reviewer.username AS reviewed_by_username,
+        -- utilizador envolvido
+        u.id            AS user_id,
+        u.username      AS user_username,
+        u.minecraft_name AS user_minecraft,
+        u.photo_url     AS user_photo,
+        -- post mais recente com mídia (para community_upload_user)
+        p.id            AS post_id,
+        p.content       AS post_content,
+        p.media_urls    AS post_media_urls,
+        p.created_at    AS post_created_at,
+        -- perfil (para profile_image_user)
+        up.avatar_url   AS profile_avatar,
+        up.cover_url    AS profile_cover,
+        up.display_name AS profile_display_name
+      FROM moderation_queue mq
+      LEFT JOIN users reviewer ON reviewer.id = mq.reviewed_by
+      -- resolve utilizador: para community_upload_user e profile_image_user o content_id é o user_id
+      LEFT JOIN users u ON (
+        mq.content_type IN ('community_upload_user','profile_image_user')
+        AND u.id = mq.content_id
+      )
+      -- post mais recente com mídia do utilizador
+      LEFT JOIN LATERAL (
+        SELECT id, content, media_urls, created_at
+        FROM user_posts
+        WHERE author_id = mq.content_id
+          AND mq.content_type = 'community_upload_user'
+          AND array_length(media_urls, 1) > 0
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) p ON TRUE
+      LEFT JOIN user_preferences up ON (
+        mq.content_type = 'profile_image_user'
+        AND up.user_id = mq.content_id
+      )
+      WHERE mq.content_type IN ('community_upload_user','profile_image_user')
+        AND ($1 = 'all' OR mq.status = $1)
+      ORDER BY mq.created_at DESC
+      LIMIT $2 OFFSET $3
+    `, [status, limit, page * limit]);
+
+    const { rows: countRows } = await pool.query(`
+      SELECT COUNT(*)::int AS total
+      FROM moderation_queue
+      WHERE content_type IN ('community_upload_user','profile_image_user')
+        AND ($1 = 'all' OR status = $1)
+    `, [status]);
+
+    res.json({ rows, total: countRows[0]?.total ?? 0, page, limit });
+  } catch (e) {
+    console.error('[GET /api/admin/moderation-queue]', e);
+    res.status(500).json({ error: 'Erro ao listar fila de moderação.' });
+  }
+});
+
+// PATCH /api/admin/moderation-queue/:id
+// Aprova (status → reviewed) ou remove conteúdo (status → removed).
+// Para community_upload_user: remove o post associado se action=remove_content.
+// Para profile_image_user: limpa avatar/capa se action=remove_content.
+app.patch('/api/admin/moderation-queue/:id', auth, requireAdmin, async (req, res) => {
+  const id     = parseInt(req.params.id, 10);
+  const action = sanitize(req.body?.action || '');
+  if (!id || !['approve', 'remove_content'].includes(action)) {
+    return res.status(400).json({ error: 'Ação inválida. Use approve ou remove_content.' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'SELECT * FROM moderation_queue WHERE id=$1 FOR UPDATE',
+      [id],
+    );
+    const item = rows[0];
+    if (!item) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item não encontrado.' });
+    }
+
+    const newStatus = action === 'approve' ? 'reviewed' : 'removed';
+
+    if (action === 'remove_content') {
+      if (item.content_type === 'community_upload_user') {
+        // Remove o post mais recente com mídia do utilizador
+        await client.query(`
+          DELETE FROM user_posts
+          WHERE id = (
+            SELECT id FROM user_posts
+            WHERE author_id = $1 AND array_length(media_urls, 1) > 0
+            ORDER BY created_at DESC
+            LIMIT 1
+          )
+        `, [item.content_id]);
+      } else if (item.content_type === 'profile_image_user') {
+        // Limpa avatar e capa do perfil
+        await client.query(`
+          UPDATE user_preferences
+          SET avatar_url = '', cover_url = ''
+          WHERE user_id = $1
+        `, [item.content_id]);
+      }
+    }
+
+    await client.query(`
+      UPDATE moderation_queue
+      SET status=$1, reviewed_by=$2, reviewed_at=NOW()
+      WHERE id=$3
+    `, [newStatus, req.user.sub, id]);
+
+    await client.query('COMMIT');
+
+    await auditFromReq(req, {
+      actorId:    req.user.sub,
+      actorName:  req.user.username,
+      type:       'moderation',
+      severity:   action === 'remove_content' ? 'warning' : 'info',
+      targetId:   item.content_id,
+      targetName: item.content_type,
+      message:    `Fila de moderação #${id} (${item.content_type}): ${action}`,
+    });
+
+    res.json({ ok: true, status: newStatus });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[PATCH /api/admin/moderation-queue/:id]', e);
+    res.status(500).json({ error: 'Erro ao processar item da fila.' });
+  } finally {
+    client.release();
+  }
+});
+
+// ─────────────────────────────────────────────
 // Error handler
 // ─────────────────────────────────────────────
 app.use((err, req, res, _next) => {
