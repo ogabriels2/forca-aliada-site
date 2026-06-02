@@ -1112,6 +1112,45 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 }
 .account-menu button:hover{background:var(--surface-hover)}
 .account-menu button.danger{color:#ef4444}
+.account-mobile-only{display:none!important}
+.share-summary{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg)}
+.share-summary strong{font-size:13.5px;font-weight:850}
+.share-summary p{margin:0;color:var(--ink-2);font-size:12.5px;line-height:1.4}
+.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.share-chat-list{display:grid;gap:6px;margin-top:8px}
+.share-chat-row{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-soft);text-align:left;cursor:pointer;color:var(--ink)}
+.share-chat-row:hover{border-color:var(--accent);background:var(--accent-soft)}
+.share-chat-row img{width:34px;height:34px;border-radius:8px;object-fit:cover}
+.share-chat-row strong{display:block;font-size:12.5px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-chat-row small{display:block;color:var(--ink-3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-chat-row svg{width:14px;height:14px;color:var(--accent)}
+.repost-popover{
+  position:fixed;
+  z-index:9995;
+  width:218px;
+  padding:6px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--surface-solid);
+  box-shadow:var(--shadow-lg);
+  animation:fadeIn var(--t-fast) var(--ease);
+}
+.repost-popover button{
+  width:100%;
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:8px 9px;
+  border-radius:8px;
+  color:var(--ink);
+  font-size:12.5px;
+  font-weight:800;
+  text-align:left;
+  cursor:pointer;
+}
+.repost-popover button:hover{background:var(--accent-soft);color:var(--accent)}
+.repost-popover svg{width:15px;height:15px;flex:0 0 auto}
 .publish-as-row{
   margin:9px 0 0 53px;
   display:flex;
@@ -2946,6 +2985,86 @@ body::after{
   .lb-nav-next{right:8px}
   .lb-dots{bottom:130px}
 }
+@media(max-width:768px){
+  .topbar-inner{
+    position:relative;
+    display:grid;
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    align-items:center;
+    gap:8px;
+  }
+  .topbar .brand{
+    grid-column:2;
+    grid-row:1;
+    justify-self:center;
+    min-width:0;
+    max-width:100%;
+    gap:8px;
+  }
+  .topbar .brand-mark,
+  .topbar .brand .brand-logo{
+    width:36px;
+    height:36px;
+  }
+  .topbar .brand-text strong{
+    display:block;
+    max-width:116px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    text-align:center;
+    font-size:16px;
+  }
+  .topbar .top-search,
+  .topbar #theme-btn,
+  .topbar #mobile-menu-btn{
+    display:none!important;
+  }
+  .topbar .topnav{
+    display:contents;
+  }
+  .topbar .userbtn{
+    grid-column:1;
+    grid-row:1;
+    justify-self:start;
+    width:38px;
+    height:38px;
+    padding:2px;
+    border-radius:8px;
+  }
+  .topbar .userbtn img{
+    width:32px;
+    height:32px;
+    border-radius:7px;
+  }
+  .topbar .notif-wrap{
+    grid-column:3;
+    grid-row:1;
+    justify-self:end;
+    position:relative;
+  }
+  .topbar .notif-btn{
+    width:38px;
+    height:38px;
+    border-radius:8px;
+  }
+  .topbar .account-menu{
+    left:0;
+    right:auto;
+    top:calc(100% + 8px);
+    width:min(260px,calc(100vw - 20px));
+    z-index:940;
+  }
+  .topbar .account-menu.show{
+    display:grid;
+  }
+  .topbar .account-mobile-only{
+    display:flex!important;
+  }
+  .topbar .notif-menu{
+    display:none!important;
+  }
+}
 </style>
 </head>
 <body>
@@ -2995,6 +3114,14 @@ body::after{
         <span id="top-name" class="hide-sm">•••</span>
       </button>
       <div class="account-menu" id="account-menu" role="menu" aria-hidden="true">
+        <button type="button" data-account-action="menu" role="menuitem" class="account-mobile-only">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span>Menu da comunidade</span>
+        </button>
+        <button type="button" data-account-action="theme" role="menuitem" class="account-mobile-only">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"/></svg>
+          <span>Claro / escuro</span>
+        </button>
         <button type="button" data-account-action="profile" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           <span>Meu perfil</span>
@@ -3262,6 +3389,32 @@ body::after{
   </aside>
 </div>
 
+<!-- SHARE MODAL -->
+<div class="backdrop" id="share-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <div class="sheet-header">
+      <h2 id="share-title">Compartilhar</h2>
+      <button class="close-btn" data-close="share-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="share-summary">
+        <strong id="share-summary-title">Post da comunidade</strong>
+        <p id="share-summary-text">Link pronto para compartilhar.</p>
+      </div>
+      <div class="share-actions" style="margin-top:10px">
+        <button class="btn btn-secondary btn-sm" type="button" id="share-copy-btn">Copiar link</button>
+        <a class="btn btn-primary btn-sm" id="share-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      </div>
+      <div style="margin-top:14px">
+        <div class="section-title" style="margin-bottom:7px"><strong>Enviar pelo chat</strong><span>conversas recentes</span></div>
+        <div class="share-chat-list" id="share-chat-list"><div class="skel" style="height:48px;border-radius:8px"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- RELATION MODAL -->
 <div class="backdrop" id="rel-modal" aria-hidden="true" role="presentation">
   <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="rel-title">
@@ -3487,7 +3640,7 @@ body::after{
     </button>
     <!-- menu contexto mobile -->
     <div class="lb-mob-menu" id="lb-mob-menu" hidden>
-      <button class="lb-mob-menu-item" id="lb-mob-copy">Copiar link do post</button>
+      <button class="lb-mob-menu-item" id="lb-mob-copy">Compartilhar post</button>
       <button class="lb-mob-menu-item" id="lb-mob-thread">Abrir thread</button>
     </div>
   </div>
@@ -3534,7 +3687,17 @@ const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PRO
 const API_BASES = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 const TK_KEY = 'fa_token', THEME_KEY = 'fa_theme';
 const token = localStorage.getItem(TK_KEY);
-if (!token) location.replace('login.html');
+function loginUrlForCurrentPage(){
+  const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'');
+  try {
+    sessionStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
+    localStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
+  } catch {}
+  const url = new URL('login.html', location.href);
+  url.searchParams.set('next', here);
+  return `${url.pathname.replace(/^\//,'')}${url.search}`;
+}
+if (!token) location.replace(loginUrlForCurrentPage());
 
 /* ======================= STATE ======================= */
 const state = {
@@ -4258,7 +4421,7 @@ function postCardHTML(p){
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
           <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
-          <button class="pa pa-share" data-action="copy" aria-label="Compartilhar">${IC.share}</button>
+          <button class="pa pa-share" data-action="share" aria-label="Compartilhar">${IC.share}</button>
         </div>
       </div>
     </div>
@@ -5039,6 +5202,79 @@ async function toggleRepost(originalId,btn){
   }
 }
 
+let repostTargetButton=null;
+function closeRepostPopover(){
+  document.getElementById('_repost_popover')?.remove();
+  repostTargetButton=null;
+}
+function openRepostPopover(originalId,btn){
+  if(!btn)return toggleRepost(originalId,btn);
+  closeRepostPopover();
+  repostTargetButton=btn;
+  const post=findPost(originalId)||state.posts.find(p=>Number(p.repost_of_id)===Number(originalId));
+  const reposted=Boolean(post?.reposted_by_me);
+  const rect=btn.getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.id='_repost_popover';
+  pop.className='repost-popover';
+  pop.dataset.postId=String(originalId);
+  pop.innerHTML=`
+    <button type="button" data-repost-choice="quote">${IC.comment}<span>Comentar e repostar</span></button>
+    <button type="button" data-repost-choice="plain">${IC.repost}<span>${reposted?'Remover repost':'Repostar sem comentario'}</span></button>`;
+  document.body.appendChild(pop);
+  const top=Math.min(window.innerHeight-pop.offsetHeight-10,rect.bottom+8);
+  const left=Math.min(window.innerWidth-pop.offsetWidth-8,Math.max(8,rect.left));
+  pop.style.top=`${top}px`;
+  pop.style.left=`${left}px`;
+}
+function repostQuoteDialog(originalId){
+  return new Promise(resolve=>{
+    const back=document.createElement('div');
+    back.className='backdrop show';
+    back.id='_repost_quote_modal';
+    back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true">
+      <div class="sheet-header"><h2>Repostar com comentario</h2><button class="close-btn" data-rq-cancel aria-label="Fechar">${IC.close||'x'}</button></div>
+      <div class="sheet-body"><textarea class="sheet-ta" id="repost-quote-text" maxlength="280" rows="4" placeholder="Adicione seu comentario..."></textarea></div>
+      <div class="sheet-footer"><button class="btn btn-secondary btn-sm" data-rq-cancel>Cancelar</button><button class="btn btn-primary btn-sm" data-rq-send>Repostar</button></div>
+    </div>`;
+    document.body.appendChild(back);
+    document.body.classList.add('modal-open');
+    const finish=value=>{
+      back.remove();
+      if(!$$('.backdrop.show').length)document.body.classList.remove('modal-open');
+      resolve(value);
+    };
+    back.addEventListener('click',e=>{
+      if(e.target===back||e.target.closest('[data-rq-cancel]'))finish('');
+      if(e.target.closest('[data-rq-send]')){
+        const quote=$('#repost-quote-text')?.value.trim()||'';
+        if(quote.length<1)return toast('warning','Comentario vazio','Escreva algo ou use repost sem comentario.');
+        finish(quote);
+      }
+    });
+    setTimeout(()=>$('#repost-quote-text')?.focus(),50);
+  });
+}
+async function quoteRepost(originalId,btn){
+  const quote=await repostQuoteDialog(originalId);
+  if(!quote)return;
+  const identity=activePublishIdentity()||state.me;
+  const publishAs=identity&&state.me&&Number(identity.id)!==Number(state.me.id)?Number(identity.id):null;
+  try{
+    await api(`/api/community/posts/${encodeURIComponent(originalId)}/repost`,{
+      method:'POST',
+      body:JSON.stringify({content:quote,...(publishAs?{publish_as_user_id:publishAs}:{})})
+    });
+    const post=findPost(originalId);
+    if(post)post.reposts_count=Number(post.reposts_count||0)+1;
+    btn?.querySelector('span')&&(btn.querySelector('span').textContent=num(Number(post?.reposts_count||0)));
+    toast('success','Repost com comentario criado','Agora aparece no seu feed.');
+    loadFeed({reset:true});
+  }catch(e){
+    toast('error','Repost nao concluido',e.message);
+  }
+}
+
 /* ======================= DELETE ======================= */
 async function deletePost(id){
   const ok=await confirmDialog({title:'Excluir post',msg:'Esta publicação será removida permanentemente.',confirmText:'Excluir',danger:true});
@@ -5106,11 +5342,77 @@ async function editPostInline(id,card){
   });
 }
 
-/* ======================= COPY LINK ======================= */
+/* ======================= SHARE ======================= */
+let shareContext=null;
+function publicPostShareUrl(id){
+  return `${API_BASE.replace(/\/+$/,'')}/share/post/${encodeURIComponent(id)}`;
+}
+function postShareDetails(id){
+  const post=findPost(id)||state.activeThreadPost||state.posts.find(p=>Number(p.repost_of_id||p.id)===Number(id))||{};
+  const author=post.repost_of_id
+    ? (post.repost_original_display_name||post.repost_original_minecraft_name||post.repost_original_username)
+    : displayName(post);
+  const text=String(post.repost_original_content||post.content||'Post da comunidade Forca Aliada').trim();
+  return {
+    id,
+    url:publicPostShareUrl(id),
+    title:`Post de ${author||'jogador'} na Forca Aliada`,
+    text:text.slice(0,180),
+  };
+}
 async function copyLink(id){
-  const url=communityShareUrl({post:id});
+  const url=publicPostShareUrl(id);
   try{await navigator.clipboard.writeText(url);toast('success','Link copiado!',url)}
   catch{toast('info','Copie manualmente',url)}
+}
+function shareDraft(details){
+  const text=details.text?`"${details.text.slice(0,120)}"\n${details.url}`:details.url;
+  return text.slice(0,500);
+}
+async function openShareSheet(id){
+  const details=postShareDetails(id);
+  shareContext=details;
+  $('#share-summary-title').textContent=details.title;
+  $('#share-summary-text').textContent=details.text||'Link pronto para compartilhar.';
+  $('#share-whatsapp-link').href=`https://wa.me/?text=${encodeURIComponent(`${details.title}\n${details.url}`)}`;
+  openModal('share-modal');
+  renderShareChatList(true);
+  try{
+    const [convs,friends]=await Promise.all([
+      api('/api/me/conversations?limit=8').catch(()=>({rows:[]})),
+      api('/api/me/friends?limit=12').catch(()=>({rows:[]})),
+    ]);
+    const seen=new Set();
+    const rows=[
+      ...(Array.isArray(convs.rows)?convs.rows.map(c=>({id:c.other_id,name:nameOfShare(c),meta:c.last_message_body||'Conversa recente'})):[]),
+      ...(Array.isArray(friends.rows)?friends.rows.map(f=>({id:f.id,name:displayName(f),meta:f.is_online?'Online agora':'Amigo da comunidade'})):[]),
+    ].filter(row=>{
+      const id=String(row.id||'');
+      if(!id||seen.has(id))return false;
+      seen.add(id);
+      return true;
+    }).slice(0,14);
+    renderShareChatList(false,rows);
+  }catch(e){
+    const list=$('#share-chat-list');
+    if(list)list.innerHTML=`<div class="empty-card"><p>${esc(e.message||'Nao foi possivel carregar conversas.')}</p></div>`;
+  }
+}
+function nameOfShare(row){
+  return row.other_minecraft_name||row.other_username||row.minecraft_name||row.username||row.name||'Jogador';
+}
+function renderShareChatList(loading=false,rows=[]){
+  const list=$('#share-chat-list');if(!list)return;
+  if(loading){list.innerHTML='<div class="skel" style="height:48px;border-radius:8px"></div><div class="skel" style="height:48px;border-radius:8px"></div>';return}
+  if(!rows.length){list.innerHTML='<div class="empty-card"><p>Nenhuma conversa recente. Abra um perfil para iniciar chat.</p></div>';return}
+  list.innerHTML=rows.map(row=>{
+    const name=row.name||'Jogador';
+    return `<button class="share-chat-row" type="button" data-share-chat-user="${esc(row.id)}" data-share-chat-name="${esc(name)}">
+      <img src="${esc(skin(name,50))}" alt="${esc(name)}" onerror="this.onerror=null; this.src='${fallbackAvatar(name,50)}'">
+      <span><strong>${esc(name)}</strong><small>${esc(row.meta||'Enviar no chat')}</small></span>
+      ${IC.send}
+    </button>`;
+  }).join('');
 }
 
 /* ======================= NAVIGATE ======================= */
@@ -5246,7 +5548,7 @@ function bindThreadEvents(post,id){
     try{await api(`/api/community/posts/${encodeURIComponent(id)}/like`,{method:liked?'DELETE':'POST'})}
     catch(err){post.liked_by_me=liked;post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?1:-1));btn.classList.toggle('is-on',post.liked_by_me);btn.querySelector('span').textContent=num(post.likes_count);toast('error','Like não salvo',err.message)}
   });
-  $('#thread-share')?.addEventListener('click',()=>copyLink(id));
+  $('#thread-share')?.addEventListener('click',()=>openShareSheet(id));
   let replyInProgress=false;
   $('#reply-ta')?.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey){e.preventDefault();if(!replyInProgress)$('#reply-btn')?.click();}
@@ -6407,7 +6709,13 @@ function bindEvents(){
   $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.filter)));
   $('#load-more-btn').addEventListener('click',()=>loadFeed({reset:false}));
   $('#notif-btn').addEventListener('click',e=>{
-    e.stopPropagation();const m=$('#notif-menu');const open=!m.classList.contains('show');
+    e.stopPropagation();
+    if(matchMedia('(max-width: 768px)').matches){
+      $('#notif-menu')?.classList.remove('show');
+      Router.navigate(communityUrl({notifications:'1'}));
+      return;
+    }
+    const m=$('#notif-menu');const open=!m.classList.contains('show');
     m.classList.toggle('show',open);$('#notif-btn').setAttribute('aria-expanded',String(open));
   });
   $('#mark-read-btn').addEventListener('click',async e=>{
@@ -6495,6 +6803,13 @@ function bindEvents(){
       $('#account-menu')?.classList.remove('show');
       $('#account-menu')?.setAttribute('aria-hidden','true');
       const action=accountAction.dataset.accountAction;
+      if(action==='menu'){
+        mobileMenu?.classList.add('show');
+        mobileMenu?.setAttribute('aria-hidden','false');
+        document.body.classList.add('modal-open');
+        return;
+      }
+      if(action==='theme'){toggleTheme();return}
       if(action==='profile'&&state.me){navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);return}
       if(action==='affiliations'){renderAffiliationsModal();openModal('affiliations-modal');return}
       if(action==='logout'){api('/api/auth/logout',{method:'POST'}).catch(()=>{}).finally(logout);return}
@@ -6506,6 +6821,30 @@ function bindEvents(){
     if(!e.target.closest('.post-more-wrap') && !e.target.closest('.post-menu')) closeAllPostMenus();
     const notificationRoute=e.target.closest('[data-notification-route]');
     if(notificationRoute){e.preventDefault();$('#notif-menu')?.classList.remove('show');Router.navigate(communityUrl({notifications:'1'}));return}
+    if(e.target.closest('#share-copy-btn')&&shareContext){e.preventDefault();copyLink(shareContext.id);return}
+    const shareChat=e.target.closest('[data-share-chat-user]');
+    if(shareChat&&shareContext){
+      e.preventDefault();
+      closeModal('share-modal');
+      window.FAChat?.shareWithUser(
+        {id:shareChat.dataset.shareChatUser,minecraft_name:shareChat.dataset.shareChatName},
+        shareDraft(shareContext)
+      );
+      toast('info','Chat aberto','Revise e envie a mensagem.');
+      return;
+    }
+    const repostChoice=e.target.closest('#_repost_popover [data-repost-choice]');
+    if(repostChoice){
+      e.preventDefault();
+      const pop=repostChoice.closest('#_repost_popover');
+      const id=pop?.dataset.postId;
+      const btn=repostTargetButton;
+      closeRepostPopover();
+      if(repostChoice.dataset.repostChoice==='quote') quoteRepost(id,btn);
+      else toggleRepost(id,btn);
+      return;
+    }
+    if(!e.target.closest('#_repost_popover')&&!e.target.closest('.pa-repost')&&!e.target.closest('.lb-repost-btn')) closeRepostPopover();
     const notifFilter=e.target.closest('[data-notif-filter]');
     if(notifFilter){e.preventDefault();setNotificationFilter(notifFilter.dataset.notifFilter).catch(err=>toast('error','Filtro indisponivel',err.message));return}
     if(e.target.closest('[data-notif-more]')){e.preventDefault();loadNotificationsPage({reset:false});return}
@@ -6605,7 +6944,7 @@ function bindEvents(){
         if(a==='menu'){e.stopPropagation();openPostMenu(act.closest('.more-btn'));return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
-        if(a==='repost'){toggleRepost(id,act.closest('.pa-repost'));return}
+        if(a==='repost'){openRepostPopover(id,act.closest('.pa-repost'));return}
         if(a==='pin'){setPostPinned(id,true);return}
         if(a==='unpin'){setPostPinned(id,false);return}
         if(a==='edit'){editPostInline(id,postCard);return}
@@ -6613,6 +6952,7 @@ function bindEvents(){
         if(a==='admin-delete'){moderateDeletePost(id);return}
         if(a==='report'){reportContent('post',id);return}
         if(a==='copy'){copyLink(id);return}
+        if(a==='share'){openShareSheet(id);return}
         return;
       }
       if(!e.target.closest('button')&&!e.target.closest('a')&&!e.target.closest('.js-profile')&&!e.target.closest('[data-no-post-nav]')){
@@ -7018,15 +7358,13 @@ function bindEvents(){
     if(!lbPost)return;
     const postId=lbPost.repost_of_id||lbPost.id;
     const btn=$$('#lb-repost-desk,#lb-repost-mob')[0];
-    await toggleRepost(postId,btn);
-    lbPost.reposted_by_me=!lbPost.reposted_by_me; // sync local
-    syncLbSocial();
+    openRepostPopover(postId,btn);
   }
 
   /* ── share ── */
   function handleLbShare(){
     if(!lbPost)return;
-    copyLink(lbPost.repost_of_id||lbPost.id);
+    openShareSheet(lbPost.repost_of_id||lbPost.id);
   }
 
   /* ── abrir thread ── */

@@ -37,6 +37,7 @@
     loadingFriends: false,
     loadingMessages: false,
     warmed: false,
+    pendingDraft: '',
   };
 
   // [FIX] Cache key helper
@@ -120,6 +121,7 @@
   // This eliminates the panel flicker caused by full innerHTML replacement every poll cycle.
   function render() {
     syncFabPosition();
+    syncBodyChatState();
 
     const isOpen = state.open;
     const hasCurrent = Boolean(state.current);
@@ -221,6 +223,10 @@
     if (!launcher) { render(); return; }
     launcher.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     _updateBadgeInLauncher(launcher);
+  }
+
+  function syncBodyChatState() {
+    document.body.classList.toggle('fa-chat-open', Boolean(state.open));
   }
 
   function syncFabPosition() {
@@ -684,6 +690,17 @@
     });
   }
 
+  function applyPendingDraft() {
+    const draft = String(state.pendingDraft || '').trim();
+    if (!draft) return;
+    const textarea = root.querySelector('[data-chat-input]');
+    if (!textarea) return;
+    textarea.value = draft.slice(0, 500);
+    state.pendingDraft = '';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.focus();
+  }
+
   async function ensureMe() {
     if (state.me) return state.me;
     state.me = await api('/api/me');
@@ -756,6 +773,7 @@
   async function openPanel() {
     state.open = true;
     state.error = '';
+    syncBodyChatState();
     // Show panel immediately using partial DOM update (no flicker)
     const panel = root.querySelector('.fa-chat-panel');
     if (panel) {
@@ -785,6 +803,7 @@
 
   function closePanel() {
     state.open = false;
+    syncBodyChatState();
     const panel = root.querySelector('.fa-chat-panel');
     if (panel) {
       panel.classList.remove('is-open');
@@ -840,7 +859,7 @@
     } catch (e) {
       state.messages = cached; // fallback to cache on error
       state.loadingMessages = false;
-      state.error = e.message || 'Erro ao carregar mensagens';
+      state.error = (!cached.length && !conv.last_message_id) ? '' : (e.message || 'Erro ao carregar mensagens');
       updateMessagesList({ scroll: false });
     }
   }
@@ -890,7 +909,7 @@
     } catch (e) {
       state.messages = cached;
       state.loadingMessages = false;
-      state.error = e.message || 'Erro ao carregar mensagens';
+      state.error = (!cached.length && !group.last_message_id) ? '' : (e.message || 'Erro ao carregar mensagens');
       updateMessagesList({ scroll: false });
     }
   }
@@ -938,7 +957,12 @@
 
   async function openWithUser(user) {
     if (!user?.id) return;
+    const draft = typeof arguments[1] === 'string'
+      ? arguments[1]
+      : String(arguments[1]?.draft || '');
+    if (draft) state.pendingDraft = draft;
     state.open = true;
+    syncBodyChatState();
     state.current = null;
     state.currentKind = null;
     state.error = '';
@@ -958,6 +982,7 @@
       });
       await loadConversations();
       await openConversation(conv);
+      applyPendingDraft();
     } finally {
       state.loadingConversations = false;
     }
@@ -1202,6 +1227,7 @@
     open: openPanel,
     close: closePanel,
     openWithUser,
+    shareWithUser: async (user, text) => openWithUser(user, text),
     refresh: async () => {
       await Promise.all([loadUnread(), loadConversations(), loadGroups(), loadFriends()]);
       updateConversationList();

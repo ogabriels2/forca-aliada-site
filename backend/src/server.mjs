@@ -1501,6 +1501,347 @@ function buildProfileBadges(profile = {}, stats = {}) {
   return badges.slice(0, 8);
 }
 
+function htmlEscape(value = '') {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+
+function plainText(value = '', max = 180) {
+  return sanitizeText(value)
+    .replace(/\s+/g, ' ')
+    .replace(/https?:\/\/\S+/gi, '')
+    .trim()
+    .slice(0, max);
+}
+
+function publicAssetUrl(path = '/assets/images/og-image.jpg') {
+  return new URL(path, `${FRONTEND_BASE_URL}/`).href;
+}
+
+function publicPageUrl(path = '/') {
+  return new URL(path, `${FRONTEND_BASE_URL}/`).href;
+}
+
+const PUBLIC_SHARE_BASE_URL = (process.env.PUBLIC_SHARE_BASE_URL || '').replace(/\/+$/, '');
+
+function publicShareBaseUrl(req) {
+  if (PUBLIC_SHARE_BASE_URL) return PUBLIC_SHARE_BASE_URL;
+  if (req) return `${req.protocol}://${req.get('host')}`;
+  return FRONTEND_BASE_URL;
+}
+
+function publicSharePageUrl(req, path = '/') {
+  return new URL(path, `${publicShareBaseUrl(req)}/`).href;
+}
+
+function firstMediaUrl(mediaUrls) {
+  const list = Array.isArray(mediaUrls) ? mediaUrls : [];
+  const raw = list.find(Boolean);
+  if (!raw) return '';
+  try {
+    const url = new URL(String(raw), `${FRONTEND_BASE_URL}/`);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function renderShareHtml({ title, description, image, canonical, redirectUrl, type = 'website', jsonLd = {} }) {
+  const safeTitle = title || 'Forca Aliada';
+  const safeDescription = description || 'Comunidade Forca Aliada.';
+  const safeImage = image || publicAssetUrl('/assets/images/og-image.jpg');
+  const safeCanonical = canonical || publicPageUrl('/');
+  const safeRedirect = redirectUrl || safeCanonical;
+  const ld = {
+    '@context': 'https://schema.org',
+    ...jsonLd,
+    name: safeTitle,
+    description: safeDescription,
+    url: safeCanonical,
+    image: safeImage,
+  };
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${htmlEscape(safeTitle)}</title>
+<meta name="description" content="${htmlEscape(safeDescription)}">
+<link rel="canonical" href="${htmlEscape(safeCanonical)}">
+<meta property="og:type" content="${htmlEscape(type)}">
+<meta property="og:site_name" content="Forca Aliada">
+<meta property="og:title" content="${htmlEscape(safeTitle)}">
+<meta property="og:description" content="${htmlEscape(safeDescription)}">
+<meta property="og:url" content="${htmlEscape(safeCanonical)}">
+<meta property="og:image" content="${htmlEscape(safeImage)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${htmlEscape(safeTitle)}">
+<meta name="twitter:description" content="${htmlEscape(safeDescription)}">
+<meta name="twitter:image" content="${htmlEscape(safeImage)}">
+<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
+<meta http-equiv="refresh" content="0;url=${htmlEscape(safeRedirect)}">
+</head>
+<body>
+<main style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:680px;margin:48px auto;padding:0 20px">
+<h1>${htmlEscape(safeTitle)}</h1>
+<p>${htmlEscape(safeDescription)}</p>
+<p><a href="${htmlEscape(safeRedirect)}">Abrir na Forca Aliada</a></p>
+</main>
+<script>location.replace(${JSON.stringify(safeRedirect)});</script>
+</body>
+</html>`;
+}
+
+async function loadPublicPost(postId) {
+  const id = parseInt(postId, 10);
+  if (!id) return null;
+  const { rows } = await pool.query(`
+    SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at,
+           (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+           (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
+           (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+           u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role, u.is_platform_verified,
+           COALESCE(up.display_name, '') AS display_name,
+           COALESCE(up.avatar_url, '') AS avatar_url,
+           COALESCE(up.public_profile, TRUE) AS public_profile,
+           ${primaryIntegrationFieldsSql('u')} AS integration,
+           ${socialRankSql('u', 'pb')} AS rank,
+           ${socialMeritSql('u', 'pb')} AS merit
+    FROM user_posts p
+    JOIN users u ON u.id = p.author_id
+    LEFT JOIN user_preferences up ON up.user_id = u.id
+    LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+    WHERE p.id = $1
+      AND p.repost_of_id IS NULL
+      AND COALESCE(up.public_profile, TRUE) = TRUE
+    LIMIT 1
+  `, [id]);
+  return rows[0] || null;
+}
+
+async function loadPublicProfile(identifier) {
+  const ident = parseCommunityIdentifier(identifier);
+  const where = ident.byId ? 'u.id = $1' : '(LOWER(u.minecraft_name) = $1 OR LOWER(u.username) = $1)';
+  const { rows: profileRows } = await pool.query(`
+    SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role, u.is_platform_verified,
+           COALESCE(up.bio, '') AS bio,
+           COALESCE(up.display_name, '') AS display_name,
+           COALESCE(up.avatar_url, '') AS avatar_url,
+           COALESCE(up.cover_url, '') AS cover_url,
+           COALESCE(up.profile_layout, 'posts') AS profile_layout,
+           COALESCE(up.profile_links, '[]'::jsonb) AS profile_links,
+           COALESCE(up.public_profile, TRUE) AS public_profile,
+           COALESCE(up.public_history, FALSE) AS public_history,
+           ${primaryIntegrationFieldsSql('u')} AS integration,
+           ${socialRankSql('u', 'pb')} AS rank,
+           ${socialMeritSql('u', 'pb')} AS merit,
+           COALESCE(pb.capital_balance, 0) AS capital,
+           (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
+           (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id)::int AS following_count,
+           (SELECT COUNT(*) FROM user_follows f1
+            JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
+            WHERE f1.follower_id = u.id)::int AS friends_count,
+           (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id AND repost_of_id IS NULL)::int AS posts_count
+    FROM users u
+    LEFT JOIN user_preferences up ON up.user_id = u.id
+    LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+    WHERE ${where}
+      AND COALESCE(up.public_profile, TRUE) = TRUE
+    LIMIT 1
+  `, [ident.value]);
+  const profile = profileRows[0];
+  if (!profile) return null;
+
+  const [postsResult, statsResult, dailyResult] = await Promise.all([
+    pool.query(`
+      SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
+             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count
+      FROM user_posts p
+      WHERE p.author_id = $1
+        AND p.repost_of_id IS NULL
+      ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC
+      LIMIT 12
+    `, [profile.id]),
+    profile.public_history ? pool.query(`
+      SELECT COUNT(*)::int AS total_sessions,
+             COALESCE(SUM(duration_hours),0)::float AS total_hours,
+             MAX(entered_at) AS last_seen
+      FROM player_sessions
+      WHERE LOWER(player)=LOWER($1)
+    `, [profile.minecraft_name || profile.username]) : Promise.resolve({ rows: [{ total_sessions: 0, total_hours: 0, last_seen: null }] }),
+    profile.public_history ? pool.query(`
+      SELECT date_trunc('day', entered_at)::date AS day,
+             COALESCE(SUM(duration_hours),0)::float AS hours
+      FROM player_sessions
+      WHERE LOWER(player)=LOWER($1)
+        AND entered_at > NOW() - INTERVAL '7 days'
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `, [profile.minecraft_name || profile.username]) : Promise.resolve({ rows: [] }),
+  ]);
+  const gameStats = profile.public_history ? { ...(statsResult.rows[0] || {}), daily_hours: dailyResult.rows } : null;
+  return {
+    profile: { ...profile, rank_benefits: rankBenefits(profile.rank) },
+    posts: postsResult.rows,
+    replies: [],
+    reposts: [],
+    media: [],
+    game_stats: gameStats,
+    badges: buildProfileBadges(profile, gameStats || {}),
+    follow_since: null,
+  };
+}
+
+app.get('/api/public/community/posts/:id', async (req, res) => {
+  try {
+    const post = await loadPublicPost(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post publico nao encontrado' });
+    res.json(post);
+  } catch (e) {
+    console.error('[GET /api/public/community/posts/:id]', e);
+    res.status(500).json({ error: 'Erro ao buscar post publico' });
+  }
+});
+
+app.get('/api/public/community/player/:identifier/full-profile', async (req, res) => {
+  try {
+    const payload = await loadPublicProfile(req.params.identifier);
+    if (!payload) return res.status(404).json({ error: 'Perfil publico nao encontrado' });
+    res.json(payload);
+  } catch (e) {
+    console.error('[GET /api/public/community/player/:identifier/full-profile]', e);
+    res.status(500).json({ error: 'Erro ao buscar perfil publico' });
+  }
+});
+
+app.get('/share/post/:id', async (req, res) => {
+  try {
+    const post = await loadPublicPost(req.params.id);
+    if (!post) return res.redirect(publicPageUrl('/community.html'));
+    const author = post.display_name || post.minecraft_name || post.username || 'Jogador';
+    const description = plainText(post.content, 220) || `${author} publicou na comunidade Forca Aliada.`;
+    const image = firstMediaUrl(post.media_urls) || post.avatar_url || post.photo_url || publicAssetUrl('/assets/images/og-image.jpg');
+    const canonical = publicSharePageUrl(req, `/share/post/${encodeURIComponent(post.id)}`);
+    const redirectUrl = publicPageUrl(`/post.html?id=${encodeURIComponent(post.id)}`);
+    res.type('html').send(renderShareHtml({
+      title: `Post de ${author} | Forca Aliada`,
+      description,
+      image,
+      canonical,
+      redirectUrl,
+      type: 'article',
+      jsonLd: {
+        '@type': 'SocialMediaPosting',
+        headline: `Post de ${author}`,
+        datePublished: post.created_at,
+        dateModified: post.updated_at || post.created_at,
+        author: { '@type': 'Person', name: author },
+        interactionStatistic: [
+          { '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: Number(post.likes_count || 0) },
+          { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: Number(post.comments_count || 0) },
+        ],
+      },
+    }));
+  } catch (e) {
+    console.error('[GET /share/post/:id]', e);
+    res.redirect(publicPageUrl('/community.html'));
+  }
+});
+
+app.get('/share/profile/:identifier', async (req, res) => {
+  try {
+    const payload = await loadPublicProfile(req.params.identifier);
+    const profile = payload?.profile;
+    if (!profile) return res.redirect(publicPageUrl('/community.html'));
+    const name = profile.display_name || profile.minecraft_name || profile.username || 'Jogador';
+    const description = plainText(profile.bio, 200) || `${name} na comunidade Forca Aliada. ${Number(profile.followers_count || 0)} seguidores e ${Number(profile.posts_count || 0)} posts.`;
+    const image = profile.avatar_url || profile.photo_url || publicAssetUrl('/assets/images/og-image.jpg');
+    const identifier = profile.minecraft_name || profile.username || `id:${profile.id}`;
+    const canonical = publicSharePageUrl(req, `/share/profile/${encodeURIComponent(identifier)}`);
+    const redirectUrl = publicPageUrl(`/profile.html?id=${encodeURIComponent(identifier)}`);
+    res.type('html').send(renderShareHtml({
+      title: `${name} | Perfil Forca Aliada`,
+      description,
+      image,
+      canonical,
+      redirectUrl,
+      type: 'profile',
+      jsonLd: {
+        '@type': 'ProfilePage',
+        mainEntity: {
+          '@type': 'Person',
+          name,
+          alternateName: profile.username ? `@${profile.username}` : undefined,
+          description,
+          image,
+        },
+      },
+    }));
+  } catch (e) {
+    console.error('[GET /share/profile/:identifier]', e);
+    res.redirect(publicPageUrl('/community.html'));
+  }
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send([
+    'User-agent: *',
+    'Allow: /share/post/',
+    'Allow: /share/profile/',
+    'Allow: /api/public/community/',
+    `Sitemap: ${publicSharePageUrl(req, '/sitemap.xml')}`,
+    '',
+  ].join('\n'));
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const [posts, profiles] = await Promise.all([
+      pool.query(`
+        SELECT p.id, COALESCE(p.updated_at, p.created_at) AS updated_at
+        FROM user_posts p
+        JOIN users u ON u.id = p.author_id
+        LEFT JOIN user_preferences up ON up.user_id = u.id
+        WHERE p.repost_of_id IS NULL
+          AND COALESCE(up.public_profile, TRUE) = TRUE
+        ORDER BY p.created_at DESC
+        LIMIT 500
+      `),
+      pool.query(`
+        SELECT u.id, u.username, u.minecraft_name, COALESCE(up.updated_at, u.created_at) AS updated_at
+        FROM users u
+        LEFT JOIN user_preferences up ON up.user_id = u.id
+        WHERE COALESCE(up.public_profile, TRUE) = TRUE
+        ORDER BY updated_at DESC
+        LIMIT 500
+      `),
+    ]);
+    const urls = [
+      { loc: publicPageUrl('/'), lastmod: new Date().toISOString() },
+      { loc: publicPageUrl('/community.html'), lastmod: new Date().toISOString() },
+      ...posts.rows.map(row => ({ loc: publicSharePageUrl(req, `/share/post/${encodeURIComponent(row.id)}`), lastmod: row.updated_at })),
+      ...profiles.rows.map(row => {
+        const ident = row.minecraft_name || row.username || `id:${row.id}`;
+        return { loc: publicSharePageUrl(req, `/share/profile/${encodeURIComponent(ident)}`), lastmod: row.updated_at };
+      }),
+    ];
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(item => `<url><loc>${htmlEscape(item.loc)}</loc><lastmod>${new Date(item.lastmod || Date.now()).toISOString()}</lastmod></url>`).join('\n')}
+</urlset>`);
+  } catch (e) {
+    console.error('[GET /sitemap.xml]', e);
+    res.status(500).type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+  }
+});
+
 async function createSocialNotification({ recipientId, actorId, type, entityType = null, entityId = null, previewText = '' }, db = pool) {
   const recipient = Number(recipientId);
   const actor = actorId ? Number(actorId) : null;
@@ -4717,14 +5058,14 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
       LIMIT $3
     `, params);
 
-    await pool.query(
+    const ordered = rows.reverse();
+    pool.query(
       `INSERT INTO direct_conversation_reads(conversation_id, user_id, last_read_at)
        VALUES($1, $2, NOW())
        ON CONFLICT(conversation_id, user_id)
        DO UPDATE SET last_read_at = NOW()`,
       [conversationId, req.user.sub],
-    );
-    const ordered = rows.reverse();
+    ).catch(err => console.warn('[direct read marker skipped]', err?.message || err));
     res.json({ rows: ordered, has_more: rows.length === limit, next_before: ordered[0]?.id || null });
   } catch (e) {
     console.error('[GET /api/me/conversations/:id/messages]', e);
@@ -4940,7 +5281,8 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
       ORDER BY msg.id DESC
       LIMIT $2
     `, [groupId, limit]);
-    await pool.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
+    pool.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub])
+      .catch(err => console.warn('[group read marker skipped]', err?.message || err));
     res.json({ rows: rows.reverse() });
   } catch (e) {
     console.error('[GET /api/me/group-conversations/:id/messages]', e);

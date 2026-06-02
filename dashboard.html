@@ -2207,7 +2207,17 @@ let session = null;
 const token = localStorage.getItem(TOKEN_KEY);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
 
-if (!token || !session) { window.location.replace('login.html'); }
+function loginUrlForCurrentPage(){
+  const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'');
+  try {
+    sessionStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
+    localStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
+  } catch {}
+  const url = new URL('login.html', location.href);
+  url.searchParams.set('next', here);
+  return `${url.pathname.replace(/^\//,'')}${url.search}`;
+}
+if (!token || !session) { window.location.replace(loginUrlForCurrentPage()); }
 if (session && session.role === 'limited') { window.location.replace('account.html'); }
 
 let globalHistData      = null;

@@ -508,7 +508,7 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
     </a>
     <nav class="top-actions" aria-label="Atalhos">
       <a class="btn secondary" href="community.html">Comunidade</a>
-      <a class="btn secondary" href="account.html">Conta</a>
+      <a class="btn secondary" id="account-link" href="account.html">Conta</a>
       <button class="icon-btn" type="button" id="theme-btn" aria-label="Alternar tema">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 7 9 9 0 1 1-9-7Z"/></svg>
       </button>
@@ -596,7 +596,6 @@ const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
 const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
 const API_BASES = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 const token = localStorage.getItem('fa_token');
-if (!token) location.replace('login.html');
 
 const $ = selector => document.querySelector(selector);
 const state = {
@@ -611,6 +610,44 @@ const icon = {
   chat: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
   flag: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h13l-1 5 1 5H4"/></svg>',
 };
+
+function loginUrl(next = `${location.pathname}${location.search}${location.hash}`.replace(/^\//, '')) {
+  const cleanNext = next || 'community.html';
+  try {
+    const payload = JSON.stringify({ path: cleanNext, at: Date.now() });
+    sessionStorage.setItem('fa_login_next', payload);
+    localStorage.setItem('fa_login_next', payload);
+  } catch {}
+  const url = new URL('login.html', location.href);
+  url.searchParams.set('next', cleanNext);
+  return `${url.pathname.replace(/^\//, '')}${url.search}`;
+}
+
+function requireLogin(message = 'Entre para continuar') {
+  toast(message, 'Voce volta para este perfil automaticamente depois do login.');
+  setTimeout(() => { location.href = loginUrl(); }, 650);
+}
+
+function setMeta(name, content, attr = 'name') {
+  if (!content) return;
+  let el = document.querySelector(`meta[${attr}="${name}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function setCanonical(url) {
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement('link');
+    el.rel = 'canonical';
+    document.head.appendChild(el);
+  }
+  el.href = url;
+}
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
@@ -665,7 +702,7 @@ function currentIdentifier() {
 }
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
-  headers.set('Authorization', `Bearer ${token}`);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const timeoutMs = options.timeoutMs || 25000;
   const fetchOptions = { ...options };
@@ -703,6 +740,7 @@ function applyTheme(theme) {
 async function setTheme(next) {
   const theme = next || (document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   applyTheme(theme);
+  if (!token) return;
   try {
     const prefs = await api('/api/me/preferences');
     await api('/api/me/preferences', { method: 'PUT', body: JSON.stringify({ ...prefs, theme }) });
@@ -724,6 +762,18 @@ function profileName(profile) {
 }
 function profileIdentifier(profile = state.data?.profile) {
   return profile?.minecraft_name || profile?.username || `id:${profile?.id}`;
+}
+function publicProfileShareUrl(profile = state.data?.profile) {
+  return `${API_BASE.replace(/\/+$/, '')}/share/profile/${encodeURIComponent(profileIdentifier(profile))}`;
+}
+async function copyProfileShare(profile = state.data?.profile) {
+  const url = publicProfileShareUrl(profile);
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Link do perfil copiado', url);
+  } catch {
+    toast('Copie o link do perfil', url);
+  }
 }
 window.navigateProfile = identifier => {
   location.href = `profile.html?id=${encodeURIComponent(identifier)}`;
@@ -764,17 +814,42 @@ function renderProfile(data) {
   const name = profileName(p);
   const rank = rankInfo(p.rank || p.role, p.merit);
   const isMe = Number(p.id) === Number(state.me?.id);
+  const isGuest = !token;
+  const profileUrl = new URL(`profile.html?id=${encodeURIComponent(profileIdentifier(p))}`, location.href).href;
+  const seoDescription = (p.bio || `${name} na comunidade Forca Aliada. ${num(p.followers_count)} seguidores e ${num(p.posts_count)} posts.`).slice(0, 220);
+  setMeta('description', seoDescription);
+  setMeta('robots', 'index,follow,max-image-preview:large');
+  setMeta('og:title', `${name} | Perfil Forca Aliada`, 'property');
+  setMeta('og:description', seoDescription, 'property');
+  setMeta('og:type', 'profile', 'property');
+  setMeta('og:url', profileUrl, 'property');
+  setMeta('og:image', p.avatar_url || p.photo_url || skin(name, 140), 'property');
+  setMeta('twitter:card', 'summary_large_image');
+  setMeta('twitter:title', `${name} | Perfil Forca Aliada`);
+  setMeta('twitter:description', seoDescription);
+  setMeta('twitter:image', p.avatar_url || p.photo_url || skin(name, 140));
+  setCanonical(profileUrl);
   const bars = stats?.daily_hours?.length
     ? stats.daily_hours.map(row => `<i style="height:${Math.max(5, Math.min(54, Number(row.hours || 0) * 12))}px"></i>`).join('')
     : Array.from({ length: 7 }, () => '<i style="height:5px"></i>').join('');
   document.title = `${name} | Forca Aliada`;
 
+  const shareProfileButton = `<button class="btn secondary" type="button" data-share-profile="${esc(profileIdentifier(p))}">Compartilhar</button>`;
   const actionHtml = isMe
-    ? `<button class="btn primary" type="button" data-edit-profile>Editar perfil</button><a class="btn secondary" href="account.html">Conta</a>`
+    ? `<button class="btn primary" type="button" data-edit-profile>Editar perfil</button><a class="btn secondary" href="account.html">Conta</a>${shareProfileButton}`
+    : isGuest
+      ? `<a class="btn primary" href="${esc(loginUrl())}">Entrar para interagir</a>
+         <a class="btn secondary" href="community.html">Ver comunidade</a>
+         ${shareProfileButton}`
     : `<button class="btn primary" type="button" data-follow="${esc(p.id)}" data-on="${p.is_following ? '1' : '0'}" ${p.is_blocked_by_me ? 'disabled' : ''}>${p.is_blocked_by_me ? 'Bloqueado' : p.is_friend ? 'Amigo' : p.is_following ? 'Seguindo' : 'Seguir'}</button>
        <button class="btn secondary" type="button" data-message="${esc(p.id)}" data-name="${esc(name)}">${icon.chat} Mensagem</button>
        <button class="btn secondary" type="button" data-report="${esc(p.id)}">${icon.flag} Denunciar</button>
-       <button class="btn danger" type="button" data-block="${esc(p.id)}" data-unblock="${p.is_blocked_by_me ? '1' : '0'}">${p.is_blocked_by_me ? 'Desbloquear' : 'Bloquear'}</button>`;
+       <button class="btn danger" type="button" data-block="${esc(p.id)}" data-unblock="${p.is_blocked_by_me ? '1' : '0'}">${p.is_blocked_by_me ? 'Desbloquear' : 'Bloquear'}</button>
+       ${shareProfileButton}`;
+
+  const statHtml = (type, count, label) => token
+    ? `<button class="stat" type="button" data-rel="${type}"><strong>${num(count)}</strong><span>${label}</span></button>`
+    : `<div class="stat"><strong>${num(count)}</strong><span>${label}</span></div>`;
 
   $('#app').innerHTML = `
     <section class="profile-hero">
@@ -795,9 +870,9 @@ function renderProfile(data) {
         <p class="bio">${esc(p.bio || (isMe ? 'Adicione uma descricao para ajudar outros jogadores a conhecerem voce.' : 'Sem bio publica por enquanto.'))}</p>
         ${renderProfileLinks(p.profile_links)}
         <div class="stats">
-          <button class="stat" type="button" data-rel="followers"><strong>${num(p.followers_count)}</strong><span>Seguidores</span></button>
-          <button class="stat" type="button" data-rel="following"><strong>${num(p.following_count)}</strong><span>Seguindo</span></button>
-          <button class="stat" type="button" data-rel="friends"><strong>${num(p.friends_count)}</strong><span>Amigos</span></button>
+          ${statHtml('followers', p.followers_count, 'Seguidores')}
+          ${statHtml('following', p.following_count, 'Seguindo')}
+          ${statHtml('friends', p.friends_count, 'Amigos')}
           <div class="stat"><strong>${num(p.posts_count)}</strong><span>Posts</span></div>
           <div class="stat"><strong>${num(p.merit)}</strong><span>Merito</span></div>
         </div>
@@ -1028,6 +1103,10 @@ function closeModals() {
 }
 
 async function openRelation(type, append = false) {
+  if (!token) {
+    requireLogin('Entre para ver relacoes');
+    return;
+  }
   const profile = state.data?.profile;
   if (!profile) return;
   const identifier = state.identifier || profileIdentifier(profile);
@@ -1067,7 +1146,7 @@ function relationRow(person) {
         <strong>${esc(name)}</strong>
         <small>${meta}</small>
       </div>
-      ${isMe ? '' : `<button class="btn secondary" type="button" data-rel-follow="${esc(person.id)}" data-on="${following ? '1' : '0'}">${following ? 'Seguindo' : 'Seguir'}</button>`}
+      ${isMe || !token ? '' : `<button class="btn secondary" type="button" data-rel-follow="${esc(person.id)}" data-on="${following ? '1' : '0'}">${following ? 'Seguindo' : 'Seguir'}</button>`}
     </div>`;
 }
 
@@ -1093,6 +1172,9 @@ document.addEventListener('click', event => {
   const block = event.target.closest('[data-block]');
   if (block) { blockUser(block.dataset.block, block.dataset.unblock === '1'); return; }
 
+  const shareProfile = event.target.closest('[data-share-profile]');
+  if (shareProfile) { copyProfileShare(state.data?.profile); return; }
+
   const profile = event.target.closest('[data-profile]');
   if (profile && !event.target.closest('button')) { window.navigateProfile(profile.dataset.profile); return; }
 
@@ -1109,14 +1191,30 @@ document.addEventListener('keydown', event => {
 
 (async function init() {
   try {
-    state.me = await api('/api/me');
-    api('/api/me/preferences').then(prefs => { if (prefs?.theme) applyTheme(prefs.theme); }).catch(() => {});
     const wanted = currentIdentifier();
-    state.identifier = wanted === 'me' ? (state.me.minecraft_name || `id:${state.me.id}`) : wanted;
-    const data = await api(`/api/community/player/${encodeURIComponent(state.identifier)}/full-profile`);
+    const accountLink = $('#account-link');
+    if (!token && accountLink) {
+      accountLink.href = loginUrl();
+      accountLink.textContent = 'Entrar';
+    }
+    if (token) {
+      state.me = await api('/api/me');
+      api('/api/me/preferences').then(prefs => { if (prefs?.theme) applyTheme(prefs.theme); }).catch(() => {});
+      state.identifier = wanted === 'me' ? (state.me.minecraft_name || `id:${state.me.id}`) : wanted;
+    } else {
+      if (wanted === 'me') {
+        $('#app').innerHTML = `<section class="empty-card"><h1>Entre para ver seu perfil</h1><p>Depois do login voce volta para esta pagina automaticamente.</p><div style="margin-top:14px"><a class="btn primary" href="${esc(loginUrl())}">Entrar</a><a class="btn secondary" href="community.html">Ver comunidade</a></div></section>`;
+        return;
+      }
+      state.identifier = wanted;
+    }
+    const endpoint = token
+      ? `/api/community/player/${encodeURIComponent(state.identifier)}/full-profile`
+      : `/api/public/community/player/${encodeURIComponent(state.identifier)}/full-profile`;
+    const data = await api(endpoint);
     renderProfile(data);
   } catch (e) {
-    $('#app').innerHTML = `<section class="empty-card"><h1>Perfil indisponivel</h1><p>${esc(e.message)}</p><div style="margin-top:14px"><a class="btn primary" href="community.html">Voltar para comunidade</a></div></section>`;
+    $('#app').innerHTML = `<section class="empty-card"><h1>Perfil indisponivel</h1><p>${esc(e.message)}</p><div style="margin-top:14px">${token ? '' : `<a class="btn primary" href="${esc(loginUrl())}">Entrar</a>`}<a class="btn secondary" href="community.html">Voltar para comunidade</a></div></section>`;
   }
 })();
 </script>

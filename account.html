@@ -2573,7 +2573,17 @@ try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch
 // A página de conta deve depender apenas do token neste ponto.
 // A sessão em cache pode não existir ou estar desatualizada; o bootstrap abaixo
 // valida /api/me e recria a sessão sem mandar admins de volta ao dashboard.
-if (!token) { window.location.replace('login.html'); }
+function loginUrlForCurrentPage(){
+  const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'');
+  try {
+    sessionStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
+    localStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
+  } catch {}
+  const url = new URL('login.html', location.href);
+  url.searchParams.set('next', here);
+  return `${url.pathname.replace(/^\//,'')}${url.search}`;
+}
+if (!token) { window.location.replace(loginUrlForCurrentPage()); }
 
 let myHistoryData = { history: [], activeSession: null };
 let myChartInstance = null;

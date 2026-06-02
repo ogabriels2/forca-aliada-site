@@ -614,7 +614,7 @@ header {
            onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
       <div id="loggedin-username" class="loggedin-name"></div>
       <div class="loggedin-sub">Você já está conectado.</div>
-      <button class="btn-submit" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+      <button class="btn-submit" onclick="redirectAfterAuth()">Continuar</button>
       <div class="card-footer" style="margin-top:14px;">
         <button class="btn-danger-text" onclick="forceLogout()">Entrar com outra conta</button>
       </div>
@@ -640,7 +640,7 @@ header {
 
         <!-- Xbox / Microsoft — botão hero -->
         <button type="button" id="btn-ms-login" class="btn-oauth-hero"
-          onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/microsoft/login'">
+          onclick="startOAuth('microsoft')">
           <!-- Logo Microsoft 4-quadrantes -->
           <svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink:0;">
             <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -663,7 +663,7 @@ header {
           <!-- Google -->
           <button type="button" class="btn-oauth-social btn-oauth-google"
             aria-label="Entrar com Google"
-            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/google/login'">
+            onclick="startOAuth('google')">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
               <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
               <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15 19 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/>
@@ -676,7 +676,7 @@ header {
           <!-- Facebook -->
           <button type="button" class="btn-oauth-social btn-oauth-facebook"
             aria-label="Entrar com Facebook"
-            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/facebook/login'">
+            onclick="startOAuth('facebook')">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#fff" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12"/>
             </svg>
@@ -686,7 +686,7 @@ header {
           <!-- Discord -->
           <button type="button" class="btn-oauth-social btn-oauth-discord"
             aria-label="Entrar com Discord"
-            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/discord/login'">
+            onclick="startOAuth('discord')">
             <svg width="18" height="14" viewBox="0 0 127.14 96.36" aria-hidden="true">
               <path fill="#fff" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.08 0A72.37 72.37 0 0 0 45.67 0a105.89 105.89 0 0 0-26.24 8.07C2.79 33.07-1.71 57.45.54 81.48a105.73 105.73 0 0 0 32.17 16.24 77.7 77.7 0 0 0 6.89-11.31 68.42 68.42 0 0 1-10.84-5.18c.91-.67 1.8-1.37 2.66-2.09a75.57 75.57 0 0 0 64.3 0c.87.72 1.76 1.42 2.66 2.09a68.68 68.68 0 0 1-10.86 5.19 77.31 77.31 0 0 0 6.9 11.3 105.25 105.25 0 0 0 32.19-16.24c2.64-27.87-4.5-52.03-19.91-73.41ZM42.45 65.69C36.18 65.69 31 59.95 31 52.88s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.06 12.81-11.4 12.81Zm42.24 0c-6.27 0-11.4-5.74-11.4-12.81s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.05 12.81-11.45 12.81Z"/>
             </svg>
@@ -801,9 +801,103 @@ header {
 const API_BASE    = 'https://forca-aliada-site.onrender.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
+const LOGIN_NEXT_KEY = 'fa_login_next';
 
 let failedAttempts = 0;
 const MAX_ATTEMPTS = 5;
+
+function normalizeReturnPath(raw) {
+  if (!raw) return '';
+  try {
+    const url = new URL(String(raw), window.location.origin);
+    if (url.origin !== window.location.origin) return '';
+    const path = url.pathname.replace(/\/+/g, '/');
+    if (!path || /\/(?:login|signup|recuperar)\.html$/i.test(path)) return '';
+    ['oauth_token', 'ms_token', 'oauth_err', 'ms_err', 'oauth_link_token', 'oauth_email', 'oauth_provider', 'oauth_popup', 'oauth_flow'].forEach(key => {
+      url.searchParams.delete(key);
+    });
+    return `${path}${url.search}${url.hash}`.replace(/^\//, '');
+  } catch {
+    return '';
+  }
+}
+
+function storeLoginDestination(path) {
+  const clean = normalizeReturnPath(path);
+  if (!clean) return '';
+  const payload = JSON.stringify({ path: clean, at: Date.now() });
+  try { sessionStorage.setItem(LOGIN_NEXT_KEY, payload); } catch {}
+  try { localStorage.setItem(LOGIN_NEXT_KEY, payload); } catch {}
+  return clean;
+}
+
+function readStoredLoginDestination() {
+  const maxAgeMs = 30 * 60 * 1000;
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const payload = JSON.parse(store.getItem(LOGIN_NEXT_KEY) || 'null');
+      const clean = normalizeReturnPath(payload?.path);
+      if (clean && Date.now() - Number(payload.at || 0) < maxAgeMs) return clean;
+    } catch {}
+  }
+  return '';
+}
+
+function captureLoginDestination() {
+  const params = new URLSearchParams(window.location.search);
+  const explicit = params.get('next') || params.get('redirect') || params.get('returnTo');
+  if (explicit) return storeLoginDestination(explicit);
+
+  const stored = readStoredLoginDestination();
+  if (stored) return stored;
+
+  const ref = document.referrer && document.referrer.startsWith(window.location.origin)
+    ? normalizeReturnPath(document.referrer)
+    : '';
+  return ref ? storeLoginDestination(ref) : '';
+}
+
+function clearLoginDestination() {
+  try { sessionStorage.removeItem(LOGIN_NEXT_KEY); } catch {}
+  try { localStorage.removeItem(LOGIN_NEXT_KEY); } catch {}
+}
+
+function consumeLoginDestination() {
+  const current = captureLoginDestination() || readStoredLoginDestination();
+  clearLoginDestination();
+  return normalizeReturnPath(current);
+}
+
+function loginFallback(user = null) {
+  return user?.role === 'limited' ? 'account.html' : 'dashboard.html';
+}
+
+function redirectAfterAuth(user = null, delay = 0) {
+  const destination = consumeLoginDestination() || loginFallback(user);
+  setTimeout(() => { window.location.href = destination; }, delay);
+}
+
+function buildLoginUrl(destination = window.location.href) {
+  const clean = storeLoginDestination(destination);
+  const url = new URL('login.html', window.location.href);
+  if (clean) url.searchParams.set('next', clean);
+  return url.pathname.replace(/^\//, '') + url.search;
+}
+
+function startOAuth(provider) {
+  const endpoints = {
+    microsoft: `${API_BASE}/api/auth/microsoft/login`,
+    google: `${API_BASE}/api/auth/google/login`,
+    facebook: `${API_BASE}/api/auth/facebook/login`,
+    discord: `${API_BASE}/api/auth/discord/login`,
+  };
+  const url = endpoints[provider];
+  if (!url) return;
+  captureLoginDestination();
+  window.location.href = url;
+}
+
+captureLoginDestination();
 
 // ── Provider display names ────────────────────────
 const PROVIDER_NAMES = {
@@ -1025,7 +1119,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
     showAlert('Autenticado! Redirecionando…', 'success');
     btnText.textContent = 'Entrando…';
-    setTimeout(() => { location.href = 'dashboard.html'; }, 550);
+    redirectAfterAuth(data.user, 550);
 
   } catch (err) {
     if (err.message !== 'handled') {
@@ -1077,7 +1171,7 @@ async function handleLinkConfirm(linkToken, provider, email) {
         localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
         hideLinkModal();
         showOAuthLoading('Conta conectada!', 'Redirecionando para o painel…');
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+        redirectAfterAuth(data.user, 600);
         resolve(true);
       } catch (err) {
         hideLinkModal();
@@ -1312,7 +1406,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
 
       sessionStorage.removeItem('fa_ms_signup_return');
-      window.location.href = 'dashboard.html';
+      redirectAfterAuth(me);
     } catch {
       hideOAuthLoading();
       sessionStorage.removeItem('fa_ms_signup_return');

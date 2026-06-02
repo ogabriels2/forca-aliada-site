@@ -3,21 +3,405 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Força Aliada</title>
+<title>Post | Forca Aliada</title>
+<meta name="description" content="Publicacao publica da comunidade Forca Aliada.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:site_name" content="Forca Aliada">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Post | Forca Aliada">
+<meta property="og:description" content="Publicacao publica da comunidade Forca Aliada.">
+<meta property="og:image" content="assets/images/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://minotar.net" crossorigin>
 <script>
-// [2.2] Redirect post.html → community.html preserving post ID
-(function () {
-  var params = new URLSearchParams(location.search);
-  var id = params.get('id');
-  if (id) {
-    var dest = new URL('community.html', location.href);
-    dest.searchParams.set('post', id);
-    location.replace(dest.toString());
-  } else {
-    location.replace('community.html');
+(function(){
+  const theme = localStorage.getItem('fa_theme') || 'dark';
+  const dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+})();
+</script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3f6fb;
+  --bg-2:#eaf0f8;
+  --surface:rgba(255,255,255,.9);
+  --surface-solid:#fff;
+  --surface-soft:#f8fafc;
+  --ink:#101828;
+  --ink-2:#475467;
+  --ink-3:#8b98aa;
+  --line:rgba(16,24,40,.12);
+  --accent:#1761f0;
+  --accent-2:#0e9384;
+  --accent-soft:rgba(23,97,240,.1);
+  --shadow:0 18px 60px rgba(16,24,40,.13);
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#090d14;
+  --bg-2:#101826;
+  --surface:rgba(18,25,38,.9);
+  --surface-solid:#121926;
+  --surface-soft:#172033;
+  --ink:#f4f7fb;
+  --ink-2:#c4cedb;
+  --ink-3:#8b98aa;
+  --line:rgba(255,255,255,.12);
+  --accent:#6ea8ff;
+  --accent-2:#46c3b2;
+  --accent-soft:rgba(110,168,255,.14);
+  --shadow:0 22px 70px rgba(0,0,0,.42);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:linear-gradient(180deg,var(--bg-2) 0%,var(--bg) 360px,var(--bg));
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;border:0}
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:10;
+  height:64px;
+  border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface-solid) 82%,transparent);
+  backdrop-filter:blur(22px) saturate(170%);
+}
+.topbar-inner{
+  width:min(980px,calc(100% - 32px));
+  height:100%;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900}
+.brand img{width:38px;height:38px;border-radius:10px;object-fit:cover}
+.brand span{display:grid;line-height:1.05}
+.brand small{margin-top:2px;color:var(--ink-3);font-size:10px;text-transform:uppercase;letter-spacing:.11em}
+.shell{
+  width:min(980px,calc(100% - 32px));
+  margin:24px auto 72px;
+  display:grid;
+  gap:14px;
+}
+.post-card,.empty-card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface);
+  box-shadow:var(--shadow);
+}
+.post-card{overflow:hidden}
+.post-head{
+  display:grid;
+  grid-template-columns:54px minmax(0,1fr);
+  gap:12px;
+  padding:18px;
+  border-bottom:1px solid var(--line);
+}
+.avatar{width:54px;height:54px;border-radius:14px;object-fit:cover;background:var(--surface-soft)}
+.author{min-width:0;display:grid;gap:4px;align-content:center}
+.author strong{font-size:16px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.author span{color:var(--ink-3);font-size:12.5px;font-weight:750}
+.content{
+  padding:20px 18px 16px;
+  display:grid;
+  gap:16px;
+}
+.post-text{
+  margin:0;
+  color:var(--ink);
+  font-size:18px;
+  line-height:1.55;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.media-grid{
+  display:grid;
+  gap:8px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.media-grid[data-count="1"]{grid-template-columns:1fr}
+.media-grid img{
+  width:100%;
+  max-height:520px;
+  object-fit:cover;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface-soft);
+}
+.meta{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  color:var(--ink-3);
+  font-size:13px;
+  font-weight:780;
+}
+.actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  padding:14px 18px 18px;
+}
+.btn{
+  min-height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:0 15px;
+  border-radius:999px;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:850;
+}
+.btn.primary{color:#fff;background:linear-gradient(135deg,var(--accent),#0d4fc7);box-shadow:0 12px 24px rgba(23,97,240,.24)}
+.btn.secondary{border:1px solid var(--line);background:var(--surface-solid);color:var(--ink-2)}
+.btn.ghost{background:transparent;color:var(--ink-2)}
+.empty-card{
+  padding:34px 22px;
+  color:var(--ink-2);
+  text-align:center;
+}
+.empty-card h1{margin:0 0 8px;color:var(--ink);font-size:25px}
+.empty-card p{margin:0;line-height:1.5}
+.toast{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  max-width:min(360px,calc(100vw - 40px));
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-left:4px solid var(--accent);
+  border-radius:14px;
+  background:var(--surface-solid);
+  box-shadow:var(--shadow);
+  color:var(--ink);
+  font-size:13px;
+  font-weight:800;
+}
+@media(max-width:640px){
+  .topbar-inner,.shell{width:min(100% - 22px,720px)}
+  .topbar-inner{justify-content:center}
+  .topbar .btn{display:none}
+  .post-head{grid-template-columns:46px minmax(0,1fr);padding:14px}
+  .avatar{width:46px;height:46px;border-radius:12px}
+  .content{padding:16px 14px 12px}
+  .post-text{font-size:16px}
+  .media-grid{grid-template-columns:1fr}
+  .actions{padding:12px 14px 16px}
+  .btn{width:100%}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="community.html" aria-label="Forca Aliada">
+      <img src="assets/images/fa-icon-light.png" alt="Forca Aliada">
+      <span>Forca Aliada<small>Post publico</small></span>
+    </a>
+    <a class="btn secondary" id="account-link" href="account.html">Conta</a>
+  </div>
+</header>
+
+<main class="shell" id="app">
+  <section class="empty-card"><h1>Carregando post...</h1><p>Buscando a publicacao publica da comunidade.</p></section>
+</main>
+
+<script>
+const PROD = 'https://forca-aliada-site.onrender.com';
+const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const LOCAL_API = 'http://localhost:3000';
+const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
+const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
+const API_BASES = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
+const token = localStorage.getItem('fa_token');
+const app = document.getElementById('app');
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
+}
+function num(value) {
+  return Number(value || 0).toLocaleString('pt-BR');
+}
+function plain(value, max = 220) {
+  return String(value || '').replace(/https?:\/\/\S+/gi, '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+function skin(name, size = 80) {
+  return `https://minotar.net/helm/${encodeURIComponent((name || 'Steve').trim() || 'Steve')}/${size}.png`;
+}
+function mediaUrls(post) {
+  return (Array.isArray(post?.media_urls) ? post.media_urls : [])
+    .map(v => String(v || '').trim())
+    .filter(v => /^https?:\/\//i.test(v))
+    .slice(0, 4);
+}
+function formatDate(value) {
+  if (!value) return 'data indisponivel';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'data indisponivel';
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function setMeta(name, content, attr = 'name') {
+  if (!content) return;
+  let el = document.querySelector(`meta[${attr}="${name}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+function setCanonical(url) {
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement('link');
+    el.rel = 'canonical';
+    document.head.appendChild(el);
+  }
+  el.href = url;
+}
+function loginUrl(next = `${location.pathname}${location.search}${location.hash}`.replace(/^\//, '')) {
+  const cleanNext = next || 'community.html';
+  try {
+    const payload = JSON.stringify({ path: cleanNext, at: Date.now() });
+    sessionStorage.setItem('fa_login_next', payload);
+    localStorage.setItem('fa_login_next', payload);
+  } catch {}
+  const url = new URL('login.html', location.href);
+  url.searchParams.set('next', cleanNext);
+  return `${url.pathname.replace(/^\//, '')}${url.search}`;
+}
+function publicShareUrl(id) {
+  return `${API_BASE.replace(/\/+$/, '')}/share/post/${encodeURIComponent(id)}`;
+}
+async function api(path) {
+  let err;
+  for (const base of API_BASES) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const res = await fetch(`${base}${path}`, { signal: controller.signal });
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
+      if (!res.ok) throw new Error(data.error || 'Erro na API');
+      return data;
+    } catch (e) {
+      err = e.name === 'AbortError' ? new Error('A API demorou para responder.') : e;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw err;
+}
+function toast(message) {
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+function authorName(post) {
+  return post.display_name || post.minecraft_name || post.username || 'Jogador';
+}
+function profileIdentifier(post) {
+  return post.minecraft_name || post.username || `id:${post.author_id}`;
+}
+function updateSeo(post, id) {
+  const author = authorName(post);
+  const description = plain(post.content) || `${author} publicou na comunidade Forca Aliada.`;
+  const image = mediaUrls(post)[0] || post.avatar_url || post.photo_url || skin(author, 140);
+  const canonical = new URL(`post.html?id=${encodeURIComponent(id)}`, location.href).href;
+  document.title = `Post de ${author} | Forca Aliada`;
+  setMeta('description', description);
+  setMeta('robots', 'index,follow,max-image-preview:large');
+  setMeta('og:title', `Post de ${author} | Forca Aliada`, 'property');
+  setMeta('og:description', description, 'property');
+  setMeta('og:type', 'article', 'property');
+  setMeta('og:url', canonical, 'property');
+  setMeta('og:image', image, 'property');
+  setMeta('twitter:card', 'summary_large_image');
+  setMeta('twitter:title', `Post de ${author} | Forca Aliada`);
+  setMeta('twitter:description', description);
+  setMeta('twitter:image', image);
+  setCanonical(canonical);
+}
+function renderPost(post, id) {
+  const author = authorName(post);
+  const imgs = mediaUrls(post);
+  updateSeo(post, id);
+  const fullThread = `community.html?post=${encodeURIComponent(id)}`;
+  const enterUrl = loginUrl(fullThread);
+  const profileUrl = `profile.html?id=${encodeURIComponent(profileIdentifier(post))}`;
+  document.getElementById('account-link').href = token ? 'account.html' : enterUrl;
+  document.getElementById('account-link').textContent = token ? 'Conta' : 'Entrar';
+  app.innerHTML = `
+    <article class="post-card">
+      <header class="post-head">
+        <a href="${esc(profileUrl)}"><img class="avatar" src="${esc(post.avatar_url || post.photo_url || skin(author, 100))}" alt="Avatar de ${esc(author)}" onerror="this.onerror=null;this.src='${skin('Steve', 100)}'"></a>
+        <div class="author">
+          <strong><a href="${esc(profileUrl)}">${esc(author)}</a></strong>
+          <span>@${esc(post.username || author)} - ${esc(formatDate(post.created_at))}</span>
+        </div>
+      </header>
+      <div class="content">
+        <p class="post-text">${esc(post.content || 'Publicacao sem texto.')}</p>
+        ${imgs.length ? `<div class="media-grid" data-count="${imgs.length}">${imgs.map((url, index) => `<img src="${esc(url)}" alt="Imagem ${index + 1} do post" loading="lazy" decoding="async">`).join('')}</div>` : ''}
+        <div class="meta">
+          <span>${num(post.likes_count)} likes</span>
+          <span>${num(post.comments_count)} respostas</span>
+          <span>${num(post.reposts_count)} reposts</span>
+        </div>
+      </div>
+      <footer class="actions">
+        <a class="btn primary" href="${esc(token ? fullThread : enterUrl)}">${token ? 'Abrir thread completa' : 'Entrar para comentar'}</a>
+        <a class="btn secondary" href="${esc(profileUrl)}">Ver perfil</a>
+        <button class="btn secondary" type="button" id="copy-share">Copiar link</button>
+        <a class="btn ghost" href="https://wa.me/?text=${encodeURIComponent(`Post de ${author}\n${publicShareUrl(id)}`)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      </footer>
+    </article>`;
+  document.getElementById('copy-share')?.addEventListener('click', async () => {
+    const url = publicShareUrl(id);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Link copiado.');
+    } catch {
+      toast(url);
+    }
+  });
+}
+function renderError(message) {
+  app.innerHTML = `<section class="empty-card"><h1>Post indisponivel</h1><p>${esc(message)}</p><div style="margin-top:14px"><a class="btn primary" href="community.html">Voltar para comunidade</a></div></section>`;
+}
+
+(async function init() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id') || params.get('post');
+  if (!id) {
+    renderError('Nao recebemos o identificador da publicacao.');
+    return;
+  }
+  try {
+    const post = await api(`/api/public/community/posts/${encodeURIComponent(id)}`);
+    renderPost(post, id);
+  } catch (e) {
+    renderError(e.message || 'Nao foi possivel carregar esta publicacao publica.');
   }
 })();
 </script>
-</head>
-<body></body>
+</body>
 </html>
