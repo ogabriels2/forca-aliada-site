@@ -1,13 +1,20 @@
 (function () {
   if (window.FAChat) return;
 
-  const token = localStorage.getItem('fa_token');
+  const safeStorage = (() => {
+    try {
+      return window.localStorage || window.__FA_STORAGE__ || null;
+    } catch {
+      return window.__FA_STORAGE__ || null;
+    }
+  })();
+  const token = safeStorage?.getItem('fa_token') || '';
   if (!token) return;
 
   const PROD = 'https://forca-aliada-site.onrender.com';
   const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
   const LOCAL_API = 'http://localhost:3000';
-  const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
+  const STORED_API = IS_LOCAL ? (safeStorage?.getItem('fa_api_base') || '') : '';
   const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
   const bases = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 
@@ -258,12 +265,25 @@
 
   function syncBodyChatState() {
     document.body.classList.toggle('fa-chat-open', Boolean(state.open));
+    syncMobileNavState();
   }
 
   function syncFabPosition() {
     const fab = document.querySelector('.fab-post');
     const mobileNav = document.querySelector('.mobile-bottom-nav');
-    root.classList.toggle('fa-chat-has-mobile-nav', Boolean(mobileNav));
+    const navVisible = Boolean(
+      mobileNav
+      && getComputedStyle(mobileNav).display !== 'none'
+      && mobileNav.getBoundingClientRect().height > 0
+    );
+    root.classList.toggle('fa-chat-has-mobile-nav', navVisible);
+    if (navVisible) {
+      const navRect = mobileNav.getBoundingClientRect();
+      const bottomGap = Math.max(0, window.innerHeight - navRect.bottom);
+      root.style.setProperty('--fa-chat-mobile-nav-height', `${Math.ceil(navRect.height + bottomGap)}px`);
+    } else {
+      root.style.setProperty('--fa-chat-mobile-nav-height', '0px');
+    }
     if (!fab) {
       root.classList.remove('fa-chat-has-fab');
       return;
@@ -278,6 +298,19 @@
     root.style.setProperty('--fa-chat-fab-right', `${Math.max(14, window.innerWidth - rect.right)}px`);
     root.style.setProperty('--fa-chat-fab-width', `${Math.ceil(rect.width)}px`);
     root.style.setProperty('--fa-chat-fab-bottom', styles.bottom || `${Math.max(14, window.innerHeight - rect.bottom)}px`);
+  }
+
+  function syncMobileNavState() {
+    const nav = document.querySelector('.mobile-bottom-nav');
+    if (!nav) return;
+    const buttons = Array.from(nav.querySelectorAll('.mbtn'));
+    const chatButton = nav.querySelector('#mobile-chat-btn');
+    if (!chatButton) return;
+    if (state.open) {
+      buttons.forEach(btn => btn.classList.toggle('is-active', btn === chatButton));
+    } else {
+      chatButton.classList.remove('is-active');
+    }
   }
 
   function recalcUnread() {
@@ -298,6 +331,7 @@
   function updateMessagesList({ scroll = false } = {}) {
     const list = root.querySelector('[data-chat-messages]');
     if (!list || !state.current) return;
+    state.messages = dedupeMessages(state.messages);
 
     // Update cache first
     const k = cacheKey();
@@ -323,6 +357,7 @@
     // Remove empty-state placeholder if messages now exist
     list.querySelector('.fa-chat-empty')?.remove();
     list.querySelector('.fa-chat-message-loading')?.remove();
+    removeDuplicateMessageNodes(list);
 
     // --- Differential append: only insert truly new messages ---
     // Build a set of IDs already rendered (data-msg-id) and map tmp→real merges
@@ -366,17 +401,19 @@
       const sameSenderAsNext = nextMsg && Number(nextMsg.sender_id) === Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
       const isGroupFirst = !sameSenderAsPrev;
       const isGroupLast = !sameSenderAsNext;
+      const alreadyRendered = renderedIds.has(msgId);
 
       // --- Handle tmp→real merge ---
-      if (!msgId.startsWith('tmp-')) {
+      if (!alreadyRendered && !msgId.startsWith('tmp-')) {
         // Check if a pending node exists for this real message (matched by body+sender, or explicit index match)
         // Find any pending tmp node that was optimistically sent by me with same body
         let mergedTmp = null;
         pendingNodes.forEach((node, tmpId) => {
-          const tmpMsg = state.messages.find(m => m.id === tmpId);
           // If this real msg replaced a tmp (already swapped in state.messages at sendMessage), node is stale
           // We detect by checking if a tmp with same content still sits in DOM but not in state
-          if (!mergedTmp && !state.messages.some(m => m.id === tmpId)) {
+          const sameBubble = (node.querySelector('.fa-chat-bubble')?.textContent || '').includes(String(msg.body || ''));
+          const sameSide = node.classList.contains('is-me') === isMe;
+          if (!mergedTmp && sameBubble && sameSide && !state.messages.some(m => m.id === tmpId)) {
             mergedTmp = { node, tmpId };
           }
         });
@@ -434,6 +471,26 @@
     }
 
     if (scroll) updateScroll();
+  }
+
+  function dedupeMessages(rows) {
+    const seen = new Set();
+    return (Array.isArray(rows) ? rows : []).filter(message => {
+      const id = String(message?.id ?? '');
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  function removeDuplicateMessageNodes(list) {
+    const seen = new Set();
+    list.querySelectorAll('[data-msg-id]').forEach(node => {
+      const id = node.dataset.msgId;
+      if (!id) return;
+      if (seen.has(id)) node.remove();
+      else seen.add(id);
+    });
   }
 
   // Helper: are two ISO timestamps in the same minute?
@@ -638,6 +695,9 @@
     const error = state.error ? `<div class="fa-chat-inline-error"><strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button></div>` : '';
     if (state.loadingMessages) {
       return `<div class="fa-chat-message-loading"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>Carregando...</span></div>`;
+    }
+    if (state.error && !state.messages.length) {
+      return `${error}<div class="fa-chat-empty"><strong>Historico indisponivel</strong>Use Recarregar ou abra a conversa de novo em alguns segundos.</div>`;
     }
     if (!state.messages.length) {
       return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
@@ -853,11 +913,11 @@
         data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80&t=${Date.now()}`);
         rows = Array.isArray(data.rows) ? data.rows : [];
       }
-      state.messages = rows;
+      state.messages = dedupeMessages(rows);
       state.loadingMessages = false;
       state.error = ''; // mensagens carregadas com sucesso — limpa qualquer erro anterior
       // Update cache
-      if (k) state._msgCache[k] = rows.slice();
+      if (k) state._msgCache[k] = state.messages.slice();
 
       conv.unread_count = 0;
       // loadConversations pode falhar sem afetar o chat aberto
@@ -897,10 +957,10 @@
         data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=80&t=${Date.now()}`);
         rows = Array.isArray(data.rows) ? data.rows : [];
       }
-      state.messages = rows;
+      state.messages = dedupeMessages(rows);
       state.loadingMessages = false;
       state.error = ''; // mensagens carregadas com sucesso — limpa erro anterior
-      if (k) state._msgCache[k] = rows.slice();
+      if (k) state._msgCache[k] = state.messages.slice();
 
       group.unread_count = 0;
       // loadGroups pode falhar sem afetar o chat aberto
@@ -922,7 +982,7 @@
     if (!state.current || state.busy) return;
     const isGroup = state.currentKind === 'group';
     const data = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages?limit=80`);
-    const nextMessages = Array.isArray(data.rows) ? data.rows : [];
+    const nextMessages = dedupeMessages(Array.isArray(data.rows) ? data.rows : []);
 
     // Merge: keep pending/failed tmp messages; replace tmp with real if IDs match by index
     const pendingMsgs = state.messages.filter(m => String(m.id).startsWith('tmp-'));
@@ -1221,6 +1281,14 @@
     const textarea = form.querySelector('[data-chat-input]');
     sendMessage(textarea);
   });
+
+  document.addEventListener('click', event => {
+    const navButton = event.target.closest('.mobile-bottom-nav .mbtn');
+    if (!navButton) return;
+    syncFabPosition();
+    if (navButton.id === 'mobile-chat-btn') return;
+    if (state.open) closePanel();
+  }, true);
 
   window.FAChat = {
     open: openPanel,

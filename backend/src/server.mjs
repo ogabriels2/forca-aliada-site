@@ -1179,6 +1179,9 @@ CREATE TABLE IF NOT EXISTS direct_messages (
   deleted_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_direct_messages_conversation ON direct_messages(conversation_id, id DESC);
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS direct_conversation_reads (
   conversation_id BIGINT NOT NULL REFERENCES direct_conversations(id) ON DELETE CASCADE,
@@ -1217,6 +1220,9 @@ CREATE TABLE IF NOT EXISTS chat_group_messages (
   deleted_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_chat_group_messages_group ON chat_group_messages(group_id, id DESC);
+ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 `;
 await pool.query(featureSchemaSql);
 
@@ -5035,8 +5041,8 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 40, 1, 80);
   const beforeId = req.query.before ? parseInt(req.query.before, 10) : null;
   if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
-  const params = [req.user.sub, conversationId, limit];
-  const cursorClause = beforeId ? 'AND dm.id < $4' : '';
+  const params = [conversationId, limit];
+  const cursorClause = beforeId ? 'AND dm.id < $3' : '';
   if (beforeId) params.push(beforeId);
 
   try {
@@ -5055,10 +5061,10 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
              u.username, u.minecraft_name, u.photo_url
       FROM direct_messages dm
       JOIN users u ON u.id = dm.sender_id
-      WHERE dm.conversation_id = $2
+      WHERE dm.conversation_id = $1
         ${cursorClause}
       ORDER BY dm.id DESC
-      LIMIT $3
+      LIMIT $2
     `, params);
 
     const ordered = rows.reverse();

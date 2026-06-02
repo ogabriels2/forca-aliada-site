@@ -1272,7 +1272,7 @@
   }
 
   body.fa-chat-open .mobile-bottom-nav {
-    display: none!important;
+    display: grid!important;
   }
 }
 
@@ -1472,9 +1472,12 @@
   }
 
   #fa-chat-root .fa-chat-panel {
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: var(--fa-chat-mobile-nav-height, 0px);
+    left: 0;
     width: 100vw;
-    height: 100dvh;
+    height: calc(100dvh - var(--fa-chat-mobile-nav-height, 0px));
     max-height: none;
     border-radius: 0;
     transform: translateX(100%);
@@ -1532,7 +1535,7 @@
   #fa-chat-root .fa-chat-compose-wrap {
     position: relative;
     bottom: auto;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: 0;
   }
 
   #fa-chat-root .fa-chat-compose {
@@ -1545,5 +1548,9 @@
 
   #fa-chat-root .fa-chat-bubble-wrap {
     max-width: 84%;
+  }
+
+  body.fa-chat-open .mobile-bottom-nav {
+    display: grid!important;
   }
 }
