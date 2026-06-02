@@ -4320,7 +4320,7 @@ async function ensureEditorLibraries(){
   ]);
 }
 /* URL pública e estável do modelo NSFW (quantizado, ~3 MB) */
-const NSFW_MODEL_URL='https://nsfwjs.com/quant_nsfw_mobilenet/model.json';
+const NSFW_MODEL_URL='https://cdn.jsdelivr.net/npm/nsfwjs@4.2.1/dist/quant_nsfw_mobilenet/model.json';
 
 async function getNsfwModel(type){
   if(!state.nsfwModelPromise){
@@ -4354,13 +4354,17 @@ function blobToImage(blob){
 async function assertSafeImage(blob,type){
   const model=await getNsfwModel(type);
   /* Se o modelo não carregou, deixa passar (fail-open) */
-  if(!model) return;
+  if(!model){console.warn('[nsfwjs] Modelo indisponível — imagem liberada sem verificação local.');return;}
   const {img,url}=await blobToImage(blob);
   try{
     const predictions=await model.classify(img);
+    console.log('[nsfwjs] Classificação:',predictions.map(p=>`${p.className}:${(p.probability*100).toFixed(1)}%`).join(', '));
     const blocked=new Set(['Porn','Hentai','Sexy']);
-    const hit=predictions.find(p=>blocked.has(p.className)&&Number(p.probability)>=0.6);
-    if(hit) throw new Error('Imagem barrada pela moderação automática.');
+    const hit=predictions.find(p=>blocked.has(p.className)&&Number(p.probability)>=0.4);
+    if(hit){
+      console.warn('[nsfwjs] Imagem bloqueada:',hit.className,hit.probability);
+      throw new Error('Imagem barrada pela moderação automática.');
+    }
   }finally{
     URL.revokeObjectURL(url);
   }
