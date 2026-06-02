@@ -387,6 +387,14 @@ const uploadLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Limite de uploads por hora atingido.' },
 });
+const affiliationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 12,
+  keyGenerator: (req) => String(req.user?.sub || req.ip),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas alteracoes de afiliadas. Aguarde alguns minutos.' },
+});
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -741,6 +749,23 @@ CREATE TABLE IF NOT EXISTS user_blocks (
 CREATE INDEX IF NOT EXISTS idx_blocks_blocker ON user_blocks(blocker_id);
 CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON user_blocks(blocked_id);
 
+CREATE TABLE IF NOT EXISTS account_affiliations (
+  id BIGSERIAL PRIMARY KEY,
+  owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  delegate_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(16) NOT NULL DEFAULT 'active' CHECK (status IN ('active','revoked')),
+  scopes TEXT[] NOT NULL DEFAULT ARRAY['post']::text[],
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
+  last_used_at TIMESTAMPTZ,
+  CHECK (owner_user_id <> delegate_user_id),
+  UNIQUE(owner_user_id, delegate_user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_account_affiliations_delegate ON account_affiliations(delegate_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_account_affiliations_owner ON account_affiliations(owner_user_id, status);
+
 -- Adiciona a coluna Bio/Status nas preferências, se não existir
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS bio VARCHAR(160) DEFAULT '';
 ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS display_name VARCHAR(40) DEFAULT '';
@@ -763,11 +788,14 @@ ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS edit_count INTEGER DEFAULT 0;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS repost_of_id INTEGER REFERENCES user_posts(id) ON DELETE CASCADE;
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+UPDATE user_posts SET created_by_user_id = author_id WHERE created_by_user_id IS NULL;
 ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS media_urls TEXT[] DEFAULT '{}'::text[];
 ALTER TABLE user_posts ALTER COLUMN media_urls SET DEFAULT '{}'::text[];
 UPDATE user_posts SET media_urls = '{}'::text[] WHERE media_urls IS NULL;
 ALTER TABLE user_posts ALTER COLUMN media_urls SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_user_posts_author ON user_posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_user_posts_created_by ON user_posts(created_by_user_id);
 CREATE INDEX IF NOT EXISTS idx_user_posts_date ON user_posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_posts_pinned ON user_posts(is_pinned DESC, pinned_at DESC NULLS LAST, id DESC);
 CREATE INDEX IF NOT EXISTS idx_user_posts_repost_of ON user_posts(repost_of_id);
@@ -1166,6 +1194,7 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
 
 const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
 const REPORT_REASONS = new Set(['spam', 'hate_speech', 'harassment', 'inappropriate', 'misinformation', 'other']);
+const AFFILIATION_SCOPES = new Set(['post']);
 
 function isPrivileged(role) {
   return ['full', 'owner'].includes(role);
@@ -1186,6 +1215,82 @@ function socialMeritSql(userAlias = 'u', balanceAlias = 'pb') {
     WHEN NULLIF(TRIM(COALESCE(${userAlias}.minecraft_name, '')), '') IS NULL THEN NULL
     ELSE COALESCE(${balanceAlias}.merit_total, 0)
   END`;
+}
+
+function primaryIntegrationFieldsSql(userAlias = 'u') {
+  return `(
+    SELECT json_build_object(
+      'mc_edition', ui.mc_edition,
+      'xbox_xuid', ui.xbox_xuid,
+      'xbox_gamertag', ui.xbox_gamertag
+    )
+    FROM user_integrations ui
+    WHERE ui.user_id = ${userAlias}.id
+    ORDER BY ui.is_primary DESC, ui.updated_at DESC NULLS LAST, ui.created_at DESC NULLS LAST, ui.id DESC
+    LIMIT 1
+  )`;
+}
+
+async function resolvePublishAuthor(requestUserId, requestedAuthorId, db = pool) {
+  const executorId = Number(requestUserId);
+  const parsedRequested = requestedAuthorId === undefined || requestedAuthorId === null || requestedAuthorId === ''
+    ? executorId
+    : parseInt(requestedAuthorId, 10);
+  if (!executorId || !Number.isInteger(parsedRequested) || parsedRequested <= 0) {
+    const err = new Error('Identidade de publicacao invalida.');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows: authorRows } = await db.query(
+    `SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.role,
+            COALESCE(up.display_name, '') AS display_name,
+            COALESCE(up.avatar_url, '') AS avatar_url,
+            COALESCE(up.cover_url, '') AS cover_url,
+            ${socialRankSql('u', 'pb')} AS rank,
+            ${socialMeritSql('u', 'pb')} AS merit,
+            ${primaryIntegrationFieldsSql('u')} AS integration
+     FROM users u
+     LEFT JOIN user_preferences up ON up.user_id = u.id
+     LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+     WHERE u.id = $1
+     LIMIT 1`,
+    [parsedRequested],
+  );
+  const author = authorRows[0];
+  if (!author) {
+    const err = new Error('Conta de publicacao nao encontrada.');
+    err.status = 404;
+    throw err;
+  }
+
+  if (parsedRequested === executorId) {
+    return { authorId: executorId, executorId, delegated: false, affiliationId: null, author };
+  }
+
+  const { rows: affiliationRows } = await db.query(
+    `SELECT id
+     FROM account_affiliations
+     WHERE owner_user_id = $1
+       AND delegate_user_id = $2
+       AND status = 'active'
+       AND 'post' = ANY(scopes)
+     LIMIT 1`,
+    [parsedRequested, executorId],
+  );
+  if (!affiliationRows.length) {
+    const err = new Error('Voce nao tem autorizacao ativa para publicar por esta conta.');
+    err.status = 403;
+    throw err;
+  }
+
+  return {
+    authorId: parsedRequested,
+    executorId,
+    delegated: true,
+    affiliationId: affiliationRows[0].id,
+    author,
+  };
 }
 
 function clampInt(value, fallback, min, max) {
@@ -3363,6 +3468,7 @@ app.get('/api/me', auth, async (req, res) => {
               COALESCE(up.avatar_url, '') AS avatar_url,
               COALESCE(up.cover_url, '') AS cover_url,
               COALESCE(up.profile_layout, 'posts') AS profile_layout,
+              ${primaryIntegrationFieldsSql('u')} AS integration,
               ${socialRankSql('u', 'pb')} AS rank,
               ${socialMeritSql('u', 'pb')} AS merit
        FROM users u
@@ -3848,6 +3954,7 @@ app.get('/api/community/players', auth, async (req, res) => {
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(up.cover_url, '') AS cover_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
              (SELECT COUNT(*) FROM user_follows f1
               JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
@@ -3885,6 +3992,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
              COALESCE(up.profile_layout, 'posts') AS profile_layout,
              COALESCE(up.public_profile, TRUE) AS public_profile,
              COALESCE(up.public_history, FALSE) AS public_history,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
@@ -3923,6 +4031,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
     const [postsResult, repliesResult, repostsResult, statsResult, dailyResult, followResult] = await Promise.all([
       pool.query(`
         SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
+               p.created_by_user_id,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
                (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
@@ -3937,9 +4046,11 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
       pool.query(`
         SELECT pc.id AS comment_id, pc.content AS comment_content, pc.created_at AS comment_created_at,
                p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
+               p.created_by_user_id,
                au.id AS author_id, au.username, au.minecraft_name, au.photo_url, au.role,
                COALESCE(aup.display_name, '') AS display_name,
                COALESCE(aup.avatar_url, '') AS avatar_url,
+               ${primaryIntegrationFieldsSql('au')} AS integration,
                ${socialRankSql('au', 'pb')} AS rank,
                ${socialMeritSql('au', 'pb')} AS merit,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
@@ -3963,7 +4074,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
         LIMIT 20
       `, [req.user.sub, profileUserId]),
       pool.query(`
-        SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.repost_of_id,
+        SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.created_by_user_id, p.repost_of_id,
                op.content AS repost_original_content,
                op.media_urls AS repost_original_media_urls,
                op.created_at AS repost_original_created_at,
@@ -3974,6 +4085,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
                 ou.role AS repost_original_role,
                 COALESCE(oup.display_name, '') AS repost_original_display_name,
                 COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
+                ${primaryIntegrationFieldsSql('ou')} AS repost_original_integration,
                 ${socialRankSql('ou', 'opb')} AS repost_original_rank,
                ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
@@ -4035,6 +4147,7 @@ app.get('/api/community/player/:identifier', auth, async (req, res) => {
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
              COALESCE(up.bio, '') AS bio,
              COALESCE(up.public_profile, TRUE) AS public_profile,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
@@ -4076,6 +4189,7 @@ app.get('/api/community/player/:mc_name', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, up.bio, up.public_profile,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank, ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) AS followers_count,
              (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id) AS following_count,
@@ -4103,9 +4217,12 @@ app.get('/api/me/blocks', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, ub.created_at,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank
       FROM user_blocks ub
       JOIN users u ON u.id = ub.blocked_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE ub.blocker_id = $1
         AND ($2::timestamptz IS NULL OR ub.created_at < $2::timestamptz)
@@ -4261,6 +4378,9 @@ app.get('/api/me/friends', auth, async (req, res) => {
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, f1.created_at AS followed_at,
              f2.created_at AS friend_since,
              COALESCE(up.bio, '') AS bio,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count,
@@ -4286,11 +4406,15 @@ app.get('/api/me/friend-requests', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id)::int AS followers_count
       FROM user_follows uf
       JOIN users u ON uf.follower_id = u.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE uf.following_id = $1
         AND NOT EXISTS (
@@ -4744,6 +4868,167 @@ function extractMentions(text) {
 }
 
 // Criar uma postagem com suporte a Menções (@)
+app.get('/api/community/affiliations', auth, async (req, res) => {
+  try {
+    const { rows: identities } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.role,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
+             TRUE AS is_self,
+             NULL::bigint AS affiliation_id,
+             NULL::timestamptz AS granted_at,
+             NULL::timestamptz AS last_used_at
+      FROM users u
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE u.id = $1
+      UNION ALL
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.role,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
+             FALSE AS is_self,
+             af.id AS affiliation_id,
+             af.created_at AS granted_at,
+             af.last_used_at
+      FROM account_affiliations af
+      JOIN users u ON u.id = af.owner_user_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE af.delegate_user_id = $1
+        AND af.status = 'active'
+        AND 'post' = ANY(af.scopes)
+      ORDER BY is_self DESC, display_name ASC, username ASC
+    `, [req.user.sub]);
+
+    const { rows: delegates } = await pool.query(`
+      SELECT af.id AS affiliation_id,
+             af.status,
+             af.created_at AS granted_at,
+             af.last_used_at,
+             d.id, d.username, d.minecraft_name, d.photo_url, d.role,
+             COALESCE(dup.display_name, '') AS display_name,
+             COALESCE(dup.avatar_url, '') AS avatar_url,
+             ${socialRankSql('d', 'dpb')} AS rank,
+             ${socialMeritSql('d', 'dpb')} AS merit,
+             ${primaryIntegrationFieldsSql('d')} AS integration
+      FROM account_affiliations af
+      JOIN users d ON d.id = af.delegate_user_id
+      LEFT JOIN user_preferences dup ON dup.user_id = d.id
+      LEFT JOIN player_balances dpb ON LOWER(dpb.minecraft_name) = LOWER(d.minecraft_name)
+      WHERE af.owner_user_id = $1
+        AND af.status = 'active'
+        AND 'post' = ANY(af.scopes)
+      ORDER BY af.created_at DESC
+    `, [req.user.sub]);
+
+    res.json({ publishing_identities: identities, granted_delegates: delegates });
+  } catch (e) {
+    console.error('[GET /api/community/affiliations]', e);
+    res.status(500).json({ error: 'Erro ao carregar contas afiliadas.' });
+  }
+});
+
+app.post('/api/community/affiliations', auth, affiliationLimiter, async (req, res) => {
+  const rawIdentifier = sanitize(req.body?.username || req.body?.identifier || '').replace(/^@/, '').toLowerCase();
+  if (!rawIdentifier || rawIdentifier.length < 3 || rawIdentifier.length > 64) {
+    return res.status(400).json({ error: 'Informe um usuario valido.' });
+  }
+  if (req.user.is_verified === false) {
+    return res.status(403).json({ error: 'Verifique sua conta antes de autorizar afiliadas.' });
+  }
+
+  try {
+    const { rows: targetRows } = await pool.query(
+      `SELECT id, username, minecraft_name, role, is_verified
+       FROM users u
+       WHERE LOWER(u.username) = $1
+          OR LOWER(COALESCE(u.minecraft_name, '')) = $1
+          OR EXISTS (
+            SELECT 1
+            FROM user_integrations ui
+            WHERE ui.user_id = u.id
+              AND LOWER(COALESCE(ui.xbox_gamertag, '')) = $1
+          )
+       LIMIT 1`,
+      [rawIdentifier],
+    );
+    const delegate = targetRows[0];
+    if (!delegate) return res.status(404).json({ error: 'Usuario nao encontrado.' });
+    if (Number(delegate.id) === Number(req.user.sub)) {
+      return res.status(400).json({ error: 'Voce ja pode publicar pela sua propria conta.' });
+    }
+    if (delegate.is_verified === false) {
+      return res.status(400).json({ error: 'A conta autorizada precisa estar verificada.' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO account_affiliations(owner_user_id, delegate_user_id, status, scopes, created_by, created_at, updated_at, revoked_at)
+       VALUES($1, $2, 'active', ARRAY['post']::text[], $1, NOW(), NOW(), NULL)
+       ON CONFLICT(owner_user_id, delegate_user_id)
+       DO UPDATE SET status='active',
+                     scopes=ARRAY['post']::text[],
+                     updated_at=NOW(),
+                     revoked_at=NULL
+       RETURNING id, owner_user_id, delegate_user_id, created_at`,
+      [req.user.sub, delegate.id],
+    );
+
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'security',
+      severity: 'warning',
+      targetId: delegate.id,
+      targetName: delegate.username,
+      message: `${req.user.username} autorizou ${delegate.username} a publicar como sua conta`,
+      metadata: { affiliation_id: rows[0].id, scope: 'post' },
+    });
+
+    res.status(201).json({ ok: true, affiliation: rows[0], delegate });
+  } catch (e) {
+    console.error('[POST /api/community/affiliations]', e);
+    res.status(500).json({ error: 'Erro ao autorizar conta afiliada.' });
+  }
+});
+
+app.delete('/api/community/affiliations/:id', auth, affiliationLimiter, async (req, res) => {
+  const affiliationId = parseInt(req.params.id, 10);
+  if (!affiliationId) return res.status(400).json({ error: 'ID invalido.' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE account_affiliations
+       SET status='revoked', revoked_at=NOW(), updated_at=NOW()
+       WHERE id=$1
+         AND status='active'
+         AND (owner_user_id=$2 OR delegate_user_id=$2)
+       RETURNING id, owner_user_id, delegate_user_id`,
+      [affiliationId, req.user.sub],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Afiliacao nao encontrada.' });
+
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'security',
+      severity: 'warning',
+      targetId: affiliationId,
+      message: `Afiliacao #${affiliationId} revogada`,
+      metadata: rows[0],
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/community/affiliations/:id]', e);
+    res.status(500).json({ error: 'Erro ao revogar afiliacao.' });
+  }
+});
+
 function uploadCommunityImage(file, userId) {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -4825,13 +5110,17 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const publishIdentity = await resolvePublishAuthor(req.user.sub, req.body?.publish_as_user_id, client);
     const { rows } = await client.query(
-      `INSERT INTO user_posts(author_id, content, media_urls)
-       VALUES($1, $2, $3::text[])
-       RETURNING id, content, media_urls, created_at, updated_at, edit_count, is_pinned`,
-      [req.user.sub, content, mediaUrls],
+      `INSERT INTO user_posts(author_id, created_by_user_id, content, media_urls)
+       VALUES($1, $2, $3, $4::text[])
+       RETURNING id, content, media_urls, created_at, updated_at, edit_count, is_pinned, author_id, created_by_user_id`,
+      [publishIdentity.authorId, req.user.sub, content, mediaUrls],
     );
     const newPost = rows[0];
+    if (publishIdentity.affiliationId) {
+      await client.query('UPDATE account_affiliations SET last_used_at=NOW(), updated_at=NOW() WHERE id=$1', [publishIdentity.affiliationId]);
+    }
 
     // Create poll if provided
     let pollData = null;
@@ -4866,21 +5155,21 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
         [mentions],
       );
       for (const mUser of mentionedUsers) {
-        if (mUser.id === req.user.sub) continue;
+        if (mUser.id === publishIdentity.authorId) continue;
         await client.query(
           "INSERT INTO content_mentions(content_type, content_id, mentioned_user_id) VALUES('post', $1, $2) ON CONFLICT DO NOTHING",
           [newPost.id, mUser.id],
         );
         await optionalTransactionStep(client, 'post mention notification', () => createSocialNotification({
           recipientId: mUser.id,
-          actorId: req.user.sub,
+          actorId: publishIdentity.authorId,
           type: 'mention_post',
           entityType: 'post',
           entityId: newPost.id,
           previewText: content,
         }, client));
         const targetName = mUser.minecraft_name || mUser.username;
-        const authorName = req.user.minecraft_name || req.user.username;
+        const authorName = publishIdentity.author.minecraft_name || publishIdentity.author.username;
         createMinecraftNotification({
           minecraftName: targetName,
           title: 'Voce foi mencionado!',
@@ -4891,12 +5180,46 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
         }).catch(err => console.warn('[post minecraft mention notification skipped]', err?.message || err));
       }
     }
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'create',
+      targetId: newPost.id,
+      targetName: publishIdentity.author.username,
+      message: publishIdentity.delegated
+        ? `Post #${newPost.id} publicado como ${publishIdentity.author.username} por ${req.user.username}`
+        : `Post #${newPost.id} publicado`,
+      metadata: {
+        author_id: publishIdentity.authorId,
+        created_by_user_id: req.user.sub,
+        affiliation_id: publishIdentity.affiliationId,
+      },
+    });
     await client.query('COMMIT');
-    res.status(201).json({ ...newPost, likes_count: 0, comments_count: 0, reposts_count: 0, poll: pollData });
+    const author = publishIdentity.author;
+    res.status(201).json({
+      ...newPost,
+      author_id: publishIdentity.authorId,
+      username: author.username,
+      minecraft_name: author.minecraft_name,
+      photo_url: author.photo_url,
+      role: author.role,
+      display_name: author.display_name,
+      avatar_url: author.avatar_url,
+      cover_url: author.cover_url,
+      rank: author.rank,
+      merit: author.merit,
+      integration: author.integration,
+      delegated: publishIdentity.delegated,
+      likes_count: 0,
+      comments_count: 0,
+      reposts_count: 0,
+      poll: pollData,
+    });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts]', e);
-    res.status(500).json({ error: 'Erro ao publicar.' });
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'Erro ao publicar.' });
   } finally {
     client.release();
   }
@@ -4944,6 +5267,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+             p.created_by_user_id,
              p.repost_of_id,
              op.content AS repost_original_content,
              op.media_urls AS repost_original_media_urls,
@@ -4955,6 +5279,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
              COALESCE(oup.display_name, '') AS repost_original_display_name,
              COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
              ou.role AS repost_original_role,
+             ${primaryIntegrationFieldsSql('ou')} AS repost_original_integration,
              ${socialRankSql('ou', 'opb')} AS repost_original_rank,
              ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
@@ -4963,6 +5288,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(up.cover_url, '') AS cover_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
@@ -5092,6 +5418,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
     const { rows } = await pool.query(`
       WITH base AS (
         SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+               p.created_by_user_id,
                p.repost_of_id,
                COALESCE(p.repost_of_id, p.id) AS target_id,
                COALESCE(op.content, p.content) AS target_content,
@@ -5105,12 +5432,14 @@ app.get('/api/community/feed', auth, async (req, res) => {
                COALESCE(oup.display_name, '') AS repost_original_display_name,
                COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
                ou.role AS repost_original_role,
+               ${primaryIntegrationFieldsSql('ou')} AS repost_original_integration,
                ${socialRankSql('ou', 'opb')} AS repost_original_rank,
                ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
                u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
                COALESCE(up.display_name, '') AS display_name,
                COALESCE(up.avatar_url, '') AS avatar_url,
                COALESCE(up.cover_url, '') AS cover_url,
+               ${primaryIntegrationFieldsSql('u')} AS integration,
                ${socialRankSql('u', 'pb')} AS rank,
                ${socialMeritSql('u', 'pb')} AS merit,
                EXISTS(
@@ -5194,6 +5523,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
         FROM author_ranked a
       )
       SELECT f.id, f.content, f.media_urls, f.created_at, f.updated_at, f.edit_count, f.is_pinned, f.pinned_at,
+             f.created_by_user_id,
              f.repost_of_id,
              f.repost_original_content,
              f.repost_original_media_urls,
@@ -5205,6 +5535,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
              f.repost_original_display_name,
              f.repost_original_avatar_url,
              f.repost_original_role,
+             f.repost_original_integration,
              f.repost_original_rank,
              f.repost_original_merit,
              f.likes_count,
@@ -5212,6 +5543,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
              f.comments_count,
              f.author_id, f.username, f.minecraft_name, f.photo_url, f.role,
              f.display_name, f.avatar_url, f.cover_url,
+             f.integration,
              f.rank, f.merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = f.target_id AND pl.user_id = $1) AS liked_by_me,
              EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = f.target_id AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me,
@@ -5291,6 +5623,9 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
       SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_me,
@@ -5312,6 +5647,7 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
              ) FROM post_polls pp WHERE pp.post_id = p.id LIMIT 1) AS poll
       FROM user_posts p
       JOIN users u ON p.author_id = u.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE p.id = $2
         AND NOT EXISTS (
@@ -5343,10 +5679,14 @@ app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
              c.is_deleted,
              c.created_at,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             COALESCE(up.display_name, '') AS display_name,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank
       FROM post_comments c
       JOIN users u ON c.author_id = u.id
       JOIN user_posts p ON p.id = c.post_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE c.post_id = $2
         ${cursorClause}
@@ -5379,6 +5719,7 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
   let committed = false;
   try {
     await client.query('BEGIN');
+    const publishIdentity = await resolvePublishAuthor(req.user.sub, req.body?.publish_as_user_id, client);
     const { rows: targetRows } = await client.query(
       `SELECT COALESCE(p.repost_of_id, p.id) AS target_id,
               target.author_id,
@@ -5401,15 +5742,18 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
       return res.status(404).json({ error: 'Post nao encontrado para repost.' });
     }
     const { rows } = await client.query(
-      `INSERT INTO user_posts(author_id, content, repost_of_id)
-       VALUES($1, $2, $3)
+      `INSERT INTO user_posts(author_id, created_by_user_id, content, repost_of_id)
+       VALUES($1, $2, $3, $4)
        ON CONFLICT DO NOTHING
-       RETURNING id, content, repost_of_id, created_at, updated_at, edit_count, is_pinned`,
-      [req.user.sub, quote, target.target_id],
+       RETURNING id, content, repost_of_id, created_at, updated_at, edit_count, is_pinned, author_id, created_by_user_id`,
+      [publishIdentity.authorId, req.user.sub, quote, target.target_id],
     );
     if (!rows.length && !quote) {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Voce ja repostou este post.' });
+    }
+    if (publishIdentity.affiliationId) {
+      await client.query('UPDATE account_affiliations SET last_used_at=NOW(), updated_at=NOW() WHERE id=$1', [publishIdentity.affiliationId]);
     }
     // Commita antes da notificação: evita que falha em createSocialNotification
     // desfaça o repost já inserido (a notificação é operação não-crítica).
@@ -5418,7 +5762,7 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
     // Fire-and-forget: notificação não deve bloquear nem reverter o repost.
     createSocialNotification({
       recipientId: target.author_id,
-      actorId: req.user.sub,
+      actorId: publishIdentity.authorId,
       type: 'repost',
       entityType: 'post',
       entityId: target.target_id,
@@ -5428,7 +5772,7 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/repost]', e);
-    res.status(500).json({ error: 'Erro ao repostar.' });
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'Erro ao repostar.' });
   } finally {
     client.release();
   }
@@ -5438,6 +5782,7 @@ app.delete('/api/community/posts/:id/repost', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   try {
+    const publishIdentity = await resolvePublishAuthor(req.user.sub, req.query.publish_as_user_id || req.body?.publish_as_user_id);
     const { rowCount } = await pool.query(
       `DELETE FROM user_posts rp
        USING user_posts p
@@ -5445,12 +5790,12 @@ app.delete('/api/community/posts/:id/repost', auth, async (req, res) => {
          AND rp.content = ''
          AND rp.repost_of_id = COALESCE(p.repost_of_id, p.id)
          AND p.id = $2`,
-      [req.user.sub, postId],
+      [publishIdentity.authorId, postId],
     );
     res.json({ ok: true, removed: rowCount });
   } catch (e) {
     console.error('[DELETE /api/community/posts/:id/repost]', e);
-    res.status(500).json({ error: 'Erro ao desfazer repost.' });
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'Erro ao desfazer repost.' });
   }
 });
 
@@ -5588,6 +5933,7 @@ app.get('/api/community/player/:identifier/followers', auth, async (req, res) =>
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM user_follows uf
@@ -5624,6 +5970,7 @@ app.get('/api/community/player/:identifier/following', auth, async (req, res) =>
       SELECT u.id, u.username, u.minecraft_name, u.photo_url, uf.created_at,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = u.id) AS followed_by_me
       FROM user_follows uf
@@ -5659,6 +6006,7 @@ app.get('/api/community/player/:identifier/friends', auth, async (req, res) => {
       SELECT u.id, u.username, u.minecraft_name, u.photo_url,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
              GREATEST(out_f.created_at, back_f.created_at) AS created_at,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
@@ -5772,10 +6120,24 @@ app.patch('/api/community/posts/:id', auth, async (req, res) => {
   if (!content || content.length < 2) return res.status(400).json({ error: 'Post muito curto.' });
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
   try {
-    const { rows } = await pool.query('SELECT author_id, created_at, edit_count FROM user_posts WHERE id=$1', [postId]);
+    const { rows } = await pool.query(
+      `SELECT p.author_id, p.created_by_user_id, p.created_at, p.edit_count,
+              EXISTS (
+                SELECT 1 FROM account_affiliations af
+                WHERE af.owner_user_id = p.author_id
+                  AND af.delegate_user_id = $2
+                  AND af.status = 'active'
+                  AND 'post' = ANY(af.scopes)
+              ) AS has_active_delegation
+       FROM user_posts p
+       WHERE p.id=$1`,
+      [postId, req.user.sub],
+    );
     const post = rows[0];
     if (!post) return res.status(404).json({ error: 'Post nao encontrado' });
-    if (Number(post.author_id) !== Number(req.user.sub)) return res.status(403).json({ error: 'forbidden' });
+    const canEditPost = Number(post.author_id) === Number(req.user.sub)
+      || (Number(post.created_by_user_id) === Number(req.user.sub) && post.has_active_delegation);
+    if (!canEditPost) return res.status(403).json({ error: 'forbidden' });
     const ageMinutes = (Date.now() - new Date(post.created_at).getTime()) / 60000;
     if (ageMinutes > 15) return res.status(403).json({ error: 'Edicao permitida apenas nos primeiros 15 minutos.' });
     const { rows: updated } = await pool.query(
@@ -5802,7 +6164,25 @@ app.patch('/api/community/posts/:id', auth, async (req, res) => {
 app.delete('/api/community/posts/:id', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   try {
-    const { rows } = await pool.query('DELETE FROM user_posts WHERE id=$1 AND author_id=$2 RETURNING id', [postId, req.user.sub]);
+    const { rows } = await pool.query(
+      `DELETE FROM user_posts p
+       WHERE p.id=$1
+         AND (
+           p.author_id=$2
+           OR (
+             p.created_by_user_id=$2
+             AND EXISTS (
+               SELECT 1 FROM account_affiliations af
+               WHERE af.owner_user_id = p.author_id
+                 AND af.delegate_user_id = $2
+                 AND af.status = 'active'
+                 AND 'post' = ANY(af.scopes)
+             )
+           )
+         )
+       RETURNING id`,
+      [postId, req.user.sub],
+    );
     if (!rows.length) return res.status(404).json({ error: 'Post nao encontrado ou nao autorizado' });
     await auditFromReq(req, {
       actorId: req.user.sub,
@@ -6158,9 +6538,13 @@ app.get('/api/me/social-notifications', auth, async (req, res) => {
     const { rows } = await pool.query(`
       SELECT sn.id, sn.type, sn.entity_type, sn.entity_id, sn.preview_text, sn.is_read, sn.created_at,
              actor.id AS actor_id, actor.username AS actor_username, actor.minecraft_name AS actor_minecraft_name,
-             actor.photo_url AS actor_photo_url
+             actor.photo_url AS actor_photo_url,
+             COALESCE(actor_prefs.avatar_url, '') AS actor_avatar_url,
+             COALESCE(actor_prefs.display_name, '') AS actor_display_name,
+             ${primaryIntegrationFieldsSql('actor')} AS actor_integration
       FROM social_notifications sn
       LEFT JOIN users actor ON actor.id = sn.actor_id
+      LEFT JOIN user_preferences actor_prefs ON actor_prefs.user_id = actor.id
       WHERE ${conditions.join(' AND ')}
         AND (
           actor.id IS NULL OR NOT EXISTS (
