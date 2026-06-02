@@ -102,7 +102,7 @@
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', `Bearer ${token}`);
     if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-    const timeoutMs = options.timeoutMs || 25000;
+    const timeoutMs = options.timeoutMs || 35000;
     const fetchOptions = { ...options };
     delete fetchOptions.timeoutMs;
     let err;
@@ -571,7 +571,7 @@
       return !term || name.includes(term) || handle.includes(term);
     });
 
-    if (state.error && !rows.length) return `<div class="fa-chat-error"><strong>Chat indisponivel</strong>${esc(state.error)}</div>`;
+    if (state.error && !rows.length) return `<div class="fa-chat-error"><strong>Nao foi possivel carregar</strong><small>${esc(state.error)}</small><button class="fa-chat-retry-btn" type="button" data-chat-reload-list>Tentar novamente</button></div>`;
     if (state.loadingConversations && !rows.length) return loadingRows();
     if (!rows.length) {
       return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para comecar.</div>';
@@ -948,6 +948,20 @@
     }
     try {
       await ensureMe();
+    } catch (e) {
+      state.loadingConversations = false;
+      state.loadingGroups = false;
+      state.loadingFriends = false;
+      const msg = e.message || '';
+      if (msg.includes('401') || msg.includes('invalid token') || msg.includes('session revoked') || msg.includes('missing token')) {
+        state.error = 'Sessão expirada. Recarregue a página.';
+      } else {
+        state.error = msg || 'Serviço indisponível. Tente novamente.';
+      }
+      updateConversationList();
+      return;
+    }
+    try {
       await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
     } finally {
       state.loadingConversations = false;
@@ -1230,6 +1244,7 @@
     const cancelGroup = event.target.closest('[data-chat-cancel-group]');
     const memberToggle = event.target.closest('[data-chat-member-toggle]');
     const reload = event.target.closest('[data-chat-reload]');
+    const reloadList = event.target.closest('[data-chat-reload-list]');
 
     const addFriend = event.target.closest('[data-add-friend]');
 
@@ -1262,6 +1277,20 @@
         state.open ? closePanel() : await openPanel();
       } else if (close) {
         closePanel();
+      } else if (reloadList) {
+        state.error = '';
+        state.loadingConversations = true;
+        state.loadingGroups = true;
+        updateConversationList();
+        try {
+          await ensureMe();
+          await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
+        } finally {
+          state.loadingConversations = false;
+          state.loadingGroups = false;
+          updateConversationList();
+          updateLauncherBadge();
+        }
       } else if (reload) {
         if (!state.current) return;
         if (state.currentKind === 'group') await openGroupConversation(state.current);
@@ -1447,9 +1476,9 @@
   }
   loadUnread();
   if ('requestIdleCallback' in window) {
-    requestIdleCallback(() => warmChat(), { timeout: 4000 });
+    requestIdleCallback(() => warmChat(), { timeout: 8000 });
   } else {
-    setTimeout(() => warmChat(), 1400);
+    setTimeout(() => warmChat(), 2000);
   }
   let _chatPollFailures = 0;
   let _lastPoll = 0;

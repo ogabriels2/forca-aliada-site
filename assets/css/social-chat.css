@@ -877,6 +877,37 @@
   padding: 24px 16px;
   color: var(--fc-red);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.fa-chat-error small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--fc-ink-3);
+  font-weight: 400;
+  max-width: 220px;
+  line-height: 1.4;
+}
+
+.fa-chat-retry-btn {
+  margin-top: 6px;
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1.5px solid var(--fc-gold);
+  background: transparent;
+  color: var(--fc-gold);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.fa-chat-retry-btn:hover {
+  background: var(--fc-gold);
+  color: var(--fc-bub-me-text);
 }
 
 .fa-chat-inline-error {
