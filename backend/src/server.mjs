@@ -6134,6 +6134,8 @@ app.get('/api/community/feed', auth, async (req, res) => {
              f.reposts_count,
              f.comments_count,
              f.author_id, f.username, f.minecraft_name, f.photo_url, f.role,
+             f.is_platform_verified,
+             f.repost_original_is_platform_verified,
              f.display_name, f.avatar_url, f.cover_url,
              f.integration,
              f.rank, f.merit,
