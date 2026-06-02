@@ -5602,7 +5602,7 @@ function commentsHTML(comments){
       canDelete?`<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentario">${IC.trash}</button>`:'',
       !isMyComment&&!del?`<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentario">${IC.flag}</button>`:''
     ].filter(Boolean).join('');
-    return`<article class="comment-row"><img src="${esc(avatar(c,50))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong><span class="handle">@${esc(handleName(c))}</span><span class="ts">· ${esc(time(c.created_at))}</span>${tools}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
+    return`<article class="comment-row"><img src="${esc(avatar(c,50))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong>${verifiedBadgeHTML(c)}<span class="handle">@${esc(handleName(c))}</span><span class="ts">· ${esc(time(c.created_at))}</span>${tools}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
   }).join('')}</div>`;
 }
 
