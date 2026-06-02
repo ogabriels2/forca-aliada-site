@@ -27,6 +27,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
+import https from 'https';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -280,6 +281,121 @@ function communityMediaUploadMiddleware(req, res, next) {
 
 function cloudinaryIsConfigured() {
   return Boolean(process.env.CLOUDINARY_URL || (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET));
+}
+
+// ─────────────────────────────────────────────
+// MODERAÇÃO DE IMAGENS – Google Vision SafeSearch
+// ─────────────────────────────────────────────
+// Níveis retornados pela API para cada categoria:
+//   UNKNOWN, VERY_UNLIKELY, UNLIKELY, POSSIBLE, LIKELY, VERY_LIKELY
+//
+// Lógica de 3 camadas:
+//   REJEITAR  → conteúdo claramente impróprio (LIKELY / VERY_LIKELY)
+//   SUSPEITO  → zona cinza (POSSIBLE) → publica mas entra na fila de moderação
+//   APROVADO  → UNLIKELY / VERY_UNLIKELY → sobe normalmente
+//
+// A moderação só roda se GOOGLE_VISION_API_KEY estiver configurada.
+// Sem a chave, o upload prossegue normalmente (fail-open intencional
+// para não bloquear o site caso a chave não esteja configurada ainda).
+
+const VISION_LIKELIHOOD_SCORE = {
+  UNKNOWN: 0,
+  VERY_UNLIKELY: 1,
+  UNLIKELY: 2,
+  POSSIBLE: 3,
+  LIKELY: 4,
+  VERY_LIKELY: 5,
+};
+
+// Retorna: { verdict: 'approved' | 'suspicious' | 'rejected', reason, scores }
+async function moderateImageBuffer(buffer) {
+  const apiKey = process.env.GOOGLE_VISION_API_KEY;
+  if (!apiKey) {
+    // Sem chave configurada: deixa passar (fail-open)
+    return { verdict: 'approved', reason: 'vision_not_configured', scores: {} };
+  }
+
+  const body = JSON.stringify({
+    requests: [{
+      image: { content: buffer.toString('base64') },
+      features: [{ type: 'SAFE_SEARCH_DETECTION' }],
+    }],
+  });
+
+  let rawResponse;
+  try {
+    rawResponse = await new Promise((resolve, reject) => {
+      const req = https.request(
+        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        },
+        res => {
+          let data = '';
+          res.on('data', chunk => { data += chunk; });
+          res.on('end', () => {
+            try { resolve(JSON.parse(data)); }
+            catch { reject(new Error('Resposta inválida da Vision API.')); }
+          });
+        },
+      );
+      req.on('error', reject);
+      req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout na Vision API.')); });
+      req.write(body);
+      req.end();
+    });
+  } catch (err) {
+    // Falha de rede / timeout: fail-open para não bloquear uploads
+    console.warn('[Vision API] Falha na chamada, imagem liberada:', err.message);
+    return { verdict: 'approved', reason: 'vision_error', scores: {} };
+  }
+
+  const annotation = rawResponse?.responses?.[0]?.safeSearchAnnotation;
+  if (!annotation) {
+    console.warn('[Vision API] Resposta sem safeSearchAnnotation:', JSON.stringify(rawResponse));
+    return { verdict: 'approved', reason: 'vision_no_annotation', scores: {} };
+  }
+
+  const scores = {
+    adult:    VISION_LIKELIHOOD_SCORE[annotation.adult]    ?? 0,
+    violence: VISION_LIKELIHOOD_SCORE[annotation.violence] ?? 0,
+    racy:     VISION_LIKELIHOOD_SCORE[annotation.racy]     ?? 0,
+    medical:  VISION_LIKELIHOOD_SCORE[annotation.medical]  ?? 0,
+  };
+
+  // REJEITAR: qualquer categoria claramente imprópria
+  const REJECT_THRESHOLD = 4; // LIKELY ou VERY_LIKELY
+  if (scores.adult >= REJECT_THRESHOLD || scores.violence >= REJECT_THRESHOLD) {
+    const reason = scores.adult >= REJECT_THRESHOLD ? 'adult_content' : 'violent_content';
+    return { verdict: 'rejected', reason, scores };
+  }
+
+  // SUSPEITO: zona cinza — publica mas entra na fila de revisão do admin
+  const SUSPICIOUS_THRESHOLD = 3; // POSSIBLE
+  if (
+    scores.adult >= SUSPICIOUS_THRESHOLD ||
+    scores.violence >= SUSPICIOUS_THRESHOLD ||
+    scores.racy >= SUSPICIOUS_THRESHOLD
+  ) {
+    return { verdict: 'suspicious', reason: 'possible_inappropriate', scores };
+  }
+
+  return { verdict: 'approved', reason: 'clean', scores };
+}
+
+// Insere o conteúdo na fila de moderação do admin
+async function queueForModeration(contentType, contentId) {
+  try {
+    await pool.query(
+      `INSERT INTO moderation_queue (content_type, content_id, report_count, created_at)
+       VALUES ($1, $2, 0, NOW())
+       ON CONFLICT (content_type, content_id) DO NOTHING`,
+      [contentType, contentId],
+    );
+  } catch (err) {
+    console.error('[Moderation] Falha ao enfileirar conteúdo suspeito:', err.message);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -5082,8 +5198,28 @@ app.post('/api/community/upload', auth, uploadLimiter, communityMediaUploadMiddl
   if (files.length > 4) return res.status(400).json({ error: 'Envie no maximo 4 imagens por post.' });
 
   try {
+    // ── Moderação: analisa todas as imagens antes de qualquer upload ──────────
+    const moderationResults = await Promise.all(files.map(f => moderateImageBuffer(f.buffer)));
+    for (const result of moderationResults) {
+      if (result.verdict === 'rejected') {
+        console.warn(`[Moderation] Imagem rejeitada (${result.reason}) — user ${req.user.sub}`);
+        return res.status(422).json({ error: 'Uma ou mais imagens contêm conteúdo impróprio e não podem ser publicadas.' });
+      }
+    }
+    const hasSuspicious = moderationResults.some(r => r.verdict === 'suspicious');
+    // ─────────────────────────────────────────────────────────────────────────
+
     const urls = await Promise.all(files.map(file => uploadCommunityImage(file, req.user.sub)));
-    res.status(201).json({ urls });
+
+    // Se alguma imagem ficou na zona cinza, enfileira o post para revisão do admin.
+    // O post_id ainda não existe aqui (criado em /api/community/posts), então
+    // marcamos o upload temporário pelo userId para que o admin possa revisar.
+    if (hasSuspicious) {
+      console.warn(`[Moderation] Imagens suspeitas de user ${req.user.sub} — enfileiradas para revisão.`);
+      await queueForModeration('community_upload_user', req.user.sub);
+    }
+
+    res.status(201).json({ urls, flagged: hasSuspicious });
   } catch (e) {
     console.error('[POST /api/community/upload]', e);
     res.status(502).json({ error: 'Nao foi possivel enviar as imagens agora.' });
@@ -5124,6 +5260,18 @@ app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async
   if (!req.file) return res.status(400).json({ error: 'Selecione uma imagem.' });
 
   try {
+    // ── Moderação: analisa antes de subir pro Cloudinary ─────────────────────
+    const modResult = await moderateImageBuffer(req.file.buffer);
+    if (modResult.verdict === 'rejected') {
+      console.warn(`[Moderation] Imagem de perfil rejeitada (${modResult.reason}) — user ${req.user.sub}`);
+      return res.status(422).json({ error: 'A imagem contém conteúdo impróprio e não pode ser usada como foto de perfil.' });
+    }
+    if (modResult.verdict === 'suspicious') {
+      console.warn(`[Moderation] Imagem de perfil suspeita — user ${req.user.sub}, enfileirando para revisão.`);
+      await queueForModeration('profile_image_user', req.user.sub);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const folder = process.env.CLOUDINARY_PROFILE_FOLDER || 'forca-aliada/profile-images';
     const url = await new Promise((resolve, reject) => {
       let settled = false;
@@ -5148,7 +5296,7 @@ app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async
       stream.on?.('error', e => { clearTimeout(timeout); fail(e); });
       stream.end(req.file.buffer);
     });
-    res.status(201).json({ url });
+    res.status(201).json({ url, flagged: modResult.verdict === 'suspicious' });
   } catch (e) {
     console.error('[POST /api/upload]', e);
     res.status(502).json({ error: 'Não foi possível enviar a imagem agora.' });
