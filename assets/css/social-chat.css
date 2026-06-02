@@ -336,15 +336,7 @@
   border-color: var(--fc-border-h);
 }
 
-/* Thin accent line under active tab */
-.fa-chat-tab.is-active::after {
-  content: '';
-  display: block;
-  height: 2px;
-  background: var(--fc-gold);
-  border-radius: 999px;
-  margin-top: -1px;
-}
+/* No underline on active tab */
 
 /* ═══════════════════════════════════════════════
    BODY / LIST AREA
@@ -778,6 +770,76 @@
   font-size: 10px;
   font-weight: 900;
   flex: 0 0 auto;
+}
+
+/* ── Add-friend button ── */
+.fa-chat-add-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1.5px solid color-mix(in srgb, var(--fc-gold) 45%, var(--fc-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--fc-gold) 10%, var(--fc-surface));
+  color: var(--fc-gold);
+  cursor: pointer;
+  transition: background .13s, border-color .13s, transform .13s;
+}
+
+.fa-chat-add-btn:hover {
+  background: color-mix(in srgb, var(--fc-gold) 20%, var(--fc-surface));
+  border-color: var(--fc-gold);
+  transform: scale(1.1);
+}
+
+.fa-chat-add-btn:active { transform: scale(.9); }
+
+.fa-chat-add-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.fa-chat-add-btn.is-sent {
+  background: color-mix(in srgb, var(--fc-green) 14%, var(--fc-surface));
+  border-color: var(--fc-green);
+  color: var(--fc-green);
+  pointer-events: none;
+}
+
+/* ── Verified badge ── */
+.fa-chat-verified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  vertical-align: middle;
+  color: var(--fc-gold);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--fc-gold) 55%, transparent));
+}
+
+.fa-chat-verified svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Friend section header ── */
+.fa-chat-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 4px;
+}
+
+.fa-chat-section-head strong {
+  color: var(--fc-ink-2);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .07em;
 }
 
 /* ═══════════════════════════════════════════════
@@ -1226,9 +1288,9 @@
   }
 
   .fa-chat-panel {
-    inset: 0;
+    inset: 0 0 var(--fa-chat-mobile-nav-height, 0px) 0;
     width: 100vw;
-    height: 100dvh;
+    height: calc(100dvh - var(--fa-chat-mobile-nav-height, 0px));
     border: 0;
     border-radius: 0;
     transform-origin: center;
@@ -1237,13 +1299,14 @@
       opacity .18s var(--fc-ease),
       transform .24s var(--fc-ease),
       visibility 0s linear .18s;
-    z-index: 960;
+    /* Abaixo da nav (z-index 190) — aparece como janela separada */
+    z-index: 180;
   }
 
-  .fa-chat-has-mobile-nav .fa-chat-panel {
-    inset: 0 0 var(--fa-chat-mobile-nav-height, 0px) 0;
-    width: 100vw;
-    height: calc(100dvh - var(--fa-chat-mobile-nav-height, 0px));
+  /* Quando não há nav, ocupa tela toda */
+  .fa-chat-panel:not(.fa-chat-has-mobile-nav *) {
+    inset: 0;
+    height: 100dvh;
   }
 
   .fa-chat-panel.is-open {
@@ -1482,10 +1545,17 @@
     border-radius: 0;
     transform: translateX(100%);
     transform-origin: center;
+    /* Abaixo da mobile nav (z-index 190) — janela separada, não popup */
+    z-index: 180;
   }
 
   #fa-chat-root .fa-chat-panel.is-open {
     transform: translateX(0);
+  }
+
+  /* No mobile o painel é uma janela inteira — sem sombra de popup */
+  #fa-chat-root .fa-chat-panel {
+    box-shadow: none;
   }
 
   #fa-chat-root .fa-chat-app {

@@ -45,6 +45,7 @@
     loadingMessages: false,
     warmed: false,
     pendingDraft: '',
+    _sentRequests: new Set(),
   };
 
   // [FIX] Cache key helper
@@ -564,26 +565,44 @@
     return rows.map(conv => {
       const name = nameOf(conv);
       const preview = conv.last_message_body || (conv.is_friend ? 'Amigos na comunidade' : 'Conversa aberta');
+      const verifiedBadge = conv.is_platform_verified
+        ? `<span class="fa-chat-verified" title="Conta verificada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>`
+        : '';
       return `
         <button class="fa-chat-row ${conv.unread_count ? 'is-unread' : ''}" type="button" data-chat-conv="${esc(conv.id)}">
           <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
-          <span class="fa-chat-row-meta"><strong>${esc(name)}</strong><small>${esc(preview)}</small></span>
+          <span class="fa-chat-row-meta"><strong>${esc(name)}${verifiedBadge}</strong><small>${esc(preview)}</small></span>
           ${conv.unread_count ? `<span class="fa-chat-pill">${esc(conv.unread_count)}</span>` : `<small>${esc(rel(conv.last_message_at || conv.conversation_last_message_at))}</small>`}
         </button>`;
     }).join('');
   }
 
   function renderFriends() {
-    const source = state.search.trim() ? state.people : state.friends;
-    const requestRows = state.search.trim() ? [] : state.requests;
+    const isSearching = state.search.trim().length > 0;
+    const source = isSearching ? state.people : state.friends;
+    const requestRows = isSearching ? [] : state.requests;
     if (state.loadingFriends && !source.length && !requestRows.length) return loadingRows();
+
+    // Follower requests section (only when not searching)
     const requestHtml = requestRows.length ? `
-      <div class="fa-chat-empty" style="padding:10px 8px;text-align:left"><strong>Seguidores recentes</strong></div>
-      ${requestRows.map(person => friendRow(person, true)).join('')}` : '';
+      <div class="fa-chat-section-head"><strong>Seguidores recentes</strong></div>
+      ${requestRows.map(person => friendRow(person, 'follow-back')).join('')}` : '';
+
+    // Friends / search results section
+    const sectionLabel = isSearching ? 'Resultados' : 'Amigos';
     const listHtml = source.length
-      ? source.map(person => friendRow(person, false)).join('')
-      : '<div class="fa-chat-empty"><strong>Ninguem encontrado</strong>Tente buscar por usuario ou nome do Minecraft.</div>';
-    return `${requestHtml}<div class="fa-chat-empty" style="padding:10px 8px;text-align:left"><strong>${state.search.trim() ? 'Resultados' : 'Amigos'}</strong></div>${listHtml}`;
+      ? source.map(person => {
+          // When searching, show add-friend btn for people not yet friends
+          const kind = isSearching
+            ? (person.is_friend ? 'friend' : 'add')
+            : 'friend';
+          return friendRow(person, kind);
+        }).join('')
+      : (isSearching
+          ? '<div class="fa-chat-empty"><strong>Ninguem encontrado</strong>Tente buscar por usuario ou nome do Minecraft.</div>'
+          : '<div class="fa-chat-empty"><strong>Nenhum amigo ainda</strong>Busque jogadores pelo campo acima para adicionar amigos.</div>');
+
+    return `${requestHtml}<div class="fa-chat-section-head"><strong>${sectionLabel}</strong></div>${listHtml}`;
   }
 
   function renderGroups() {
@@ -649,18 +668,44 @@
       </form>`;
   }
 
-  function friendRow(person, canFollowBack) {
+  // kind: 'friend' | 'add' | 'follow-back'
+  function friendRow(person, kind) {
     const name = nameOf(person);
     const meta = person.bio || (person.is_online ? 'Online agora' : `${person.rank || 'Ferro'} - ${Number(person.followers_count || 0).toLocaleString('pt-BR')} seg.`);
+    const verifiedBadge = person.is_platform_verified
+      ? `<span class="fa-chat-verified" title="Conta verificada"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`
+      : '';
+
+    let actionHtml = '';
+    if (kind === 'follow-back') {
+      actionHtml = `<span class="fa-chat-pill" data-follow-back>+</span>`;
+    } else if (kind === 'add') {
+      const sent = state._sentRequests && state._sentRequests.has(String(person.id));
+      actionHtml = `
+        <button class="fa-chat-add-btn ${sent ? 'is-sent' : ''}" type="button"
+          data-add-friend="${esc(person.id)}"
+          title="${sent ? 'Solicitação enviada' : 'Adicionar amigo'}"
+          aria-label="${sent ? 'Solicitação enviada' : 'Adicionar amigo'}">
+          ${sent
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>`
+          }
+        </button>`;
+    }
+
     return `
       <button class="fa-chat-friend" type="button" data-chat-user="${esc(person.id)}" data-chat-name="${esc(name)}">
         <span class="fa-chat-av-wrap">
           <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
           ${person.is_online ? '<span class="fa-chat-online-dot"></span>' : ''}
         </span>
-        <span class="fa-chat-friend-meta"><strong>${esc(name)}</strong><small>${esc(meta)}</small></span>
-        ${canFollowBack ? '<span class="fa-chat-pill" data-follow-back>+</span>' : ''}
+        <span class="fa-chat-friend-meta">
+          <strong>${esc(name)}${verifiedBadge}</strong>
+          <small>${esc(meta)}</small>
+        </span>
+        ${actionHtml}
       </button>`;
+  }
   }
 
   function loadingRows() {
@@ -673,6 +718,9 @@
     const name = isGroup ? groupNameOf(conv) : nameOf(conv);
     const isOnline = !isGroup && conv.is_online;
     const onlineDot = isOnline ? '<span class="fa-chat-online-dot fa-chat-online-dot--peer"></span>' : '';
+    const verifiedBadgePeer = !isGroup && conv.is_platform_verified
+      ? `<span class="fa-chat-verified" title="Conta verificada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>`
+      : '';
     return `
       <div class="fa-chat-thread">
         <div class="fa-chat-peerbar">
@@ -681,7 +729,7 @@
             ? `<span class="fa-chat-peer-av fa-chat-group-av">${icons.group}</span>`
             : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'"/>${onlineDot}</span>`
           }
-          <div><strong>${esc(name)}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${isOnline ? ' · online' : conv.is_friend ? ' · amigo' : ''}`}</small></div>
+          <div><strong>${esc(name)}${verifiedBadgePeer}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${isOnline ? ' · online' : conv.is_friend ? ' · amigo' : ''}`}</small></div>
           ${isGroup ? '' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>`}
           <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
         </div>
@@ -874,7 +922,8 @@
 
   async function openPanel() {
     state.open = true;
-    state.tab = 'conversations'; // sempre começa na aba Conversas ao abrir
+    // Preserva a tab que o usuário estava vendo; só inicia em 'conversations' na primeira vez
+    if (!state.tab) state.tab = 'conversations';
     state.error = '';
     render();
     state.loadingConversations = !state.conversations.length;
@@ -1169,7 +1218,33 @@
     const memberToggle = event.target.closest('[data-chat-member-toggle]');
     const reload = event.target.closest('[data-chat-reload]');
 
+    const addFriend = event.target.closest('[data-add-friend]');
+
     try {
+      if (addFriend) {
+        event.stopPropagation();
+        const userId = String(addFriend.dataset.addFriend);
+        if (state._sentRequests.has(userId)) return;
+        state._sentRequests.add(userId);
+        // Optimistic UI: swap icon to checkmark immediately
+        addFriend.classList.add('is-sent');
+        addFriend.title = 'Solicitação enviada';
+        addFriend.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+        try {
+          await api(`/api/me/follows/${encodeURIComponent(userId)}`, { method: 'POST' });
+          await loadFriends();
+          updateConversationList();
+        } catch (e) {
+          // Revert on failure
+          state._sentRequests.delete(userId);
+          addFriend.classList.remove('is-sent');
+          addFriend.title = 'Adicionar amigo';
+          addFriend.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>`;
+          state.error = e.message || 'Nao foi possivel adicionar.';
+          updateConversationList();
+        }
+        return;
+      }
       if (toggle) {
         state.open ? closePanel() : await openPanel();
       } else if (close) {
@@ -1214,7 +1289,9 @@
         state.currentKind = null;
         state.messages = [];
         render();
+        // Recarrega a lista da tab que o usuário está vendo (não infere pelo tipo de conversa)
         if (state.tab === 'groups') await loadGroups();
+        else if (state.tab === 'friends') await loadFriends();
         else await loadConversations();
         updateConversationList();
       } else if (profile) {
