@@ -6911,6 +6911,8 @@ const DEFAULT_PREFERENCES = Object.freeze({
   cover_url: '',
   profile_layout: 'posts',
   profile_links: [],
+});
+
 const ALLOWED_THEMES = new Set(['light', 'dark', 'auto']);
 const ALLOWED_PROFILE_LAYOUTS = new Set(['posts', 'replies', 'reposts', 'media']);
 
