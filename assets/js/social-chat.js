@@ -720,7 +720,6 @@
         ${actionHtml}
       </button>`;
   }
-  }
 
   function loadingRows() {
     return Array.from({ length: 5 }, () => '<div class="fa-chat-skel"><span></span><i></i><b></b></div>').join('');
