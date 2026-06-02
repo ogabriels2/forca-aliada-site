@@ -2359,12 +2359,16 @@ function applyRoleVisibility() {
   if (cached && cached.username) {
     if (cached.role === 'limited') { window.location.replace('account.html'); return; }
     session = cached;
+    // Revela a página imediatamente — independente do role no cache,
+    // para evitar tela em branco quando o role está desatualizado ou ausente.
     document.body.style.visibility = 'visible';
     if (cached.role === 'full' || cached.role === 'owner') {
       initDashboard();
       _dashboardInitialized = true;
+    } else {
+      // role desconhecido no cache: mostra a página com perfil básico e aguarda API
+      renderProfile();
     }
-    // Se role desconhecido (sessão antiga sem campo role), aguarda API para completar o boot.
   }
   // Revalida em background (sempre) para garantir role atualizado
   // apiFetch() com retry automático — essencial para cold start do Render (pode levar 30s+)
@@ -2386,7 +2390,7 @@ function applyRoleVisibility() {
       document.body.style.visibility = 'visible';
       initDashboard();
     } else if (!_dashboardInitialized) {
-      // Cache existia mas sem role — agora temos o role, inicializa tudo
+      // Cache existia mas sem role válido — agora temos o role, inicializa tudo
       initDashboard();
     } else {
       // Revalidação em background — atualiza perfil e re-aplica visibilidade
@@ -2399,6 +2403,10 @@ function applyRoleVisibility() {
     if (document.body.style.visibility !== 'visible') {
       document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar o painel. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
       document.body.style.visibility = 'visible';
+    } else if (!_dashboardInitialized) {
+      // Página visível mas dashboard não inicializado (sem cache ou role inválido):
+      // tenta inicializar com o que temos no cache
+      initDashboard();
     }
   }
 })();
@@ -4141,6 +4149,7 @@ function renderRegisteredList() {
         ${u.is_platform_verified?'✓ Verificado':'✓ Verificar'}
       </button>
     </li>`;
+  }).join('');
 }
 
 
