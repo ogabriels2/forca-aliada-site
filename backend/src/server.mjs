@@ -6605,26 +6605,68 @@ app.post('/api/community/report', auth, async (req, res) => {
 
 app.get('/api/admin/reports', auth, requireAdmin, async (req, res) => {
   const status = sanitize(req.query.status || 'pending');
-  const page = clampInt(req.query.page, 0, 0, 100000);
-  const limit = clampInt(req.query.limit, 20, 1, 100);
-  const params = [];
-  const conditions = [];
-  if (status && status !== 'all') {
-    params.push(status);
-    conditions.push(`cr.status=$${params.length}`);
-  }
-  params.push(limit, page * limit);
+  const page   = clampInt(req.query.page,  0, 0, 100000);
+  const limit  = clampInt(req.query.limit, 20, 1, 100);
+  const whereClause = status && status !== 'all' ? `WHERE cr.status = $1` : '';
+  const countParams = status && status !== 'all' ? [status] : [];
+  const rowParams   = status && status !== 'all' ? [status, limit, page * limit] : [limit, page * limit];
+  const limitIdx    = rowParams.length - 1;
+  const offsetIdx   = rowParams.length;
   try {
-    const { rows } = await pool.query(`
-      SELECT cr.*, reporter.username AS reporter_username, reviewer.username AS reviewer_username
-      FROM content_reports cr
-      JOIN users reporter ON reporter.id = cr.reporter_id
-      LEFT JOIN users reviewer ON reviewer.id = cr.reviewed_by
-      ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
-      ORDER BY cr.created_at DESC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
-    `, params);
-    res.json({ rows, page, limit });
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      pool.query(`
+        SELECT
+          cr.*,
+          reporter.username   AS reporter_username,
+          reporter.photo_url  AS reporter_photo,
+          reviewer.username   AS reviewer_username,
+          -- autor do conteúdo denunciado
+          author.id           AS author_id,
+          author.username     AS author_username,
+          author.minecraft_name AS author_minecraft,
+          author.photo_url    AS author_photo,
+          -- prévia do conteúdo
+          CASE
+            WHEN cr.content_type = 'post'
+              THEN (SELECT p.content FROM user_posts p WHERE p.id = cr.content_id LIMIT 1)
+            WHEN cr.content_type = 'comment'
+              THEN (SELECT c.content FROM post_comments c WHERE c.id = cr.content_id LIMIT 1)
+            ELSE NULL
+          END AS content_preview,
+          CASE
+            WHEN cr.content_type = 'post'
+              THEN (SELECT p.media_urls FROM user_posts p WHERE p.id = cr.content_id LIMIT 1)
+            ELSE NULL
+          END AS content_media_urls,
+          -- número total de denúncias pendentes para este item
+          (SELECT COUNT(*)::int FROM content_reports x
+           WHERE x.content_type = cr.content_type AND x.content_id = cr.content_id
+             AND x.status = 'pending') AS total_reports_for_item
+        FROM content_reports cr
+        JOIN users reporter ON reporter.id = cr.reporter_id
+        LEFT JOIN users reviewer ON reviewer.id = cr.reviewed_by
+        LEFT JOIN LATERAL (
+          SELECT u.id, u.username, u.minecraft_name, u.photo_url
+          FROM user_posts p JOIN users u ON u.id = p.author_id
+          WHERE cr.content_type = 'post' AND p.id = cr.content_id
+          UNION ALL
+          SELECT u.id, u.username, u.minecraft_name, u.photo_url
+          FROM post_comments c JOIN users u ON u.id = c.author_id
+          WHERE cr.content_type = 'comment' AND c.id = cr.content_id
+          UNION ALL
+          SELECT u.id, u.username, u.minecraft_name, u.photo_url
+          FROM users u WHERE cr.content_type = 'user' AND u.id = cr.content_id
+          LIMIT 1
+        ) author ON TRUE
+        ${whereClause}
+        ORDER BY cr.created_at DESC
+        LIMIT $${limitIdx} OFFSET $${offsetIdx}
+      `, rowParams),
+      pool.query(`
+        SELECT COUNT(*)::int AS total FROM content_reports cr ${whereClause}
+      `, countParams),
+    ]);
+    res.json({ rows, total: countRows[0]?.total ?? 0, page, limit });
   } catch (e) {
     console.error('[GET /api/admin/reports]', e);
     res.status(500).json({ error: 'Erro ao listar denuncias' });
