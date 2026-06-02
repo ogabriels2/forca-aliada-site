@@ -545,6 +545,16 @@ img{display:block}
   font-family:var(--ff-mono);font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
 }
 .rank-pill:empty{display:none}
+/* ─── VERIFIED BADGE ─── */
+.verified-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:15px;height:15px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  flex-shrink:0;vertical-align:middle;
+  box-shadow:0 1px 4px rgba(18,81,224,.35);
+}
+[data-theme=dark] .verified-badge{background:var(--accent);box-shadow:0 1px 4px rgba(78,143,255,.4)}
+.verified-badge svg{width:9px;height:9px;display:block}
 .post-meta{display:flex;align-items:center;gap:5px}
 .post-time{font-family:var(--ff-mono);color:var(--ink-3);font-size:11px;font-weight:500;white-space:nowrap}
 .edited-tag{color:var(--ink-3);font-size:11px;font-style:italic}
@@ -3566,16 +3576,37 @@ function integrationOf(p){
   return data && typeof data==='object' ? data : {};
 }
 function minecraftHead(p,s=50){
+  // Returns a URL for the Minecraft avatar with both skin layers (body + overlay/hat/armor).
+  // Priority: Bedrock (via Xbox gamertag) if edition=bedrock or no java name,
+  // then Java name, then initials fallback.
   const source=typeof p==='object'&&p?p:{minecraft_name:p};
   const integ=integrationOf(source);
   const edition=String(integ.mc_edition||source.mc_edition||'').toLowerCase();
-  const bedrockName=String(integ.xbox_gamertag||source.xbox_gamertag||source.minecraft_name||source.username||'').trim();
-  const javaName=String(source.minecraft_name||source.username||'').trim();
-  if(edition==='bedrock'&&bedrockName) return `https://api.mcheads.org/head/.${encodeURIComponent(bedrockName)}/${s}`;
-  if(javaName&&javaName.toLowerCase()!=='steve'){
-    const javaLike=/^[A-Za-z0-9_]{3,16}$/.test(javaName);
-    return `https://api.mcheads.org/head/${javaLike?'':'.'}${encodeURIComponent(javaName)}/${s}`;
+  const bedrockGamer=String(integ.xbox_gamertag||source.xbox_gamertag||'').trim();
+  const javaName=String(source.minecraft_name||'').trim();
+  const anyName=javaName||String(source.username||'').trim();
+
+  // Bedrock: prefix with '.' for mcheads to render with overlay layer too
+  if(edition==='bedrock'&&bedrockGamer){
+    return `https://api.mcheads.org/head/.${encodeURIComponent(bedrockGamer)}/${s}`;
   }
+
+  // Java: use name with overlay layer (mcheads supports both layers for Java)
+  if(javaName&&/^[A-Za-z0-9_]{2,16}$/.test(javaName)){
+    return `https://api.mcheads.org/head/${encodeURIComponent(javaName)}/${s}`;
+  }
+
+  // No java account: try bedrock gamertag even if edition isn't explicitly bedrock
+  if(bedrockGamer){
+    return `https://api.mcheads.org/head/.${encodeURIComponent(bedrockGamer)}/${s}`;
+  }
+
+  // Fallback: try any valid-looking name (could be bedrock username stored in minecraft_name)
+  if(anyName&&/^[A-Za-z0-9_]{2,16}$/.test(anyName)&&anyName.toLowerCase()!=='steve'){
+    // Use bedrock prefix (dot) to attempt both Java+Bedrock lookup with overlay
+    return `https://api.mcheads.org/head/.${encodeURIComponent(anyName)}/${s}`;
+  }
+
   return fallbackAvatar(source.display_name||source.username||source.minecraft_name||'Jogador',s);
 }
 const skin = (n,s=50) => minecraftHead(n,s);
@@ -3615,7 +3646,10 @@ function rankInfo(rank='',merit=0){
   return{label:rank||'Ferro',color:'var(--rk-iron)',cls:'rk-ferro'};
 }
 function rankPillHTML(rk){return rk?.label?`<span class="rank-pill" style="--rk:${rk.color}">${esc(rk.label)}</span>`:''}
-function rankSuffix(rank,merit){const rk=rankInfo(rank,merit);return rk.label?` · ${esc(rk.label)}`:''}
+function verifiedBadgeHTML(p){
+  if(!p?.is_platform_verified) return '';
+  return `<span class="verified-badge" title="Verificado pela Força Aliada" aria-label="Verificado"><svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></span>`;
+}function rankSuffix(rank,merit){const rk=rankInfo(rank,merit);return rk.label?` · ${esc(rk.label)}`:''}
 function communityUrl(params={}){
   const url = new URL('/community.html', location.origin);
   Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
@@ -3741,6 +3775,12 @@ function setBtnLoad(btn,loading,label=''){
 }
 
 /* ======================= MODALS ======================= */
+// Track whether mousedown originated inside the sheet (to avoid closing on drag-out)
+let _modalMousedownInsideSheet = false;
+document.addEventListener('mousedown', e => {
+  _modalMousedownInsideSheet = Boolean(e.target.closest('.sheet'));
+}, true);
+
 function openModal(id){const m=$('#'+id);if(!m)return;m.classList.add('show');m.setAttribute('aria-hidden','false');document.body.classList.add('modal-open')}
 function closeModal(id){const m=$('#'+id);if(!m)return;m.classList.remove('show');m.setAttribute('aria-hidden','true');if(!$$('.backdrop.show').length)document.body.classList.remove('modal-open')}
 function confirmDialog({title,msg,confirmText='Confirmar',danger=false}){
@@ -3749,7 +3789,7 @@ function confirmDialog({title,msg,confirmText='Confirmar',danger=false}){
     back.className='backdrop show';
     back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true"><div class="confirm-body"><h2>${esc(title)}</h2><p>${esc(msg)}</p></div><div class="confirm-footer"><button class="btn btn-secondary" data-c="no">Cancelar</button><button class="btn ${danger?'btn-danger':'btn-primary'}" data-c="yes">${esc(confirmText)}</button></div></div>`;
     const close=v=>{document.body.classList.remove('modal-open');back.remove();res(v)};
-    back.addEventListener('click',e=>{const c=e.target.closest('[data-c]')?.dataset.c;if(c==='yes')close(true);else if(c==='no'||e.target===back)close(false)});
+    back.addEventListener('click',e=>{const c=e.target.closest('[data-c]')?.dataset.c;if(c==='yes')close(true);else if(c==='no'||(e.target===back&&!_modalMousedownInsideSheet))close(false)});
     document.body.appendChild(back);document.body.classList.add('modal-open');
     requestAnimationFrame(()=>back.querySelector('[data-c="no"]')?.focus());
   });
@@ -3757,18 +3797,22 @@ function confirmDialog({title,msg,confirmText='Confirmar',danger=false}){
 function reportDialog(){
   return new Promise(res=>{
     const reasons=[['spam','Spam'],['harassment','Assédio'],['hate_speech','Discurso de ódio'],['inappropriate','Conteúdo inapropriado'],['misinformation','Desinformação'],['other','Outro']];
-    let selected=null;
+    let selected=new Set();
     const back=document.createElement('div');
     back.className='backdrop show';
     function render(){
-      const btnsHtml=reasons.map(([id,l])=>`<button class="btn ${selected===id?'btn-primary':'btn-secondary'} report-reason-btn" style="justify-content:flex-start;text-align:left;" data-r="${id}">${selected===id?'✓ ':''} ${esc(l)}</button>`).join('');
+      const btnsHtml=reasons.map(([id,l])=>{
+        const on=selected.has(id);
+        return`<button class="btn ${on?'btn-primary':'btn-secondary'} report-reason-btn" style="justify-content:flex-start;text-align:left;" data-r="${id}">${on?'✓ ':''} ${esc(l)}</button>`;
+      }).join('');
+      const anySelected=selected.size>0;
       back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true" style="max-height:min(92vh,540px);overflow-y:auto;">
   <div class="sheet-header" style="padding:16px 16px 0;">
     <h2 style="font-size:16px;margin:0;">Denunciar conteúdo</h2>
-    <button class="close-btn" data-r="" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <button class="close-btn" data-r-close aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
   <div class="confirm-body" style="padding:12px 16px 0;">
-    <p style="font-size:13px;color:var(--ink-3);margin:0 0 10px;">Selecione o motivo (toque novamente para desmarcar) e, opcionalmente, adicione um comentário.</p>
+    <p style="font-size:13px;color:var(--ink-3);margin:0 0 10px;">Selecione um ou mais motivos e, opcionalmente, adicione um comentário.</p>
     <div style="display:grid;gap:6px;">${btnsHtml}</div>
     <div style="margin-top:12px;">
       <label style="font-size:12px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px;">Comentário <span style="font-weight:500;opacity:.6">(opcional · até 600 chars)</span></label>
@@ -3776,8 +3820,8 @@ function reportDialog(){
     </div>
   </div>
   <div class="confirm-footer" style="padding:12px 16px 16px;gap:8px;">
-    <button class="btn btn-ghost" data-r="" style="min-width:90px;">Cancelar</button>
-    <button class="btn btn-primary" id="report-send-btn" ${selected?'':'disabled'} style="min-width:110px;">Enviar denúncia</button>
+    <button class="btn btn-ghost" data-r-close style="min-width:90px;">Cancelar</button>
+    <button class="btn btn-primary" id="report-send-btn" ${anySelected?'':'disabled'} style="min-width:110px;">Enviar denúncia</button>
   </div>
 </div>`;
       rebind();
@@ -3787,10 +3831,9 @@ function reportDialog(){
         btn.addEventListener('click',e=>{
           e.stopPropagation();
           const r=btn.dataset.r;
-          selected = selected===r ? null : r;
+          if(selected.has(r)) selected.delete(r); else selected.add(r);
           back._commentValue=back.querySelector('#report-comment-ta')?.value||'';
           render();
-          // focus textarea após render
           setTimeout(()=>back.querySelector('#report-comment-ta')?.focus(),0);
         });
       });
@@ -3798,17 +3841,18 @@ function reportDialog(){
       if(sendBtn){
         sendBtn.addEventListener('click',e=>{
           e.stopPropagation();
-          if(!selected)return;
+          if(!selected.size)return;
           const comment=(back.querySelector('#report-comment-ta')?.value||'').trim();
-          close({reason:selected,description:comment||null});
+          const reasonsList=[...selected];
+          close({reason:reasonsList[0],reasons:reasonsList,description:comment||null});
         });
       }
-      back.querySelectorAll('[data-r=""]').forEach(btn=>{
+      back.querySelectorAll('[data-r-close]').forEach(btn=>{
         btn.addEventListener('click',e=>{e.stopPropagation();close(null)});
       });
     }
     const close=v=>{document.body.classList.remove('modal-open');back.remove();res(v)};
-    back.addEventListener('click',e=>{if(e.target===back)close(null)});
+    back.addEventListener('click',e=>{if(e.target===back&&!_modalMousedownInsideSheet)close(null)});
     document.body.appendChild(back);document.body.classList.add('modal-open');
     render();
     setTimeout(()=>back.querySelector('#report-comment-ta')?.focus(),80);
@@ -4159,7 +4203,7 @@ function postCardHTML(p){
   const username=isRepost?(p.repost_original_username||mc):(p.username||mc);
   const shown=isRepost?(p.repost_original_display_name||mc):(p.display_name||mc);
   const avPerson=isRepost
-    ? {username,minecraft_name:mc,display_name:shown,avatar_url:p.repost_original_avatar_url,photo_url:p.repost_original_photo_url,integration:p.repost_original_integration}
+    ? {username,minecraft_name:mc,display_name:shown,avatar_url:p.repost_original_avatar_url,photo_url:p.repost_original_photo_url,integration:p.repost_original_integration,is_platform_verified:p.repost_original_is_platform_verified}
     : p;
   const avSrc=avatar(avPerson,50);
   const rk=rankInfo(isRepost?(p.repost_original_rank||p.repost_original_role):(p.rank||p.role),isRepost?p.repost_original_merit:p.merit);
@@ -4184,6 +4228,7 @@ function postCardHTML(p){
           <div class="post-author">
             ${p.is_pinned?`<span class="pin-flag">${IC.pin} Fixado</span>`:''}
             <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" style="cursor:pointer">${esc(shown)}</strong>
+            ${verifiedBadgeHTML(avPerson)}
             <span class="handle">@${esc(username)}</span>
             ${rankPillHTML(rk)}
           </div>
@@ -5450,7 +5495,7 @@ async function renderProfileRoute(identifier){
           </div>
           <div class="profile-name-row">
             <div>
-              <h1 class="profile-name">${esc(shown)}</h1>
+              <h1 class="profile-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${esc(shown)}${verifiedBadgeHTML(prof)}</h1>
               <p class="profile-handle2">@${esc(handle)}${mc!==shown?' · '+esc(mc):''}${rk.label?' · '+rankPillHTML(rk):''} · desde ${esc(time(prof.created_at))}</p>
             </div>
           </div>
@@ -6509,8 +6554,8 @@ function bindEvents(){
     const trend=e.target.closest('.trend-item');
     if(trend?.dataset.tag){e.preventDefault();navigateHashtag(trend.dataset.tag);return}
     const closeBtn=e.target.closest('[data-close]');if(closeBtn){closeModal(closeBtn.dataset.close);return}
-    if(e.target.classList.contains('backdrop')&&e.target.id==='crop-modal'){state.cropQueue=[];destroyCropper();closeModal('crop-modal');return}
-    if(e.target.classList.contains('backdrop')&&e.target.id) closeModal(e.target.id);
+    if(e.target.classList.contains('backdrop')&&e.target.id==='crop-modal'&&!_modalMousedownInsideSheet){state.cropQueue=[];destroyCropper();closeModal('crop-modal');return}
+    if(e.target.classList.contains('backdrop')&&e.target.id&&!_modalMousedownInsideSheet) closeModal(e.target.id);
     const pick=e.target.closest('[data-pick]');if(pick){e.preventDefault();insertMention(pick.dataset.pick);return}
     const nrow=e.target.closest('[data-nid]');
     if(nrow){
@@ -6570,7 +6615,12 @@ function bindEvents(){
         if(a==='copy'){copyLink(id);return}
         return;
       }
-      if(!e.target.closest('button')&&!e.target.closest('a')&&!e.target.closest('.js-profile')&&!e.target.closest('[data-no-post-nav]')) navigatePost(id);
+      if(!e.target.closest('button')&&!e.target.closest('a')&&!e.target.closest('.js-profile')&&!e.target.closest('[data-no-post-nav]')){
+        // Don't navigate if the user was selecting text (click+drag to highlight)
+        const sel=window.getSelection();
+        if(sel&&sel.toString().length>0) return;
+        navigatePost(id);
+      }
     }
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
   });

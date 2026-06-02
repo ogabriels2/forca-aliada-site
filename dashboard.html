@@ -4118,6 +4118,7 @@ function renderRegisteredList() {
     const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
     const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
     const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
+    const platformVerBadge = u.is_platform_verified ? `<span class="unregistered-badge" style="background:rgba(23,97,240,0.10);color:var(--blue);">✓ Verificado</span>` : '';
     const merit     = u.merit_total || 0;
     const capital   = u.capital_balance || 0;
     const rd        = getRankDef(merit);
@@ -4127,14 +4128,19 @@ function renderRegisteredList() {
     return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})">
       <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
       <div class="item-details" style="flex:1;min-width:0;">
-        <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${meritBadge} ${capitalStr}</strong>
+        <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${platformVerBadge} ${meritBadge} ${capitalStr}</strong>
         <span>${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
         <div class="li-merit-bar" title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
           <div class="li-merit-bar-fill" style="width:${pct}%;background:${rd.color};"></div>
         </div>
       </div>
+      <button onclick="event.stopPropagation();togglePlatformVerified(${u.id},${!!u.is_platform_verified})"
+        style="flex-shrink:0;padding:4px 9px;border-radius:6px;border:1px solid var(--line);font-size:11px;font-weight:700;cursor:pointer;
+               background:${u.is_platform_verified?'rgba(23,97,240,0.10)':'var(--card)'};color:${u.is_platform_verified?'var(--blue)':'var(--text-secondary)'}"
+        title="${u.is_platform_verified?'Revogar verificação':'Conceder verificação de plataforma'}">
+        ${u.is_platform_verified?'✓ Verificado':'✓ Verificar'}
+      </button>
     </li>`;
-  }).join('');
 }
 
 
@@ -5078,6 +5084,51 @@ function _esc(str) {
 // ─────────────────────────────────────────────────────────────────────────────
 // /MODERAÇÃO
 // ─────────────────────────────────────────────────────────────────────────────
-</script>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VERIFICAÇÃO DE PLATAFORMA — toggle pelo dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+async function togglePlatformVerified(userId, currentlyVerified) {
+  const grant = !currentlyVerified;
+  const action = grant ? 'Conceder' : 'Revogar';
+  const ok = await new Promise(res => {
+    const d = document.createElement('div');
+    d.className = 'backdrop show';
+    d.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true" style="max-width:380px;">
+      <div class="modal-header"><h2>${action} verificação de plataforma</h2></div>
+      <div class="modal-body" style="padding:16px;">
+        <p style="color:var(--text-secondary);font-size:13.5px;line-height:1.5;">
+          ${grant
+            ? 'Isso concederá o <strong>selo ✓ de verificação</strong> visível para todos na comunidade. Use apenas para jogadores ou criadores notáveis.'
+            : 'Isso removerá o <strong>selo ✓ de verificação</strong> deste utilizador. O selo deixará de aparecer publicamente.'}
+        </p>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;">
+        <button class="btn-secondary" data-no>Cancelar</button>
+        <button class="${grant?'btn-primary':'btn-danger'}" data-yes>${action}</button>
+      </div>
+    </div>`;
+    d.querySelector('[data-yes]').onclick = () => { d.remove(); res(true); };
+    d.querySelector('[data-no]').onclick  = () => { d.remove(); res(false); };
+    d.addEventListener('click', e => { if (e.target === d) { d.remove(); res(false); } });
+    document.body.appendChild(d);
+  });
+  if (!ok) return;
+  try {
+    const res = await apiFetch(`/api/admin/users/${userId}/verified`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro'); }
+    showToast(grant ? '✓ Verificação concedida.' : 'Verificação revogada.');
+    // Update local data and re-render
+    const u = globalAdminUsers.find(u => u.id === userId);
+    if (u) u.is_platform_verified = grant;
+    renderAdminUsers();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}</script>
 </body>
 </html>
