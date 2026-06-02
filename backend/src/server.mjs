@@ -390,7 +390,9 @@ async function moderateImageBuffer(buffer) {
   }
 
   // SUSPEITO: zona cinza — publica mas entra na fila de revisão do admin
-  const SUSPICIOUS_THRESHOLD = 4; // LIKELY (POSSIBLE ignorado — muitos falsos positivos em fotos de praia/bikini)
+  // POSSIBLE (3) é suficiente para marcar como suspeito (zona cinza, revisão humana necessária).
+  // Anterior: SUSPICIOUS_THRESHOLD era 4 (igual ao REJECT), tornando esse bloco inalcançável.
+  const SUSPICIOUS_THRESHOLD = 3; // POSSIBLE → entra na fila do admin
   if (
     scores.adult >= SUSPICIOUS_THRESHOLD ||
     scores.violence >= SUSPICIOUS_THRESHOLD ||
@@ -595,6 +597,7 @@ is_verified   BOOLEAN      DEFAULT TRUE,
 created_at    TIMESTAMPTZ  DEFAULT NOW()
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_verified BOOLEAN DEFAULT FALSE;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'));
 UPDATE users
@@ -1325,6 +1328,7 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
   'direct_message',
   'repost',
   'friend_joined',
+  'moderation_warn',
 ]);
 
 const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
@@ -1378,7 +1382,7 @@ async function resolvePublishAuthor(requestUserId, requestedAuthorId, db = pool)
   }
 
   const { rows: authorRows } = await db.query(
-    `SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.role,
+    `SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.role, u.is_platform_verified,
             COALESCE(up.display_name, '') AS display_name,
             COALESCE(up.avatar_url, '') AS avatar_url,
             COALESCE(up.cover_url, '') AS cover_url,
@@ -3598,7 +3602,7 @@ app.post('/api/auth/logout', auth, async (req, res) => {
 app.get('/api/me', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.created_at,
+      `SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
               COALESCE(up.display_name, '') AS display_name,
               COALESCE(up.avatar_url, '') AS avatar_url,
               COALESCE(up.cover_url, '') AS cover_url,
@@ -4082,7 +4086,7 @@ app.get('/api/community/players', auth, async (req, res) => {
 
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(up.bio, '') AS bio,
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified, COALESCE(up.bio, '') AS bio,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              COALESCE(pb.capital_balance, 0) AS capital,
@@ -4119,7 +4123,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
 
   try {
     const { rows: profileRows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role, u.is_platform_verified,
              COALESCE(up.bio, '') AS bio,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
@@ -4280,7 +4284,7 @@ app.get('/api/community/player/:identifier', auth, async (req, res) => {
   const where = ident.byId ? 'u.id = $2' : '(LOWER(u.minecraft_name) = $2 OR LOWER(u.username) = $2)';
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role,
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.created_at, u.role, u.is_platform_verified,
              COALESCE(up.bio, '') AS bio,
              COALESCE(up.public_profile, TRUE) AS public_profile,
              ${primaryIntegrationFieldsSql('u')} AS integration,
@@ -5668,7 +5672,8 @@ app.get('/api/community/feed', auth, async (req, res) => {
                ${primaryIntegrationFieldsSql('ou')} AS repost_original_integration,
                ${socialRankSql('ou', 'opb')} AS repost_original_rank,
                ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
-               u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
+               u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role, u.is_platform_verified,
+               ou.is_platform_verified AS repost_original_is_platform_verified,
                COALESCE(up.display_name, '') AS display_name,
                COALESCE(up.avatar_url, '') AS avatar_url,
                COALESCE(up.cover_url, '') AS cover_url,
@@ -6697,6 +6702,40 @@ app.patch('/api/admin/reports/:id', auth, requireAdmin, async (req, res) => {
         await client.query('UPDATE post_comments SET is_deleted=TRUE, deleted_at=NOW() WHERE id=$1', [report.content_id]);
       }
     }
+    if (action === 'warn_user') {
+      // Resolve o user_id do conteúdo denunciado para enviar notificação
+      let warnedUserId = null;
+      try {
+        if (report.content_type === 'post') {
+          const { rows: prows } = await client.query('SELECT author_id FROM user_posts WHERE id=$1', [report.content_id]);
+          warnedUserId = prows[0]?.author_id ?? null;
+        } else if (report.content_type === 'comment') {
+          const { rows: crows } = await client.query('SELECT author_id FROM post_comments WHERE id=$1', [report.content_id]);
+          warnedUserId = crows[0]?.author_id ?? null;
+        } else if (report.content_type === 'user') {
+          warnedUserId = report.content_id;
+        }
+        if (warnedUserId) {
+          // Insere notificação de aviso para o utilizador
+          await client.query(
+            `INSERT INTO social_notifications
+               (recipient_id, actor_id, type, entity_type, entity_id, preview_text, is_read, created_at)
+             VALUES ($1, $2, 'moderation_warn', $3, $4, $5, FALSE, NOW())`,
+            [
+              warnedUserId,
+              req.user.sub,
+              report.content_type,
+              report.content_id,
+              'A staff revisou uma denúncia sobre seu conteúdo e emitiu um aviso. Por favor, siga as regras da comunidade.',
+            ],
+          );
+        }
+      } catch (warnErr) {
+        console.warn('[warn_user] Falha ao criar notificação de aviso:', warnErr.message);
+        // Não bloqueia a ação principal
+      }
+      status = 'reviewed_kept';
+    }
     await client.query(
       `UPDATE content_reports
        SET status=$1, reviewed_by=$2, reviewed_at=NOW(), action_taken=$3
@@ -7624,7 +7663,7 @@ res.json(rows);
 app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
 try {
   const { rows } = await pool.query(`
-    SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.created_at,
+    SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
       COALESCE(pb.merit_total, 0)     AS merit_total,
       COALESCE(pb.capital_balance, 0) AS capital_balance,
       COALESCE(pb.rank, 'ferro')      AS rank
@@ -7635,8 +7674,7 @@ try {
   res.json(rows);
 } catch (err) {
   console.error('[GET /api/admin/users error]', err);
-  res.status(500).json({ error: 'Internal server error' });
-}
+  res.status(500).json({ error: 'Internal server error' });}
 });
 
 app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
@@ -7762,6 +7800,38 @@ await auditFromReq(req, {
 
 await pool.query('DELETE FROM users WHERE id=$1', [id]);
 res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────
+// VERIFICAÇÃO DE PLATAFORMA (Selo ✓)
+// O admin/owner concede ou revoga o selo de verificação manualmente
+// pelo dashboard. Não é e-mail — é um distintivo de identidade notável
+// atribuído pela staff a jogadores, criadores ou figuras reconhecidas.
+// ─────────────────────────────────────────────
+app.patch('/api/admin/users/:id/verified', auth, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+  const grant = req.body?.grant === true || req.body?.grant === 'true';
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET is_platform_verified = $1 WHERE id = $2 RETURNING id, username, is_platform_verified`,
+      [grant, id],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'user not found' });
+    await auditFromReq(req, {
+      actorId:   req.user.sub,
+      actorName: req.user.username,
+      type:      'moderation',
+      severity:  'info',
+      targetId:  id,
+      targetName: rows[0].username,
+      message:   `Verificação de plataforma ${grant ? 'concedida' : 'revogada'} para ${rows[0].username} por ${req.user.username}`,
+    });
+    res.json({ ok: true, is_platform_verified: rows[0].is_platform_verified });
+  } catch (e) {
+    console.error('[PATCH /api/admin/users/:id/verified]', e);
+    res.status(500).json({ error: 'Erro ao alterar verificação.' });
+  }
 });
 
 // ─────────────────────────────────────────────
