@@ -140,6 +140,27 @@
   animation: fcBadgePop .32s var(--fc-spring) both;
 }
 
+/* ── Nav button unread badge (desktop topbar + mobile nav) ── */
+.fa-chat-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 2px solid var(--fc-panel, #fff);
+  background: var(--fc-red, #e53e3e);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: -.01em;
+  pointer-events: none;
+  animation: fcBadgePop .32s var(--fc-spring) both;
+}
+
 @keyframes fcBadgePop {
   from { transform: scale(0) rotate(-12deg); }
   to   { transform: scale(1) rotate(0deg); }
@@ -1311,6 +1332,13 @@
 
   .fa-chat-panel.is-open {
     transform: translateX(0);
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition:
+      opacity .18s var(--fc-ease),
+      transform .24s var(--fc-ease),
+      visibility 0s linear 0s;
   }
 
   .fa-chat-thread {
@@ -1551,6 +1579,13 @@
 
   #fa-chat-root .fa-chat-panel.is-open {
     transform: translateX(0);
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition:
+      opacity .18s var(--fc-ease),
+      transform .24s var(--fc-ease),
+      visibility 0s linear 0s;
   }
 
   /* No mobile o painel é uma janela inteira — sem sombra de popup */

@@ -262,6 +262,20 @@
     if (!launcher) { render(); return; }
     launcher.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     _updateBadgeInLauncher(launcher);
+    // Sync unread badge on the topbar desktop button and mobile nav button
+    ['#desktop-chat-btn', '#mobile-chat-btn'].forEach(sel => {
+      const btn = document.querySelector(sel);
+      if (!btn) return;
+      let dot = btn.querySelector('.fa-chat-nav-badge');
+      if (!state.unread) { dot?.remove(); return; }
+      const text = state.unread > 99 ? '99+' : String(state.unread);
+      if (dot) { dot.textContent = text; }
+      else {
+        btn.style.position = 'relative';
+        btn.insertAdjacentHTML('beforeend',
+          `<span class="fa-chat-nav-badge" aria-hidden="true">${esc(text)}</span>`);
+      }
+    });
   }
 
   function syncBodyChatState() {
