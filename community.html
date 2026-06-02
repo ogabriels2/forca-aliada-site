@@ -6773,12 +6773,13 @@ function bindEvents(){
   $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
   function openChat(){
     if(window.FAChat){window.FAChat.open();return;}
-    let attempts=0;
+    let elapsed=0;
+    const tick=150,max=20000;
     const retry=setInterval(()=>{
-      attempts++;
+      elapsed+=tick;
       if(window.FAChat){clearInterval(retry);window.FAChat.open();return;}
-      if(attempts>=15){clearInterval(retry);toast('warn','Chat indisponível','Recarregue a página e tente novamente.');}
-    },200);
+      if(elapsed>=max){clearInterval(retry);toast('warn','Chat indisponível','Verifique sua conexão e tente novamente.');}
+    },tick);
   }
   $('#mobile-chat-btn')?.addEventListener('click', openChat);
   $('#desktop-chat-btn')?.addEventListener('click', openChat);
