@@ -733,6 +733,27 @@ img{display:block}
 @keyframes countBounce{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
 .pa span.bouncing{animation:countBounce 0.25s ease}
 .pa-like.popping svg{animation:likePop .32s var(--ease)}
+/* ─── REPOST LABEL (banner topo do card) ─── */
+.repost-label{
+  display:flex;align-items:center;gap:6px;
+  padding:0 0 8px 0;
+  font-size:11.5px;font-weight:700;color:var(--ink-3);
+  line-height:1;
+}
+.repost-label svg{
+  width:13px!important;height:13px!important;
+  flex-shrink:0;
+}
+/* ─── REPOST QUOTE (texto do repostador) ─── */
+.repost-quote{
+  margin:6px 0 4px;
+  padding:8px 11px;
+  border-left:2px solid var(--accent-mid);
+  border-radius:0 var(--r-xs) var(--r-xs) 0;
+  background:color-mix(in srgb,var(--accent-soft) 55%,transparent);
+  font-size:13px;color:var(--ink-2);line-height:1.5;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
 /* more btn */
 .post-more-wrap{position:relative;margin-left:auto}
 .more-btn{width:30px;height:30px;display:grid;place-items:center;border-radius:999px;color:var(--ink-3);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
@@ -4159,7 +4180,11 @@ function emptyFeed(){
 }
 function renderFeed({append=false}={}){
   const list=$('#feed-list'),wrap=$('#feed-wrap');
-  if(!state.posts.length){wrap.innerHTML=emptyFeed();updateMiniStats();updateCommunityPulse();return}
+  if(!list)return;
+  if(!state.posts.length){
+    list.innerHTML=emptyFeed();
+    updateMiniStats();updateCommunityPulse();return;
+  }
   if(append){
     $$('.post-skel').forEach(el=>el.remove());
     const existing=new Set($$('.post-card').map(el=>Number(el.dataset.postId)));
@@ -5215,11 +5240,27 @@ function getLinkIconSVG(url){
   // globe fallback
   return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
 }
+function getLinkFaviconHTML(url){
+  try{
+    const parsed=new URL(url);
+    const origin=parsed.origin;
+    const h=parsed.hostname.replace('www.','');
+    // Known socials use hardcoded SVG (more reliable than favicon fetch)
+    if(h.includes('x.com')||h.includes('twitter')||h.includes('youtube')||h.includes('twitch')||h.includes('instagram')||h.includes('github')||h.includes('discord')||h.includes('tiktok')){
+      return getLinkIconSVG(url);
+    }
+    // For other sites: try Google favicon service with SVG fallback
+    const faviconUrl=`https://www.google.com/s2/favicons?domain=${encodeURIComponent(h)}&sz=16`;
+    const fallback=getLinkIconSVG(url);
+    return`<img src="${esc(faviconUrl)}" alt="" width="12" height="12" style="border-radius:2px;object-fit:contain;flex-shrink:0" onerror="this.outerHTML='${fallback.replace(/'/g,"&#39;")}'">`;
+  }catch{}
+  return getLinkIconSVG(url);
+}
 function profileLinksHTML(links){
   if(!Array.isArray(links)||!links.length) return '';
   const items=links.filter(l=>l&&l.url).map(l=>{
     const label=l.label||(l.url.replace(/^https?:\/\/(www\.)?/,'').split('/')[0])||'Link';
-    return`<a class="prof-link-chip" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.url)}">${getLinkIconSVG(l.url)}<span>${esc(label)}</span></a>`;
+    return`<a class="prof-link-chip" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" title="${esc(l.url)}">${getLinkFaviconHTML(l.url)}<span>${esc(label)}</span></a>`;
   });
   if(!items.length) return '';
   return`<div class="prof-links-row">${items.join('')}</div>`;
@@ -5344,7 +5385,7 @@ async function renderProfileRoute(identifier){
         <section class="profile-about-card">
           <div class="profile-section-title"><strong>Sobre</strong></div>
           ${prof.bio?`<p style="margin-top:7px">${esc(prof.bio)}</p>`:`<p style="margin-top:7px;font-style:italic;opacity:.6">Sem bio pública por enquanto.</p>`}
-          ${profileLinksHTML(prof.profile_links)}
+          ${profileLinksHTML(prof.profile_links||data.preferences?.profile_links)}
           <div class="profile-about-grid" style="margin-top:11px">
             <div class="stat-block"><div class="lbl">Horas</div><div class="val">${stats?num(Number(stats.total_hours||0).toFixed(1)):'—'}</div></div>
             <div class="stat-block"><div class="lbl">Capital</div><div class="val">${num(prof.capital||0)}</div></div>
