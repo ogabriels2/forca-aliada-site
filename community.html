@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Cache-Control: HTML nunca deve ser cacheado para garantir que JS/CSS atualizados sejam carregados -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Comunidade | Força Aliada</title>
 <meta name="description" content="Feed social gamificado da comunidade Força Aliada.">
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
@@ -7492,5 +7496,26 @@ boot();
 </script>
 
 <script src="assets/js/social-chat.js?v=chat7-20260602"></script>
+<script>
+/* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
+   Se o social-chat.js carregado não corresponder à versão esperada (ex: o
+   browser carregou um HTML antigo do cache com um ?v= diferente), fazemos
+   um redirect para a mesma URL com ?_v=<hash> — que não está no cache —
+   forçando o browser a baixar o HTML mais recente do servidor.
+   Anti-loop: o redirect só ocorre se ?_v= ainda não corresponder à versão.
+──────────────────────────────────────────────────────────────────────────── */
+(function () {
+  var EXPECTED = 'chat7-20260602';
+  var alreadyBusted = location.search.indexOf('_v=' + EXPECTED) !== -1;
+  if (!alreadyBusted && window._faChatScriptVersion !== EXPECTED) {
+    var base = location.href.split('?')[0].split('#')[0];
+    var hash = location.hash || '';
+    // Preserva query params existentes (exceto _v antigo) e acrescenta _v novo
+    var qs = location.search.replace(/[?&]_v=[^&]*/g, '').replace(/^\?/, '');
+    var sep = qs.length ? '?' + qs + '&' : '?';
+    location.replace(base + sep + '_v=' + EXPECTED + hash);
+  }
+})();
+</script>
 </body>
 </html>
