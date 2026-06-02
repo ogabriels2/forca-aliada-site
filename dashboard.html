@@ -1215,6 +1215,12 @@ footer { display: none; }
 .mod-empty{text-align:center;padding:40px 20px;color:var(--ink-3);font-size:14px}
 .mod-load-more{width:100%;margin-top:12px;padding:9px;border:1px solid var(--line);border-radius:10px;background:transparent;font:600 13px var(--font);color:var(--ink-2);cursor:pointer;transition:all var(--t1) var(--ease)}
 .mod-load-more:hover{background:var(--surface-soft)}
+.mod-content-preview{font-size:13px;color:var(--ink-2);background:var(--bg-2,rgba(0,0,0,.03));border-left:3px solid var(--line);padding:8px 10px;border-radius:0 6px 6px 0;margin-bottom:10px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.mod-reporter-comment{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-3);background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.5}
+.mod-reporter-comment em{font-style:italic;color:var(--ink-2)}
+.mod-multi-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;background:rgba(239,68,68,.15);color:#dc2626;border-radius:6px;padding:2px 7px;flex-shrink:0}
+[data-theme="dark"] .mod-content-preview{background:rgba(255,255,255,.04)}
+[data-theme="dark"] .mod-reporter-comment{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.2)}
 [data-theme="dark"] .mod-tabs-bar{background:rgba(5,10,22,.92)!important;border-color:rgba(148,163,184,.13)!important}
 [data-theme="dark"] .mod-item{background:rgba(12,20,38,.80)!important;border-color:rgba(148,163,184,.12)!important}
 [data-theme="dark"] .mod-item-header{border-color:rgba(148,163,184,.12)!important}
@@ -4873,7 +4879,7 @@ async function loadModerationReports(reset = true) {
     data.rows.forEach(item => list.appendChild(_modBuildReportItem(item)));
     const loaded = (_mod.reports.page * limit) + data.rows.length;
     moreBtn.style.display = loaded < _mod.reports.total ? 'block' : 'none';
-    if (status === 'pending') _modUpdateBadge('reports', data.rows.length);
+    if (status === 'pending') _modUpdateBadge('reports', data.total || data.rows.length);
   } catch (e) {
     if (reset) list.innerHTML = `<div class="mod-empty" style="color:var(--danger)">Erro ao carregar: ${e.message}</div>`;
   } finally {
@@ -4888,6 +4894,7 @@ function _modBuildReportItem(item) {
 
   const typeIcon  = item.content_type === 'post' ? '📝' : item.content_type === 'comment' ? '💬' : '👤';
   const typeLabel = item.content_type === 'post' ? 'Post' : item.content_type === 'comment' ? 'Comentário' : 'Utilizador';
+
   const statusLabel = {
     pending:          '🕐 Pendente',
     reviewed_kept:    '✅ Mantido',
@@ -4899,34 +4906,102 @@ function _modBuildReportItem(item) {
     ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel} · ${_esc(item.reviewer_username || '?')}</span>`
     : `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel}</span>`;
 
+  // Avatar do autor do conteúdo denunciado
+  const authorMc      = item.author_minecraft || item.author_username || '';
+  const authorAvatarSrc = item.author_photo
+    || (authorMc ? `https://mc-heads.net/head/${encodeURIComponent(authorMc)}/36` : '');
+  const authorLabel   = item.author_username
+    ? `<small>Autor: <b>${_esc(item.author_minecraft || item.author_username)}</b></small>` : '';
+
+  // Avatar do denunciante
+  const reporterAvatarSrc = item.reporter_photo
+    || `https://mc-heads.net/head/${encodeURIComponent(item.reporter_username || 'Steve')}/28`;
+
+  // Preview do conteúdo
+  let previewHtml = '';
+  if (item.content_preview) {
+    const preview = item.content_preview.length > 200
+      ? item.content_preview.slice(0, 200) + '…'
+      : item.content_preview;
+    previewHtml = `<div class="mod-content-preview">${_esc(preview)}</div>`;
+  }
+
+  // Imagens do post
+  let imagesHtml = '';
+  if (Array.isArray(item.content_media_urls) && item.content_media_urls.length) {
+    imagesHtml = `<div class="mod-images">${item.content_media_urls.slice(0,4).map(u =>
+      `<img src="${_esc(u)}" alt="mídia" onclick="window.open('${_esc(u)}','_blank')" loading="lazy" style="cursor:pointer;">`
+    ).join('')}</div>`;
+  }
+
+  // Comentário do denunciante
   const descText = item.description
-    ? `<p class="mod-item-text" style="font-style:italic;">"${_esc(item.description)}"</p>` : '';
+    ? `<div class="mod-reporter-comment"><span>💬</span><em>${_esc(item.description)}</em></div>` : '';
+
+  // Badge de múltiplas denúncias
+  const multiReportBadge = (item.total_reports_for_item > 1)
+    ? `<span class="mod-multi-badge" title="${item.total_reports_for_item} denúncias pendentes para este item">🔥 ${item.total_reports_for_item}×</span>`
+    : '';
 
   const actionBtns = item.status === 'pending'
-    ? `<button class="mod-btn-ok" onclick="modActionReport(${item.id},'dismiss',this)">↩ Dispensar</button>
-       <button class="mod-btn-ok" style="background:#3b82f6;" onclick="modActionReport(${item.id},'warn_user',this)">⚠ Avisar User</button>
-       <button class="mod-btn-rm" onclick="modActionReport(${item.id},'remove_content',this)">✕ Remover Conteúdo</button>`
+    ? `<button class="mod-btn-ok"  onclick="modActionReport(${item.id},'dismiss',this)">↩ Dispensar</button>
+       <button class="mod-btn-ok"  style="background:#3b82f6;" onclick="modActionReport(${item.id},'warn_user',this)">⚠ Avisar</button>
+       <button class="mod-btn-rm"  onclick="modActionReport(${item.id},'remove_content',this)">✕ Remover</button>`
     : `<span style="font-size:12px;color:var(--ink-3);font-weight:600;">${statusLabel}</span>`;
+
+  const authorBlock = authorAvatarSrc
+    ? `<img class="mod-avatar" src="${_esc(authorAvatarSrc)}" alt="${_esc(authorMc)}"
+             onerror="this.src='https://mc-heads.net/head/Steve/36'" style="opacity:.7;">`
+    : `<span style="font-size:22px;line-height:1;">${typeIcon}</span>`;
 
   wrap.innerHTML = `
     <div class="mod-item-header">
-      <span style="font-size:22px;line-height:1;">${typeIcon}</span>
+      ${authorBlock}
       <div class="mod-item-meta">
-        <strong>${_esc(typeLabel)} #${item.content_id}</strong>
-        <small>Denunciado por <b>${_esc(item.reporter_username || '?')}</b> · ${_modTimeAgo(item.created_at)}</small>
+        <strong>${_esc(typeLabel)} #${item.content_id} ${authorLabel ? '· ' + (item.author_minecraft || item.author_username || '') : ''}</strong>
+        <small>Denunciado por
+          <img src="${_esc(reporterAvatarSrc)}" alt="" width="14" height="14"
+               style="border-radius:50%;vertical-align:middle;margin:0 2px;"
+               onerror="this.style.display='none'">
+          <b>${_esc(item.reporter_username || '?')}</b> · ${_modTimeAgo(item.created_at)}
+        </small>
       </div>
       <span class="mod-type-badge report">Denúncia</span>
+      ${multiReportBadge}
       ${reviewedMsg}
     </div>
     <div class="mod-item-body">
       <span class="mod-reason-pill">🚩 ${_esc(_modReasonLabel(item.reason))}</span>
+      ${previewHtml}
+      ${imagesHtml}
       ${descText}
       <div class="mod-actions">${actionBtns}</div>
     </div>`;
   return wrap;
 }
-
 async function modActionReport(id, action, btn) {
+  // Confirmação antes de ações destrutivas
+  if (action === 'remove_content') {
+    const ok = await new Promise(res => {
+      const d = document.createElement('div');
+      d.className = 'backdrop show';
+      d.innerHTML = `<div class="sheet sheet-sm" role="dialog" aria-modal="true">
+        <div class="confirm-body">
+          <h2>Remover conteúdo</h2>
+          <p>O conteúdo será removido permanentemente e a ação ficará registrada na auditoria. Confirmar?</p>
+        </div>
+        <div class="confirm-footer">
+          <button class="btn btn-ghost" data-no>Cancelar</button>
+          <button class="btn btn-danger" data-yes>Remover</button>
+        </div>
+      </div>`;
+      d.querySelector('[data-yes]').onclick = () => { d.remove(); res(true); };
+      d.querySelector('[data-no]').onclick  = () => { d.remove(); res(false); };
+      d.addEventListener('click', e => { if (e.target === d) { d.remove(); res(false); } });
+      document.body.appendChild(d);
+    });
+    if (!ok) return;
+  }
   const item = btn.closest('.mod-item');
   const btns = item.querySelectorAll('button');
   btns.forEach(b => b.disabled = true);

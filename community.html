@@ -3757,12 +3757,61 @@ function confirmDialog({title,msg,confirmText='Confirmar',danger=false}){
 function reportDialog(){
   return new Promise(res=>{
     const reasons=[['spam','Spam'],['harassment','Assédio'],['hate_speech','Discurso de ódio'],['inappropriate','Conteúdo inapropriado'],['misinformation','Desinformação'],['other','Outro']];
+    let selected=null;
     const back=document.createElement('div');
     back.className='backdrop show';
-    back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true"><div class="confirm-body"><h2>Denunciar</h2><p>Escolha o motivo. A equipe revisa antes de agir.</p><div style="display:grid;gap:6px;margin-top:12px">${reasons.map(([id,l])=>`<button class="btn btn-secondary" style="justify-content:flex-start" data-r="${id}">${esc(l)}</button>`).join('')}</div></div><div class="confirm-footer"><button class="btn btn-ghost" data-r="">Cancelar</button></div></div>`;
+    function render(){
+      const btnsHtml=reasons.map(([id,l])=>`<button class="btn ${selected===id?'btn-primary':'btn-secondary'} report-reason-btn" style="justify-content:flex-start;text-align:left;" data-r="${id}">${selected===id?'✓ ':''} ${esc(l)}</button>`).join('');
+      back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true" style="max-height:min(92vh,540px);overflow-y:auto;">
+  <div class="sheet-header" style="padding:16px 16px 0;">
+    <h2 style="font-size:16px;margin:0;">Denunciar conteúdo</h2>
+    <button class="close-btn" data-r="" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div class="confirm-body" style="padding:12px 16px 0;">
+    <p style="font-size:13px;color:var(--ink-3);margin:0 0 10px;">Selecione o motivo (toque novamente para desmarcar) e, opcionalmente, adicione um comentário.</p>
+    <div style="display:grid;gap:6px;">${btnsHtml}</div>
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px;">Comentário <span style="font-weight:500;opacity:.6">(opcional · até 600 chars)</span></label>
+      <textarea id="report-comment-ta" maxlength="600" rows="3" placeholder="Descreva o problema com mais detalhes…" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-2,var(--bg));color:var(--ink);font:inherit;font-size:13.5px;resize:vertical;outline:none;" autocomplete="off">${esc(back._commentValue||'')}</textarea>
+    </div>
+  </div>
+  <div class="confirm-footer" style="padding:12px 16px 16px;gap:8px;">
+    <button class="btn btn-ghost" data-r="" style="min-width:90px;">Cancelar</button>
+    <button class="btn btn-primary" id="report-send-btn" ${selected?'':'disabled'} style="min-width:110px;">Enviar denúncia</button>
+  </div>
+</div>`;
+      rebind();
+    }
+    function rebind(){
+      back.querySelectorAll('.report-reason-btn').forEach(btn=>{
+        btn.addEventListener('click',e=>{
+          e.stopPropagation();
+          const r=btn.dataset.r;
+          selected = selected===r ? null : r;
+          back._commentValue=back.querySelector('#report-comment-ta')?.value||'';
+          render();
+          // focus textarea após render
+          setTimeout(()=>back.querySelector('#report-comment-ta')?.focus(),0);
+        });
+      });
+      const sendBtn=back.querySelector('#report-send-btn');
+      if(sendBtn){
+        sendBtn.addEventListener('click',e=>{
+          e.stopPropagation();
+          if(!selected)return;
+          const comment=(back.querySelector('#report-comment-ta')?.value||'').trim();
+          close({reason:selected,description:comment||null});
+        });
+      }
+      back.querySelectorAll('[data-r=""]').forEach(btn=>{
+        btn.addEventListener('click',e=>{e.stopPropagation();close(null)});
+      });
+    }
     const close=v=>{document.body.classList.remove('modal-open');back.remove();res(v)};
-    back.addEventListener('click',e=>{const r=e.target.closest('[data-r]');if(r){close(r.dataset.r||null)}else if(e.target===back)close(null)});
+    back.addEventListener('click',e=>{if(e.target===back)close(null)});
     document.body.appendChild(back);document.body.classList.add('modal-open');
+    render();
+    setTimeout(()=>back.querySelector('#report-comment-ta')?.focus(),80);
   });
 }
 
@@ -5803,9 +5852,11 @@ async function blockUser(uid,unblock=false){
   }catch(e){toast('error','Ação não concluída',e.message)}
 }
 async function reportContent(type,id){
-  const reason=await reportDialog();if(!reason)return;
-  try{await api('/api/community/report',{method:'POST',body:JSON.stringify({content_type:type,content_id:Number(id),reason})});toast('success','Denúncia enviada','A moderação recebeu o contexto.');}
-  catch(e){toast('error','Denúncia não enviada',e.message)}
+  const result=await reportDialog();if(!result?.reason)return;
+  try{
+    await api('/api/community/report',{method:'POST',body:JSON.stringify({content_type:type,content_id:Number(id),reason:result.reason,...(result.description?{description:result.description}:{})})});
+    toast('success','Denúncia enviada','A moderação vai revisar em breve.');
+  }catch(e){toast('error','Denúncia não enviada',e.message)}
 }
 
 /* ======================= PLAYERS ======================= */
