@@ -310,8 +310,15 @@ const VISION_LIKELIHOOD_SCORE = {
 // Retorna: { verdict: 'approved' | 'suspicious' | 'rejected', reason, scores }
 async function moderateImageBuffer(buffer) {
   const apiKey = process.env.GOOGLE_VISION_API_KEY;
+
+  // ── DIAGNÓSTICO: remover após confirmar funcionamento ──────────────────────
+  console.log('[Vision API] moderateImageBuffer chamado');
+  console.log('[Vision API] GOOGLE_VISION_API_KEY presente:', !!apiKey);
+  console.log('[Vision API] Tamanho do buffer:', buffer?.length ?? 0, 'bytes');
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (!apiKey) {
-    // Sem chave configurada: deixa passar (fail-open)
+    console.warn('[Vision API] Chave ausente — imagem liberada sem moderação (fail-open).');
     return { verdict: 'approved', reason: 'vision_not_configured', scores: {} };
   }
 
@@ -332,9 +339,15 @@ async function moderateImageBuffer(buffer) {
           headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
         },
         res => {
+          // ── DIAGNÓSTICO ──
+          console.log('[Vision API] HTTP status da resposta:', res.statusCode);
+          // ─────────────────
           let data = '';
           res.on('data', chunk => { data += chunk; });
           res.on('end', () => {
+            // ── DIAGNÓSTICO ──
+            console.log('[Vision API] Resposta bruta:', data.slice(0, 500));
+            // ─────────────────
             try { resolve(JSON.parse(data)); }
             catch { reject(new Error('Resposta inválida da Vision API.')); }
           });
@@ -346,7 +359,6 @@ async function moderateImageBuffer(buffer) {
       req.end();
     });
   } catch (err) {
-    // Falha de rede / timeout: fail-open para não bloquear uploads
     console.warn('[Vision API] Falha na chamada, imagem liberada:', err.message);
     return { verdict: 'approved', reason: 'vision_error', scores: {} };
   }
@@ -363,6 +375,12 @@ async function moderateImageBuffer(buffer) {
     racy:     VISION_LIKELIHOOD_SCORE[annotation.racy]     ?? 0,
     medical:  VISION_LIKELIHOOD_SCORE[annotation.medical]  ?? 0,
   };
+
+  // ── DIAGNÓSTICO ──
+  console.log('[Vision API] Scores:', JSON.stringify(scores));
+  console.log('[Vision API] Annotation raw:', JSON.stringify(annotation));
+  console.log('[Vision API] Verdict final:', scores.adult >= 4 || scores.violence >= 4 ? 'REJECTED' : scores.adult >= 3 || scores.violence >= 3 || scores.racy >= 3 ? 'SUSPICIOUS' : 'APPROVED');
+  // ─────────────────
 
   // REJEITAR: qualquer categoria claramente imprópria
   const REJECT_THRESHOLD = 4; // LIKELY ou VERY_LIKELY
