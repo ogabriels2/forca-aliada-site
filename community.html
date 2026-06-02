@@ -5563,6 +5563,7 @@ async function openCommunityProfileEditor(){
 
     const close=()=>{
       document.removeEventListener('keydown',onKey);
+      document.removeEventListener('paste',onModalPaste);
       // cleanup object URLs
       if(pendingAvatar){URL.revokeObjectURL(pendingAvatar.objectUrl);pendingAvatar=null}
       if(pendingCover){URL.revokeObjectURL(pendingCover.objectUrl);pendingCover=null}
@@ -5634,6 +5635,40 @@ async function openCommunityProfileEditor(){
     // cover zone click
     back.querySelector('#ep-cover-zone')?.addEventListener('click',()=>back.querySelector('#ep-cover-input')?.click());
     back.querySelector('#ep-cover-input')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)handleImageFile(f,'cover');e.target.value='';});
+
+    // drag-and-drop nas zonas de avatar e capa
+    ['#ep-avatar-zone','#ep-cover-zone'].forEach(sel=>{
+      const zone=back.querySelector(sel);
+      const target=sel==='#ep-avatar-zone'?'avatar':'cover';
+      if(!zone)return;
+      zone.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';zone.style.outline='2px dashed var(--accent)';});
+      zone.addEventListener('dragleave',()=>{zone.style.outline='';});
+      zone.addEventListener('drop',e=>{
+        e.preventDefault();zone.style.outline='';
+        const f=[...e.dataTransfer.files].find(f=>f.type.startsWith('image/'));
+        if(f)handleImageFile(f,target);else toast('warning','Formato inválido','Solte apenas imagens.');
+      });
+    });
+
+    // Ctrl+V (paste) dentro do modal — cola imagem no campo ativo (avatar ou capa)
+    // Se o foco estiver em um input/textarea de texto, a colagem é ignorada aqui.
+    function onModalPaste(e){
+      const items=[...(e.clipboardData?.items||[])];
+      const imgItem=items.find(it=>it.type.startsWith('image/'));
+      if(!imgItem)return;
+      const focused=document.activeElement;
+      if(focused&&(focused.tagName==='INPUT'||focused.tagName==='TEXTAREA')&&focused.type!=='file')return;
+      e.preventDefault();
+      const file=imgItem.getAsFile();
+      if(!file)return;
+      const target=back._lastImageTarget||'avatar';
+      toast('info','Imagem colada','Processando imagem do clipboard…');
+      handleImageFile(file,target);
+    }
+    // Rastreia qual zona foi clicada por último para o paste saber o destino
+    back.querySelector('#ep-avatar-zone')?.addEventListener('click',()=>{back._lastImageTarget='avatar';},true);
+    back.querySelector('#ep-cover-zone')?.addEventListener('click',()=>{back._lastImageTarget='cover';},true);
+    document.addEventListener('paste',onModalPaste);
 
     // upload blob to cloudinary (reusing existing upload infrastructure)
     async function uploadImageBlob(blob,folder='profile'){
