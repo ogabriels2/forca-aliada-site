@@ -3092,6 +3092,9 @@ body::after{
       <button class="tbtn mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
+      <button class="tbtn" id="desktop-chat-btn" aria-label="Mensagens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+      </button>
       <div class="notif-wrap">
         <button class="notif-btn tbtn" id="notif-btn" aria-label="Notificações" aria-expanded="false" aria-haspopup="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -6766,6 +6769,7 @@ function bindEvents(){
   $('#mobile-search-btn')?.addEventListener('click',()=>openSearchModal());
   $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
   $('#mobile-chat-btn')?.addEventListener('click',()=>window.FAChat?.open());
+  $('#desktop-chat-btn')?.addEventListener('click',()=>window.FAChat?.open());
   $('#mobile-profile-btn')?.addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
   const mobileMenu=$('#mobile-side-menu');
   const closeMobileMenu=()=>{
