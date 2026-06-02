@@ -1179,6 +1179,47 @@ footer { display: none; }
 [data-theme="dark"] .create-account-panel { background: rgba(8,22,46,0.72); border-color: rgba(78,144,247,0.18); }
 [data-theme="dark"] .create-account-collapsed { background: rgba(12,20,38,0.72); border-color: rgba(148,163,184,0.16); }
 [data-theme="dark"] .admin-account-card { background: rgba(10,18,34,0.60) !important; border-color: rgba(148,163,184,0.14); }
+/* ── Moderação ── */
+.mod-tabs-bar{display:flex;gap:4px;padding:5px;margin-bottom:14px;background:linear-gradient(180deg,rgba(255,255,255,.98) 76%,rgba(255,255,255,0));border:1px solid rgba(15,23,42,.082);border-radius:var(--r-md);position:sticky;top:-28px;z-index:5}
+.mod-tab{flex:1;padding:8px 12px;border:none;border-radius:10px;font:650 13px var(--font);cursor:pointer;color:var(--ink-2);background:transparent;transition:all var(--t1) var(--ease)}
+.mod-tab.active{background:linear-gradient(135deg,#1872f4,#0855c8);color:#fff;box-shadow:0 8px 20px rgba(23,97,240,.22)}
+.mod-tab:not(.active):hover{background:rgba(23,97,240,.07);color:var(--blue)}
+.mod-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;font-weight:800;margin-left:5px}
+.mod-filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.mod-chip{padding:5px 13px;border-radius:20px;border:1px solid var(--line);background:transparent;font:600 12px var(--font);color:var(--ink-2);cursor:pointer;transition:all var(--t1) var(--ease)}
+.mod-chip:hover{background:rgba(23,97,240,.07);color:var(--blue)}
+.mod-chip.active{background:linear-gradient(135deg,#1872f4,#0855c8);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(23,97,240,.22)}
+.mod-list{display:grid;gap:12px}
+.mod-item{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);overflow:hidden;transition:box-shadow var(--t1) var(--ease)}
+.mod-item:hover{box-shadow:var(--shadow-sm)}
+.mod-item-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.mod-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--surface-soft)}
+.mod-item-meta{flex:1;min-width:0}
+.mod-item-meta strong{display:block;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mod-item-meta small{display:block;font-size:11px;color:var(--ink-3);margin-top:1px}
+.mod-type-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:6px;flex-shrink:0}
+.mod-type-badge.ai{background:rgba(139,92,246,.12);color:#7c3aed}
+.mod-type-badge.report{background:rgba(239,68,68,.10);color:#dc2626}
+.mod-item-body{padding:12px 14px}
+.mod-item-text{font-size:13.5px;color:var(--ink-2);margin-bottom:10px;line-height:1.45;word-break:break-word}
+.mod-images{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.mod-images img{width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:pointer;transition:transform var(--t1) var(--ease)}
+.mod-images img:hover{transform:scale(1.05)}
+.mod-reason-pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-3);font-weight:600;background:var(--surface-soft);padding:4px 9px;border-radius:7px;margin-bottom:10px}
+.mod-actions{display:flex;gap:8px;flex-wrap:wrap}
+.mod-btn-ok{padding:7px 16px;border-radius:8px;border:none;background:#22c55e;color:#fff;font:700 12.5px var(--font);cursor:pointer;transition:all var(--t1) var(--ease)}
+.mod-btn-ok:hover{background:#16a34a;transform:translateY(-1px)}
+.mod-btn-rm{padding:7px 16px;border-radius:8px;border:none;background:#ef4444;color:#fff;font:700 12.5px var(--font);cursor:pointer;transition:all var(--t1) var(--ease)}
+.mod-btn-rm:hover{background:#dc2626;transform:translateY(-1px)}
+.mod-btn-ok:disabled,.mod-btn-rm:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.mod-empty{text-align:center;padding:40px 20px;color:var(--ink-3);font-size:14px}
+.mod-load-more{width:100%;margin-top:12px;padding:9px;border:1px solid var(--line);border-radius:10px;background:transparent;font:600 13px var(--font);color:var(--ink-2);cursor:pointer;transition:all var(--t1) var(--ease)}
+.mod-load-more:hover{background:var(--surface-soft)}
+[data-theme="dark"] .mod-tabs-bar{background:rgba(5,10,22,.92)!important;border-color:rgba(148,163,184,.13)!important}
+[data-theme="dark"] .mod-item{background:rgba(12,20,38,.80)!important;border-color:rgba(148,163,184,.12)!important}
+[data-theme="dark"] .mod-item-header{border-color:rgba(148,163,184,.12)!important}
+[data-theme="dark"] .mod-chip{background:rgba(12,20,38,.72)!important;border-color:rgba(148,163,184,.16)!important}
+[data-theme="dark"] .mod-reason-pill{background:rgba(255,255,255,.04)!important}
 [data-theme="dark"] .advanced-security-section { background: rgba(10,18,34,0.60); border-color: rgba(148,163,184,0.14); }
 [data-theme="dark"] .empty-icon { background: rgba(18,30,56,0.80); }
 [data-theme="dark"] .merit-preview { background: rgba(78,144,247,0.10); border-color: rgba(78,144,247,0.22); }
@@ -1330,6 +1371,9 @@ footer { display: none; }
           <button class="quick-action-btn" id="qa-notifications" onclick="scrollToSection('admin-notifications-card')" style="display:none;">
             <span class="qa-icon">📢</span><span class="qa-label">Publicações</span><span class="qa-arrow">›</span>
           </button>
+          <button class="quick-action-btn" id="qa-moderation" onclick="scrollToSection('moderation-card')" style="display:none;">
+            <span class="qa-icon">🛡️</span><span class="qa-label">Moderação</span><span class="qa-arrow">›</span>
+          </button>
           <button class="quick-action-btn" id="qa-audit" onclick="scrollToSection('audit-card')" style="display:none;">
             <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
           </button>
@@ -1376,6 +1420,7 @@ footer { display: none; }
         <button class="portal-tab" type="button" data-dashboard-target="admin-users-card" id="portal-nav-staff" onclick="scrollToSection('admin-users-card')" style="display:none;">Jogadores & Staff</button>
         <button class="portal-tab" type="button" data-dashboard-target="merit-card" id="portal-nav-merit" onclick="scrollToSection('merit-card')" style="display:none;">Mérito & Capital</button>
         <button class="portal-tab" type="button" data-dashboard-target="admin-notifications-card" id="portal-nav-notifications" onclick="scrollToSection('admin-notifications-card')" style="display:none;">Notificações</button>
+        <button class="portal-tab" type="button" data-dashboard-target="moderation-card" id="portal-nav-moderation" onclick="scrollToSection('moderation-card')" style="display:none;">Moderação <span class="mod-badge" id="mod-nav-badge" style="display:none;">0</span></button>
         <button class="portal-tab" type="button" data-dashboard-target="audit-card" id="portal-nav-audit" onclick="scrollToSection('audit-card')" style="display:none;">Auditoria</button>
         <button class="portal-tab" type="button" data-dashboard-target="app-keys-card" id="portal-nav-appkeys" onclick="scrollToSection('app-keys-card')" style="display:none;">Integrações</button>
       </div>
@@ -1586,7 +1631,47 @@ footer { display: none; }
         <div class="admin-notification-list" id="admin-notifications-list"></div>
       </div>
 
-      <div class="card" id="audit-card" style="display:none;">
+      <!-- ── Moderação ─────────────────────────────────────────────────── -->
+      <div class="card" id="moderation-card" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+          <h3 style="margin:0;">Moderação <span>Conteúdo sinalizado pela IA e denúncias de utilizadores</span></h3>
+          <button class="btn-export" id="mod-refresh-btn" onclick="modRefresh()" title="Recarregar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Recarregar
+          </button>
+        </div>
+
+        <div class="mod-tabs-bar">
+          <button class="mod-tab active" id="mod-tab-ai"      onclick="modSwitchTab('ai')">Fila de IA <span class="mod-badge" id="mod-badge-ai" style="display:none;">0</span></button>
+          <button class="mod-tab"        id="mod-tab-reports" onclick="modSwitchTab('reports')">Denúncias  <span class="mod-badge" id="mod-badge-reports" style="display:none;">0</span></button>
+        </div>
+
+        <!-- sub-aba: fila da IA -->
+        <div id="mod-panel-ai">
+          <div class="mod-filter-bar">
+            <button class="mod-chip active" data-mod-status="pending"  onclick="modSetStatus(this,'ai')">Pendentes</button>
+            <button class="mod-chip"        data-mod-status="reviewed" onclick="modSetStatus(this,'ai')">Aprovados</button>
+            <button class="mod-chip"        data-mod-status="removed"  onclick="modSetStatus(this,'ai')">Removidos</button>
+            <button class="mod-chip"        data-mod-status="all"      onclick="modSetStatus(this,'ai')">Todos</button>
+          </div>
+          <div class="mod-list" id="mod-list-ai"></div>
+          <button class="mod-load-more" id="mod-more-ai" style="display:none;" onclick="modLoadMore('ai')">Carregar mais</button>
+        </div>
+
+        <!-- sub-aba: denúncias -->
+        <div id="mod-panel-reports" style="display:none;">
+          <div class="mod-filter-bar">
+            <button class="mod-chip active" data-mod-status="pending"          onclick="modSetStatus(this,'reports')">Pendentes</button>
+            <button class="mod-chip"        data-mod-status="reviewed_kept"    onclick="modSetStatus(this,'reports')">Mantidos</button>
+            <button class="mod-chip"        data-mod-status="reviewed_removed" onclick="modSetStatus(this,'reports')">Removidos</button>
+            <button class="mod-chip"        data-mod-status="dismissed"        onclick="modSetStatus(this,'reports')">Dispensados</button>
+            <button class="mod-chip"        data-mod-status="all"              onclick="modSetStatus(this,'reports')">Todos</button>
+          </div>
+          <div class="mod-list" id="mod-list-reports"></div>
+          <button class="mod-load-more" id="mod-more-reports" style="display:none;" onclick="modLoadMore('reports')">Carregar mais</button>
+        </div>
+      </div>
+      <!-- ── /Moderação ──────────────────────────────────────────────────── -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
           <h3 style="margin:0;font-size:17px;font-weight:600;">Logs de Auditoria</h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -2199,7 +2284,7 @@ function applyRoleVisibility() {
   // caso o role tenha sido rebaixado sem recarregar a página)
   const conditionalCards = [
     'admin-users-card', 'admin-notifications-card', 'audit-card',
-    'merit-card', 'manager-promo-card', 'app-keys-card',
+    'merit-card', 'manager-promo-card', 'app-keys-card', 'moderation-card',
   ];
   conditionalCards.forEach(id => {
     const el = document.getElementById(id);
@@ -2214,6 +2299,7 @@ function applyRoleVisibility() {
   hide('qa-audit');
   hide('qa-appkeys');
   hide('qa-merit');
+  hide('qa-moderation');
   hide('btn-export-staff');
 
   if (!role || role === 'limited') return;
@@ -2223,6 +2309,12 @@ function applyRoleVisibility() {
   hide('admin-notifications-card', 'block');
   hide('qa-staff',                 'flex');
   hide('qa-notifications',         'flex');
+
+  // Moderação — visível para full e owner (alinhado com requireAdmin)
+  if (role === 'full' || role === 'owner') {
+    hide('moderation-card', 'block');
+    hide('qa-moderation',   'flex');
+  }
 
   // Logs de Auditoria — API usa requireAdmin (full + owner), UI alinhada
   if (role === 'full' || role === 'owner') {
@@ -2347,6 +2439,11 @@ function initDashboard() {
     }, 60_000);
   }
 
+  // Moderação — carrega fila IA e denúncias para full e owner
+  if (session.role === 'full' || session.role === 'owner') {
+    modInit();
+  }
+
   // Merit & Capital — inicialização para full e owner
   if (session.role === 'full' || session.role === 'owner') {
     // Cache admin users for autocomplete once they're loaded
@@ -2461,6 +2558,10 @@ var DASHBOARD_MODULES = {
   'admin-notifications-card': {
     title: 'Notificações',
     desc: 'Central de comunicação para publicar avisos por público, cargo ou jogador.'
+  },
+  'moderation-card': {
+    title: 'Moderação',
+    desc: 'Fila de imagens sinalizadas pela IA e denúncias de conteúdo dos utilizadores.'
   },
   'audit-card': {
     title: 'Auditoria',
@@ -4585,6 +4686,355 @@ async function submitAdjustCapital() {
     btn.disabled=false; btn.textContent='Ajustar Capital';
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODERAÇÃO — Fila de IA e Denúncias
+// ─────────────────────────────────────────────────────────────────────────────
+const _mod = {
+  // estado da aba IA
+  ai: { page: 0, limit: 15, status: 'pending', total: 0, loading: false },
+  // estado da aba denúncias
+  reports: { page: 0, limit: 15, status: 'pending', total: 0, loading: false },
+  // aba activa
+  activeTab: 'ai',
+};
+
+function modInit() {
+  loadModerationQueue(true);
+  loadModerationReports(true);
+}
+
+function modRefresh() {
+  _mod.ai.page = 0;
+  _mod.reports.page = 0;
+  loadModerationQueue(true);
+  loadModerationReports(true);
+}
+
+function modSwitchTab(tab) {
+  _mod.activeTab = tab;
+  document.getElementById('mod-tab-ai').classList.toggle('active', tab === 'ai');
+  document.getElementById('mod-tab-reports').classList.toggle('active', tab === 'reports');
+  document.getElementById('mod-panel-ai').style.display     = tab === 'ai'      ? '' : 'none';
+  document.getElementById('mod-panel-reports').style.display = tab === 'reports' ? '' : 'none';
+}
+
+function modSetStatus(btn, tab) {
+  const bar = btn.closest('.mod-filter-bar');
+  bar.querySelectorAll('.mod-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  _mod[tab].status = btn.dataset.modStatus;
+  _mod[tab].page   = 0;
+  if (tab === 'ai')      loadModerationQueue(true);
+  if (tab === 'reports') loadModerationReports(true);
+}
+
+function modLoadMore(tab) {
+  _mod[tab].page++;
+  if (tab === 'ai')      loadModerationQueue(false);
+  if (tab === 'reports') loadModerationReports(false);
+}
+
+// ── Fila da IA ────────────────────────────────────────────────────────────────
+async function loadModerationQueue(reset = true) {
+  if (_mod.ai.loading) return;
+  _mod.ai.loading = true;
+  const list = document.getElementById('mod-list-ai');
+  const moreBtn = document.getElementById('mod-more-ai');
+  if (reset) { list.innerHTML = '<div class="mod-empty">A carregar…</div>'; _mod.ai.page = 0; }
+  try {
+    const { status, page, limit } = _mod.ai;
+    const res = await apiFetch(
+      `/api/admin/moderation-queue?status=${encodeURIComponent(status)}&page=${page}&limit=${limit}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error('Erro ' + res.status);
+    const data = await res.json();
+    _mod.ai.total = data.total || 0;
+
+    if (reset) list.innerHTML = '';
+
+    if (!data.rows.length && reset) {
+      list.innerHTML = '<div class="mod-empty">✅ Nenhum item para revisar nesta categoria.</div>';
+      moreBtn.style.display = 'none';
+      _modUpdateBadge('ai', 0);
+      return;
+    }
+
+    data.rows.forEach(item => list.appendChild(_modBuildAIItem(item)));
+
+    const loaded = (_mod.ai.page * limit) + data.rows.length;
+    moreBtn.style.display = loaded < _mod.ai.total ? 'block' : 'none';
+
+    if (status === 'pending') _modUpdateBadge('ai', _mod.ai.total);
+
+  } catch (e) {
+    if (reset) list.innerHTML = `<div class="mod-empty" style="color:var(--danger)">Erro ao carregar: ${e.message}</div>`;
+  } finally {
+    _mod.ai.loading = false;
+  }
+}
+
+function _modBuildAIItem(item) {
+  const wrap = document.createElement('div');
+  wrap.className = 'mod-item';
+  wrap.dataset.modId = item.id;
+
+  const isProfile = item.content_type === 'profile_image_user';
+  const typeLabel  = isProfile ? 'Foto de Perfil' : 'Post com Imagem';
+  const typeClass  = 'ai';
+
+  const avatarSrc  = item.user_photo || `https://mc-heads.net/head/${encodeURIComponent(item.user_minecraft || item.user_username || 'Steve')}/36`;
+  const username   = item.user_username || '—';
+  const mcName     = item.user_minecraft ? ` (${item.user_minecraft})` : '';
+  const timeAgo    = _modTimeAgo(item.created_at);
+  const reviewedMsg = item.status !== 'pending'
+    ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">
+         ${item.status === 'removed' ? '🗑 Removido' : '✅ Aprovado'} por ${item.reviewed_by_username || '?'}
+       </span>`
+    : '';
+
+  // Imagens a mostrar
+  let imagesHtml = '';
+  if (!isProfile) {
+    const urls = Array.isArray(item.post_media_urls) ? item.post_media_urls : [];
+    if (urls.length) {
+      imagesHtml = `<div class="mod-images">${urls.map(u =>
+        `<img src="${_esc(u)}" alt="imagem do post" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
+      ).join('')}</div>`;
+    }
+  } else {
+    const imgs = [item.profile_avatar, item.profile_cover].filter(Boolean);
+    if (imgs.length) {
+      imagesHtml = `<div class="mod-images">${imgs.map(u =>
+        `<img src="${_esc(u)}" alt="foto de perfil" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
+      ).join('')}</div>`;
+    }
+  }
+
+  const postContent = !isProfile && item.post_content
+    ? `<p class="mod-item-text">${_esc(item.post_content)}</p>` : '';
+
+  const reasonLabel = _modReasonLabel(item.reason);
+
+  const actionBtns = item.status === 'pending'
+    ? `<button class="mod-btn-ok" onclick="modActionAI(${item.id},'approve',this)">✓ Aprovar</button>
+       <button class="mod-btn-rm" onclick="modActionAI(${item.id},'remove_content',this)">✕ Remover Conteúdo</button>`
+    : `<span style="font-size:12px;color:var(--ink-3);font-weight:600;">Já revisado</span>`;
+
+  wrap.innerHTML = `
+    <div class="mod-item-header">
+      <img class="mod-avatar" src="${avatarSrc}" alt="${_esc(username)}" onerror="this.src='https://mc-heads.net/head/Steve/36'">
+      <div class="mod-item-meta">
+        <strong>${_esc(username)}${_esc(mcName)}</strong>
+        <small>${typeLabel} · ${timeAgo}</small>
+      </div>
+      <span class="mod-type-badge ${typeClass}">IA</span>
+      ${reviewedMsg}
+    </div>
+    <div class="mod-item-body">
+      <span class="mod-reason-pill">⚠️ ${reasonLabel}</span>
+      ${imagesHtml}
+      ${postContent}
+      <div class="mod-actions">${actionBtns}</div>
+    </div>`;
+  return wrap;
+}
+
+async function modActionAI(id, action, btn) {
+  const item = btn.closest('.mod-item');
+  const btns = item.querySelectorAll('button');
+  btns.forEach(b => b.disabled = true);
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const res = await apiFetch(`/api/admin/moderation-queue/${id}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro'); }
+    showToast(action === 'approve' ? '✅ Conteúdo aprovado.' : '🗑 Conteúdo removido.');
+    // Recarrega a lista para reflectir o novo estado
+    loadModerationQueue(true);
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+    btns.forEach(b => b.disabled = false);
+    btn.textContent = orig;
+  }
+}
+
+// ── Denúncias ────────────────────────────────────────────────────────────────
+async function loadModerationReports(reset = true) {
+  if (_mod.reports.loading) return;
+  _mod.reports.loading = true;
+  const list = document.getElementById('mod-list-reports');
+  const moreBtn = document.getElementById('mod-more-reports');
+  if (reset) { list.innerHTML = '<div class="mod-empty">A carregar…</div>'; _mod.reports.page = 0; }
+  try {
+    const { status, page, limit } = _mod.reports;
+    const res = await apiFetch(
+      `/api/admin/reports?status=${encodeURIComponent(status)}&page=${page}&limit=${limit}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error('Erro ' + res.status);
+    const data = await res.json();
+    _mod.reports.total = data.total || data.rows?.length || 0;
+
+    if (reset) list.innerHTML = '';
+
+    if (!data.rows?.length && reset) {
+      list.innerHTML = '<div class="mod-empty">✅ Nenhuma denúncia nesta categoria.</div>';
+      moreBtn.style.display = 'none';
+      _modUpdateBadge('reports', 0);
+      return;
+    }
+
+    data.rows.forEach(item => list.appendChild(_modBuildReportItem(item)));
+
+    const loaded = (_mod.reports.page * limit) + data.rows.length;
+    moreBtn.style.display = loaded < _mod.reports.total ? 'block' : 'none';
+
+    if (status === 'pending') _modUpdateBadge('reports', data.rows.length);
+
+  } catch (e) {
+    if (reset) list.innerHTML = `<div class="mod-empty" style="color:var(--danger)">Erro ao carregar: ${e.message}</div>`;
+  } finally {
+    _mod.reports.loading = false;
+  }
+}
+
+function _modBuildReportItem(item) {
+  const wrap = document.createElement('div');
+  wrap.className = 'mod-item';
+  wrap.dataset.reportId = item.id;
+
+  const timeAgo     = _modTimeAgo(item.created_at);
+  const typeIcon    = item.content_type === 'post' ? '📝' : item.content_type === 'comment' ? '💬' : '👤';
+  const typeLabel   = item.content_type === 'post' ? 'Post' : item.content_type === 'comment' ? 'Comentário' : 'Utilizador';
+  const statusLabel = {
+    pending:          '🕐 Pendente',
+    reviewed_kept:    '✅ Mantido',
+    reviewed_removed: '🗑 Removido',
+    dismissed:        '↩ Dispensado',
+  }[item.status] || item.status;
+
+  const reviewedMsg = item.status !== 'pending'
+    ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel} · ${item.reviewer_username || '?'}</span>`
+    : `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel}</span>`;
+
+  const reasonLabel = _modReasonLabel(item.reason);
+  const descText    = item.description ? `<p class="mod-item-text" style="font-style:italic;">"${_esc(item.description)}"</p>` : '';
+
+  const actionBtns = item.status === 'pending'
+    ? `<button class="mod-btn-ok" onclick="modActionReport(${item.id},'dismiss',this)">↩ Dispensar</button>
+       <button class="mod-btn-ok" style="background:#3b82f6;" onclick="modActionReport(${item.id},'warn_user',this)">⚠ Avisar User</button>
+       <button class="mod-btn-rm" onclick="modActionReport(${item.id},'remove_content',this)">✕ Remover Conteúdo</button>`
+    : `<span style="font-size:12px;color:var(--ink-3);font-weight:600;">${statusLabel}</span>`;
+
+  wrap.innerHTML = `
+    <div class="mod-item-header">
+      <span style="font-size:22px;line-height:1;">${typeIcon}</span>
+      <div class="mod-item-meta">
+        <strong>${typeLabel} #${item.content_id}</strong>
+        <small>Denunciado por <b>${_esc(item.reporter_username || '?')}</b> · ${timeAgo}</small>
+      </div>
+      <span class="mod-type-badge report">Denúncia</span>
+      ${reviewedMsg}
+    </div>
+    <div class="mod-item-body">
+      <span class="mod-reason-pill">🚩 ${reasonLabel}</span>
+      ${descText}
+      <div class="mod-actions">${actionBtns}</div>
+    </div>`;
+  return wrap;
+}
+
+async function modActionReport(id, action, btn) {
+  const item = btn.closest('.mod-item');
+  const btns = item.querySelectorAll('button');
+  btns.forEach(b => b.disabled = true);
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const res = await apiFetch(`/api/admin/reports/${id}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro'); }
+    const msgs = { dismiss: '↩ Denúncia dispensada.', warn_user: '⚠ Utilizador avisado.', remove_content: '🗑 Conteúdo removido.' };
+    showToast(msgs[action] || 'Feito.');
+    loadModerationReports(true);
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+    btns.forEach(b => b.disabled = false);
+    btn.textContent = orig;
+  }
+}
+
+// ── Utilitários de moderação ──────────────────────────────────────────────────
+function _modUpdateBadge(tab, count) {
+  const badgeAI      = document.getElementById('mod-badge-ai');
+  const badgeReports = document.getElementById('mod-badge-reports');
+  const badgeNav     = document.getElementById('mod-nav-badge');
+
+  if (tab === 'ai' && badgeAI) {
+    badgeAI.textContent     = count;
+    badgeAI.style.display   = count > 0 ? 'inline-flex' : 'none';
+  }
+  if (tab === 'reports' && badgeReports) {
+    badgeReports.textContent   = count;
+    badgeReports.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+
+  // Badge global na tab de navegação: soma IA + denúncias pendentes
+  const totalPending = (parseInt(badgeAI?.textContent || '0') || 0)
+                     + (parseInt(badgeReports?.textContent || '0') || 0);
+  if (badgeNav) {
+    badgeNav.textContent   = totalPending;
+    badgeNav.style.display = totalPending > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+function _modTimeAgo(dateStr) {
+  if (!dateStr) return '—';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'agora';
+  if (m < 60) return `${m}m atrás`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h atrás`;
+  const d = Math.floor(h / 24);
+  return `${d}d atrás`;
+}
+
+function _modReasonLabel(reason) {
+  const labels = {
+    reports_threshold:  'Atingiu limiar de denúncias',
+    vision_suspicious:  'Imagem sinalizada pela IA',
+    spam:               'Spam',
+    hate:               'Discurso de ódio',
+    nsfw:               'Conteúdo inapropriado',
+    harassment:         'Assédio',
+    misinformation:     'Desinformação',
+    other:              'Outro motivo',
+  };
+  return labels[reason] || reason || 'Motivo não especificado';
+}
+
+function _esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// /MODERAÇÃO
+// ─────────────────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
