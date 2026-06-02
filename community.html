@@ -4342,11 +4342,36 @@ function warmNsfwModel(type){
     .then(m=>setMediaStatus(type,m?'IA pronta para revisar imagens.':''))
     .catch(()=>setMediaStatus(type,''));
 }
-function blobToImage(blob){
+/* Converte um Blob para um canvas 2D desanexado do DOM.
+   O TFJS (tf.browser.fromPixels) lê pixels via getImageData(), que funciona
+   corretamente num canvas mesmo sem ele estar inserido no documento —
+   ao contrário de um HTMLImageElement off-DOM, que frequentemente retorna
+   um tensor de zeros e faz o modelo classificar tudo como Neutral. */
+async function blobToCanvas(blob){
+  /* Preferir createImageBitmap (disponível em todos os browsers modernos):
+     decodifica assincronamente sem precisar de DOM nem de URL temporária. */
+  if(typeof createImageBitmap==='function'){
+    const bitmap=await createImageBitmap(blob);
+    const canvas=document.createElement('canvas');
+    canvas.width=bitmap.width;
+    canvas.height=bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap,0,0);
+    bitmap.close();
+    return canvas;
+  }
+  /* Fallback para browsers sem createImageBitmap: usa object URL + <img>
+     mas aguarda naturalWidth > 0 para garantir que os pixels estão prontos. */
   return new Promise((resolve,reject)=>{
     const url=URL.createObjectURL(blob);
     const img=new Image();
-    img.onload=()=>resolve({img,url});
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const canvas=document.createElement('canvas');
+      canvas.width=img.naturalWidth||img.width;
+      canvas.height=img.naturalHeight||img.height;
+      canvas.getContext('2d').drawImage(img,0,0);
+      resolve(canvas);
+    };
     img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Nao foi possivel analisar a imagem.'))};
     img.src=url;
   });
@@ -4355,18 +4380,16 @@ async function assertSafeImage(blob,type){
   const model=await getNsfwModel(type);
   /* Se o modelo não carregou, deixa passar (fail-open) */
   if(!model){console.warn('[nsfwjs] Modelo indisponível — imagem liberada sem verificação local.');return;}
-  const {img,url}=await blobToImage(blob);
-  try{
-    const predictions=await model.classify(img);
-    console.log('[nsfwjs] Classificação:',predictions.map(p=>`${p.className}:${(p.probability*100).toFixed(1)}%`).join(', '));
-    const blocked=new Set(['Porn','Hentai','Sexy']);
-    const hit=predictions.find(p=>blocked.has(p.className)&&Number(p.probability)>=0.4);
-    if(hit){
-      console.warn('[nsfwjs] Imagem bloqueada:',hit.className,hit.probability);
-      throw new Error('Imagem barrada pela moderação automática.');
-    }
-  }finally{
-    URL.revokeObjectURL(url);
+  /* Usa canvas: garante que tf.browser.fromPixels consegue ler os pixels
+     independentemente de o elemento estar ou não inserido no DOM. */
+  const canvas=await blobToCanvas(blob);
+  const predictions=await model.classify(canvas);
+  console.log('[nsfwjs] Classificação:',predictions.map(p=>`${p.className}:${(p.probability*100).toFixed(1)}%`).join(', '));
+  const blocked=new Set(['Porn','Hentai','Sexy']);
+  const hit=predictions.find(p=>blocked.has(p.className)&&Number(p.probability)>=0.4);
+  if(hit){
+    console.warn('[nsfwjs] Imagem bloqueada:',hit.className,hit.probability);
+    throw new Error('Imagem barrada pela moderação automática.');
   }
 }
 function destroyCropper(){
