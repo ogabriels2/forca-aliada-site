@@ -1241,9 +1241,9 @@
   }
 
   .fa-chat-has-mobile-nav .fa-chat-panel {
-    inset: 0;
+    inset: 0 0 var(--fa-chat-mobile-nav-height, 0px) 0;
     width: 100vw;
-    height: 100dvh;
+    height: calc(100dvh - var(--fa-chat-mobile-nav-height, 0px));
   }
 
   .fa-chat-panel.is-open {
@@ -1535,7 +1535,20 @@
   #fa-chat-root .fa-chat-compose-wrap {
     position: relative;
     bottom: auto;
-    padding-bottom: 0;
+    padding-bottom: var(--fc-keyboard-offset, 0px);
+  }
+
+  /* Prevent iOS zoom on input focus (font-size must be >= 16px) */
+  #fa-chat-root .fa-chat-compose-pill textarea {
+    font-size: 16px;
+  }
+
+  #fa-chat-root .fa-chat-search input {
+    font-size: 16px;
+  }
+
+  #fa-chat-root .fa-chat-group-name {
+    font-size: 16px;
   }
 
   #fa-chat-root .fa-chat-compose {

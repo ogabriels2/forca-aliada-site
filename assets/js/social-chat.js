@@ -307,8 +307,10 @@
     const chatButton = nav.querySelector('#mobile-chat-btn');
     if (!chatButton) return;
     if (state.open) {
+      // Marca só o botão do chat como ativo; todos os outros ficam inativos
       buttons.forEach(btn => btn.classList.toggle('is-active', btn === chatButton));
     } else {
+      // Chat fechado: remove is-active do botão do chat (a nav cuida dos outros)
       chatButton.classList.remove('is-active');
     }
   }
@@ -320,7 +322,14 @@
   }
 
   function updateConversationList() {
+    const panel = root.querySelector('.fa-chat-panel');
     const list = root.querySelector('.fa-chat-list');
+    // Sync tab active classes
+    if (panel) {
+      panel.querySelectorAll('[data-chat-tab]').forEach(btn => {
+        btn.classList.toggle('is-active', btn.dataset.chatTab === state.tab);
+      });
+    }
     if (!list || state.current) return;
     if (state.tab === 'conversations') list.innerHTML = renderConversations();
     if (state.tab === 'groups') list.innerHTML = renderGroups();
@@ -865,6 +874,7 @@
 
   async function openPanel() {
     state.open = true;
+    state.tab = 'conversations'; // sempre começa na aba Conversas ao abrir
     state.error = '';
     render();
     state.loadingConversations = !state.conversations.length;
@@ -888,6 +898,9 @@
 
   function closePanel() {
     state.open = false;
+    // Reset any keyboard-avoidance inline styles
+    const panel = root.querySelector('.fa-chat-panel');
+    if (panel) { panel.style.height = ''; panel.style.top = ''; }
     render();
   }
 
@@ -1206,6 +1219,7 @@
         updateConversationList();
       } else if (profile) {
         const target = `id:${profile.dataset.chatProfile}`;
+        closePanel(); // fecha o chat antes de navegar
         if (typeof window.navigateProfile === 'function') window.navigateProfile(target);
         else location.href = `profile.html?id=${encodeURIComponent(target)}`;
       } else if (newGroup) {
@@ -1289,6 +1303,52 @@
     if (navButton.id === 'mobile-chat-btn') return;
     if (state.open) closePanel();
   }, true);
+
+  // ── Mobile keyboard: keep compose bar visible above the keyboard ──
+  // Uses visualViewport API (Chrome/Safari 13+) to detect when the soft
+  // keyboard pushes up the visible area, then shifts the panel height
+  // so the compose bar always stays just above the keyboard.
+  (function setupKeyboardAvoidance() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    let rafId = null;
+    function onViewportChange() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const panel = root.querySelector('.fa-chat-panel');
+        if (!panel || !state.open) return;
+
+        // Only apply on mobile (panel is full-screen)
+        if (window.innerWidth > 768) return;
+
+        // How much the keyboard has pushed the viewport up
+        const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        const navHeight = parseInt(root.style.getPropertyValue('--fa-chat-mobile-nav-height') || '0', 10);
+
+        if (keyboardHeight > 20) {
+          // Keyboard is open: shrink the panel so compose is visible above keyboard
+          // Subtract navHeight because bottom is already offset by nav
+          const offset = Math.max(0, keyboardHeight - navHeight);
+          panel.style.height = `calc(${vv.height}px - var(--fa-chat-mobile-nav-height, 0px))`;
+          panel.style.top = `${vv.offsetTop}px`;
+          // Pass offset to CSS for compose padding
+          root.style.setProperty('--fc-keyboard-offset', '0px');
+        } else {
+          // Keyboard closed: restore full-screen panel
+          panel.style.height = '';
+          panel.style.top = '';
+          root.style.setProperty('--fc-keyboard-offset', '0px');
+          // Scroll to bottom after keyboard dismissal
+          const msgs = panel.querySelector('[data-chat-messages]');
+          if (msgs) msgs.scrollTop = msgs.scrollHeight;
+        }
+      });
+    }
+
+    vv.addEventListener('resize', onViewportChange, { passive: true });
+    vv.addEventListener('scroll', onViewportChange, { passive: true });
+  })();
 
   window.FAChat = {
     open: openPanel,
