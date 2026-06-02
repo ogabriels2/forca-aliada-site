@@ -37,6 +37,7 @@
     loadingFriends: false,
     loadingMessages: false,
     warmed: false,
+    pendingDraft: '',
   };
 
   // [FIX] Cache key helper
@@ -118,8 +119,13 @@
   // [FIX] Stable render: only rebuild full DOM when switching major states.
   // When the panel is open and we're just updating sub-sections, use targeted DOM updates.
   // This eliminates the panel flicker caused by full innerHTML replacement every poll cycle.
+  function currentViewKey() {
+    return state.current ? `${state.currentKind}:${state.current.id}` : 'inbox';
+  }
+
   function render() {
     syncFabPosition();
+    syncBodyChatState();
 
     const isOpen = state.open;
     const hasCurrent = Boolean(state.current);
@@ -146,41 +152,26 @@
     }
 
     // Toggle open class without rebuilding
-    if (isOpen !== panel.classList.contains('is-open')) {
-      panel.classList.toggle('is-open', isOpen);
-    }
+    panel.classList.toggle('is-open', isOpen);
+    panel.classList.toggle('has-thread', hasCurrent);
+    panel.classList.toggle('has-inbox', !hasCurrent);
 
     if (!isOpen) return;
 
     // Determine if we need to switch between inbox/thread views
-    const isInThread = Boolean(panel.querySelector('.fa-chat-thread'));
-    if (hasCurrent !== isInThread) {
-      // Major view switch: rebuild panel content (but keep launcher)
-      panel.innerHTML = hasCurrent ? renderThread() : renderInbox();
+    const viewKey = currentViewKey();
+    if (panel.dataset.viewKey !== viewKey || !panel.querySelector('.fa-chat-app')) {
+      panel.dataset.viewKey = viewKey;
+      panel.innerHTML = renderChatApp();
       attachComposeAutoResize();
       if (hasCurrent) updateScroll();
       return;
     }
 
-    // Same view: do targeted updates only
-    if (!hasCurrent) {
-      // Inbox: update list content only
-      const list = panel.querySelector('.fa-chat-list');
-      if (list) {
-        if (state.tab === 'conversations') list.innerHTML = renderConversations();
-        else if (state.tab === 'groups') list.innerHTML = renderGroups();
-        else if (state.tab === 'friends') list.innerHTML = renderFriends();
-      }
-      // Update tab active states
-      panel.querySelectorAll('[data-chat-tab]').forEach(btn => {
-        btn.classList.toggle('is-active', btn.dataset.chatTab === state.tab);
-      });
-    } else {
-      // Thread: update messages list only (compose stays untouched — no focus loss)
+    updateSidebar();
+    if (hasCurrent) {
       const msgList = panel.querySelector('[data-chat-messages]');
-      if (msgList) {
-        msgList.innerHTML = renderMessagesContent();
-      }
+      if (msgList) msgList.innerHTML = renderMessagesContent();
     }
   }
 
@@ -190,16 +181,58 @@
         ${icons.chat}
         ${state.unread ? `<span class="fa-chat-badge">${state.unread > 99 ? '99+' : esc(state.unread)}</span>` : ''}
       </button>
-      <section class="fa-chat-panel ${state.open ? 'is-open' : ''}" aria-label="Mensagens diretas">
+      <section class="fa-chat-panel ${state.open ? 'is-open' : ''} ${state.current ? 'has-thread' : 'has-inbox'}" data-view-key="${esc(currentViewKey())}" aria-label="Mensagens diretas">
+        ${renderChatApp()}
+      </section>`;
+  }
+
+  function renderChatApp() {
+    return `
+      <div class="fa-chat-app">
+        <aside class="fa-chat-sidebar" aria-label="Conversas">
+          ${renderSidebar()}
+        </aside>
+        <section class="fa-chat-stage" aria-label="${state.current ? 'Conversa aberta' : 'Nenhuma conversa selecionada'}">
+          ${state.current ? renderThread() : renderThreadEmpty()}
+        </section>
+      </div>`;
+  }
+
+  function renderSidebar() {
+    return `
         <div class="fa-chat-top">
           <div class="fa-chat-title">
-            <span class="fa-chat-peer-av" style="display:grid;place-items:center">${icons.chat}</span>
-            <div><strong>Mensagens</strong><span>${state.current ? 'Conversa direta' : 'Amigos e comunidade'}</span></div>
+            <span class="fa-chat-peer-av">${icons.chat}</span>
+            <div><strong>Mensagens</strong><span>${state.conversations.length || state.groups.length ? 'Conversas e grupos' : 'Amigos e comunidade'}</span></div>
           </div>
           <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
         </div>
-        ${state.current ? renderThread() : renderInbox()}
-      </section>`;
+        ${renderInbox()}`;
+  }
+
+  function updateSidebar() {
+    const panel = root.querySelector('.fa-chat-panel');
+    if (!panel) return;
+    panel.classList.toggle('has-thread', Boolean(state.current));
+    panel.classList.toggle('has-inbox', !state.current);
+    const list = panel.querySelector('.fa-chat-list');
+    if (list) {
+      if (state.tab === 'conversations') list.innerHTML = renderConversations();
+      else if (state.tab === 'groups') list.innerHTML = renderGroups();
+      else if (state.tab === 'friends') list.innerHTML = renderFriends();
+    }
+    panel.querySelectorAll('[data-chat-tab]').forEach(btn => {
+      btn.classList.toggle('is-active', btn.dataset.chatTab === state.tab);
+    });
+  }
+
+  function renderThreadEmpty() {
+    return `
+      <div class="fa-chat-empty-stage">
+        <span class="fa-chat-empty-icon">${icons.chat}</span>
+        <strong>Escolha uma conversa</strong>
+        <p>Abra um chat recente, busque alguem ou compartilhe uma postagem direto para uma pessoa.</p>
+      </div>`;
   }
 
   function _updateBadgeInLauncher(launcher) {
@@ -221,6 +254,10 @@
     if (!launcher) { render(); return; }
     launcher.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     _updateBadgeInLauncher(launcher);
+  }
+
+  function syncBodyChatState() {
+    document.body.classList.toggle('fa-chat-open', Boolean(state.open));
   }
 
   function syncFabPosition() {
@@ -276,15 +313,16 @@
     // Show/update inline error banner without touching messages
     let errBanner = list.querySelector('.fa-chat-inline-error');
     if (state.error) {
-      const errHTML = `<div class="fa-chat-inline-error"><strong>Falha no chat</strong>${esc(state.error)}</div>`;
+      const errHTML = `<div class="fa-chat-inline-error"><strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button></div>`;
       if (!errBanner) list.insertAdjacentHTML('afterbegin', errHTML);
-      else errBanner.innerHTML = `<strong>Falha no chat</strong>${esc(state.error)}`;
+      else errBanner.innerHTML = `<strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button>`;
     } else {
       errBanner?.remove();
     }
 
     // Remove empty-state placeholder if messages now exist
     list.querySelector('.fa-chat-empty')?.remove();
+    list.querySelector('.fa-chat-message-loading')?.remove();
 
     // --- Differential append: only insert truly new messages ---
     // Build a set of IDs already rendered (data-msg-id) and map tmp→real merges
@@ -452,7 +490,7 @@
       return !term || name.includes(term) || handle.includes(term);
     });
 
-    if (state.error) return `<div class="fa-chat-error"><strong>Chat indisponivel</strong>${esc(state.error)}</div>`;
+    if (state.error && !rows.length) return `<div class="fa-chat-error"><strong>Chat indisponivel</strong>${esc(state.error)}</div>`;
     if (state.loadingConversations && !rows.length) return loadingRows();
     if (!rows.length) {
       return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para comecar.</div>';
@@ -578,13 +616,14 @@
             : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'"/>${onlineDot}</span>`
           }
           <div><strong>${esc(name)}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${isOnline ? ' · online' : conv.is_friend ? ' · amigo' : ''}`}</small></div>
-          ${isGroup ? '<span></span>' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>`}
+          ${isGroup ? '' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>`}
+          <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
         </div>
         <div class="fa-chat-messages" data-chat-messages>
           ${renderMessagesContent()}
         </div>
         <div class="fa-chat-compose-wrap">
-          <div data-chat-char-counter style="text-align:right;font-size:10px;padding:0 14px 2px;opacity:0;transition:opacity 0.15s;color:var(--fa-chat-muted,#888)"></div>
+          <div data-chat-char-counter></div>
           <form class="fa-chat-compose" data-chat-form>
             <div class="fa-chat-compose-pill">
               <textarea data-chat-input maxlength="500" rows="1" placeholder="Mensagem..." aria-label="Mensagem"></textarea>
@@ -596,9 +635,9 @@
   }
 
   function renderMessagesContent() {
-    const error = state.error ? `<div class="fa-chat-inline-error"><strong>Falha no chat</strong>${esc(state.error)}</div>` : '';
+    const error = state.error ? `<div class="fa-chat-inline-error"><strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button></div>` : '';
     if (state.loadingMessages) {
-      return `<div class="fa-chat-message-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--fa-chat-muted,#888)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="animation:faChatSpin .8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span style="font-size:12px;font-weight:600">Carregando mensagens...</span></div>`;
+      return `<div class="fa-chat-message-loading"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>Carregando...</span></div>`;
     }
     if (!state.messages.length) {
       return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
@@ -684,6 +723,17 @@
     });
   }
 
+  function applyPendingDraft() {
+    const draft = String(state.pendingDraft || '').trim();
+    if (!draft) return;
+    const textarea = root.querySelector('[data-chat-input]');
+    if (!textarea) return;
+    textarea.value = draft.slice(0, 500);
+    state.pendingDraft = '';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.focus();
+  }
+
   async function ensureMe() {
     if (state.me) return state.me;
     state.me = await api('/api/me');
@@ -701,13 +751,16 @@
   }
 
   async function loadConversations() {
-    state.error = '';
     try {
       const data = await api('/api/me/conversations?limit=30');
       state.conversations = Array.isArray(data.rows) ? data.rows : [];
       recalcUnread();
     } catch (e) {
-      state.error = e.message || 'Nao foi possivel carregar.';
+      // Só expõe o erro no inbox (sem conversa aberta).
+      // Quando há uma thread aberta o erro de lista não deve poluir o chat.
+      if (!state.current) {
+        state.error = e.message || 'Nao foi possivel carregar.';
+      }
     }
   }
 
@@ -753,14 +806,7 @@
   async function openPanel() {
     state.open = true;
     state.error = '';
-    // Show panel immediately using partial DOM update (no flicker)
-    const panel = root.querySelector('.fa-chat-panel');
-    if (panel) {
-      panel.classList.add('is-open');
-      root.querySelector('[data-chat-toggle]')?.setAttribute('aria-expanded', 'true');
-    } else {
-      render();
-    }
+    render();
     state.loadingConversations = !state.conversations.length;
     state.loadingGroups = !state.groups.length;
     state.loadingFriends = !state.friends.length;
@@ -782,13 +828,7 @@
 
   function closePanel() {
     state.open = false;
-    const panel = root.querySelector('.fa-chat-panel');
-    if (panel) {
-      panel.classList.remove('is-open');
-      root.querySelector('[data-chat-toggle]')?.setAttribute('aria-expanded', 'false');
-    } else {
-      render();
-    }
+    render();
   }
 
   async function openConversation(conv) {
@@ -802,15 +842,8 @@
     state.loadingMessages = cached.length === 0; // only show spinner if truly no history
     state.error = '';
 
-    // Switch to thread view
-    const panel = root.querySelector('.fa-chat-panel');
-    if (panel) {
-      panel.innerHTML = renderThread();
-      attachComposeAutoResize();
-      if (cached.length) updateScroll();
-    } else {
-      render();
-    }
+    render();
+    if (cached.length) updateScroll();
 
     try {
       let data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80`);
@@ -822,18 +855,22 @@
       }
       state.messages = rows;
       state.loadingMessages = false;
+      state.error = ''; // mensagens carregadas com sucesso — limpa qualquer erro anterior
       // Update cache
       if (k) state._msgCache[k] = rows.slice();
 
       conv.unread_count = 0;
-      await loadConversations();
+      // loadConversations pode falhar sem afetar o chat aberto
+      try {
+        await loadConversations();
+      } catch { /* silencioso — não afeta a thread */ }
       state.current = state.conversations.find(item => Number(item.id) === Number(conv.id)) || conv;
 
       updateMessagesList({ scroll: true });
     } catch (e) {
       state.messages = cached; // fallback to cache on error
       state.loadingMessages = false;
-      state.error = e.message;
+      state.error = (!cached.length && !conv.last_message_id) ? '' : (e.message || 'Erro ao carregar mensagens');
       updateMessagesList({ scroll: false });
     }
   }
@@ -849,15 +886,8 @@
     state.loadingMessages = cached.length === 0;
     state.error = '';
 
-    // Switch to thread view
-    const panel = root.querySelector('.fa-chat-panel');
-    if (panel) {
-      panel.innerHTML = renderThread();
-      attachComposeAutoResize();
-      if (cached.length) updateScroll();
-    } else {
-      render();
-    }
+    render();
+    if (cached.length) updateScroll();
 
     try {
       let data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=80`);
@@ -869,17 +899,21 @@
       }
       state.messages = rows;
       state.loadingMessages = false;
+      state.error = ''; // mensagens carregadas com sucesso — limpa erro anterior
       if (k) state._msgCache[k] = rows.slice();
 
       group.unread_count = 0;
-      await loadGroups();
+      // loadGroups pode falhar sem afetar o chat aberto
+      try {
+        await loadGroups();
+      } catch { /* silencioso */ }
       state.current = state.groups.find(item => Number(item.id) === Number(group.id)) || group;
 
       updateMessagesList({ scroll: true });
     } catch (e) {
       state.messages = cached;
       state.loadingMessages = false;
-      state.error = e.message;
+      state.error = (!cached.length && !group.last_message_id) ? '' : (e.message || 'Erro ao carregar mensagens');
       updateMessagesList({ scroll: false });
     }
   }
@@ -927,18 +961,17 @@
 
   async function openWithUser(user) {
     if (!user?.id) return;
+    const draft = typeof arguments[1] === 'string'
+      ? arguments[1]
+      : String(arguments[1]?.draft || '');
+    if (draft) state.pendingDraft = draft;
     state.open = true;
+    syncBodyChatState();
     state.current = null;
     state.currentKind = null;
     state.error = '';
     state.loadingConversations = true;
-    // Show panel
-    const panel = root.querySelector('.fa-chat-panel');
-    if (panel) {
-      panel.classList.add('is-open');
-    } else {
-      render();
-    }
+    render();
     try {
       await ensureMe();
       const conv = await api('/api/me/conversations', {
@@ -947,6 +980,7 @@
       });
       await loadConversations();
       await openConversation(conv);
+      applyPendingDraft();
     } finally {
       state.loadingConversations = false;
     }
@@ -1060,12 +1094,17 @@
     const newGroup = event.target.closest('[data-chat-new-group]');
     const cancelGroup = event.target.closest('[data-chat-cancel-group]');
     const memberToggle = event.target.closest('[data-chat-member-toggle]');
+    const reload = event.target.closest('[data-chat-reload]');
 
     try {
       if (toggle) {
         state.open ? closePanel() : await openPanel();
       } else if (close) {
         closePanel();
+      } else if (reload) {
+        if (!state.current) return;
+        if (state.currentKind === 'group') await openGroupConversation(state.current);
+        else await openConversation(state.current);
       } else if (tab) {
         state.tab = tab.dataset.chatTab;
         state.search = '';
@@ -1101,11 +1140,7 @@
         state.current = null;
         state.currentKind = null;
         state.messages = [];
-        // [FIX] Switch back to inbox without full render — just replace panel content
-        const panel = root.querySelector('.fa-chat-panel');
-        if (panel) {
-          panel.innerHTML = renderInbox();
-        }
+        render();
         if (state.tab === 'groups') await loadGroups();
         else await loadConversations();
         updateConversationList();
@@ -1155,7 +1190,7 @@
         const show = chatInput.value.length > 440;
         counter.textContent = show ? `${remaining} restantes` : '';
         counter.style.opacity = show ? '1' : '0';
-        counter.style.color = remaining < 20 ? 'var(--fa-chat-danger,#e55)' : 'var(--fa-chat-muted,#888)';
+        counter.style.color = remaining < 20 ? 'var(--fc-red,#ff5f52)' : 'var(--fc-ink-3,#7a756a)';
       }
       return;
     }
@@ -1191,6 +1226,7 @@
     open: openPanel,
     close: closePanel,
     openWithUser,
+    shareWithUser: async (user, text) => openWithUser(user, text),
     refresh: async () => {
       await Promise.all([loadUnread(), loadConversations(), loadGroups(), loadFriends()]);
       updateConversationList();
@@ -1225,17 +1261,22 @@
     setTimeout(() => warmChat(), 1400);
   }
   let _chatPollFailures = 0;
+  let _lastPoll = 0;
   setInterval(async () => {
+    const now = Date.now();
+    // In active thread: poll every 8s. Background unread: poll every 20s. Inbox open: 10s.
+    const interval = state.current ? 8000 : (!state.open ? 20000 : 10000);
+    if (now - _lastPoll < interval) return;
     if (document.hidden && !state.current) return;
-    if (_chatPollFailures >= 2 && _chatPollFailures % 2 !== 0) {
-      _chatPollFailures++;
-      return;
+    if (_chatPollFailures >= 3) {
+      // Back-off: skip every other tick after 3 failures
+      if (_chatPollFailures % 2 !== 0) { _chatPollFailures++; return; }
     }
+    _lastPoll = now;
     try {
       if (!state.open) {
         await loadUnread();
       } else if (state.current) {
-        // [FIX] Removed draft-block: polling continues in background even while typing
         await refreshCurrentMessages();
       } else if (state.open) {
         if (state.tab === 'groups') await loadGroups();
@@ -1243,9 +1284,9 @@
         updateConversationList();
       }
       _chatPollFailures = 0;
-    } catch (e) {
+    } catch {
       _chatPollFailures++;
-      // Don't overwrite state.error on poll failures — they're silent
+      // Poll failures are silent — don't overwrite UI error state
     }
-  }, 25000);
+  }, 2000);
 })();
