@@ -1672,6 +1672,8 @@ footer { display: none; }
         </div>
       </div>
       <!-- ── /Moderação ──────────────────────────────────────────────────── -->
+
+      <div class="card" id="audit-card" style="display:none;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
           <h3 style="margin:0;font-size:17px;font-weight:600;">Logs de Auditoria</h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -4691,11 +4693,8 @@ async function submitAdjustCapital() {
 // MODERAÇÃO — Fila de IA e Denúncias
 // ─────────────────────────────────────────────────────────────────────────────
 const _mod = {
-  // estado da aba IA
-  ai: { page: 0, limit: 15, status: 'pending', total: 0, loading: false },
-  // estado da aba denúncias
+  ai:      { page: 0, limit: 15, status: 'pending', total: 0, loading: false },
   reports: { page: 0, limit: 15, status: 'pending', total: 0, loading: false },
-  // aba activa
   activeTab: 'ai',
 };
 
@@ -4715,13 +4714,12 @@ function modSwitchTab(tab) {
   _mod.activeTab = tab;
   document.getElementById('mod-tab-ai').classList.toggle('active', tab === 'ai');
   document.getElementById('mod-tab-reports').classList.toggle('active', tab === 'reports');
-  document.getElementById('mod-panel-ai').style.display     = tab === 'ai'      ? '' : 'none';
+  document.getElementById('mod-panel-ai').style.display      = tab === 'ai'      ? '' : 'none';
   document.getElementById('mod-panel-reports').style.display = tab === 'reports' ? '' : 'none';
 }
 
 function modSetStatus(btn, tab) {
-  const bar = btn.closest('.mod-filter-bar');
-  bar.querySelectorAll('.mod-chip').forEach(c => c.classList.remove('active'));
+  btn.closest('.mod-filter-bar').querySelectorAll('.mod-chip').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
   _mod[tab].status = btn.dataset.modStatus;
   _mod[tab].page   = 0;
@@ -4739,7 +4737,7 @@ function modLoadMore(tab) {
 async function loadModerationQueue(reset = true) {
   if (_mod.ai.loading) return;
   _mod.ai.loading = true;
-  const list = document.getElementById('mod-list-ai');
+  const list    = document.getElementById('mod-list-ai');
   const moreBtn = document.getElementById('mod-more-ai');
   if (reset) { list.innerHTML = '<div class="mod-empty">A carregar…</div>'; _mod.ai.page = 0; }
   try {
@@ -4751,23 +4749,17 @@ async function loadModerationQueue(reset = true) {
     if (!res.ok) throw new Error('Erro ' + res.status);
     const data = await res.json();
     _mod.ai.total = data.total || 0;
-
     if (reset) list.innerHTML = '';
-
     if (!data.rows.length && reset) {
       list.innerHTML = '<div class="mod-empty">✅ Nenhum item para revisar nesta categoria.</div>';
       moreBtn.style.display = 'none';
       _modUpdateBadge('ai', 0);
       return;
     }
-
     data.rows.forEach(item => list.appendChild(_modBuildAIItem(item)));
-
     const loaded = (_mod.ai.page * limit) + data.rows.length;
     moreBtn.style.display = loaded < _mod.ai.total ? 'block' : 'none';
-
     if (status === 'pending') _modUpdateBadge('ai', _mod.ai.total);
-
   } catch (e) {
     if (reset) list.innerHTML = `<div class="mod-empty" style="color:var(--danger)">Erro ao carregar: ${e.message}</div>`;
   } finally {
@@ -4780,42 +4772,33 @@ function _modBuildAIItem(item) {
   wrap.className = 'mod-item';
   wrap.dataset.modId = item.id;
 
-  const isProfile = item.content_type === 'profile_image_user';
+  const isProfile  = item.content_type === 'profile_image_user';
   const typeLabel  = isProfile ? 'Foto de Perfil' : 'Post com Imagem';
-  const typeClass  = 'ai';
-
-  const avatarSrc  = item.user_photo || `https://mc-heads.net/head/${encodeURIComponent(item.user_minecraft || item.user_username || 'Steve')}/36`;
+  const avatarSrc  = item.user_photo
+    || `https://mc-heads.net/head/${encodeURIComponent(item.user_minecraft || item.user_username || 'Steve')}/36`;
   const username   = item.user_username || '—';
   const mcName     = item.user_minecraft ? ` (${item.user_minecraft})` : '';
   const timeAgo    = _modTimeAgo(item.created_at);
+
   const reviewedMsg = item.status !== 'pending'
-    ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">
-         ${item.status === 'removed' ? '🗑 Removido' : '✅ Aprovado'} por ${item.reviewed_by_username || '?'}
-       </span>`
+    ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${item.status === 'removed' ? '🗑 Removido' : '✅ Aprovado'} por ${_esc(item.reviewed_by_username || '?')}</span>`
     : '';
 
-  // Imagens a mostrar
   let imagesHtml = '';
   if (!isProfile) {
     const urls = Array.isArray(item.post_media_urls) ? item.post_media_urls : [];
-    if (urls.length) {
-      imagesHtml = `<div class="mod-images">${urls.map(u =>
-        `<img src="${_esc(u)}" alt="imagem do post" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
-      ).join('')}</div>`;
-    }
+    if (urls.length) imagesHtml = `<div class="mod-images">${urls.map(u =>
+      `<img src="${_esc(u)}" alt="imagem" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
+    ).join('')}</div>`;
   } else {
     const imgs = [item.profile_avatar, item.profile_cover].filter(Boolean);
-    if (imgs.length) {
-      imagesHtml = `<div class="mod-images">${imgs.map(u =>
-        `<img src="${_esc(u)}" alt="foto de perfil" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
-      ).join('')}</div>`;
-    }
+    if (imgs.length) imagesHtml = `<div class="mod-images">${imgs.map(u =>
+      `<img src="${_esc(u)}" alt="foto" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
+    ).join('')}</div>`;
   }
 
   const postContent = !isProfile && item.post_content
     ? `<p class="mod-item-text">${_esc(item.post_content)}</p>` : '';
-
-  const reasonLabel = _modReasonLabel(item.reason);
 
   const actionBtns = item.status === 'pending'
     ? `<button class="mod-btn-ok" onclick="modActionAI(${item.id},'approve',this)">✓ Aprovar</button>
@@ -4824,16 +4807,17 @@ function _modBuildAIItem(item) {
 
   wrap.innerHTML = `
     <div class="mod-item-header">
-      <img class="mod-avatar" src="${avatarSrc}" alt="${_esc(username)}" onerror="this.src='https://mc-heads.net/head/Steve/36'">
+      <img class="mod-avatar" src="${avatarSrc}" alt="${_esc(username)}"
+           onerror="this.src='https://mc-heads.net/head/Steve/36'">
       <div class="mod-item-meta">
         <strong>${_esc(username)}${_esc(mcName)}</strong>
-        <small>${typeLabel} · ${timeAgo}</small>
+        <small>${_esc(typeLabel)} · ${timeAgo}</small>
       </div>
-      <span class="mod-type-badge ${typeClass}">IA</span>
+      <span class="mod-type-badge ai">IA</span>
       ${reviewedMsg}
     </div>
     <div class="mod-item-body">
-      <span class="mod-reason-pill">⚠️ ${reasonLabel}</span>
+      <span class="mod-reason-pill">⚠️ ${_esc(_modReasonLabel(item.reason))}</span>
       ${imagesHtml}
       ${postContent}
       <div class="mod-actions">${actionBtns}</div>
@@ -4855,7 +4839,6 @@ async function modActionAI(id, action, btn) {
     });
     if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro'); }
     showToast(action === 'approve' ? '✅ Conteúdo aprovado.' : '🗑 Conteúdo removido.');
-    // Recarrega a lista para reflectir o novo estado
     loadModerationQueue(true);
   } catch (e) {
     showToast('Erro: ' + e.message, 'error');
@@ -4864,11 +4847,11 @@ async function modActionAI(id, action, btn) {
   }
 }
 
-// ── Denúncias ────────────────────────────────────────────────────────────────
+// ── Denúncias ─────────────────────────────────────────────────────────────────
 async function loadModerationReports(reset = true) {
   if (_mod.reports.loading) return;
   _mod.reports.loading = true;
-  const list = document.getElementById('mod-list-reports');
+  const list    = document.getElementById('mod-list-reports');
   const moreBtn = document.getElementById('mod-more-reports');
   if (reset) { list.innerHTML = '<div class="mod-empty">A carregar…</div>'; _mod.reports.page = 0; }
   try {
@@ -4880,23 +4863,17 @@ async function loadModerationReports(reset = true) {
     if (!res.ok) throw new Error('Erro ' + res.status);
     const data = await res.json();
     _mod.reports.total = data.total || data.rows?.length || 0;
-
     if (reset) list.innerHTML = '';
-
     if (!data.rows?.length && reset) {
       list.innerHTML = '<div class="mod-empty">✅ Nenhuma denúncia nesta categoria.</div>';
       moreBtn.style.display = 'none';
       _modUpdateBadge('reports', 0);
       return;
     }
-
     data.rows.forEach(item => list.appendChild(_modBuildReportItem(item)));
-
     const loaded = (_mod.reports.page * limit) + data.rows.length;
     moreBtn.style.display = loaded < _mod.reports.total ? 'block' : 'none';
-
     if (status === 'pending') _modUpdateBadge('reports', data.rows.length);
-
   } catch (e) {
     if (reset) list.innerHTML = `<div class="mod-empty" style="color:var(--danger)">Erro ao carregar: ${e.message}</div>`;
   } finally {
@@ -4909,9 +4886,8 @@ function _modBuildReportItem(item) {
   wrap.className = 'mod-item';
   wrap.dataset.reportId = item.id;
 
-  const timeAgo     = _modTimeAgo(item.created_at);
-  const typeIcon    = item.content_type === 'post' ? '📝' : item.content_type === 'comment' ? '💬' : '👤';
-  const typeLabel   = item.content_type === 'post' ? 'Post' : item.content_type === 'comment' ? 'Comentário' : 'Utilizador';
+  const typeIcon  = item.content_type === 'post' ? '📝' : item.content_type === 'comment' ? '💬' : '👤';
+  const typeLabel = item.content_type === 'post' ? 'Post' : item.content_type === 'comment' ? 'Comentário' : 'Utilizador';
   const statusLabel = {
     pending:          '🕐 Pendente',
     reviewed_kept:    '✅ Mantido',
@@ -4920,11 +4896,11 @@ function _modBuildReportItem(item) {
   }[item.status] || item.status;
 
   const reviewedMsg = item.status !== 'pending'
-    ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel} · ${item.reviewer_username || '?'}</span>`
+    ? `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel} · ${_esc(item.reviewer_username || '?')}</span>`
     : `<span style="font-size:11px;color:var(--ink-3);margin-left:auto;">${statusLabel}</span>`;
 
-  const reasonLabel = _modReasonLabel(item.reason);
-  const descText    = item.description ? `<p class="mod-item-text" style="font-style:italic;">"${_esc(item.description)}"</p>` : '';
+  const descText = item.description
+    ? `<p class="mod-item-text" style="font-style:italic;">"${_esc(item.description)}"</p>` : '';
 
   const actionBtns = item.status === 'pending'
     ? `<button class="mod-btn-ok" onclick="modActionReport(${item.id},'dismiss',this)">↩ Dispensar</button>
@@ -4936,14 +4912,14 @@ function _modBuildReportItem(item) {
     <div class="mod-item-header">
       <span style="font-size:22px;line-height:1;">${typeIcon}</span>
       <div class="mod-item-meta">
-        <strong>${typeLabel} #${item.content_id}</strong>
-        <small>Denunciado por <b>${_esc(item.reporter_username || '?')}</b> · ${timeAgo}</small>
+        <strong>${_esc(typeLabel)} #${item.content_id}</strong>
+        <small>Denunciado por <b>${_esc(item.reporter_username || '?')}</b> · ${_modTimeAgo(item.created_at)}</small>
       </div>
       <span class="mod-type-badge report">Denúncia</span>
       ${reviewedMsg}
     </div>
     <div class="mod-item-body">
-      <span class="mod-reason-pill">🚩 ${reasonLabel}</span>
+      <span class="mod-reason-pill">🚩 ${_esc(_modReasonLabel(item.reason))}</span>
       ${descText}
       <div class="mod-actions">${actionBtns}</div>
     </div>`;
@@ -4978,17 +4954,14 @@ function _modUpdateBadge(tab, count) {
   const badgeAI      = document.getElementById('mod-badge-ai');
   const badgeReports = document.getElementById('mod-badge-reports');
   const badgeNav     = document.getElementById('mod-nav-badge');
-
   if (tab === 'ai' && badgeAI) {
-    badgeAI.textContent     = count;
-    badgeAI.style.display   = count > 0 ? 'inline-flex' : 'none';
+    badgeAI.textContent   = count;
+    badgeAI.style.display = count > 0 ? 'inline-flex' : 'none';
   }
   if (tab === 'reports' && badgeReports) {
     badgeReports.textContent   = count;
     badgeReports.style.display = count > 0 ? 'inline-flex' : 'none';
   }
-
-  // Badge global na tab de navegação: soma IA + denúncias pendentes
   const totalPending = (parseInt(badgeAI?.textContent || '0') || 0)
                      + (parseInt(badgeReports?.textContent || '0') || 0);
   if (badgeNav) {
@@ -5005,32 +4978,27 @@ function _modTimeAgo(dateStr) {
   if (m < 60) return `${m}m atrás`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h atrás`;
-  const d = Math.floor(h / 24);
-  return `${d}d atrás`;
+  return `${Math.floor(h / 24)}d atrás`;
 }
 
 function _modReasonLabel(reason) {
-  const labels = {
-    reports_threshold:  'Atingiu limiar de denúncias',
-    vision_suspicious:  'Imagem sinalizada pela IA',
-    spam:               'Spam',
-    hate:               'Discurso de ódio',
-    nsfw:               'Conteúdo inapropriado',
-    harassment:         'Assédio',
-    misinformation:     'Desinformação',
-    other:              'Outro motivo',
-  };
-  return labels[reason] || reason || 'Motivo não especificado';
+  return ({
+    reports_threshold: 'Atingiu limiar de denúncias',
+    vision_suspicious: 'Imagem sinalizada pela IA',
+    spam:              'Spam',
+    hate:              'Discurso de ódio',
+    nsfw:              'Conteúdo inapropriado',
+    harassment:        'Assédio',
+    misinformation:    'Desinformação',
+    other:             'Outro motivo',
+  })[reason] || reason || 'Motivo não especificado';
 }
 
 function _esc(str) {
-  if (!str) return '';
+  if (str == null) return '';
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // /MODERAÇÃO
