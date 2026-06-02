@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/social-chat.css?v=chat5-20260602">
+<link rel="stylesheet" href="assets/css/social-chat.css?v=chat7-20260602">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -201,6 +201,7 @@ img{display:block}
 .tbtn svg{width:15px;height:15px}
 .tbtn:hover{transform:translateY(-1px);border-color:var(--line-strong);color:var(--accent);background:var(--surface-solid)}
 .notif-btn{width:34px;padding:0;position:relative}
+#desktop-chat-btn{padding:0 11px 0 9px;position:relative;gap:5px}
 .notif-dot{
   position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;
   padding:0 3.5px;border-radius:999px;background:var(--danger);color:#fff;
@@ -3017,6 +3018,7 @@ body::after{
   }
   .topbar .top-search,
   .topbar #theme-btn,
+  .topbar #desktop-chat-btn,
   .topbar #mobile-menu-btn{
     display:none!important;
   }
@@ -3091,6 +3093,10 @@ body::after{
     <nav class="topnav" aria-label="Ações">
       <button class="tbtn mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <button class="tbtn" id="desktop-chat-btn" aria-label="Mensagens">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+        <span class="hide-sm">Chat</span>
       </button>
       <div class="notif-wrap">
         <button class="notif-btn tbtn" id="notif-btn" aria-label="Notificações" aria-expanded="false" aria-haspopup="true">
@@ -5602,7 +5608,7 @@ function commentsHTML(comments){
       canDelete?`<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentario">${IC.trash}</button>`:'',
       !isMyComment&&!del?`<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentario">${IC.flag}</button>`:''
     ].filter(Boolean).join('');
-    return`<article class="comment-row"><img src="${esc(avatar(c,50))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong><span class="handle">@${esc(handleName(c))}</span><span class="ts">· ${esc(time(c.created_at))}</span>${tools}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
+    return`<article class="comment-row"><img src="${esc(avatar(c,50))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong>${verifiedBadgeHTML(c)}<span class="handle">@${esc(handleName(c))}</span><span class="ts">· ${esc(time(c.created_at))}</span>${tools}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
   }).join('')}</div>`;
 }
 
@@ -6765,7 +6771,17 @@ function bindEvents(){
   $('#mobile-home-btn')?.addEventListener('click',()=>Router.navigate('/community'));
   $('#mobile-search-btn')?.addEventListener('click',()=>openSearchModal());
   $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
-  $('#mobile-chat-btn')?.addEventListener('click',()=>window.FAChat?.open());
+  function openChat(){
+    if(window.FAChat){window.FAChat.open();return;}
+    let attempts=0;
+    const retry=setInterval(()=>{
+      attempts++;
+      if(window.FAChat){clearInterval(retry);window.FAChat.open();return;}
+      if(attempts>=15){clearInterval(retry);toast('warn','Chat indisponível','Recarregue a página e tente novamente.');}
+    },200);
+  }
+  $('#mobile-chat-btn')?.addEventListener('click', openChat);
+  $('#desktop-chat-btn')?.addEventListener('click', openChat);
   $('#mobile-profile-btn')?.addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
   const mobileMenu=$('#mobile-side-menu');
   const closeMobileMenu=()=>{
@@ -7474,6 +7490,6 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/social-chat.js?v=chat5-20260602" defer></script>
+<script src="assets/js/social-chat.js?v=chat7-20260602" defer></script>
 </body>
 </html>
