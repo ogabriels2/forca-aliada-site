@@ -1,7 +1,7 @@
 /**
  * Força Aliada — Chat Direto  (social-chat.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION: chat9-20260608
+ * VERSION: chat10-20260608
  *
  * NOVIDADES vs chat7:
  *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 (function () {
-  window._faChatScriptVersion = 'chat9-20260608';
+  window._faChatScriptVersion = 'chat10-20260608';
   if (window.FAChat) return;
 
   // ── Storage seguro ────────────────────────────────────────────────────────────
@@ -60,6 +60,12 @@
     busy: false,         // mantido para operações não-mensagem (criar grupo, etc.)
     error: '',
     composeError: '',
+    recording: {
+      active: false,
+      locked: false,
+      elapsed: 0,
+      error: '',
+    },
     loadingConversations: false,
     loadingGroups: false,
     loadingFriends: false,
@@ -323,6 +329,11 @@
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
     back:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
     send:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg>',
+    mic:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>',
+    stop:  '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
+    lock:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V7a4 4 0 0 1 8 0v4"/><rect x="5" y="11" width="14" height="11" rx="2"/></svg>',
+    more:  '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+    download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>',
     user:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
     group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     plus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -359,15 +370,31 @@
   const CHAT_FILE_ACCEPT = [
     'image/*',
     'video/*',
+    'audio/*',
     'application/pdf',
+    '.mp3', '.m4a', '.aac', '.wav', '.ogg', '.oga', '.opus', '.webm',
     '.doc', '.docx',
     '.xls', '.xlsx',
     '.ppt', '.pptx',
     '.txt', '.csv',
     '.zip', '.rar', '.7z',
   ].join(',');
-  const CHAT_FILE_EXTENSIONS = new Set(['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv','zip','rar','7z']);
+  const CHAT_FILE_EXTENSIONS = new Set(['pdf','mp3','m4a','aac','wav','ogg','oga','opus','webm','doc','docx','xls','xlsx','ppt','pptx','txt','csv','zip','rar','7z']);
   let attachmentSeq = 0;
+  const recordingState = {
+    recorder: null,
+    stream: null,
+    chunks: [],
+    timer: null,
+    startedAt: 0,
+    mimeType: '',
+    pointerId: null,
+    startY: 0,
+    pointerReleased: false,
+    cancelOnStart: false,
+    lockOnStart: false,
+    suppressClickUntil: 0,
+  };
 
   function cleanFileName(value = 'arquivo') {
     const name = String(value || 'arquivo')
@@ -387,6 +414,7 @@
     const ext = extOf(name);
     if (mime.startsWith('image/')) return 'image';
     if (mime.startsWith('video/')) return 'video';
+    if (mime.startsWith('audio/')) return 'audio';
     if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
     if (CHAT_FILE_EXTENSIONS.has(ext)) return 'file';
     return '';
@@ -404,7 +432,7 @@
     if (!att || typeof att !== 'object') return null;
     const type = String(att.type || att.kind || attachmentKindFromType(att.mime_type || att.type, att.name)).toLowerCase();
     const url = String(att.url || att.preview_url || '').trim();
-    if (!type || !['image','video','pdf','file'].includes(type)) return null;
+    if (!type || !['image','video','audio','pdf','file'].includes(type)) return null;
     return {
       url,
       preview_url: att.preview_url || '',
@@ -431,6 +459,7 @@
     if (list.length > 1) return `${list.length} anexos`;
     if (list[0].type === 'image') return 'Imagem';
     if (list[0].type === 'video') return 'Video';
+    if (list[0].type === 'audio') return 'Audio';
     if (list[0].type === 'pdf') return 'PDF';
     return 'Arquivo';
   }
@@ -1053,13 +1082,15 @@
         <div class="fa-chat-compose-wrap">
           <div class="fa-chat-compose-error" data-chat-compose-error>${state.composeError ? esc(state.composeError) : ''}</div>
           <div class="fa-chat-attachments-preview" data-chat-attachments-preview>${renderPendingAttachments()}</div>
+          <div class="fa-chat-recording-panel" data-chat-recording-panel>${renderRecordingPanel()}</div>
           <div data-chat-char-counter></div>
           <form class="fa-chat-compose" data-chat-form>
             <div class="fa-chat-compose-pill">
               <button class="fa-chat-tool-btn" type="button" data-chat-attach aria-label="Anexar arquivo" title="Anexar arquivo">${icons.attach}</button>
               <button class="fa-chat-tool-btn" type="button" data-chat-camera aria-label="Camera" title="Camera">${icons.camera}</button>
               <textarea data-chat-input maxlength="500" rows="1" placeholder="Mensagem... (↵ para enviar)" aria-label="Mensagem"></textarea>
-              <button class="fa-chat-send" type="submit" aria-label="Enviar" ${state.pendingAttachments.length ? '' : 'disabled'}>${icons.send}</button>
+              <button class="fa-chat-tool-btn fa-chat-mic-btn ${state.recording.active?'is-recording':''}" type="button" data-chat-mic aria-label="Gravar audio" title="Gravar audio">${state.recording.active ? icons.stop : icons.mic}</button>
+              <button class="fa-chat-send" type="submit" aria-label="Enviar" ${state.pendingAttachments.length || (state.recording.active && state.recording.locked) ? '' : 'disabled'}>${icons.send}</button>
               <input class="fa-chat-file-input" type="file" data-chat-file-input accept="${esc(CHAT_FILE_ACCEPT)}" multiple hidden>
               <input class="fa-chat-file-input" type="file" data-chat-camera-input accept="image/*,video/*" capture="environment" hidden>
             </div>
@@ -1094,6 +1125,25 @@
     return html;
   }
 
+  function formatDuration(seconds = 0) {
+    const total = Math.max(0, Math.floor(Number(seconds || 0)));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  function renderRecordingPanel() {
+    if (!state.recording.active) return '';
+    const lockHint = state.recording.locked ? 'Gravacao travada' : 'Solte para enviar · arraste para cima para travar';
+    return `
+      <div class="fa-chat-recording ${state.recording.locked ? 'is-locked' : ''}">
+        <span class="fa-chat-recording-dot"></span>
+        <strong>${formatDuration(state.recording.elapsed)}</strong>
+        <small>${esc(lockHint)}</small>
+        <button type="button" data-chat-record-cancel aria-label="Cancelar gravacao">Cancelar</button>
+      </div>`;
+  }
+
   function renderPendingAttachments() {
     if (!state.pendingAttachments.length) return '';
     return state.pendingAttachments.map(att => {
@@ -1114,22 +1164,40 @@
 
   function renderMessageAttachments(attachments = []) {
     if (!attachments.length) return '';
-    return `<div class="fa-chat-media-grid">${attachments.map(att => {
+    return `<div class="fa-chat-media-grid">${attachments.map((att, idx) => {
       const url = att.preview_url || att.url || '';
       const name = att.name || attachmentPreviewText([att]) || 'Arquivo';
       const size = formatFileSize(att.size);
+      const menu = renderAttachmentMenu(att, idx);
       if (att.type === 'image' && url) {
-        return `<a class="fa-chat-media-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(name)}"><img class="fa-chat-media-img" src="${esc(url)}" alt="${esc(name)}" loading="lazy"></a>`;
+        return `<div class="fa-chat-attachment fa-chat-attachment--image" data-chat-attachment><img class="fa-chat-media-img" src="${esc(url)}" alt="${esc(name)}" loading="lazy">${menu}</div>`;
       }
       if (att.type === 'video' && url) {
-        return `<video class="fa-chat-media-video" src="${esc(url)}" controls preload="metadata" playsinline></video>`;
+        return `<div class="fa-chat-attachment fa-chat-attachment--video" data-chat-attachment><video class="fa-chat-media-video" src="${esc(url)}" controls preload="metadata" playsinline></video>${menu}</div>`;
+      }
+      if (att.type === 'audio' && url) {
+        return `<div class="fa-chat-attachment fa-chat-attachment--audio" data-chat-attachment><div class="fa-chat-audio-card"><audio src="${esc(url)}" controls preload="metadata"></audio><span>${esc(name)}</span></div>${menu}</div>`;
+      }
+      if (att.type === 'pdf' && url) {
+        return `<div class="fa-chat-attachment fa-chat-attachment--pdf" data-chat-attachment><div class="fa-chat-pdf-card"><iframe class="fa-chat-pdf-preview" src="${esc(url)}#toolbar=0&navpanes=0" title="${esc(name)}" loading="lazy"></iframe><span><strong>${esc(name)}</strong><small>${esc(size || 'PDF')}</small></span></div>${menu}</div>`;
       }
       return `
-        <a class="fa-chat-file-card" href="${esc(url || '#')}" target="_blank" rel="noopener noreferrer" download="${esc(name)}">
+        <div class="fa-chat-attachment fa-chat-attachment--file" data-chat-attachment><div class="fa-chat-file-card">
           <span class="fa-chat-file-icon">${att.type === 'pdf' ? 'PDF' : icons.file}</span>
           <span class="fa-chat-file-meta"><strong>${esc(name)}</strong><small>${esc([att.type === 'pdf' ? 'PDF' : 'Arquivo', size].filter(Boolean).join(' - '))}</small></span>
-        </a>`;
+        </div>${menu}</div>`;
     }).join('')}</div>`;
+  }
+
+  function renderAttachmentMenu(att, idx = 0) {
+    const url = att.preview_url || att.url || '';
+    const name = att.name || attachmentPreviewText([att]) || 'arquivo';
+    if (!url || url.startsWith('blob:')) return '';
+    return `
+      <button class="fa-chat-attach-menu-btn" type="button" data-chat-attachment-menu="${esc(idx)}" aria-label="Opcoes do anexo" title="Opcoes">${icons.more}</button>
+      <div class="fa-chat-attach-menu" role="menu">
+        <button type="button" data-chat-download-url="${esc(url)}" data-chat-download-name="${esc(name)}" role="menuitem">${icons.download}<span>Baixar</span></button>
+      </div>`;
   }
 
   function renderMessage(message, isGroupFirst=true, isGroupLast=true) {
@@ -1179,7 +1247,8 @@
     const send = root.querySelector('.fa-chat-send');
     if (!send) return;
     const hasBody = Boolean(textarea?.value.trim());
-    send.disabled = !state.current || (!hasBody && !state.pendingAttachments.length);
+    const canSendRecording = state.recording.active && state.recording.locked;
+    send.disabled = !state.current || (!hasBody && !state.pendingAttachments.length && !canSendRecording);
   }
 
   function updateComposeAttachments() {
@@ -1234,10 +1303,211 @@
   }
 
   function clearPendingAttachments() {
+    if (state.recording.active) finishAudioRecording({ send: false }).catch(() => {});
     releaseAttachmentPreviews(state.pendingAttachments);
     state.pendingAttachments = [];
     setComposeError('');
     updateComposeAttachments();
+  }
+
+  function preferredAudioMimeType() {
+    const options = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+    ];
+    if (typeof MediaRecorder === 'undefined') return '';
+    return options.find(type => MediaRecorder.isTypeSupported?.(type)) || '';
+  }
+
+  function audioExtension(mimeType = '') {
+    const mime = String(mimeType || '').toLowerCase();
+    if (mime.includes('ogg')) return 'ogg';
+    if (mime.includes('mp4') || mime.includes('m4a')) return 'm4a';
+    return 'webm';
+  }
+
+  function updateRecordingUI() {
+    const panel = root.querySelector('[data-chat-recording-panel]');
+    if (panel) panel.innerHTML = renderRecordingPanel();
+    const mic = root.querySelector('[data-chat-mic]');
+    if (mic) {
+      mic.classList.toggle('is-recording', state.recording.active);
+      mic.innerHTML = state.recording.active ? icons.stop : icons.mic;
+    }
+    root.querySelector('.fa-chat-compose-wrap')?.classList.toggle('is-recording', state.recording.active);
+    updateSendButtonState();
+  }
+
+  async function startAudioRecording({ pointerId = null, startY = 0 } = {}) {
+    if (state.recording.active) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setComposeError('Gravacao de audio indisponivel neste navegador.');
+      return;
+    }
+    if (!state.current) return;
+    if (pointerId === null) {
+      recordingState.pointerReleased = false;
+      recordingState.cancelOnStart = false;
+      recordingState.lockOnStart = false;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = preferredAudioMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recordingState.recorder = recorder;
+      recordingState.stream = stream;
+      recordingState.chunks = [];
+      recordingState.mimeType = recorder.mimeType || mimeType || 'audio/webm';
+      recordingState.pointerId = pointerId;
+      recordingState.startY = startY;
+      recordingState.startedAt = Date.now();
+
+      recorder.addEventListener('dataavailable', event => {
+        if (event.data?.size) recordingState.chunks.push(event.data);
+      });
+
+      recorder.start();
+      state.recording = { active: true, locked: Boolean(recordingState.lockOnStart), elapsed: 0, error: '' };
+      setComposeError('');
+      updateRecordingUI();
+      recordingState.timer = setInterval(() => {
+        state.recording.elapsed = Math.max(0, Math.floor((Date.now() - recordingState.startedAt) / 1000));
+        updateRecordingUI();
+      }, 250);
+      if (recordingState.cancelOnStart) {
+        await finishAudioRecording({ send: false });
+      } else if (recordingState.pointerReleased && !state.recording.locked) {
+        await finishAudioRecording({ send: true });
+      }
+    } catch (err) {
+      stopRecordingTracks();
+      recordingState.recorder = null;
+      recordingState.pointerId = null;
+      recordingState.pointerReleased = false;
+      recordingState.cancelOnStart = false;
+      recordingState.lockOnStart = false;
+      setComposeError(err?.name === 'NotAllowedError' ? 'Permita o microfone para gravar audio.' : 'Nao foi possivel iniciar a gravacao.');
+    }
+  }
+
+  function stopRecordingTracks() {
+    clearInterval(recordingState.timer);
+    recordingState.timer = null;
+    recordingState.stream?.getTracks?.().forEach(track => track.stop());
+    recordingState.stream = null;
+  }
+
+  function lockAudioRecording() {
+    if (!state.recording.active || state.recording.locked) return;
+    state.recording.locked = true;
+    updateRecordingUI();
+  }
+
+  function finishAudioRecording({ send = true } = {}) {
+    if (!state.recording.active || !recordingState.recorder) return Promise.resolve();
+    const recorder = recordingState.recorder;
+    const currentConv = state.current;
+    const currentKind = state.currentKind;
+    const currentMe = state.me;
+    const duration = state.recording.elapsed;
+
+    return new Promise(resolve => {
+      recorder.addEventListener('stop', () => {
+        stopRecordingTracks();
+        const chunks = recordingState.chunks.slice();
+        const mimeType = recordingState.mimeType || 'audio/webm';
+        recordingState.recorder = null;
+        recordingState.chunks = [];
+        recordingState.pointerId = null;
+        recordingState.pointerReleased = false;
+        recordingState.cancelOnStart = false;
+        recordingState.lockOnStart = false;
+        state.recording = { active: false, locked: false, elapsed: 0, error: '' };
+        updateRecordingUI();
+
+        if (send && chunks.length && currentConv && currentKind && currentMe) {
+          const blob = new Blob(chunks, { type: mimeType });
+          const ext = audioExtension(mimeType);
+          const name = `audio-${Date.now()}.${ext}`;
+          const file = new File([blob], name, { type: mimeType });
+          const previewUrl = URL.createObjectURL(blob);
+          queueSend({
+            body: '',
+            attachments: [{
+              id: `att-${Date.now()}-${++attachmentSeq}`,
+              file,
+              type: 'audio',
+              name,
+              mime_type: mimeType,
+              size: file.size,
+              duration,
+              preview_url: previewUrl,
+            }],
+            currentConv,
+            currentKind,
+            currentMe,
+          });
+        }
+        resolve();
+      }, { once: true });
+
+      if (recorder.state !== 'inactive') recorder.stop();
+      else {
+        stopRecordingTracks();
+        recordingState.recorder = null;
+        recordingState.chunks = [];
+        recordingState.pointerId = null;
+        recordingState.pointerReleased = false;
+        recordingState.cancelOnStart = false;
+        recordingState.lockOnStart = false;
+        state.recording = { active: false, locked: false, elapsed: 0, error: '' };
+        updateRecordingUI();
+        resolve();
+      }
+    });
+  }
+
+  function closeAttachmentMenus(except = null) {
+    root.querySelectorAll('.fa-chat-attachment.is-menu-open').forEach(node => {
+      if (node !== except) node.classList.remove('is-menu-open');
+    });
+  }
+
+  function toggleAttachmentMenu(button) {
+    const attachment = button?.closest('[data-chat-attachment]');
+    if (!attachment) return;
+    const willOpen = !attachment.classList.contains('is-menu-open');
+    closeAttachmentMenus(attachment);
+    attachment.classList.toggle('is-menu-open', willOpen);
+  }
+
+  async function downloadAttachment(url, name) {
+    const safeName = cleanFileName(name || 'arquivo');
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = safeName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.download = safeName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
   }
 
   async function uploadPendingAttachments(attachments = []) {
@@ -1564,6 +1834,10 @@
 
   // ── Envio de mensagem (fila paralela) ─────────────────────────────────────────
   async function handleFormSubmit(textarea) {
+    if (state.recording.active && state.recording.locked) {
+      await finishAudioRecording({ send: true });
+      return;
+    }
     const body = textarea.value.trim();
     const attachments = state.pendingAttachments.slice();
     if ((!body && !attachments.length) || !state.current) return;
@@ -1709,6 +1983,7 @@
 
   // ── Event delegation ──────────────────────────────────────────────────────────
   let searchTimer = null;
+  let attachmentLongPressTimer = null;
 
   root.addEventListener('click', async event => {
     const toggle      = event.target.closest('[data-chat-toggle]');
@@ -1729,8 +2004,40 @@
     const attach      = event.target.closest('[data-chat-attach]');
     const camera      = event.target.closest('[data-chat-camera]');
     const removeAtt   = event.target.closest('[data-chat-attachment-remove]');
+    const mic         = event.target.closest('[data-chat-mic]');
+    const recordCancel= event.target.closest('[data-chat-record-cancel]');
+    const attachMenu  = event.target.closest('[data-chat-attachment-menu]');
+    const downloadBtn = event.target.closest('[data-chat-download-url]');
+
+    if (!attachMenu && !downloadBtn && !event.target.closest('.fa-chat-attach-menu')) {
+      closeAttachmentMenus();
+    }
 
     try {
+      if (downloadBtn) {
+        event.stopPropagation();
+        closeAttachmentMenus();
+        await downloadAttachment(downloadBtn.dataset.chatDownloadUrl, downloadBtn.dataset.chatDownloadName);
+        return;
+      }
+      if (attachMenu) {
+        event.stopPropagation();
+        toggleAttachmentMenu(attachMenu);
+        return;
+      }
+      if (recordCancel) {
+        event.stopPropagation();
+        await finishAudioRecording({ send: false });
+        return;
+      }
+      if (mic) {
+        event.stopPropagation();
+        if (Date.now() < recordingState.suppressClickUntil) return;
+        if (window.matchMedia?.('(pointer: coarse)').matches) return;
+        if (state.recording.active) await finishAudioRecording({ send: true });
+        else await startAudioRecording();
+        return;
+      }
       if (attach) {
         event.stopPropagation();
         root.querySelector('[data-chat-file-input]')?.click();
@@ -1866,6 +2173,60 @@
       state.error = e.message||'Ação não concluída.';
       updateConversationList();
     }
+  });
+
+  root.addEventListener('pointerdown', event => {
+    const mic = event.target.closest('[data-chat-mic]');
+    if (mic && window.matchMedia?.('(pointer: coarse)').matches) {
+      event.preventDefault();
+      recordingState.suppressClickUntil = Date.now() + 900;
+      recordingState.pointerId = event.pointerId;
+      recordingState.startY = event.clientY;
+      recordingState.pointerReleased = false;
+      recordingState.cancelOnStart = false;
+      recordingState.lockOnStart = false;
+      startAudioRecording({ pointerId: event.pointerId, startY: event.clientY });
+      try { mic.setPointerCapture?.(event.pointerId); } catch {}
+      return;
+    }
+
+    const attachment = event.target.closest('[data-chat-attachment]');
+    if (!attachment || event.target.closest('button,audio,video,iframe')) return;
+    clearTimeout(attachmentLongPressTimer);
+    attachmentLongPressTimer = setTimeout(() => {
+      closeAttachmentMenus(attachment);
+      attachment.classList.add('is-menu-open');
+    }, 520);
+  }, { passive: false });
+
+  root.addEventListener('pointermove', event => {
+    if (recordingState.pointerId === event.pointerId && recordingState.startY - event.clientY > 72) {
+      if (state.recording.active && !state.recording.locked) lockAudioRecording();
+      else recordingState.lockOnStart = true;
+    }
+  }, { passive: true });
+
+  root.addEventListener('pointerup', async event => {
+    clearTimeout(attachmentLongPressTimer);
+    if (recordingState.pointerId !== event.pointerId) return;
+    if (!state.recording.active) {
+      recordingState.pointerReleased = true;
+      return;
+    }
+    const shouldSend = state.recording.active && !state.recording.locked;
+    recordingState.pointerId = null;
+    if (shouldSend) await finishAudioRecording({ send: true });
+  });
+
+  root.addEventListener('pointercancel', async event => {
+    clearTimeout(attachmentLongPressTimer);
+    if (recordingState.pointerId !== event.pointerId) return;
+    if (!state.recording.active) {
+      recordingState.cancelOnStart = true;
+      return;
+    }
+    recordingState.pointerId = null;
+    if (state.recording.active && !state.recording.locked) await finishAudioRecording({ send: false });
   });
 
   root.addEventListener('input', event => {

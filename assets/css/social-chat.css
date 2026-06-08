@@ -1132,6 +1132,11 @@
   max-width: min(320px, 72vw);
 }
 
+.fa-chat-attachment {
+  position: relative;
+  max-width: min(320px, 72vw);
+}
+
 .fa-chat-media-link,
 .fa-chat-media-img,
 .fa-chat-media-video {
@@ -1160,6 +1165,62 @@
   background: #000;
 }
 
+.fa-chat-audio-card,
+.fa-chat-pdf-card {
+  width: min(320px, 72vw);
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.fa-chat-audio-card audio {
+  width: 100%;
+  height: 36px;
+}
+
+.fa-chat-audio-card span {
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 850;
+  opacity: .78;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-chat-pdf-preview {
+  width: 100%;
+  height: 190px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,.92);
+}
+
+.fa-chat-pdf-card > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fa-chat-pdf-card strong,
+.fa-chat-pdf-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-chat-pdf-card strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fa-chat-pdf-card small {
+  font-size: 10px;
+  opacity: .72;
+}
+
 .fa-chat-file-card {
   width: min(300px, 72vw);
   display: grid;
@@ -1171,7 +1232,6 @@
   border-radius: 12px;
   background: color-mix(in srgb, currentColor 7%, transparent);
   color: currentColor;
-  text-decoration: none;
 }
 
 .fa-chat-file-icon {
@@ -1211,6 +1271,83 @@
   margin-top: 2px;
   font-size: 10px;
   opacity: .72;
+}
+
+.fa-chat-attach-menu-btn {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  cursor: pointer;
+  opacity: .92;
+  transition: transform .13s, background .13s;
+}
+
+.fa-chat-attach-menu-btn:hover {
+  background: rgba(0,0,0,.78);
+  transform: scale(1.04);
+}
+
+.fa-chat-attach-menu-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fa-chat-attach-menu {
+  position: absolute;
+  top: 40px;
+  right: 7px;
+  z-index: 3;
+  min-width: 118px;
+  padding: 5px;
+  border: 1px solid var(--fc-border-h);
+  border-radius: 10px;
+  background: var(--fc-panel);
+  box-shadow: 0 12px 30px rgba(0,0,0,.34);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px) scale(.96);
+  transform-origin: top right;
+  transition: opacity .13s, transform .13s;
+}
+
+.fa-chat-attachment.is-menu-open .fa-chat-attach-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.fa-chat-attach-menu button {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fc-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: left;
+}
+
+.fa-chat-attach-menu button:hover {
+  background: var(--fc-surface);
+}
+
+.fa-chat-attach-menu svg {
+  width: 15px;
+  height: 15px;
 }
 
 /* Meta row: timestamp + tick — alinhada ao final da última linha de texto
@@ -1443,6 +1580,69 @@
 .fa-chat-attachments-preview:empty { display: none; }
 .fa-chat-attachments-preview::-webkit-scrollbar { display: none; }
 
+.fa-chat-recording-panel:empty {
+  display: none;
+}
+
+.fa-chat-recording {
+  display: grid;
+  grid-template-columns: auto auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--fc-red) 24%, var(--fc-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--fc-red) 8%, var(--fc-surface));
+  color: var(--fc-ink);
+}
+
+.fa-chat-recording-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--fc-red);
+  animation: fcRecordPulse 1s ease-in-out infinite;
+}
+
+@keyframes fcRecordPulse {
+  0%, 100% { opacity: .45; transform: scale(.82); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.fa-chat-recording strong {
+  font-size: 13px;
+  font-weight: 950;
+  color: var(--fc-red);
+  font-variant-numeric: tabular-nums;
+}
+
+.fa-chat-recording small {
+  overflow: hidden;
+  color: var(--fc-ink-2);
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-chat-recording.is-locked {
+  border-color: color-mix(in srgb, var(--fc-gold) 42%, var(--fc-border));
+  background: color-mix(in srgb, var(--fc-gold) 9%, var(--fc-surface));
+}
+
+.fa-chat-recording button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--fc-red) 30%, var(--fc-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fc-red) 10%, var(--fc-surface));
+  color: var(--fc-red);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .fa-chat-pending-attachment {
   position: relative;
   width: 78px;
@@ -1541,6 +1741,11 @@
 
 .fa-chat-tool-btn:active { transform: scale(.92); }
 .fa-chat-tool-btn svg { width: 17px; height: 17px; }
+
+.fa-chat-mic-btn.is-recording {
+  background: color-mix(in srgb, var(--fc-red) 12%, var(--fc-surface-2));
+  color: var(--fc-red);
+}
 
 .fa-chat-compose-pill:focus-within {
   border-color: color-mix(in srgb, var(--fc-gold) 55%, var(--fc-border));
@@ -1999,9 +2204,25 @@
   }
 
   #fa-chat-root .fa-chat-media-grid,
+  #fa-chat-root .fa-chat-attachment,
   #fa-chat-root .fa-chat-file-card,
+  #fa-chat-root .fa-chat-audio-card,
+  #fa-chat-root .fa-chat-pdf-card,
   #fa-chat-root .fa-chat-media-video {
     max-width: 76vw;
+  }
+
+  #fa-chat-root .fa-chat-pdf-preview {
+    height: 170px;
+  }
+
+  #fa-chat-root .fa-chat-recording {
+    grid-template-columns: auto auto minmax(0,1fr);
+  }
+
+  #fa-chat-root .fa-chat-recording button {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   #fa-chat-root .fa-chat-bubble-wrap {
