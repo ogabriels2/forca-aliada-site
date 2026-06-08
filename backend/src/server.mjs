@@ -5797,13 +5797,16 @@ function uploadChatAttachment(file, userId) {
     }, 60000);
     // Cloudinary free tier não suporta resource_type:'video' para áudio.
     // Áudio vai como 'raw' — armazenado e entregue como URL direta sem transformação.
-    // O <audio> do frontend toca qualquer URL raw normalmente.
+    // use_filename:true preserva a extensão (.webm/.ogg/.m4a) no public_id,
+    // fazendo o Cloudinary servir com Content-Type correto (audio/webm etc.)
+    // em vez de application/octet-stream (que causa download automático no browser).
     const resourceType = kind === 'image' ? 'image' : kind === 'video' ? 'video' : 'raw';
+    const isAudio = kind === 'audio';
     const folder = process.env.CLOUDINARY_CHAT_FOLDER || `forca-aliada/chat/${kind}`;
     const options = {
       folder,
       resource_type: resourceType,
-      use_filename: false,
+      use_filename: isAudio,      // áudio: preserva extensão na URL
       unique_filename: true,
       overwrite: false,
       context: {
