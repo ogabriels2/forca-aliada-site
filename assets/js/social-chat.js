@@ -556,7 +556,10 @@
     updateSidebar();
     if (hasCurrent) {
       const msgList = panel.querySelector('[data-chat-messages]');
-      if (msgList) msgList.innerHTML = renderMessagesContent();
+      if (msgList) {
+        msgList.innerHTML = renderMessagesContent();
+        initAudioPlayers(msgList);
+      }
     }
   }
 
@@ -707,6 +710,7 @@
 
     if (state.loadingMessages || !state.messages.length) {
       list.innerHTML = renderMessagesContent();
+      initAudioPlayers(list);
       if (scroll) updateScroll();
       return;
     }
@@ -1219,9 +1223,16 @@
     const src = playerEl.dataset.audioSrc;
     if (!src) return;
 
+    // IMPORTANTE: não setar audio.src na inicialização.
+    // O Cloudinary raw devolve application/octet-stream sem extensão na URL,
+    // e qualquer request automático (preload, src imediato) faz o browser
+    // disparar download. O src só é setado ao clicar play.
     const audio = new Audio();
-    audio.preload = 'metadata';
-    audio.src = src;
+    audio.preload = 'none';
+    let srcLoaded = false;
+    function ensureSrc() {
+      if (!srcLoaded) { srcLoaded = true; audio.src = src; }
+    }
 
     const playBtn  = playerEl.querySelector('[data-audio-play]');
     const trackEl  = playerEl.querySelector('[data-audio-track]');
@@ -1269,6 +1280,7 @@
 
     playBtn?.addEventListener('click', e => {
       e.stopPropagation();
+      ensureSrc();
       // Para qualquer outro player ativo na página
       root.querySelectorAll('[data-audio-player].is-playing').forEach(el => {
         if (el !== playerEl && el._audioEl) { el._audioEl.pause(); }
@@ -1278,7 +1290,7 @@
     });
 
     // Seek via clique/toque na track
-    trackEl?.addEventListener('click', e => { e.stopPropagation(); seekTo(e); });
+    trackEl?.addEventListener('click', e => { e.stopPropagation(); ensureSrc(); seekTo(e); });
     let _dragging = false;
     trackEl?.addEventListener('mousedown', e => {
       _dragging = true;
