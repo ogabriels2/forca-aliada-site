@@ -5795,7 +5795,10 @@ function uploadChatAttachment(file, userId) {
     const timeout = setTimeout(() => {
       fail(new Error('Cloudinary demorou para responder ao upload.'));
     }, 60000);
-    const resourceType = kind === 'image' ? 'image' : ['video', 'audio'].includes(kind) ? 'video' : 'raw';
+    // Cloudinary free tier não suporta resource_type:'video' para áudio.
+    // Áudio vai como 'raw' — armazenado e entregue como URL direta sem transformação.
+    // O <audio> do frontend toca qualquer URL raw normalmente.
+    const resourceType = kind === 'image' ? 'image' : kind === 'video' ? 'video' : 'raw';
     const folder = process.env.CLOUDINARY_CHAT_FOLDER || `forca-aliada/chat/${kind}`;
     const options = {
       folder,
