@@ -43,6 +43,11 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
         SELECT 1 FROM comment_likes cl2
         WHERE cl2.comment_id = c.id AND cl2.user_id = ${userIdParam}
       ) AS liked_by_me,
+      (SELECT COUNT(*)::int FROM comment_saves cs WHERE cs.comment_id = c.id) AS saves_count,
+      EXISTS(
+        SELECT 1 FROM comment_saves cs2
+        WHERE cs2.comment_id = c.id AND cs2.user_id = ${userIdParam}
+      ) AS saved_by_me,
       u.id AS author_id,
       u.username,
       u.minecraft_name,
@@ -65,6 +70,8 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
       COALESCE(c.likes_count, 0) AS likes_count,
       COALESCE(c.reply_count, 0) AS reply_count,
       FALSE AS liked_by_me,
+      (SELECT COUNT(*)::int FROM comment_saves cs WHERE cs.comment_id = c.id) AS saves_count,
+      FALSE AS saved_by_me,
       u.id AS author_id,
       u.username,
       u.minecraft_name,
@@ -122,7 +129,9 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
     const { rows } = await pool.query(`
       SELECT
         p.id, p.content, p.media_urls, p.created_at, p.author_id,
-        p.likes_count, p.reposts_count, p.comments_count,
+        (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+        (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+        (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
         u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
         COALESCE(up.avatar_url,   '') AS avatar_url,
         COALESCE(up.display_name, '') AS display_name

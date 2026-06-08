@@ -90,6 +90,18 @@ CREATE INDEX IF NOT EXISTS idx_comment_likes_comment
 CREATE INDEX IF NOT EXISTS idx_comment_likes_user
   ON comment_likes(user_id, created_at DESC);
 
+-- ── 2b. Comentarios salvos ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS comment_saves (
+  comment_id  INTEGER NOT NULL REFERENCES post_comments(id) ON DELETE CASCADE,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (comment_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_comment_saves_comment
+  ON comment_saves(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_saves_user
+  ON comment_saves(user_id, created_at DESC);
+
 -- ── 3. Colunas de contagem desnormalizadas (performance) ─────────────────────
 -- likes_count e reply_count são mantidos por triggers para evitar COUNT(*) 
 -- em cada query de listagem.
@@ -238,6 +250,11 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
         SELECT 1 FROM comment_likes cl
         WHERE cl.comment_id = c.id AND cl.user_id = ${currentUserParam}
       ) AS liked_by_me,
+      (SELECT COUNT(*)::int FROM comment_saves cs WHERE cs.comment_id = c.id) AS saves_count,
+      EXISTS(
+        SELECT 1 FROM comment_saves cs2
+        WHERE cs2.comment_id = c.id AND cs2.user_id = ${currentUserParam}
+      ) AS saved_by_me,
       u.id   AS author_id,
       u.username,
       u.minecraft_name,
@@ -592,6 +609,49 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
     }
   });
 
+  app.post('/api/community/comments/:id/save', auth, async (req, res) => {
+    const commentId = parseInt(req.params.id, 10);
+    if (!commentId) return res.status(400).json({ error: 'ID invalido' });
+    try {
+      const { rows } = await pool.query(
+        'SELECT id FROM post_comments WHERE id=$1 AND is_deleted=FALSE LIMIT 1',
+        [commentId],
+      );
+      if (!rows.length) return res.status(404).json({ error: 'Comentario nao encontrado' });
+      await pool.query(
+        'INSERT INTO comment_saves(comment_id, user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',
+        [commentId, req.user.sub],
+      );
+      const { rows: counts } = await pool.query(
+        'SELECT COUNT(*)::int AS saves_count FROM comment_saves WHERE comment_id=$1',
+        [commentId],
+      );
+      res.json({ ok: true, saved_by_me: true, saves_count: counts[0]?.saves_count ?? 0 });
+    } catch (e) {
+      console.error('[POST /api/community/comments/:id/save]', e);
+      res.status(500).json({ error: 'Erro ao salvar comentario' });
+    }
+  });
+
+  app.delete('/api/community/comments/:id/save', auth, async (req, res) => {
+    const commentId = parseInt(req.params.id, 10);
+    if (!commentId) return res.status(400).json({ error: 'ID invalido' });
+    try {
+      await pool.query(
+        'DELETE FROM comment_saves WHERE comment_id=$1 AND user_id=$2',
+        [commentId, req.user.sub],
+      );
+      const { rows: counts } = await pool.query(
+        'SELECT COUNT(*)::int AS saves_count FROM comment_saves WHERE comment_id=$1',
+        [commentId],
+      );
+      res.json({ ok: true, saved_by_me: false, saves_count: counts[0]?.saves_count ?? 0 });
+    } catch (e) {
+      console.error('[DELETE /api/community/comments/:id/save]', e);
+      res.status(500).json({ error: 'Erro ao remover comentario salvo' });
+    }
+  });
+
   // ─────────────────────────────────────────────────────────────────────────
   // GET /api/community/comments/:id/thread
   //
@@ -668,7 +728,9 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       const { rows: postRows } = await pool.query(`
         SELECT
           p.id, p.content, p.media_urls, p.created_at, p.author_id,
-          p.likes_count, p.reposts_count, p.comments_count,
+          (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+          (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+          (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
           u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
           COALESCE(up.avatar_url,   '') AS avatar_url,
           COALESCE(up.display_name, '') AS display_name,
