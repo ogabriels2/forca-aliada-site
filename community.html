@@ -593,6 +593,116 @@ img{display:block}
 .preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;align-items:flex-start;gap:4px}
 .preview-row svg{width:14px;height:14px;flex-shrink:0;margin-top:1px}
 .preview-row strong{color:var(--ink);font-weight:700}
+/* ─── redesigned inline comment preview in feed ─── */
+.preview-comments{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+.preview-row{
+  display:flex;align-items:flex-start;gap:7px;
+  padding:5px 0;font-size:12.5px;line-height:1.4;
+}
+.preview-row:first-child{padding-top:0}
+.preview-row-av{
+  width:20px;height:20px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-top:1px;
+}
+.preview-row-body{min-width:0;flex:1}
+.preview-row-author{font-weight:750;color:var(--ink);font-size:12px;margin-right:4px}
+.preview-row-text{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:inline}
+.preview-more-btn{
+  margin-top:6px;display:inline-flex;align-items:center;gap:4px;
+  font-size:12px;color:var(--accent);font-weight:650;cursor:pointer;
+  background:none;border:none;padding:2px 0;
+}
+.preview-more-btn:hover{text-decoration:underline}
+
+/* ─── who liked / who reposted bottom sheet ─── */
+.social-sheet-overlay{
+  position:fixed;inset:0;z-index:9100;
+  background:rgba(0,0,0,.48);backdrop-filter:blur(3px);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .22s var(--ease);
+}
+.social-sheet-overlay.show{opacity:1;pointer-events:auto}
+.social-sheet{
+  width:100%;max-width:520px;
+  background:var(--surface-solid);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;
+  padding:0 0 env(safe-area-inset-bottom,0);
+  max-height:72vh;display:flex;flex-direction:column;
+  transform:translateY(100%);
+  transition:transform .28s var(--ease);
+  box-shadow:0 -4px 40px rgba(0,0,0,.18);
+}
+.social-sheet-overlay.show .social-sheet{transform:translateY(0)}
+@media(min-width:640px){
+  .social-sheet-overlay{align-items:center}
+  .social-sheet{
+    border-radius:var(--r-xl);max-height:64vh;
+    box-shadow:0 8px 48px rgba(0,0,0,.24);
+  }
+}
+.social-sheet-handle{
+  width:38px;height:4px;border-radius:9px;
+  background:var(--line);margin:10px auto 0;flex-shrink:0;
+}
+.social-sheet-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px 10px;border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.social-sheet-title{font-size:15px;font-weight:800;color:var(--ink)}
+.social-sheet-close{
+  width:28px;height:28px;border-radius:50%;background:var(--surface-hover);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  border:none;color:var(--ink-2);font-size:14px;
+  transition:background var(--t-fast),transform var(--t-fast) var(--ease);
+}
+.social-sheet-close:hover{background:var(--line);transform:scale(1.06)}
+.social-sheet-tabs{
+  display:flex;border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.social-sheet-tab{
+  flex:1;padding:9px;text-align:center;font-size:13px;font-weight:700;
+  color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;
+  transition:color var(--t-fast),border-color var(--t-fast);
+  background:none;border-top:none;border-left:none;border-right:none;
+}
+.social-sheet-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.social-sheet-body{overflow-y:auto;flex:1;padding:8px 0}
+.social-sheet-body::-webkit-scrollbar{width:4px}
+.social-sheet-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.social-user-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 16px;cursor:pointer;
+  transition:background var(--t-fast);
+}
+.social-user-row:hover{background:var(--surface-hover)}
+.social-user-av{
+  width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;
+}
+.social-user-info{min-width:0;flex:1}
+.social-user-name{font-weight:750;font-size:13.5px;color:var(--ink);display:block;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.social-user-handle{font-size:11.5px;color:var(--ink-3);font-weight:500}
+.social-user-quote{
+  font-size:12px;color:var(--ink-2);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-style:italic;
+}
+.social-sheet-empty{
+  padding:40px 16px;text-align:center;color:var(--ink-3);font-size:13.5px;
+}
+.social-sheet-load-more{
+  display:flex;justify-content:center;padding:10px;
+}
+.social-sheet-load-more button{font-size:12.5px}
+
+/* ─── Load more comments button ─── */
+.load-more-comments-wrap{
+  display:flex;justify-content:center;padding:12px;
+  border-top:1px solid var(--line);
+}
+.load-more-comments-btn{
+  font-size:13px;color:var(--accent);font-weight:650;
+}
 /* post actions */
 .post-actions{display:flex;align-items:center;gap:1px;margin-top:9px}
 .pa{
@@ -612,6 +722,14 @@ img{display:block}
 .pa-save.is-on{color:#f5a623}
 .pa-save.is-on svg{fill:#f5a623;stroke:#f5a623}
 .pa-save:hover{color:#f5a623}
+.pa-likes-who,.pa-reposts-who{
+  height:22px;width:22px;padding:0;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--ink-3);opacity:0.55;margin-left:-3px;
+  transition:opacity var(--t-fast),background var(--t-fast),color var(--t-fast);
+}
+.pa-likes-who:hover{opacity:1;background:var(--danger-soft);color:var(--danger)}
+.pa-reposts-who:hover{opacity:1;background:var(--success-soft);color:var(--success)}
 /* ─── POLLS ─── */
 .poll-container{
   margin-top:10px;
@@ -929,6 +1047,23 @@ img{display:block}
 .comment-author .ts{font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
 .comment-row p{margin-top:3px;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .deleted{color:var(--ink-3);font-style:italic}
+
+/* ─── Thread social counts bar ─── */
+.thread-social-counts{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  margin:8px 0 4px;
+}
+.thread-social-counts:empty{display:none}
+.thread-count-btn{
+  background:none;border:none;cursor:pointer;
+  font-size:13.5px;font-weight:500;color:var(--ink);
+  display:inline-flex;gap:4px;align-items:center;
+  padding:2px 4px;border-radius:4px;
+  transition:background var(--t-fast),color var(--t-fast);
+}
+.thread-count-btn:hover{background:var(--surface-hover);color:var(--accent)}
+.thread-count-btn span{color:var(--ink-3);font-weight:400}
 
 /* ─── PROFILE ROUTE ─── */
 .profile-hero{
@@ -4535,14 +4670,16 @@ function postCardHTML(p){
         <div class="post-content">${mentionHTML(displayContent)}</div>
         ${mediaHTML}
         ${p.poll ? pollHTML(p) : ''}
-        ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>`<div class="preview-row">${IC.comment}<strong>${esc(c.minecraft_name||c.username||'?')}:</strong><span>${mentionHTML(c.content)}</span></div>`).join('')}${p.comments_count>2?`<button class="btn btn-ghost btn-xs" style="margin-top:3px" data-action="open-thread">Ver ${num(p.comments_count)} respostas →</button>`:''}</div>`:''}
+        ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>{const cmc=c.minecraft_name||c.username||'?';const cShown=c.display_name||cmc;const cAv=c.avatar_url||(c.photo_url?''+c.photo_url:'')||'assets/images/fa-icon-light.png';return`<div class="preview-row"><img class="preview-row-av" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='assets/images/fa-icon-light.png'"><div class="preview-row-body"><span class="preview-row-author">${esc(cShown)}</span><span class="preview-row-text"> ${mentionHTML(c.content||'')}</span></div></div>`;}).join('')}${p.comments_count>2?`<button class="preview-more-btn" data-action="open-thread">${IC.comment} Ver mais ${num(p.comments_count-2)} respostas</button>`:p.comments_count>0?`<button class="preview-more-btn" data-action="open-thread">${IC.comment} Ver conversa completa</button>`:''}</div>`:''}
         <div class="post-actions">
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
+          ${Number(p.likes_count)>0?`<button class="pa pa-likes-who" data-action="show-likers" aria-label="Ver quem curtiu" title="Ver quem curtiu"><svg viewBox="0 0 24 24" width="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>`:''}
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
           <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
+          ${Number(p.reposts_count)>0?`<button class="pa pa-reposts-who" data-action="show-reposters" aria-label="Ver quem repostou" title="Ver quem repostou"><svg viewBox="0 0 24 24" width="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>`:''}
           <button class="pa pa-save ${p.saved_by_me?'is-on':''}" data-action="save" aria-label="${p.saved_by_me?'Remover dos salvos':'Salvar post'}">${IC.save}<span>${Number(p.saves_count)>0?num(Number(p.saves_count)):''}</span></button>
           <button class="pa pa-share" data-action="share" aria-label="Compartilhar">${IC.share}</button>
-        </div>
+        </div></div>
       </div>
     </div>
   </article>`;
@@ -5547,8 +5684,9 @@ async function deleteComment(postId,commentId,post){
   if(!ok)return;
   try{
     await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,{method:'DELETE'});
-    const comments=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`);
-    const list=$('#thread-comments');if(list)list.innerHTML=commentsHTML(comments);
+    const commentsResp2=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`);
+    const commentsList2=Array.isArray(commentsResp2)?commentsResp2:(Array.isArray(commentsResp2?.comments)?commentsResp2.comments:[]);
+    const list=$('#thread-comments');if(list)list.innerHTML=commentsHTML(commentsList2);
     const nextCount=Math.max(0,Number(post?.comments_count||0)-1);
     if(post)post.comments_count=nextCount;
     const fp=findPost(postId);if(fp)fp.comments_count=nextCount;
@@ -5676,10 +5814,13 @@ async function renderPostRoute(id){
     <div class="skel" style="height:180px;border-radius:var(--r-lg)"></div>
   `);
   try{
-    const[post,comments]=await Promise.all([
+    const[post,commentsResp]=await Promise.all([
       api(`/api/community/posts/${encodeURIComponent(id)}`),
       api(`/api/community/posts/${encodeURIComponent(id)}/comments`)
     ]);
+    const comments=Array.isArray(commentsResp)?commentsResp:(Array.isArray(commentsResp?.comments)?commentsResp.comments:[]);
+    let commentsNextCursor=commentsResp?.next_cursor||null;
+    let commentsHasMore=commentsResp?.has_more||false;
     const cached=findPost(id);if(cached)Object.assign(cached,post);else state.posts.unshift(post);
     state.activeThreadPost = post;
     document.title=`Post de ${post.minecraft_name||post.username||'jogador'} | Força Aliada`;
@@ -5734,8 +5875,15 @@ async function renderPostRoute(id){
             ${threadMediaHTML}
             ${post.poll ? pollHTML(post) : ''}
             <div class="post-actions" style="margin-top:10px">
+              <div class="thread-social-counts" id="thread-social-counts">
+                ${post.likes_count>0?`<button class="thread-count-btn" id="thread-likes-btn">${num(post.likes_count)} <span>${post.likes_count===1?'curtida':'curtidas'}</span></button>`:''}
+                ${post.reposts_count>0?`<button class="thread-count-btn" id="thread-reposts-btn">${num(post.reposts_count)} <span>${post.reposts_count===1?'repost':'reposts'}</span></button>`:''}
+              </div>
+              <div style="display:flex;gap:4px;align-items:center">
               <button class="pa pa-like ${post.liked_by_me?'is-on':''}" id="thread-like" aria-label="${post.liked_by_me?'Descurtir':'Curtir'}">${IC.heart}<span>${num(post.likes_count)}</span></button>
+              <button class="pa pa-repost ${post.reposted_by_me?'is-on':''}" id="thread-repost-btn" aria-label="Repostar">${IC.repost}<span>${Number(post.reposts_count)>0?num(Number(post.reposts_count)):''}</span></button>
               <button class="pa pa-share" id="thread-share" aria-label="Compartilhar">${IC.share}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -5745,14 +5893,63 @@ async function renderPostRoute(id){
         <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
         <button class="btn btn-primary btn-sm" id="reply-btn">Responder</button>
       </div>
-      <div id="thread-comments">${commentsHTML(comments)}</div>
+      <div id="thread-comments">${commentsHTML(comments)}${commentsHasMore?'<div class="load-more-comments-wrap"><button class="btn btn-ghost btn-sm load-more-comments-btn" data-cursor="'+commentsNextCursor+'">Carregar mais respostas</button></div>":"'}</div>
     `;
     bindThreadEvents(post,id);
+    // After DOM is rendered, wire up load-more if has_more
+    if(commentsHasMore&&commentsNextCursor){
+      const wrap=$('#thread-comments');
+      if(wrap){
+        const lmDiv=document.createElement('div');
+        lmDiv.className='load-more-comments-wrap';
+        const lmBtn=document.createElement('button');
+        lmBtn.className='btn btn-ghost btn-sm load-more-comments-btn';
+        lmBtn.textContent='Carregar mais respostas';
+        lmDiv.appendChild(lmBtn);
+        wrap.appendChild(lmDiv);
+        let curCursor2=commentsNextCursor;
+        lmBtn.addEventListener('click',async()=>{
+          setBtnLoad(lmBtn,true,'Carregando');
+          try{
+            const resp2=await api(`/api/community/posts/${encodeURIComponent(id)}/comments?cursor=${encodeURIComponent(curCursor2)}`);
+            const moreC=Array.isArray(resp2)?resp2:(Array.isArray(resp2?.comments)?resp2.comments:[]);
+            curCursor2=resp2?.next_cursor||null;
+            const moreHM=resp2?.has_more||false;
+            const moreHtml2=commentsHTML(moreC);
+            if(moreHtml2){
+              const tmp2=document.createElement('div');tmp2.innerHTML=moreHtml2;
+              const list2=tmp2.querySelector('.comments-list');
+              if(list2){const eList2=wrap.querySelector('.comments-list');if(eList2)list2.querySelectorAll('.comment-row').forEach(r=>eList2.appendChild(r));}
+            }
+            if(!moreHM||!curCursor2)lmDiv.remove();
+            else setBtnLoad(lmBtn,false,'Carregar mais respostas');
+          }catch(e2){toast('error','Erro ao carregar','');setBtnLoad(lmBtn,false,'Tentar novamente');}
+        });
+      }
+    }
+    // Also add likes/reposts count click handlers in the thread view
+    addThreadLikersRepostersBtns(post,id);
   }catch(e){
     showRouteUI(`<div class="route-top"><button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button></div><div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Post indisponível</h3><p>${esc(e.message)}</p></div>`);
     $('#route-col').addEventListener('click',ev=>{if(ev.target.closest('[data-back]'))Router.navigate('/community')},{once:true});
   }
 }
+function addThreadLikersRepostersBtns(post,id){
+  const targetId=post.repost_of_id||id;
+  const likesBtn=$('#thread-likes-btn');
+  const repostsBtn=$('#thread-reposts-btn');
+  if(likesBtn)likesBtn.addEventListener('click',()=>showSocialSheet(targetId,'likes'));
+  if(repostsBtn)repostsBtn.addEventListener('click',()=>showSocialSheet(targetId,'reposts'));
+  // Also bind thread repost button
+  const repostBtn=$('#thread-repost-btn');
+  if(repostBtn){
+    repostBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      openRepostPopover(targetId,repostBtn);
+    });
+  }
+}
+
 function bindThreadEvents(post,id){
   const col=$('#route-col');
   col.addEventListener('click',e=>{
@@ -5798,8 +5995,9 @@ function bindThreadEvents(post,id){
     try{
       await api(`/api/community/posts/${encodeURIComponent(id)}/comments`,{method:'POST',body:JSON.stringify({content})});
       ta.value='';
-      const comments=await api(`/api/community/posts/${encodeURIComponent(id)}/comments`);
-      $('#thread-comments').innerHTML=commentsHTML(comments);
+      const commentsResp3=await api(`/api/community/posts/${encodeURIComponent(id)}/comments`);
+      const commentsList3=Array.isArray(commentsResp3)?commentsResp3:(Array.isArray(commentsResp3?.comments)?commentsResp3.comments:[]);
+      renderThreadComments(commentsList3,id,post,commentsResp3?.next_cursor||null,commentsResp3?.has_more||false);
       post.comments_count=Number(post.comments_count||0)+1;
       const fp=findPost(id);if(fp)fp.comments_count=post.comments_count;
       const tc=$('.thread-count');if(tc)tc.textContent=`${num(post.comments_count)} respostas`;
@@ -5827,6 +6025,162 @@ function editThreadPost(post,id){
     catch(e2){toast('error','Edição não salva',e2.message);setBtnLoad(sb,false,'Salvar')}
   });
 }
+/* ======================= SOCIAL SHEET (who liked / who reposted) ======================= */
+function buildSocialSheetDOM(){
+  if($('#social-sheet-overlay'))return;
+  const overlay=document.createElement('div');
+  overlay.id='social-sheet-overlay';
+  overlay.className='social-sheet-overlay';
+  overlay.innerHTML=`
+    <div class="social-sheet" role="dialog" aria-modal="true" aria-label="Interações">
+      <div class="social-sheet-handle"></div>
+      <div class="social-sheet-header">
+        <span class="social-sheet-title" id="social-sheet-title">Curtidas</span>
+        <button class="social-sheet-close" id="social-sheet-close" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="social-sheet-tabs" id="social-sheet-tabs"></div>
+      <div class="social-sheet-body" id="social-sheet-body"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{
+    if(e.target===overlay)closeSocialSheet();
+  });
+  $('#social-sheet-close').addEventListener('click',closeSocialSheet);
+}
+function closeSocialSheet(){
+  const o=$('#social-sheet-overlay');
+  if(o)o.classList.remove('show');
+}
+function socialUserRowHTML(u,extraInfo){
+  const mc=u.minecraft_name||u.username||'Jogador';
+  const shown=u.display_name||mc;
+  const handle=u.username||mc;
+  const av=u.avatar_url||(u.photo_url?''+u.photo_url:'')||'assets/images/fa-icon-light.png';
+  const rk=rankInfo(u.rank||u.role,u.merit);
+  return`<div class="social-user-row" data-uid="${esc(u.id)}" data-mc="${esc(mc)}">
+    <img class="social-user-av" src="${esc(av)}" alt="${esc(shown)}" onerror="this.onerror=null;this.src='${fallbackAvatar(shown,40)}'">
+    <div class="social-user-info">
+      <span class="social-user-name">${esc(shown)} ${rankPillHTML(rk)}</span>
+      <span class="social-user-handle">@${esc(handle)}</span>
+      ${extraInfo?`<div class="social-user-quote">${mentionHTML(extraInfo)}</div>`:''}
+    </div>
+  </div>`;
+}
+async function showSocialSheet(postId,startTab='likes'){
+  buildSocialSheetDOM();
+  const overlay=$('#social-sheet-overlay');
+  const body=$('#social-sheet-body');
+  const tabs=$('#social-sheet-tabs');
+  const title=$('#social-sheet-title');
+  overlay.classList.add('show');
+
+  // Build tabs
+  const tabDefs=[{id:'likes',label:'Curtidas'},{id:'reposts',label:'Reposts'}];
+  let activeTab=startTab;
+  function renderTabs(){
+    tabs.innerHTML=tabDefs.map(t=>`<button class="social-sheet-tab${activeTab===t.id?' active':''}" data-ss-tab="${t.id}">${t.label}</button>`).join('');
+    tabs.querySelectorAll('[data-ss-tab]').forEach(btn=>{
+      btn.addEventListener('click',()=>{activeTab=btn.dataset.ssTab;renderTabs();loadTab(activeTab);});
+    });
+  }
+  renderTabs();
+  loadTab(activeTab);
+
+  // Bind profile nav
+  body.addEventListener('click',e=>{
+    const row=e.target.closest('.social-user-row');
+    if(row){closeSocialSheet();navigateProfile(row.dataset.uid?`id:${row.dataset.uid}`:row.dataset.mc);}
+  });
+
+  async function loadTab(tab){
+    title.textContent=tab==='likes'?'Curtidas':'Reposts';
+    body.innerHTML='<div class="social-sheet-empty">Carregando…</div>';
+    try{
+      let cursor=null,hasMore=false;
+      const endpoint=tab==='likes'?`/api/community/posts/${encodeURIComponent(postId)}/likers`:`/api/community/posts/${encodeURIComponent(postId)}/reposters`;
+      const data=await api(endpoint);
+      const items=tab==='likes'?(data.likers||[]):(data.reposters||[]);
+      cursor=data.next_cursor;hasMore=data.has_more;
+      if(!items.length){
+        body.innerHTML='<div class="social-sheet-empty">Ninguém ainda.</div>';
+        return;
+      }
+      function renderItems(list,append=false){
+        const html=list.map(u=>socialUserRowHTML(u,tab==='reposts'&&u.quote_content?u.quote_content:null)).join('');
+        if(append){
+          const lmw=body.querySelector('.social-sheet-load-more');
+          if(lmw)lmw.remove();
+        } else {
+          body.innerHTML='';
+        }
+        const wrap=document.createElement('div');
+        wrap.innerHTML=html;
+        body.appendChild(wrap);
+        if(hasMore&&cursor){
+          const lmDiv=document.createElement('div');
+          lmDiv.className='social-sheet-load-more';
+          lmDiv.innerHTML='<button class="btn btn-ghost btn-sm">Carregar mais</button>';
+          lmDiv.querySelector('button').addEventListener('click',async()=>{
+            lmDiv.querySelector('button').textContent='Carregando…';
+            try{
+              const more=await api(`${endpoint}?cursor=${encodeURIComponent(cursor)}`);
+              const moreItems=tab==='likes'?(more.likers||[]):(more.reposters||[]);
+              cursor=more.next_cursor;hasMore=more.has_more;
+              renderItems(moreItems,true);
+            }catch(e2){lmDiv.querySelector('button').textContent='Tentar novamente';}
+          });
+          body.appendChild(lmDiv);
+        }
+      }
+      renderItems(items);
+    }catch(e){body.innerHTML='<div class="social-sheet-empty">Não foi possível carregar.</div>';}
+  }
+}
+
+/* ======================= RENDER THREAD COMMENTS with load-more ======================= */
+function renderThreadComments(comments,postId,post,nextCursor,hasMore){
+  const wrap=$('#thread-comments');
+  if(!wrap)return;
+  wrap.innerHTML=commentsHTML(comments);
+  if(hasMore&&nextCursor){
+    const lmDiv=document.createElement('div');
+    lmDiv.className='load-more-comments-wrap';
+    const lmBtn=document.createElement('button');
+    lmBtn.className='btn btn-ghost btn-sm load-more-comments-btn';
+    lmBtn.textContent='Carregar mais respostas';
+    lmDiv.appendChild(lmBtn);
+    wrap.appendChild(lmDiv);
+    let curCursor=nextCursor;
+    lmBtn.addEventListener('click',async()=>{
+      setBtnLoad(lmBtn,true,'Carregando');
+      try{
+        const resp=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments?cursor=${encodeURIComponent(curCursor)}`);
+        const moreComments=Array.isArray(resp)?resp:(Array.isArray(resp?.comments)?resp.comments:[]);
+        curCursor=resp?.next_cursor||null;
+        const moreHasMore=resp?.has_more||false;
+        // Insert more comments before the load-more button
+        const moreHtml=commentsHTML(moreComments);
+        if(moreHtml){
+          const tmp=document.createElement('div');
+          tmp.innerHTML=moreHtml;
+          const list=tmp.querySelector('.comments-list');
+          if(list){
+            const existingList=wrap.querySelector('.comments-list');
+            if(existingList){
+              list.querySelectorAll('.comment-row').forEach(r=>existingList.appendChild(r));
+            }
+          }
+        }
+        if(!moreHasMore||!curCursor)lmDiv.remove();
+        else setBtnLoad(lmBtn,false,'Carregar mais respostas');
+        if(post)post.comments_count=Math.max(post.comments_count||0,Number(post.comments_count||0));
+      }catch(e){toast('error','Erro ao carregar','');setBtnLoad(lmBtn,false,'Tentar novamente');}
+    });
+  }
+}
+
 function commentsHTML(comments){
   if(!Array.isArray(comments)||!comments.length)
     return`<div class="empty-card"><div class="empty-icon">${IC.comment}</div><h3>Nenhuma resposta ainda</h3><p>Seja o primeiro a responder esta thread.</p></div>`;
@@ -7468,8 +7822,9 @@ function bindEvents(){
     if(!postId)return;
     lbComments.innerHTML='<div class="lb-comments-empty">Carregando…</div>';
     try{
-      const data = lbCommentCache[postId] || (lbCommentCache[postId]=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`));
-      if(!Array.isArray(data)||!data.length){
+      const lbCommResp = lbCommentCache[postId] || (lbCommentCache[postId]=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`));
+      const data=Array.isArray(lbCommResp)?lbCommResp:(Array.isArray(lbCommResp?.comments)?lbCommResp.comments:[]);
+      if(!data.length){
         lbComments.innerHTML='<div class="lb-comments-empty">Nenhuma resposta ainda.</div>';
         return;
       }
