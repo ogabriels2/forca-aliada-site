@@ -37,6 +37,10 @@ import {
   undoNotInterestedEndpoint,
   feedV2Endpoint,
 } from './feed_v2_server.mjs';
+import {
+  commentUpgradeSchemaSql,
+  registerCommentUpgradeEndpoints,
+} from './server_comments_patch.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -1243,6 +1247,7 @@ ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 `;
 await pool.query(featureSchemaSql);
   await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
+  await pool.query(commentUpgradeSchemaSql); // Comment upgrade: parent_comment_id, comment_likes, likes_count, reply_count, triggers
 
   // Audit schema — executado no boot, não lazily
   for (const statement of AUDIT_SCHEMA_STATEMENTS) {
@@ -6020,47 +6025,8 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
 
 app.get('/api/community/posts/:id/comments', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
-  const limit = clampInt(req.query.limit, 20, 1, 50);
-  const cursor = parseInt(req.query.cursor, 10) || null;
-  try {
-    const params = [req.user.sub, postId, limit + 1];
-    const cursorClause = cursor ? `AND c.id > $${params.length + 1}` : '';
-    if (cursor) params.push(cursor);
-    const { rows } = await pool.query(`
-      SELECT c.id,
-             CASE WHEN c.is_deleted THEN '[comentario removido]' ELSE c.content END AS content,
-             c.is_deleted,
-             c.created_at,
-             u.id AS author_id, u.username, u.minecraft_name, u.photo_url,
-             u.is_platform_verified,
-             COALESCE(up.avatar_url, '') AS avatar_url,
-             COALESCE(up.display_name, '') AS display_name,
-             ${primaryIntegrationFieldsSql('u')} AS integration,
-             ${socialRankSql('u', 'pb')} AS rank
-      FROM post_comments c
-      JOIN users u ON c.author_id = u.id
-      JOIN user_posts p ON p.id = c.post_id
-      LEFT JOIN user_preferences up ON up.user_id = u.id
-      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-      WHERE c.post_id = $2
-        ${cursorClause}
-        AND NOT EXISTS (
-          SELECT 1 FROM user_blocks ub
-          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
-             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
-             OR (ub.blocker_id = $1 AND ub.blocked_id = p.author_id)
-             OR (ub.blocker_id = p.author_id AND ub.blocked_id = $1)
-        )
-      ORDER BY c.created_at ASC
-      LIMIT $3
-    `, params);
-    const page = rows.slice(0, limit);
-    const next_cursor = rows.length > limit ? page[page.length - 1]?.id : null;
-    res.json({ comments: page, next_cursor, has_more: rows.length > limit });
-  } catch (e) {
-    console.error('[GET /api/community/posts/:id/comments]', e);
-    res.status(500).json({ error: 'Erro ao carregar comentarios' });
-  }
+  if (!postId) return res.status(400).json({ error: 'ID inválido' });
+  return app._commentListHandler(req, res, postId, req.user.sub);
 });
 
 app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
@@ -6551,6 +6517,19 @@ savePostEndpoint(app, auth, pool);
 unsavePostEndpoint(app, auth, pool);
 notInterestedEndpoint(app, auth, pool);
 undoNotInterestedEndpoint(app, auth, pool);
+
+// ── Comment Upgrade: likes, threading, sort, sub-thread ──────────────────────
+registerCommentUpgradeEndpoints(app, pool, auth, {
+  sanitize,
+  sanitizeText,
+  clampInt,
+  isPrivileged,
+  socialRankSql,
+  primaryIntegrationFieldsSql,
+  createSocialNotification,
+  auditFromReq,
+  extractMentions,
+});
 
 // Apagar o próprio post
 app.patch('/api/community/posts/:id', auth, async (req, res) => {
