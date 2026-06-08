@@ -6466,6 +6466,85 @@ app.delete('/api/community/posts/:id/like', auth, async (req, res) => {
   }
 });
 
+// ── Quem curtiu o post ────────────────────────────────────────────────────────
+app.get('/api/community/posts/:id/likers', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  const limit = clampInt(req.query.limit, 30, 1, 50);
+  const cursor = parseInt(req.query.cursor, 10) || null;
+  try {
+    const params = [req.user.sub, postId, limit + 1];
+    const cursorClause = cursor ? `AND pl.user_id > $${params.length + 1}` : '';
+    if (cursor) params.push(cursor);
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '')   AS avatar_url,
+             ${socialRankSql('u', 'pb')}   AS rank,
+             pl.created_at
+      FROM post_likes pl
+      JOIN users u ON u.id = pl.user_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN player_balances  pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE pl.post_id = $2
+        ${cursorClause}
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      ORDER BY pl.created_at DESC, u.id ASC
+      LIMIT $3
+    `, params);
+    const page = rows.slice(0, limit);
+    const next_cursor = rows.length > limit ? page[page.length - 1]?.id : null;
+    res.json({ likers: page, next_cursor, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/community/posts/:id/likers]', e);
+    res.status(500).json({ error: 'Erro ao buscar curtidas' });
+  }
+});
+
+// ── Quem repostou o post ──────────────────────────────────────────────────────
+app.get('/api/community/posts/:id/reposters', auth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId) return res.status(400).json({ error: 'ID invalido' });
+  const limit = clampInt(req.query.limit, 30, 1, 50);
+  const cursor = parseInt(req.query.cursor, 10) || null;
+  try {
+    const params = [req.user.sub, postId, limit + 1];
+    const cursorClause = cursor ? `AND rp.author_id > $${params.length + 1}` : '';
+    if (cursor) params.push(cursor);
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '')   AS avatar_url,
+             ${socialRankSql('u', 'pb')}   AS rank,
+             rp.created_at,
+             rp.content AS quote_content
+      FROM user_posts rp
+      JOIN users u ON u.id = rp.author_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN player_balances  pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE rp.repost_of_id = $2
+        ${cursorClause}
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks ub
+          WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+             OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+        )
+      ORDER BY rp.created_at DESC, u.id ASC
+      LIMIT $3
+    `, params);
+    const page = rows.slice(0, limit);
+    const next_cursor = rows.length > limit ? page[page.length - 1]?.id : null;
+    res.json({ reposters: page, next_cursor, has_more: rows.length > limit });
+  } catch (e) {
+    console.error('[GET /api/community/posts/:id/reposters]', e);
+    res.status(500).json({ error: 'Erro ao buscar reposts' });
+  }
+});
+
 // ── Feed v2: impressões, saves, não tenho interesse ──────────────────────────
 impressionsEndpoint(app, auth, pool, impressionLimiter);
 savePostEndpoint(app, auth, pool);
