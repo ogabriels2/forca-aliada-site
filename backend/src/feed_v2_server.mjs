@@ -529,9 +529,9 @@ app.get('/api/community/feed', auth, async (req, res) => {
 
         -- Votos em enquetes (interação explícita e intencional)
         LEFT JOIN LATERAL (
-          SELECT COALESCE(SUM(ppo.votes_count), 0)::int AS n
+          SELECT COALESCE(COUNT(ppv.id), 0)::int AS n
           FROM post_polls       pp
-          JOIN post_poll_options ppo ON ppo.poll_id = pp.id
+          JOIN post_poll_votes  ppv ON ppv.poll_id = pp.id
           WHERE pp.post_id = b.target_id
         ) pv_agg ON TRUE
 
@@ -641,9 +641,9 @@ app.get('/api/community/feed', auth, async (req, res) => {
           -- ⑧ RUÍDO DE SESSÃO (garante feed diferente a cada abertura)
           -- Usa session_seed (gerado aleatoriamente pelo cliente por sessão)
           -- em vez do evaluation_timestamp (que é quase idêntico a cada reload).
-          -- Amplitude: ±12.5% → jitter de 25% total.
+          -- Amplitude: ±12.5% → jitter centrado em 1.0, de 0.875 a 1.125.
           -- Deterministico por (post_id + session_seed) → paginação keyset não duplica posts.
-          (1.0 + ((MOD(
+          (0.875 + ((MOD(
             ABS(hashtext(m.id::text || ':' || $6::text))::bigint,
             100000
           )::double precision / 100000.0) * 0.25))::double precision AS session_noise
