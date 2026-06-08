@@ -298,6 +298,66 @@ function communityMediaUploadMiddleware(req, res, next) {
   });
 }
 
+const CHAT_ATTACHMENT_MAX_FILES = 4;
+const CHAT_ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+const CHAT_ATTACHMENT_TYPES = new Set(['image', 'video', 'pdf', 'file']);
+const CHAT_ALLOWED_FILE_EXTENSIONS = new Set([
+  'pdf',
+  'doc', 'docx',
+  'xls', 'xlsx',
+  'ppt', 'pptx',
+  'txt', 'csv',
+  'zip', 'rar', '7z',
+]);
+
+function chatAttachmentKind(file = {}) {
+  const mime = String(file.mimetype || '').toLowerCase();
+  const name = String(file.originalname || '');
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (/^image\/(png|jpe?g|webp|gif|avif|bmp|heic|heif)$/i.test(mime)) return 'image';
+  if (/^video\/(mp4|webm|quicktime|x-matroska|x-msvideo|mpeg)$/i.test(mime)) return 'video';
+  if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+  if (CHAT_ALLOWED_FILE_EXTENSIONS.has(ext)) return 'file';
+  return null;
+}
+
+function cleanFileName(value = 'arquivo') {
+  const cleaned = sanitizeText(value)
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return (cleaned || 'arquivo').slice(0, 120);
+}
+
+const chatAttachmentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: CHAT_ATTACHMENT_MAX_FILES,
+    fileSize: CHAT_ATTACHMENT_MAX_BYTES,
+  },
+  fileFilter(_req, file, cb) {
+    if (!chatAttachmentKind(file)) {
+      return cb(new Error('Tipo de arquivo nao permitido.'));
+    }
+    cb(null, true);
+  },
+});
+
+function chatAttachmentUploadMiddleware(req, res, next) {
+  chatAttachmentUpload.array('files', CHAT_ATTACHMENT_MAX_FILES)(req, res, err => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Cada anexo pode ter no maximo 25MB.'
+        : err.code === 'LIMIT_FILE_COUNT'
+          ? 'Envie no maximo 4 anexos por mensagem.'
+          : `Upload invalido (${err.code}).`;
+      return res.status(400).json({ error: message });
+    }
+    return res.status(400).json({ error: err.message || 'Upload invalido.' });
+  });
+}
+
 function cloudinaryIsConfigured() {
   return Boolean(process.env.CLOUDINARY_URL || (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET));
 }
@@ -1200,6 +1260,8 @@ CREATE TABLE IF NOT EXISTS direct_messages (
   conversation_id BIGINT NOT NULL REFERENCES direct_conversations(id) ON DELETE CASCADE,
   sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   body TEXT NOT NULL,
+  attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+  client_ref VARCHAR(80),
   is_deleted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   edited_at TIMESTAMPTZ,
@@ -1209,6 +1271,11 @@ CREATE INDEX IF NOT EXISTS idx_direct_messages_conversation ON direct_messages(c
 ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
 ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
+UPDATE direct_messages SET attachments = '[]'::jsonb WHERE attachments IS NULL;
+ALTER TABLE direct_messages ALTER COLUMN attachments SET DEFAULT '[]'::jsonb;
+ALTER TABLE direct_messages ALTER COLUMN attachments SET NOT NULL;
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS client_ref VARCHAR(80);
 
 CREATE TABLE IF NOT EXISTS direct_conversation_reads (
   conversation_id BIGINT NOT NULL REFERENCES direct_conversations(id) ON DELETE CASCADE,
@@ -1241,6 +1308,8 @@ CREATE TABLE IF NOT EXISTS chat_group_messages (
   group_id BIGINT NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
   sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   body TEXT NOT NULL,
+  attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+  client_ref VARCHAR(80),
   is_deleted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   edited_at TIMESTAMPTZ,
@@ -1250,6 +1319,11 @@ CREATE INDEX IF NOT EXISTS idx_chat_group_messages_group ON chat_group_messages(
 ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
 ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
+UPDATE chat_group_messages SET attachments = '[]'::jsonb WHERE attachments IS NULL;
+ALTER TABLE chat_group_messages ALTER COLUMN attachments SET DEFAULT '[]'::jsonb;
+ALTER TABLE chat_group_messages ALTER COLUMN attachments SET NOT NULL;
+ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS client_ref VARCHAR(80);
 `;
 await pool.query(featureSchemaSql);
   await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
@@ -1496,6 +1570,63 @@ function normalizePostMediaUrls(input) {
     } catch {}
   }
   return urls;
+}
+
+function normalizeClientRef(value = '') {
+  const raw = String(value || '').trim();
+  return /^[a-z0-9:_-]{1,80}$/i.test(raw) ? raw : null;
+}
+
+function normalizeChatAttachmentUrl(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw || raw.length > 1200) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:') return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeChatAttachments(input) {
+  const values = Array.isArray(input) ? input : [];
+  const seen = new Set();
+  const out = [];
+  for (const item of values) {
+    if (out.length >= CHAT_ATTACHMENT_MAX_FILES) break;
+    if (!item || typeof item !== 'object') continue;
+    const url = normalizeChatAttachmentUrl(item.url || item.secure_url);
+    const type = String(item.type || item.kind || '').toLowerCase();
+    if (!url || !CHAT_ATTACHMENT_TYPES.has(type) || seen.has(url)) continue;
+    const size = Math.max(0, Math.min(Number(item.size || item.bytes || 0) || 0, CHAT_ATTACHMENT_MAX_BYTES));
+    const width = Number(item.width || 0) || null;
+    const height = Number(item.height || 0) || null;
+    const duration = Number(item.duration || 0) || null;
+    out.push({
+      url,
+      type,
+      name: cleanFileName(item.name || item.original_filename || 'arquivo'),
+      mime_type: String(item.mime_type || item.mimetype || '').slice(0, 120),
+      size,
+      width,
+      height,
+      duration,
+    });
+    seen.add(url);
+  }
+  return out;
+}
+
+function chatAttachmentPreviewText(attachments = []) {
+  const list = Array.isArray(attachments) ? attachments : [];
+  if (!list.length) return '';
+  if (list.length > 1) return `${list.length} anexos`;
+  const type = list[0]?.type;
+  if (type === 'image') return 'Imagem';
+  if (type === 'video') return 'Video';
+  if (type === 'pdf') return 'PDF';
+  return 'Arquivo';
 }
 
 function parseCommunityIdentifier(identifier = '') {
@@ -1961,6 +2092,7 @@ function directConversationSelect(extraWhere = '') {
                   WHERE f1.follower_id = $1 AND f1.following_id = other_u.id) AS is_friend,
            last_msg.id AS last_message_id,
            last_msg.body AS last_message_body,
+           COALESCE(last_msg.attachments, '[]'::jsonb) AS last_message_attachments,
            last_msg.sender_id AS last_message_sender_id,
            last_msg.created_at AS last_message_at,
            COALESCE(unread.count, 0)::int AS unread_count
@@ -1968,7 +2100,7 @@ function directConversationSelect(extraWhere = '') {
     JOIN users other_u ON other_u.id = CASE WHEN c.participant_a = $1 THEN c.participant_b ELSE c.participant_a END
     LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(other_u.minecraft_name)
     LEFT JOIN LATERAL (
-      SELECT id, body, sender_id, created_at
+      SELECT id, body, attachments, sender_id, created_at
       FROM direct_messages
       WHERE conversation_id = c.id AND is_deleted = FALSE
       ORDER BY id DESC
@@ -5089,6 +5221,8 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
     const { rows } = await pool.query(`
       SELECT dm.id, dm.conversation_id, dm.sender_id,
              CASE WHEN dm.is_deleted THEN '[mensagem removida]' ELSE dm.body END AS body,
+             CASE WHEN dm.is_deleted THEN '[]'::jsonb ELSE COALESCE(dm.attachments, '[]'::jsonb) END AS attachments,
+             dm.client_ref,
              dm.is_deleted, dm.created_at, dm.edited_at,
              u.username, u.minecraft_name, u.photo_url
       FROM direct_messages dm
@@ -5121,9 +5255,13 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
 
 app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
   const conversationId = parseInt(req.params.id, 10);
-  const body = sanitizeText(req.body?.body || req.body?.content || '');
+  const rawBody = sanitizeText(req.body?.body || req.body?.content || '');
+  const attachments = normalizeChatAttachments(req.body?.attachments);
+  const clientRef = normalizeClientRef(req.body?.client_ref);
   if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
-  if (!body || body.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
+  if (rawBody.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
+  if (!rawBody && !attachments.length) return res.status(400).json({ error: 'Mensagem invalida. Escreva algo ou envie um anexo.' });
+  const body = rawBody;
 
   const client = await pool.connect();
   let committed = false;
@@ -5155,10 +5293,10 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
     }
 
     const { rows } = await client.query(
-      `INSERT INTO direct_messages(conversation_id, sender_id, body)
-       VALUES($1, $2, $3)
-       RETURNING id, conversation_id, sender_id, body, is_deleted, created_at, edited_at`,
-      [conversationId, req.user.sub, body],
+      `INSERT INTO direct_messages(conversation_id, sender_id, body, attachments, client_ref)
+       VALUES($1, $2, $3, $4::jsonb, $5)
+       RETURNING id, conversation_id, sender_id, body, attachments, client_ref, is_deleted, created_at, edited_at`,
+      [conversationId, req.user.sub, body, JSON.stringify(attachments), clientRef],
     );
     await client.query('UPDATE direct_conversations SET last_message_at=NOW() WHERE id=$1', [conversationId]);
     await client.query(
@@ -5177,7 +5315,7 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
       type: 'direct_message',
       entityType: 'direct_message',
       entityId: rows[0].id,
-      previewText: body,
+      previewText: body || chatAttachmentPreviewText(attachments),
     }).catch(err => console.warn('[direct_message notification skipped]', err?.message || err));
 
     // ── SSE fan-out: push instantâneo para o peer (e outras abas do remetente)
@@ -5232,6 +5370,7 @@ app.get('/api/me/group-conversations', auth, async (req, res) => {
              COUNT(gm.user_id)::int AS member_count,
              last_msg.id AS last_message_id,
              last_msg.body AS last_message_body,
+             COALESCE(last_msg.attachments, '[]'::jsonb) AS last_message_attachments,
              last_msg.sender_id AS last_message_sender_id,
              last_msg.created_at AS last_message_at,
              COALESCE(sender.minecraft_name, sender.username) AS last_sender_name,
@@ -5240,7 +5379,7 @@ app.get('/api/me/group-conversations', auth, async (req, res) => {
       JOIN chat_group_members me ON me.group_id = g.id AND me.user_id = $1
       JOIN chat_group_members gm ON gm.group_id = g.id
       LEFT JOIN LATERAL (
-        SELECT id, body, sender_id, created_at
+        SELECT id, body, attachments, sender_id, created_at
         FROM chat_group_messages
         WHERE group_id = g.id AND is_deleted = FALSE
         ORDER BY id DESC
@@ -5255,7 +5394,7 @@ app.get('/api/me/group-conversations', auth, async (req, res) => {
           AND msg.is_deleted = FALSE
           AND msg.created_at > COALESCE(me.last_read_at, 'epoch'::timestamptz)
       ) unread ON TRUE
-      GROUP BY g.id, last_msg.id, last_msg.body, last_msg.sender_id, last_msg.created_at, sender.minecraft_name, sender.username, unread.count
+      GROUP BY g.id, last_msg.id, last_msg.body, last_msg.attachments, last_msg.sender_id, last_msg.created_at, sender.minecraft_name, sender.username, unread.count
       ORDER BY COALESCE(last_msg.created_at, g.last_message_at, g.created_at) DESC
       LIMIT $2
     `, [req.user.sub, limit]);
@@ -5328,6 +5467,8 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
     const { rows } = await pool.query(`
       SELECT msg.id, msg.group_id, msg.sender_id,
              CASE WHEN msg.is_deleted THEN '[mensagem removida]' ELSE msg.body END AS body,
+             CASE WHEN msg.is_deleted THEN '[]'::jsonb ELSE COALESCE(msg.attachments, '[]'::jsonb) END AS attachments,
+             msg.client_ref,
              msg.created_at, msg.edited_at, msg.is_deleted,
              u.username, u.minecraft_name, u.photo_url
       FROM chat_group_messages msg
@@ -5347,9 +5488,13 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
 
 app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
   const groupId = parseInt(req.params.id, 10);
-  const body = sanitizeText(req.body?.body || '').slice(0, 500);
+  const rawBody = sanitizeText(req.body?.body || '');
+  const attachments = normalizeChatAttachments(req.body?.attachments);
+  const clientRef = normalizeClientRef(req.body?.client_ref);
   if (!groupId) return res.status(400).json({ error: 'Grupo invalido' });
-  if (!body) return res.status(400).json({ error: 'Mensagem invalida.' });
+  if (rawBody.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
+  if (!rawBody && !attachments.length) return res.status(400).json({ error: 'Mensagem invalida.' });
+  const body = rawBody;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -5359,10 +5504,10 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
       return res.status(404).json({ error: 'Grupo nao encontrado' });
     }
     const { rows } = await client.query(
-      `INSERT INTO chat_group_messages(group_id, sender_id, body)
-       VALUES($1, $2, $3)
-       RETURNING id, group_id, sender_id, body, is_deleted, created_at, edited_at`,
-      [groupId, req.user.sub, body],
+      `INSERT INTO chat_group_messages(group_id, sender_id, body, attachments, client_ref)
+       VALUES($1, $2, $3, $4::jsonb, $5)
+       RETURNING id, group_id, sender_id, body, attachments, client_ref, is_deleted, created_at, edited_at`,
+      [groupId, req.user.sub, body, JSON.stringify(attachments), clientRef],
     );
     await client.query('UPDATE chat_groups SET last_message_at=NOW() WHERE id=$1', [groupId]);
     await client.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
@@ -5614,6 +5759,65 @@ function uploadCommunityImage(file, userId) {
   });
 }
 
+function uploadChatAttachment(file, userId) {
+  const kind = chatAttachmentKind(file);
+  if (!kind) throw new Error('Tipo de arquivo nao permitido.');
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const fail = err => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
+    const done = result => {
+      if (settled) return;
+      settled = true;
+      if (!result?.secure_url) return fail(new Error('Cloudinary nao retornou URL segura.'));
+      resolve({
+        url: result.secure_url,
+        type: kind,
+        name: cleanFileName(file.originalname || result.original_filename || 'arquivo'),
+        mime_type: file.mimetype || '',
+        size: Number(result.bytes || file.size || 0) || 0,
+        width: Number(result.width || 0) || null,
+        height: Number(result.height || 0) || null,
+        duration: Number(result.duration || 0) || null,
+      });
+    };
+    const timeout = setTimeout(() => {
+      fail(new Error('Cloudinary demorou para responder ao upload.'));
+    }, 60000);
+    const resourceType = kind === 'image' ? 'image' : kind === 'video' ? 'video' : 'raw';
+    const folder = process.env.CLOUDINARY_CHAT_FOLDER || `forca-aliada/chat/${kind}`;
+    const options = {
+      folder,
+      resource_type: resourceType,
+      use_filename: false,
+      unique_filename: true,
+      overwrite: false,
+      context: {
+        uploaded_by: String(userId || ''),
+        original_name: cleanFileName(file.originalname || 'arquivo'),
+      },
+    };
+    if (kind === 'image' && !/^image\/gif$/i.test(file.mimetype || '')) {
+      options.format = 'webp';
+      options.transformation = [{ fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' }];
+    }
+    const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
+      clearTimeout(timeout);
+      if (err) return fail(err);
+      done(result);
+    });
+    stream.on?.('error', err => {
+      clearTimeout(timeout);
+      fail(err);
+    });
+    stream.end(file.buffer);
+  });
+}
+
 app.post('/api/community/upload', auth, uploadLimiter, communityMediaUploadMiddleware, async (req, res) => {
   if (!cloudinaryIsConfigured()) {
     return res.status(503).json({ error: 'Upload de imagens ainda nao esta configurado.' });
@@ -5654,6 +5858,39 @@ app.post('/api/community/upload', auth, uploadLimiter, communityMediaUploadMiddl
 // ── Upload de imagem de perfil (avatar / capa) ─────────────────────────────
 // Endpoint único que recebe o campo 'file', faz upload para o Cloudinary e
 // retorna { url } — compatível com o uploadImageBlob() do frontend.
+// Chat attachments: recebe ate 4 arquivos no campo 'files' e retorna metadados seguros.
+app.post('/api/me/chat/attachments', auth, uploadLimiter, chatAttachmentUploadMiddleware, async (req, res) => {
+  if (!cloudinaryIsConfigured()) {
+    return res.status(503).json({ error: 'Upload de anexos ainda nao esta configurado.' });
+  }
+  const files = Array.isArray(req.files) ? req.files : [];
+  if (!files.length) return res.status(400).json({ error: 'Selecione ao menos um arquivo.' });
+  if (files.length > CHAT_ATTACHMENT_MAX_FILES) {
+    return res.status(400).json({ error: 'Envie no maximo 4 anexos por mensagem.' });
+  }
+
+  try {
+    const imageFiles = files.filter(file => chatAttachmentKind(file) === 'image');
+    const moderationResults = await Promise.all(imageFiles.map(file => moderateImageBuffer(file.buffer)));
+    for (const result of moderationResults) {
+      if (result.verdict === 'rejected') {
+        console.warn(`[Moderation] Anexo de chat rejeitado (${result.reason}) - user ${req.user.sub}`);
+        return res.status(422).json({ error: 'Uma imagem contem conteudo improprio e nao pode ser enviada.' });
+      }
+    }
+
+    const attachments = await Promise.all(files.map(file => uploadChatAttachment(file, req.user.sub)));
+    res.status(201).json({
+      attachments,
+      flagged: moderationResults.some(result => result.verdict === 'suspicious'),
+    });
+  } catch (e) {
+    console.error('[POST /api/me/chat/attachments]', e);
+    res.status(502).json({ error: 'Nao foi possivel enviar o anexo agora.' });
+  }
+});
+
+// Upload de imagem de perfil (avatar / capa).
 const profileImageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { files: 1, fileSize: 10 * 1024 * 1024 },
