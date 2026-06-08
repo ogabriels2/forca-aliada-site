@@ -1,7 +1,7 @@
 /**
  * Força Aliada — Chat Direto  (social-chat.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION: chat8-20260608
+ * VERSION: chat9-20260608
  *
  * NOVIDADES vs chat7:
  *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 (function () {
-  window._faChatScriptVersion = 'chat8-20260608';
+  window._faChatScriptVersion = 'chat9-20260608';
   if (window.FAChat) return;
 
   // ── Storage seguro ────────────────────────────────────────────────────────────
@@ -59,6 +59,7 @@
     groupMemberIds: [],
     busy: false,         // mantido para operações não-mensagem (criar grupo, etc.)
     error: '',
+    composeError: '',
     loadingConversations: false,
     loadingGroups: false,
     loadingFriends: false,
@@ -70,6 +71,7 @@
     _peerLastReadAt: null,    // ISO string
     _peerIsOnline: false,
     _myLastReadAt: null,
+    pendingAttachments: [],
   };
 
   // ── Fila de envio independente de state.busy ──────────────────────────────────
@@ -152,6 +154,7 @@
       // Adiciona se não existe ainda (o remetente já inseriu via optimistic)
       const alreadyIn = state.messages.some(m =>
         String(m.id) === String(msg.id) ||
+        (msg.client_ref && String(m.client_ref || m.id) === String(msg.client_ref)) ||
         (m.client_status === 'pending' && m.body === msg.body && Number(m.sender_id) === Number(msg.sender_id))
       );
       if (!alreadyIn) {
@@ -323,6 +326,10 @@
     user:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
     group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     plus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    attach:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.8 17.6a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>',
+    camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="4"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m6 6 1 18h10l1-18"/><path d="M10 11v6M14 11v6"/></svg>',
+    file:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>',
   };
 
   // ── DOM root ──────────────────────────────────────────────────────────────────
@@ -347,6 +354,100 @@
     return new Date(value).toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
   };
   const wait = ms => new Promise(r => setTimeout(r, ms));
+  const CHAT_MAX_ATTACHMENTS = 4;
+  const CHAT_MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+  const CHAT_FILE_ACCEPT = [
+    'image/*',
+    'video/*',
+    'application/pdf',
+    '.doc', '.docx',
+    '.xls', '.xlsx',
+    '.ppt', '.pptx',
+    '.txt', '.csv',
+    '.zip', '.rar', '.7z',
+  ].join(',');
+  const CHAT_FILE_EXTENSIONS = new Set(['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv','zip','rar','7z']);
+  let attachmentSeq = 0;
+
+  function cleanFileName(value = 'arquivo') {
+    const name = String(value || 'arquivo')
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return (name || 'arquivo').slice(0, 120);
+  }
+
+  function extOf(name = '') {
+    const parts = String(name || '').split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : '';
+  }
+
+  function attachmentKindFromType(type = '', name = '') {
+    const mime = String(type || '').toLowerCase();
+    const ext = extOf(name);
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+    if (CHAT_FILE_EXTENSIONS.has(ext)) return 'file';
+    return '';
+  }
+
+  function formatFileSize(bytes = 0) {
+    const size = Number(bytes || 0);
+    if (!size) return '';
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+    return `${(size / 1024 / 1024).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  }
+
+  function normalizeAttachment(att = {}) {
+    if (!att || typeof att !== 'object') return null;
+    const type = String(att.type || att.kind || attachmentKindFromType(att.mime_type || att.type, att.name)).toLowerCase();
+    const url = String(att.url || att.preview_url || '').trim();
+    if (!type || !['image','video','pdf','file'].includes(type)) return null;
+    return {
+      url,
+      preview_url: att.preview_url || '',
+      type,
+      name: cleanFileName(att.name || 'arquivo'),
+      mime_type: String(att.mime_type || att.mimetype || '').slice(0, 120),
+      size: Number(att.size || att.bytes || 0) || 0,
+      width: Number(att.width || 0) || null,
+      height: Number(att.height || 0) || null,
+      duration: Number(att.duration || 0) || null,
+    };
+  }
+
+  function messageAttachments(message = {}) {
+    return (Array.isArray(message.attachments) ? message.attachments : [])
+      .map(normalizeAttachment)
+      .filter(Boolean)
+      .slice(0, CHAT_MAX_ATTACHMENTS);
+  }
+
+  function attachmentPreviewText(attachments = []) {
+    const list = Array.isArray(attachments) ? attachments : [];
+    if (!list.length) return '';
+    if (list.length > 1) return `${list.length} anexos`;
+    if (list[0].type === 'image') return 'Imagem';
+    if (list[0].type === 'video') return 'Video';
+    if (list[0].type === 'pdf') return 'PDF';
+    return 'Arquivo';
+  }
+
+  function messagePreviewText(body, attachments) {
+    const text = String(body || '').trim();
+    return text || attachmentPreviewText(attachments) || '';
+  }
+
+  function releaseAttachmentPreviews(items = []) {
+    items.forEach(item => {
+      if (item?.preview_url?.startsWith('blob:')) {
+        try { URL.revokeObjectURL(item.preview_url); } catch {}
+      }
+    });
+  }
+
   function cacheKey() {
     if (!state.current) return null;
     return `${state.currentKind}:${state.current.id}`;
@@ -356,7 +457,8 @@
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', `Bearer ${token}`);
-    if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    if (options.body && !isFormData && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     const timeoutMs = options.timeoutMs || 35000;
     const fetchOptions = { ...options, cache: 'no-store' };
     delete fetchOptions.timeoutMs;
@@ -630,6 +732,10 @@
       if (!renderedIds.has(msgId) && !msgId.startsWith('tmp-')) {
         let mergedTmp = null;
         pendingNodes.forEach((node, tmpId) => {
+          if (!mergedTmp && msg.client_ref && String(msg.client_ref) === String(tmpId)) {
+            mergedTmp = { node, tmpId };
+            return;
+          }
           // Busca no body específico para não capturar o timestamp no textContent
           const bodyEl = node.querySelector('.fa-chat-bubble-body');
           const bubbleText = bodyEl ? bodyEl.textContent : (node.querySelector('.fa-chat-bubble')?.textContent||'');
@@ -724,6 +830,29 @@
       if (found) return;
       const id = node.dataset.msgId;
       if (!id.startsWith('tmp-')) return;
+      if (realMsg.client_ref && String(realMsg.client_ref) === String(id)) {
+        const wasGroupFirst = node.classList.contains('is-group-first');
+        const wasGroupLast = node.classList.contains('is-group-last');
+        node.dataset.msgId = String(realMsg.id);
+        node.classList.remove('is-pending');
+        const timeEl = node.querySelector('time');
+        if (timeEl) timeEl.textContent = rel(realMsg.created_at);
+        const tickWrap = node.querySelector('.fa-tick-wrap');
+        if (tickWrap && isMe) {
+          const status = calcTickStatus(realMsg);
+          tickWrap.dataset.tickStatus = status;
+          tickWrap.innerHTML = TICK_HTML[status] || '';
+        }
+        const idx = state.messages.findIndex(m => String(m.id) === id || String(m.client_ref || '') === String(realMsg.client_ref));
+        if (idx >= 0) {
+          state.messages[idx] = { ...realMsg, username: state.me?.username, minecraft_name: state.me?.minecraft_name };
+          const k = cacheKey();
+          if (k) state._msgCache[k] = state.messages.slice();
+        }
+        node.replaceWith(buildMessageNode({ ...realMsg, username: state.me?.username, minecraft_name: state.me?.minecraft_name }, isMe, wasGroupFirst, wasGroupLast));
+        found = true;
+        return;
+      }
       // Busca o conteúdo no .fa-chat-bubble-body (novo) ou fallback para bubble inteiro
       const bodyEl = node.querySelector('.fa-chat-bubble-body');
       const bubbleText = bodyEl ? bodyEl.textContent : (node.querySelector('.fa-chat-bubble')?.textContent || '');
@@ -800,7 +929,7 @@
     if (!rows.length) return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para começar.</div>';
     return rows.map(conv => {
       const name = nameOf(conv);
-      const preview = conv.last_message_body || (conv.is_friend ? 'Amigos na comunidade' : 'Conversa aberta');
+      const preview = messagePreviewText(conv.last_message_body, conv.last_message_attachments) || (conv.is_friend ? 'Amigos na comunidade' : 'Conversa aberta');
       const verified = conv.is_platform_verified ? `<span class="fa-chat-verified" title="Verificado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>` : '';
       return `
         <button class="fa-chat-row ${conv.unread_count?'is-unread':''}" type="button" data-chat-conv="${esc(conv.id)}">
@@ -840,7 +969,8 @@
     if (!rows.length) return `${create}<div class="fa-chat-empty"><strong>Nenhum grupo ainda</strong>Crie um grupo com amigos.</div>`;
     return create + rows.map(group => {
       const name = groupNameOf(group);
-      const preview = group.last_message_body ? `${group.last_sender_name||'Alguém'}: ${group.last_message_body}` : `${Number(group.member_count||0)} membros`;
+      const lastPreview = messagePreviewText(group.last_message_body, group.last_message_attachments);
+      const preview = lastPreview ? `${group.last_sender_name||'Alguém'}: ${lastPreview}` : `${Number(group.member_count||0)} membros`;
       return `
         <button class="fa-chat-row ${group.unread_count?'is-unread':''}" type="button" data-chat-group="${esc(group.id)}">
           <span class="fa-chat-group-av">${icons.group}</span>
@@ -921,11 +1051,17 @@
         </div>
         <div class="fa-chat-messages" data-chat-messages>${renderMessagesContent()}</div>
         <div class="fa-chat-compose-wrap">
+          <div class="fa-chat-compose-error" data-chat-compose-error>${state.composeError ? esc(state.composeError) : ''}</div>
+          <div class="fa-chat-attachments-preview" data-chat-attachments-preview>${renderPendingAttachments()}</div>
           <div data-chat-char-counter></div>
           <form class="fa-chat-compose" data-chat-form>
             <div class="fa-chat-compose-pill">
+              <button class="fa-chat-tool-btn" type="button" data-chat-attach aria-label="Anexar arquivo" title="Anexar arquivo">${icons.attach}</button>
+              <button class="fa-chat-tool-btn" type="button" data-chat-camera aria-label="Camera" title="Camera">${icons.camera}</button>
               <textarea data-chat-input maxlength="500" rows="1" placeholder="Mensagem... (↵ para enviar)" aria-label="Mensagem"></textarea>
-              <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
+              <button class="fa-chat-send" type="submit" aria-label="Enviar" ${state.pendingAttachments.length ? '' : 'disabled'}>${icons.send}</button>
+              <input class="fa-chat-file-input" type="file" data-chat-file-input accept="${esc(CHAT_FILE_ACCEPT)}" multiple hidden>
+              <input class="fa-chat-file-input" type="file" data-chat-camera-input accept="image/*,video/*" capture="environment" hidden>
             </div>
           </form>
         </div>
@@ -958,6 +1094,44 @@
     return html;
   }
 
+  function renderPendingAttachments() {
+    if (!state.pendingAttachments.length) return '';
+    return state.pendingAttachments.map(att => {
+      const url = att.preview_url || att.url || '';
+      const thumb = att.type === 'image' && url
+        ? `<img src="${esc(url)}" alt="${esc(att.name)}">`
+        : att.type === 'video' && url
+          ? `<video src="${esc(url)}" muted playsinline></video>`
+          : `<span class="fa-chat-attach-kind">${esc(att.type === 'pdf' ? 'PDF' : 'FILE')}</span>`;
+      return `
+        <div class="fa-chat-pending-attachment" data-chat-pending-id="${esc(att.id)}" title="${esc(att.name)}">
+          ${thumb}
+          <span>${esc(att.name)}</span>
+          <button type="button" data-chat-attachment-remove="${esc(att.id)}" aria-label="Remover anexo" title="Remover">${icons.trash}</button>
+        </div>`;
+    }).join('');
+  }
+
+  function renderMessageAttachments(attachments = []) {
+    if (!attachments.length) return '';
+    return `<div class="fa-chat-media-grid">${attachments.map(att => {
+      const url = att.preview_url || att.url || '';
+      const name = att.name || attachmentPreviewText([att]) || 'Arquivo';
+      const size = formatFileSize(att.size);
+      if (att.type === 'image' && url) {
+        return `<a class="fa-chat-media-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(name)}"><img class="fa-chat-media-img" src="${esc(url)}" alt="${esc(name)}" loading="lazy"></a>`;
+      }
+      if (att.type === 'video' && url) {
+        return `<video class="fa-chat-media-video" src="${esc(url)}" controls preload="metadata" playsinline></video>`;
+      }
+      return `
+        <a class="fa-chat-file-card" href="${esc(url || '#')}" target="_blank" rel="noopener noreferrer" download="${esc(name)}">
+          <span class="fa-chat-file-icon">${att.type === 'pdf' ? 'PDF' : icons.file}</span>
+          <span class="fa-chat-file-meta"><strong>${esc(name)}</strong><small>${esc([att.type === 'pdf' ? 'PDF' : 'Arquivo', size].filter(Boolean).join(' - '))}</small></span>
+        </a>`;
+    }).join('')}</div>`;
+  }
+
   function renderMessage(message, isGroupFirst=true, isGroupLast=true) {
     const isMe = Number(message.sender_id) === Number(state.me?.id);
     const sender = message.minecraft_name || message.username || 'Steve';
@@ -972,13 +1146,15 @@
     const nameHTML = showName ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : '';
     // Tick fica DENTRO da bubble, após o conteúdo, na linha do timestamp (modelo WhatsApp)
     const tickHTML = isMe ? renderTick(message) : '';
+    const attachmentsHTML = renderMessageAttachments(messageAttachments(message));
+    const bodyHTML = message.body ? `<span class="fa-chat-bubble-body">${esc(message.body)}</span>` : '';
 
     return `
       <div class="fa-chat-bubble-row ${isMe?'is-me':''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
         ${!isMe ? avatarHTML : ''}
         <div class="fa-chat-bubble-wrap">
           ${failAlert}
-          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''}">${nameHTML}<span class="fa-chat-bubble-body">${esc(message.body)}</span><span class="fa-chat-meta-row"><time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
+          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''}">${nameHTML}${attachmentsHTML}${bodyHTML}<span class="fa-chat-meta-row"><time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
         </div>
         ${isMe ? avatarHTML : ''}
       </div>`;
@@ -992,6 +1168,92 @@
   }
 
   // ── Compose: auto-resize + Enter/Shift+Enter ──────────────────────────────────
+  function setComposeError(message = '') {
+    state.composeError = String(message || '');
+    const el = root.querySelector('[data-chat-compose-error]');
+    if (el) el.textContent = state.composeError;
+  }
+
+  function updateSendButtonState() {
+    const textarea = root.querySelector('[data-chat-input]');
+    const send = root.querySelector('.fa-chat-send');
+    if (!send) return;
+    const hasBody = Boolean(textarea?.value.trim());
+    send.disabled = !state.current || (!hasBody && !state.pendingAttachments.length);
+  }
+
+  function updateComposeAttachments() {
+    const box = root.querySelector('[data-chat-attachments-preview]');
+    if (box) box.innerHTML = renderPendingAttachments();
+    updateSendButtonState();
+  }
+
+  function addPendingFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const next = state.pendingAttachments.slice();
+    const errors = [];
+
+    for (const file of files) {
+      if (next.length >= CHAT_MAX_ATTACHMENTS) {
+        errors.push('Envie no maximo 4 anexos por mensagem.');
+        break;
+      }
+      const kind = attachmentKindFromType(file.type, file.name);
+      if (!kind) {
+        errors.push(`${cleanFileName(file.name)} nao e um tipo permitido.`);
+        continue;
+      }
+      if (file.size > CHAT_MAX_ATTACHMENT_BYTES) {
+        errors.push(`${cleanFileName(file.name)} passa de 25MB.`);
+        continue;
+      }
+      const previewUrl = ['image', 'video'].includes(kind) ? URL.createObjectURL(file) : '';
+      next.push({
+        id: `att-${Date.now()}-${++attachmentSeq}`,
+        file,
+        type: kind,
+        name: cleanFileName(file.name),
+        mime_type: file.type || '',
+        size: file.size || 0,
+        preview_url: previewUrl,
+      });
+    }
+
+    state.pendingAttachments = next;
+    setComposeError(errors[0] || '');
+    updateComposeAttachments();
+  }
+
+  function removePendingAttachment(id) {
+    const item = state.pendingAttachments.find(att => String(att.id) === String(id));
+    if (item) releaseAttachmentPreviews([item]);
+    state.pendingAttachments = state.pendingAttachments.filter(att => String(att.id) !== String(id));
+    if (!state.pendingAttachments.length) setComposeError('');
+    updateComposeAttachments();
+  }
+
+  function clearPendingAttachments() {
+    releaseAttachmentPreviews(state.pendingAttachments);
+    state.pendingAttachments = [];
+    setComposeError('');
+    updateComposeAttachments();
+  }
+
+  async function uploadPendingAttachments(attachments = []) {
+    if (!attachments.length) return [];
+    const formData = new FormData();
+    attachments.forEach(att => formData.append('files', att.file, att.name));
+    const data = await api('/api/me/chat/attachments', {
+      method: 'POST',
+      body: formData,
+      timeoutMs: 90000,
+    });
+    const uploaded = Array.isArray(data.attachments) ? data.attachments.map(normalizeAttachment).filter(Boolean) : [];
+    if (uploaded.length !== attachments.length) throw new Error('Nem todos os anexos foram enviados.');
+    return uploaded;
+  }
+
   function attachComposeHandlers() {
     const textarea = root.querySelector('[data-chat-input]');
     if (!textarea) return;
@@ -1000,6 +1262,7 @@
     textarea.addEventListener('input', function () {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+      updateSendButtonState();
     });
 
     // Enter envia / Shift+Enter = nova linha
@@ -1009,6 +1272,11 @@
         const form = this.closest('[data-chat-form]');
         if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
       }
+    });
+
+    textarea.addEventListener('paste', function (e) {
+      const files = Array.from(e.clipboardData?.files || []);
+      if (files.length) addPendingFiles(files);
     });
 
     // Char counter
@@ -1021,6 +1289,7 @@
       counter.style.opacity = show ? '1' : '0';
       counter.style.color = remaining < 20 ? 'var(--fc-red,#ff5f52)' : 'var(--fc-ink-3,#7a756a)';
     });
+    updateSendButtonState();
   }
 
   function applyPendingDraft() {
@@ -1141,6 +1410,7 @@
   async function openConversation(conv) {
     // Fecha SSE anterior se era outra conversa
     if (_sseKey && _sseKey !== `direct:${conv.id}`) closeSSE();
+    clearPendingAttachments();
 
     state.current = conv;
     state.currentKind = 'direct';
@@ -1191,6 +1461,7 @@
 
   async function openGroupConversation(group) {
     if (_sseKey && _sseKey !== `group:${group.id}`) closeSSE();
+    clearPendingAttachments();
 
     state.current = group;
     state.currentKind = 'group';
@@ -1239,9 +1510,10 @@
 
     const pendingMsgs = state.messages.filter(m=>String(m.id).startsWith('tmp-'));
     const serverIds = new Set(nextMessages.map(m=>String(m.id)));
+    const serverClientRefs = new Set(nextMessages.map(m=>String(m.client_ref || '')).filter(Boolean));
     const merged = [...nextMessages];
     for (const pending of pendingMsgs) {
-      if (!serverIds.has(String(pending.id))) merged.push(pending);
+      if (!serverIds.has(String(pending.id)) && !serverClientRefs.has(String(pending.client_ref || pending.id))) merged.push(pending);
     }
 
     const before = state.messages.filter(m=>!String(m.id).startsWith('tmp-')).map(m=>m.id).join(',');
@@ -1293,7 +1565,8 @@
   // ── Envio de mensagem (fila paralela) ─────────────────────────────────────────
   async function handleFormSubmit(textarea) {
     const body = textarea.value.trim();
-    if (!body || !state.current) return;
+    const attachments = state.pendingAttachments.slice();
+    if ((!body && !attachments.length) || !state.current) return;
     if (body.length > 500) return;
 
     // Captura contexto imediatamente (antes do await)
@@ -1304,16 +1577,19 @@
     textarea.value = '';
     textarea.style.height = 'auto';
     textarea.focus();
+    state.pendingAttachments = [];
+    setComposeError('');
+    updateComposeAttachments();
 
     // Atualiza counter
     const counter = root.querySelector('[data-chat-char-counter]');
     if (counter) { counter.textContent = ''; counter.style.opacity='0'; }
 
     // Enfileira o envio (garante ordem)
-    queueSend({ body, currentConv, currentKind, currentMe });
+    queueSend({ body, attachments, currentConv, currentKind, currentMe });
   }
 
-  async function _doSendMessage({ body, currentConv, currentKind, currentMe }) {
+  async function _doSendMessage({ body, attachments = [], currentConv, currentKind, currentMe }) {
     // Verifica se ainda estamos na mesma conversa
     const stillSameConv = state.current && Number(state.current.id)===Number(currentConv.id) && state.currentKind===currentKind;
 
@@ -1327,6 +1603,9 @@
       created_at: new Date().toISOString(),
       username: currentMe?.username,
       minecraft_name: currentMe?.minecraft_name,
+      attachments: attachments.map(att => ({ ...att, file: undefined })),
+      _localAttachments: attachments,
+      client_ref: tempId,
       client_status: 'pending',
     };
 
@@ -1337,10 +1616,16 @@
     }
 
     try {
+      const uploadedAttachments = attachments.length ? await uploadPendingAttachments(attachments) : [];
       const msg = await api(
         `/${isGroup?'api/me/group-conversations':'api/me/conversations'}/${encodeURIComponent(currentConv.id)}/messages`,
-        { method:'POST', body:JSON.stringify({body}), timeoutMs:20000 }
+        {
+          method:'POST',
+          body:JSON.stringify({ body, attachments: uploadedAttachments, client_ref: tempId }),
+          timeoutMs: attachments.length ? 95000 : 20000,
+        }
       );
+      releaseAttachmentPreviews(attachments);
 
       const saved = {
         ...msg,
@@ -1349,7 +1634,7 @@
       };
 
       if (stillSameConv && state.current && Number(state.current.id)===Number(currentConv.id)) {
-        const idx = state.messages.findIndex(m=>m.id===tempId);
+        const idx = state.messages.findIndex(m=>String(m.id)===String(tempId) || String(m.client_ref || '')===String(tempId) || String(m.id)===String(msg.id));
         if (idx >= 0) state.messages[idx] = saved;
         else state.messages.push(saved);
         const k = `${currentKind}:${currentConv.id}`;
@@ -1385,11 +1670,12 @@
     const msg = state.messages.find(m=>m.id===tmpId);
     if (!msg) return;
     const body = msg.body;
+    const attachments = Array.isArray(msg._localAttachments) ? msg._localAttachments : [];
     // Remove a mensagem falha
     state.messages = state.messages.filter(m=>m.id!==tmpId);
     updateMessagesList({ scroll: false });
     // Re-enfileira
-    queueSend({ body, currentConv: state.current, currentKind: state.currentKind, currentMe: state.me });
+    queueSend({ body, attachments, currentConv: state.current, currentKind: state.currentKind, currentMe: state.me });
   }
 
   async function followBack(userId) {
@@ -1440,8 +1726,26 @@
     const reloadList  = event.target.closest('[data-chat-reload-list]');
     const addFriend   = event.target.closest('[data-add-friend]');
     const retry       = event.target.closest('[data-chat-retry]');
+    const attach      = event.target.closest('[data-chat-attach]');
+    const camera      = event.target.closest('[data-chat-camera]');
+    const removeAtt   = event.target.closest('[data-chat-attachment-remove]');
 
     try {
+      if (attach) {
+        event.stopPropagation();
+        root.querySelector('[data-chat-file-input]')?.click();
+        return;
+      }
+      if (camera) {
+        event.stopPropagation();
+        root.querySelector('[data-chat-camera-input]')?.click();
+        return;
+      }
+      if (removeAtt) {
+        event.stopPropagation();
+        removePendingAttachment(removeAtt.dataset.chatAttachmentRemove);
+        return;
+      }
       if (retry) {
         event.stopPropagation();
         await retryFailedMessage(retry.dataset.chatRetry);
@@ -1522,6 +1826,7 @@
         await openWithUser({id:userBtn.dataset.chatUser, minecraft_name:userBtn.dataset.chatName});
       } else if (back) {
         closeSSE();
+        clearPendingAttachments();
         state.current = null;
         state.currentKind = null;
         state.messages = [];
@@ -1583,6 +1888,13 @@
         updateLauncherBadge();
       }
     }, 180);
+  });
+
+  root.addEventListener('change', event => {
+    const fileInput = event.target.closest('[data-chat-file-input], [data-chat-camera-input]');
+    if (!fileInput) return;
+    addPendingFiles(fileInput.files);
+    fileInput.value = '';
   });
 
   root.addEventListener('submit', event => {

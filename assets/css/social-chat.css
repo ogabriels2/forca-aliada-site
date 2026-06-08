@@ -1125,6 +1125,94 @@
   display: inline;
 }
 
+.fa-chat-media-grid {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 6px;
+  max-width: min(320px, 72vw);
+}
+
+.fa-chat-media-link,
+.fa-chat-media-img,
+.fa-chat-media-video {
+  display: block;
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+.fa-chat-media-link {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  background: rgba(0,0,0,.08);
+}
+
+.fa-chat-media-img {
+  width: min(300px, 70vw);
+  max-height: 280px;
+  object-fit: cover;
+}
+
+.fa-chat-media-video {
+  width: min(320px, 72vw);
+  max-height: 300px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  background: #000;
+}
+
+.fa-chat-file-card {
+  width: min(300px, 72vw);
+  display: grid;
+  grid-template-columns: 42px minmax(0,1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: currentColor;
+  text-decoration: none;
+}
+
+.fa-chat-file-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.fa-chat-file-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.fa-chat-file-meta {
+  min-width: 0;
+}
+
+.fa-chat-file-meta strong,
+.fa-chat-file-meta small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-chat-file-meta strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fa-chat-file-meta small {
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: .72;
+}
+
 /* Meta row: timestamp + tick — alinhada ao final da última linha de texto
    usando a técnica do "spacer span" (igual ao WhatsApp Web):
    a meta row fica após o texto inline, empurrada para a direita */
@@ -1334,6 +1422,93 @@
 
 .fa-chat-compose { padding: 8px 10px 10px; }
 
+.fa-chat-compose-error {
+  min-height: 0;
+  padding: 0 14px;
+  color: var(--fc-red);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fa-chat-compose-error:empty { display: none; }
+
+.fa-chat-attachments-preview {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 8px 10px 0;
+  scrollbar-width: none;
+}
+
+.fa-chat-attachments-preview:empty { display: none; }
+.fa-chat-attachments-preview::-webkit-scrollbar { display: none; }
+
+.fa-chat-pending-attachment {
+  position: relative;
+  width: 78px;
+  min-width: 78px;
+  height: 68px;
+  overflow: hidden;
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  background: var(--fc-surface);
+  color: var(--fc-ink-2);
+}
+
+.fa-chat-pending-attachment img,
+.fa-chat-pending-attachment video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.fa-chat-pending-attachment > span:not(.fa-chat-attach-kind) {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  overflow: hidden;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fa-chat-attach-kind {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--fc-gold);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.fa-chat-pending-attachment button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(0,0,0,.68);
+  color: #fff;
+  cursor: pointer;
+}
+
+.fa-chat-pending-attachment button svg {
+  width: 12px;
+  height: 12px;
+}
+
 .fa-chat-compose-pill {
   display: flex;
   align-items: flex-end;
@@ -1341,9 +1516,31 @@
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
   border-radius: 999px;
-  padding: 5px 5px 5px 15px;
+  padding: 5px;
   transition: border-color .13s, box-shadow .13s;
 }
+
+.fa-chat-tool-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fc-ink-3);
+  cursor: pointer;
+  transition: color .13s, background .13s, transform .13s;
+}
+
+.fa-chat-tool-btn:hover {
+  background: var(--fc-surface-2);
+  color: var(--fc-gold);
+}
+
+.fa-chat-tool-btn:active { transform: scale(.92); }
+.fa-chat-tool-btn svg { width: 17px; height: 17px; }
 
 .fa-chat-compose-pill:focus-within {
   border-color: color-mix(in srgb, var(--fc-gold) 55%, var(--fc-border));
@@ -1788,6 +1985,23 @@
 
   #fa-chat-root .fa-chat-compose-pill {
     border-radius: 18px;
+  }
+
+  #fa-chat-root .fa-chat-tool-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  #fa-chat-root .fa-chat-pending-attachment {
+    width: 74px;
+    min-width: 74px;
+    height: 64px;
+  }
+
+  #fa-chat-root .fa-chat-media-grid,
+  #fa-chat-root .fa-chat-file-card,
+  #fa-chat-root .fa-chat-media-video {
+    max-width: 76vw;
   }
 
   #fa-chat-root .fa-chat-bubble-wrap {
