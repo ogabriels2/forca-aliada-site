@@ -4634,7 +4634,7 @@ function postCardHTML(p){
   const canEdit=canManage&&((Date.now()-new Date(p.created_at))/60000)<=15;
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
   const postUrl=communityUrl({post:targetPostId});
-  return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
+  return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" data-record-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
     ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(p.display_name||reposter)} repostou</span></div>`:''}
     <div class="post-layout">
       <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${esc(avSrc)}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'">
@@ -4704,8 +4704,11 @@ function renderFeed({append=false}={}){
     // Remove spinner inline se existia
     list.querySelector('.feed-loading-row')?.remove();
     $$('.post-skel').forEach(el=>el.remove());
-    const existing=new Set($$('.post-card').map(el=>Number(el.dataset.postId)));
-    const html=state.posts.filter(p=>!existing.has(Number(p.repost_of_id||p.id))).map(postCardHTML).join('');
+    // Usa p.id (chave única do registro) para deduplicação.
+    // data-post-id no DOM armazena targetPostId (repost_of_id||id), que pode colidir
+    // entre um post original e seu repost — causando supressão incorreta de novos posts.
+    const existingRecordIds=new Set($$('.post-card').map(el=>Number(el.dataset.recordId||el.dataset.postId)));
+    const html=state.posts.filter(p=>!existingRecordIds.has(Number(p.id))).map(postCardHTML).join('');
     if(html) list.insertAdjacentHTML('beforeend',html);
   }else{
     list.innerHTML=state.posts.map(postCardHTML).join('');
@@ -4782,7 +4785,13 @@ async function loadFeed({reset=false}={}){
     if(state.searchQuery) p.set('search',state.searchQuery);
     if(state.hashtag) p.set('hashtag',state.hashtag);
     if(state.cursor&&state.cursor.score!==undefined&&state.cursor.id){
-      p.set('cursor_score',String(state.cursor.score));
+      // Converte score para decimal fixo: evita notação científica (ex: 2.3e-8)
+      // que o PostgreSQL aceita em ::double precision mas pode causar parse falho em
+      // alguns locales. Usa até 20 casas decimais — o hot_score nunca precisa de mais.
+      const safeScore = typeof state.cursor.score === 'string'
+        ? state.cursor.score
+        : Number(state.cursor.score).toFixed(20).replace(/\.?0+$/,'') || '0';
+      p.set('cursor_score', safeScore);
       p.set('cursor_id',String(state.cursor.id));
     }
     const data=await api(`/api/community/feed?${p}`);
@@ -5103,6 +5112,10 @@ async function publishPost(type){
       liked_by_me:false,
       likes_count:0,
       comments_count:0,
+      reposts_count:created.reposts_count||0,
+      saves_count:created.saves_count||0,
+      reposted_by_me:false,
+      saved_by_me:false,
       poll:localPoll
     };
     state.posts.unshift(post); ta.value=''; clearComposerMedia(type); clearPoll(type); syncComposer(type); renderFeed();
@@ -7612,16 +7625,16 @@ function bindEvents(){
   // Botão "Atualizar feed" no card de fim de feed
   $('#feed-end-refresh-btn')?.addEventListener('click',()=>_refreshFeedWithVariety());
 
-  // ── infinite scroll: dispara 600px antes do fim (extra-antecipado para mobile) ──
+  // ── infinite scroll: dispara 800px antes do fim (extra-antecipado para mobile) ──
   const sentinel=$('#feed-sentinel');
   if(sentinel){
-    // Usa rootMargin grande para disparar bem antes de chegar no sentinel no mobile
+    let _sentinelInflight=false; // flag local que bloqueia disparos paralelos do observer
     const obs=new IntersectionObserver(entries=>{
       if(!entries.some(en=>en.isIntersecting)) return;
-      if(state.routeActive||state.loading||!state.hasMore) return;
-      // Mostra spinner externo enquanto a requisição não começa
+      if(state.routeActive||state.loading||!state.hasMore||_sentinelInflight) return;
+      _sentinelInflight=true;
       _showFeedSpinner();
-      loadFeed({reset:false});
+      loadFeed({reset:false}).finally(()=>{ _sentinelInflight=false; });
     },{rootMargin:'0px 0px 800px 0px',threshold:0});
     obs.observe(sentinel);
   }
