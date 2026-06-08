@@ -609,6 +609,9 @@ img{display:block}
 .pa-comment:hover{background:var(--accent-soft);color:var(--accent)}
 .pa-share:hover{background:var(--success-soft);color:var(--success)}
 .pa-repost:hover,.pa-repost.is-on{background:var(--success-soft);color:var(--success)}
+.pa-save.is-on{color:#f5a623}
+.pa-save.is-on svg{fill:#f5a623;stroke:#f5a623}
+.pa-save:hover{color:#f5a623}
 /* ─── POLLS ─── */
 .poll-container{
   margin-top:10px;
@@ -3722,6 +3725,71 @@ const state = {
   cropQueue:[], cropper:null, cropObjectUrl:null, cropComposer:'inline', nsfwModelPromise:null
 };
 
+/* ======================= IMPRESSION TRACKER v2 ======================= */
+const ImpressionTracker = (() => {
+  const SEED_KEY = 'fa_feed_session_seed_v2';
+  let _seed = sessionStorage.getItem(SEED_KEY);
+  let _isNew = !_seed;
+  if (!_seed) {
+    _seed = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    sessionStorage.setItem(SEED_KEY, _seed);
+  }
+  const _buf = new Map();
+  function _get(postId) {
+    const k = String(postId);
+    if (!_buf.has(k)) _buf.set(k, { post_id: Number(postId), dwell_ms: 0, max_reaction: 0, _start: null });
+    return _buf.get(k);
+  }
+  function _onVis(postId, visible) {
+    const imp = _get(postId);
+    if (visible) { if (imp._start === null) imp._start = Date.now(); }
+    else if (imp._start !== null) { imp.dwell_ms += Date.now() - imp._start; imp._start = null; }
+  }
+  function recordReaction(postId, reaction) {
+    const imp = _get(postId);
+    imp.max_reaction = Math.max(imp.max_reaction, reaction);
+    if (reaction >= 2 && imp.dwell_ms < 2000) imp.dwell_ms = Math.max(imp.dwell_ms, 2001);
+  }
+  function _snapshotActive() {
+    const now = Date.now();
+    for (const imp of _buf.values()) {
+      if (imp._start !== null) { imp.dwell_ms += now - imp._start; imp._start = now; }
+    }
+  }
+  async function flush() {
+    if (!_buf.size) return;
+    _snapshotActive();
+    const payload = [..._buf.values()]
+      .filter(i => i.dwell_ms > 0 || i.max_reaction > 0)
+      .map(({ post_id, dwell_ms, max_reaction }) => ({ post_id, dwell_ms: Math.round(dwell_ms), max_reaction }));
+    if (!payload.length) return;
+    try { await api('/api/community/feed/impressions', { method: 'POST', body: JSON.stringify({ impressions: payload }) }); }
+    catch (e) { console.warn('[ImpressionTracker] flush error:', e.message); }
+  }
+  let _obs = null;
+  function reObserve() {
+    if (!_obs) {
+      _obs = new IntersectionObserver(entries => {
+        for (const en of entries) { const id = en.target.dataset?.postId; if (id) _onVis(id, en.isIntersecting); }
+      }, { threshold: 0.4 });
+    }
+    document.querySelectorAll('.post-card[data-post-id]').forEach(card => { try { _obs.observe(card); } catch (_) {} });
+  }
+  setInterval(flush, 30_000);
+  window.addEventListener('beforeunload', flush);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
+  return {
+    get sessionSeed() { return _seed; },
+    get isNewSession() { return _isNew; },
+    clearNewSession() { _isNew = false; },
+    recordReaction,
+    reObserve,
+    flush,
+  };
+})();
+
 /* ======================= HELPERS ======================= */
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3912,6 +3980,9 @@ const IC={
   block:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
   user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>',
+  save:'<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+  eyeOff:'<svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+  userMinus:'<svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/></svg>',
 };
 function toast(type,title,msg='',dur=4000){
   const stack=$('#toast-stack');
@@ -4418,6 +4489,8 @@ function postCardHTML(p){
                 ${canManage?`<button class="pm-item danger" data-action="delete">${IC.trash} Excluir</button>`:staff?`<button class="pm-item danger" data-action="admin-delete">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`}
                 <button class="pm-item" data-action="copy">${IC.link} Copiar link</button>
                 <button class="pm-item" data-action="open-thread">${IC.comment} Abrir thread</button>
+                ${!isMe?`<button class="pm-item" data-action="not-interested">${IC.eyeOff} Não tenho interesse</button>`:''}
+                ${!isMe?`<button class="pm-item" data-action="not-interested-author">${IC.userMinus} Menos de @${esc(username)}</button>`:''}
               </div>
             </div>
           </div>
@@ -4431,6 +4504,7 @@ function postCardHTML(p){
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
           <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
+          <button class="pa pa-save ${p.saved_by_me?'is-on':''}" data-action="save" aria-label="${p.saved_by_me?'Remover dos salvos':'Salvar post'}">${IC.save}<span>${Number(p.saves_count)>0?num(Number(p.saves_count)):''}</span></button>
           <button class="pa pa-share" data-action="share" aria-label="Compartilhar">${IC.share}</button>
         </div>
       </div>
@@ -4464,6 +4538,7 @@ function renderFeed({append=false}={}){
   $('#load-more-wrap').hidden=true;
   updateMiniStats();
   updateCommunityPulse();
+  ImpressionTracker.reObserve();
 }
 async function loadFeed({reset=false}={}){
   if(state.loading||(!state.hasMore&&!reset))return;
@@ -4478,7 +4553,8 @@ async function loadFeed({reset=false}={}){
   }
   try{
     if(!state.feedEvaluationTimestamp) state.feedEvaluationTimestamp=new Date().toISOString();
-    const p=new URLSearchParams({limit:'20',filter:state.filter,evaluation_timestamp:state.feedEvaluationTimestamp});
+    const p=new URLSearchParams({limit:'20',filter:state.filter,evaluation_timestamp:state.feedEvaluationTimestamp,session_seed:ImpressionTracker.sessionSeed});
+    if(reset&&ImpressionTracker.isNewSession){p.set('is_new_session','true');ImpressionTracker.clearNewSession();}
     if(state.searchQuery) p.set('search',state.searchQuery);
     if(state.hashtag) p.set('hashtag',state.hashtag);
     if(state.cursor&&state.cursor.score!==undefined&&state.cursor.id){
@@ -5148,6 +5224,7 @@ function findPost(id){
 async function toggleLike(id,btn){
   const post=findPost(id);if(!post)return;
   const liked=Boolean(post.liked_by_me);
+  if(!liked) ImpressionTracker.recordReaction(id,2); // BLOCO I: registra curtida como reação de impressão
   post.liked_by_me=!liked;
   post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?-1:1));
   btn?.classList.toggle('is-on',post.liked_by_me);
@@ -5163,6 +5240,58 @@ async function toggleLike(id,btn){
     toast('error','Like não salvo',e.message);
   }
 }
+/* ── Feed v2: Salvar e Não-tenho-interesse ─────────────────── */
+async function toggleSave(id,btn){
+  const post=findPost(id);if(!post)return;
+  const saved=Boolean(post.saved_by_me);
+  // Atualização optimista
+  post.saved_by_me=!saved;
+  post.saves_count=Math.max(0,Number(post.saves_count||0)+(saved?-1:1));
+  btn?.classList.toggle('is-on',!saved);
+  btn?.setAttribute('aria-label',!saved?'Remover dos salvos':'Salvar post');
+  const span=btn?.querySelector('span');
+  if(span) span.textContent=Number(post.saves_count)>0?num(Number(post.saves_count)):'';
+  // Registra como interação forte no tracker
+  ImpressionTracker.recordReaction(id,5);
+  try{
+    const result=await api(`/api/community/posts/${encodeURIComponent(id)}/save`,{method:saved?'DELETE':'POST'});
+    if(result.saves_count!==undefined){
+      post.saves_count=result.saves_count;
+      if(span) span.textContent=Number(post.saves_count)>0?num(Number(post.saves_count)):'';
+    }
+  }catch(err){
+    // Reverte em caso de erro
+    post.saved_by_me=saved;
+    post.saves_count=Math.max(0,Number(post.saves_count||0)+(saved?1:-1));
+    btn?.classList.toggle('is-on',saved);
+    btn?.setAttribute('aria-label',saved?'Remover dos salvos':'Salvar post');
+    if(span) span.textContent=Number(post.saves_count)>0?num(Number(post.saves_count)):'';
+    toast('error','Não foi possível salvar',err.message);
+  }
+}
+async function markNotInterested(id,scope='post'){
+  try{
+    await api(`/api/community/posts/${encodeURIComponent(id)}/not-interested`,{method:'POST',body:JSON.stringify({scope})});
+    if(scope==='author'){
+      const post=findPost(id);
+      const blockedAuthorId=post?Number(post.repost_of_id?post.repost_original_author_id:post.author_id):null;
+      if(blockedAuthorId){
+        state.posts=state.posts.filter(p=>{
+          const aid=Number(p.repost_of_id?p.repost_original_author_id:p.author_id);
+          return aid!==blockedAuthorId;
+        });
+      }
+      toast('success','Menos posts desse autor','Ajuste pode levar até 1 sessão para refletir.');
+    }else{
+      state.posts=state.posts.filter(p=>Number(p.id)!==Number(id)&&Number(p.repost_of_id)!==Number(id));
+      toast('success','Post removido do seu feed','');
+    }
+    renderFeed();
+  }catch(err){
+    toast('error','Erro ao ajustar feed',err.message);
+  }
+}
+
 async function toggleRepost(originalId,btn){
   // originalId = targetPostId from the card (always the original post's ID)
   // Find the state entry: may be the original or a repost entry pointing to it
@@ -6974,6 +7103,9 @@ function bindEvents(){
         if(a==='report'){reportContent('post',id);return}
         if(a==='copy'){copyLink(id);return}
         if(a==='share'){openShareSheet(id);return}
+        if(a==='save'){toggleSave(id,act.closest('.pa-save'));return}
+        if(a==='not-interested'){markNotInterested(id,'post');return}
+        if(a==='not-interested-author'){markNotInterested(id,'author');return}
         return;
       }
       if(!e.target.closest('button')&&!e.target.closest('a')&&!e.target.closest('.js-profile')&&!e.target.closest('[data-no-post-nav]')){
@@ -7021,7 +7153,7 @@ function bindEvents(){
     newPostsPoll=setInterval(async()=>{
       if(state.routeActive||state.loading||document.hidden) return;
       try{
-        const p=new URLSearchParams({limit:'5',filter:state.filter,evaluation_timestamp:new Date().toISOString()});
+        const p=new URLSearchParams({limit:'5',filter:state.filter,evaluation_timestamp:new Date().toISOString(),session_seed:ImpressionTracker.sessionSeed});
         const data=await api(`/api/community/feed?${p}`);
         const incoming=Array.isArray(data.posts)?data.posts:[];
         const existingIds=new Set(state.posts.map(p=>String(p.repost_of_id||p.id)));
