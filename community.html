@@ -4762,23 +4762,26 @@ function _hideFeedLoading(){
 async function loadFeed({reset=false}={}){
   if(state.loading||(!state.hasMore&&!reset))return;
   state.loading=true;
-  const list=$('#feed-list');
-  if(reset){
-    state.cursor=null;
-    state.feedEvaluationTimestamp=new Date().toISOString();
-    state.hasMore=true;
-    state.posts=[];
-    _hideFeedLoading();
-    list.innerHTML=skels(5);
-  } else {
-    // Mostra spinner inline dentro da lista enquanto carrega mais
-    if(!list.querySelector('.feed-loading-row')){
-      list.insertAdjacentHTML('beforeend',
-        '<div class="feed-loading-row" aria-label="Carregando mais postagens"><div class="load-more-spinner"></div><span>Carregando…</span></div>'
-      );
-    }
-  }
   try{
+    const list=$('#feed-list');
+    // Guard: se o DOM ainda não está pronto (ex: transição de rota),
+    // list pode ser null — sem o try{} envolvendo, qualquer acesso a list
+    // lançaria TypeError fora do catch, deixando state.loading=true para sempre.
+    if(!list){return;}
+    if(reset){
+      state.cursor=null;
+      state.feedEvaluationTimestamp=new Date().toISOString();
+      state.hasMore=true;
+      state.posts=[];
+      _hideFeedLoading();
+      list.innerHTML=skels(5);
+    } else {
+      if(!list.querySelector('.feed-loading-row')){
+        list.insertAdjacentHTML('beforeend',
+          '<div class="feed-loading-row" aria-label="Carregando mais postagens"><div class="load-more-spinner"></div><span>Carregando…</span></div>'
+        );
+      }
+    }
     if(!state.feedEvaluationTimestamp) state.feedEvaluationTimestamp=new Date().toISOString();
     const p=new URLSearchParams({limit:'20',filter:state.filter,evaluation_timestamp:state.feedEvaluationTimestamp,session_seed:ImpressionTracker.sessionSeed});
     if(reset&&ImpressionTracker.isNewSession){p.set('is_new_session','true');ImpressionTracker.clearNewSession();}
@@ -4801,15 +4804,14 @@ async function loadFeed({reset=false}={}){
     state.cursor=data.next_cursor||null;
     state.hasMore=Boolean(data.next_cursor||data.has_more);
     renderFeed({append:!reset});
-    // Após renderizar: se não tem mais posts, mostra card de fim de feed
     if(!state.hasMore&&state.posts.length>0){
       _showFeedEnd();
     }
   }catch(e){
-    // Remove spinner inline em caso de erro
-    list.querySelector('.feed-loading-row')?.remove();
-    if(reset) list.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Feed indisponível</h3><p>${esc(e.message)}</p></div>`;
-    else toast('error','Erro ao carregar mais',e.message);
+    const list2=$('#feed-list');
+    list2?.querySelector('.feed-loading-row')?.remove();
+    if(reset&&list2) list2.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Feed indisponível</h3><p>${esc(e.message)}</p></div>`;
+    else if(!reset) toast('error','Erro ao carregar mais',e.message);
   }finally{
     state.loading=false;
   }
