@@ -5912,7 +5912,7 @@ async function renderPostRoute(id){
         <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
         <button class="btn btn-primary btn-sm" id="reply-btn">Responder</button>
       </div>
-      <div id="thread-comments">${commentsHTML(comments)}${commentsHasMore?'<div class="load-more-comments-wrap"><button class="btn btn-ghost btn-sm load-more-comments-btn" data-cursor="'+commentsNextCursor+'">Carregar mais respostas</button></div>":"'}</div>
+      <div id="thread-comments">${commentsHTML(comments)}${commentsHasMore?'<div class="load-more-comments-wrap"><button class="btn btn-ghost btn-sm load-more-comments-btn" data-cursor="'+commentsNextCursor+'">Carregar mais respostas</button></div>':''}</div>
     `;
     bindThreadEvents(post,id);
     // After DOM is rendered, wire up load-more if has_more
