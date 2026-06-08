@@ -918,7 +918,10 @@
   function buildMessageNode(msg, isMe, isGroupFirst, isGroupLast) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = renderMessage(msg, isGroupFirst, isGroupLast);
-    return wrapper.firstElementChild;
+    const node = wrapper.firstElementChild;
+    // Inicializa players de áudio que estejam no nó criado
+    if (node) initAudioPlayers(node);
+    return node;
   }
 
   function formatDatePill(iso) {
@@ -1162,7 +1165,141 @@
     }).join('');
   }
 
-  function renderMessageAttachments(attachments = []) {
+  /* ── Waveform sintético decorativo (20 barras com alturas pseudo-aleatórias) ──
+     Gerado deterministicamente a partir do nome do arquivo para ser consistente
+     entre renders, sem precisar de dados reais de análise de áudio. */
+  function syntheticWaveform(seed = '', bars = 20) {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+    return Array.from({ length: bars }, (_, i) => {
+      h = (Math.imul(1664525, h) + 1013904223) | 0;
+      const pct = 20 + ((h >>> 0) % 68); // 20–88%
+      return `<span style="height:${pct}%"></span>`;
+    }).join('');
+  }
+
+  /* ── Player de áudio customizado ──────────────────────────────────────────────
+     Renderiza HTML; initAudioPlayer() conecta a lógica depois de inserir no DOM. */
+  function renderAudioPlayer(att, isMe) {
+    const url = att.url || '';
+    const name = att.name || 'Áudio';
+    // Duração armazenada (em segundos) ou null
+    const knownDur = att.duration ? Math.round(Number(att.duration)) : null;
+    const durLabel = knownDur ? formatDuration(knownDur) : '0:00';
+    const wf = syntheticWaveform(name);
+    const dlUrl = url && !url.startsWith('blob:') ? url : '';
+    return `
+      <div class="fa-chat-audio-player ${isMe ? 'is-me' : ''}" data-audio-player data-audio-src="${esc(url)}" data-audio-name="${esc(name)}">
+        <button class="fa-cap-play" type="button" data-audio-play aria-label="Reproduzir áudio">
+          <svg class="fa-cap-icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v14l11-7-11-7z"/></svg>
+          <svg class="fa-cap-icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <div class="fa-cap-body">
+          <div class="fa-cap-waveform" data-audio-waveform aria-hidden="true">${wf}</div>
+          <div class="fa-cap-progress-track" data-audio-track>
+            <div class="fa-cap-progress-fill" data-audio-fill style="width:0%"></div>
+            <div class="fa-cap-progress-thumb" data-audio-thumb style="left:0%"></div>
+          </div>
+          <div class="fa-cap-foot">
+            <span class="fa-cap-time" data-audio-time>0:00</span>
+            <span class="fa-cap-dur" data-audio-dur>${esc(durLabel)}</span>
+            ${dlUrl ? `<a class="fa-cap-dl" href="${esc(dlUrl)}" download="${esc(name)}" target="_blank" rel="noopener noreferrer" title="Baixar áudio" aria-label="Baixar áudio">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M5 16l7 5 7-5"/><path d="M3 20h18"/></svg>
+            </a>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ── Inicializa player de áudio num nó já no DOM ──────────────────────────── */
+  function initAudioPlayer(playerEl) {
+    if (!playerEl || playerEl._audioInited) return;
+    playerEl._audioInited = true;
+
+    const src = playerEl.dataset.audioSrc;
+    if (!src) return;
+
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.src = src;
+
+    const playBtn  = playerEl.querySelector('[data-audio-play]');
+    const trackEl  = playerEl.querySelector('[data-audio-track]');
+    const fillEl   = playerEl.querySelector('[data-audio-fill]');
+    const thumbEl  = playerEl.querySelector('[data-audio-thumb]');
+    const timeEl   = playerEl.querySelector('[data-audio-time]');
+    const durEl    = playerEl.querySelector('[data-audio-dur]');
+    const wfEl     = playerEl.querySelector('[data-audio-waveform]');
+
+    function setPlaying(v) {
+      playerEl.classList.toggle('is-playing', v);
+    }
+    function updateProgress() {
+      if (!audio.duration || !isFinite(audio.duration)) return;
+      const pct = (audio.currentTime / audio.duration) * 100;
+      if (fillEl) fillEl.style.width = `${pct}%`;
+      if (thumbEl) thumbEl.style.left = `${pct}%`;
+      if (timeEl) timeEl.textContent = formatDuration(Math.floor(audio.currentTime));
+      // Atualiza waveform: ilumina as barras já tocadas
+      if (wfEl) {
+        const spans = wfEl.querySelectorAll('span');
+        const prog = Math.round((pct / 100) * spans.length);
+        spans.forEach((s, i) => s.classList.toggle('played', i < prog));
+      }
+    }
+    function seekTo(e) {
+      if (!audio.duration || !isFinite(audio.duration)) return;
+      const rect = trackEl.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      audio.currentTime = ratio * audio.duration;
+      updateProgress();
+    }
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (durEl && audio.duration && isFinite(audio.duration)) {
+        durEl.textContent = formatDuration(Math.floor(audio.duration));
+      }
+    });
+    audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('ended', () => { setPlaying(false); audio.currentTime = 0; updateProgress(); });
+    audio.addEventListener('pause', () => setPlaying(false));
+    audio.addEventListener('play',  () => setPlaying(true));
+    audio.addEventListener('error', () => { playerEl.classList.add('has-error'); });
+
+    playBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      // Para qualquer outro player ativo na página
+      root.querySelectorAll('[data-audio-player].is-playing').forEach(el => {
+        if (el !== playerEl && el._audioEl) { el._audioEl.pause(); }
+      });
+      if (audio.paused) audio.play().catch(() => {});
+      else audio.pause();
+    });
+
+    // Seek via clique/toque na track
+    trackEl?.addEventListener('click', e => { e.stopPropagation(); seekTo(e); });
+    let _dragging = false;
+    trackEl?.addEventListener('mousedown', e => {
+      _dragging = true;
+      seekTo(e);
+      const onMove = ev => { if (_dragging) seekTo(ev); };
+      const onUp   = () => { _dragging = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+    trackEl?.addEventListener('touchstart', e => { seekTo(e); }, { passive: true });
+    trackEl?.addEventListener('touchmove',  e => { seekTo(e); }, { passive: true });
+
+    playerEl._audioEl = audio;
+  }
+
+  /* ── Inicializa todos os players num container ────────────────────────────── */
+  function initAudioPlayers(container) {
+    container.querySelectorAll('[data-audio-player]').forEach(initAudioPlayer);
+  }
+
+  function renderMessageAttachments(attachments = [], isMe = false) {
     if (!attachments.length) return '';
     return `<div class="fa-chat-media-grid">${attachments.map((att, idx) => {
       const url = att.preview_url || att.url || '';
@@ -1175,8 +1312,9 @@
       if (att.type === 'video' && url) {
         return `<div class="fa-chat-attachment fa-chat-attachment--video" data-chat-attachment><video class="fa-chat-media-video" src="${esc(url)}" controls preload="metadata" playsinline></video>${menu}</div>`;
       }
-      if (att.type === 'audio' && url) {
-        return `<div class="fa-chat-attachment fa-chat-attachment--audio" data-chat-attachment><div class="fa-chat-audio-card"><audio src="${esc(url)}" controls preload="metadata"></audio><span>${esc(name)}</span></div>${menu}</div>`;
+      if (att.type === 'audio') {
+        // Player customizado — sem <audio controls> nativo, sem menu de download via fetch
+        return `<div class="fa-chat-attachment fa-chat-attachment--audio" data-chat-attachment>${renderAudioPlayer(att, isMe)}</div>`;
       }
       if (att.type === 'pdf' && url) {
         return `<div class="fa-chat-attachment fa-chat-attachment--pdf" data-chat-attachment><div class="fa-chat-pdf-card"><iframe class="fa-chat-pdf-preview" src="${esc(url)}#toolbar=0&navpanes=0" title="${esc(name)}" loading="lazy"></iframe><span><strong>${esc(name)}</strong><small>${esc(size || 'PDF')}</small></span></div>${menu}</div>`;
@@ -1192,7 +1330,8 @@
   function renderAttachmentMenu(att, idx = 0) {
     const url = att.preview_url || att.url || '';
     const name = att.name || attachmentPreviewText([att]) || 'arquivo';
-    if (!url || url.startsWith('blob:')) return '';
+    // Áudio tem download inline no próprio player — não precisa de menu separado
+    if (!url || url.startsWith('blob:') || att.type === 'audio') return '';
     return `
       <button class="fa-chat-attach-menu-btn" type="button" data-chat-attachment-menu="${esc(idx)}" aria-label="Opcoes do anexo" title="Opcoes">${icons.more}</button>
       <div class="fa-chat-attach-menu" role="menu">
@@ -1214,7 +1353,7 @@
     const nameHTML = showName ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : '';
     // Tick fica DENTRO da bubble, após o conteúdo, na linha do timestamp (modelo WhatsApp)
     const tickHTML = isMe ? renderTick(message) : '';
-    const attachmentsHTML = renderMessageAttachments(messageAttachments(message));
+    const attachmentsHTML = renderMessageAttachments(messageAttachments(message), isMe);
     const bodyHTML = message.body ? `<span class="fa-chat-bubble-body">${esc(message.body)}</span>` : '';
 
     return `
