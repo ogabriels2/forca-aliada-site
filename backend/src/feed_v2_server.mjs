@@ -884,7 +884,9 @@ app.get('/api/community/feed', auth, async (req, res) => {
              f.hot_score, f.engagement_score, f.velocity_mult, f.affinity_mult,
              f.social_mult, f.media_mult, f.temporal_gravity, f.seen_penalty,
              f.session_noise, f.author_diversity_rank,
-             f.hot_score::text AS hot_score_cursor,
+             -- hot_score_cursor em decimal fixo: evita notação científica do ::text cast
+             -- que pode ocorrer para valores muito pequenos (ex: 1.23456789e-09).
+             to_char(f.hot_score, 'FM999999999999999990.99999999999999999999') AS hot_score_cursor,
              -- Enquete associada (se existir)
              poll_lateral.poll_data AS poll
 
@@ -940,12 +942,28 @@ app.get('/api/community/feed', auth, async (req, res) => {
     const last    = page.at(-1);
     const hasMore = rows.length > limit;
 
+    // Converte hot_score para decimal fixo: PostgreSQL pode serializar
+    // valores muito pequenos em notação científica (ex: 1.23e-9).
+    // Number.toFixed(20) garante representação decimal pura que o
+    // ::double precision do PG aceita igualmente bem, sem ambiguidade.
+    function toDecimalString(v) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return '0';
+      return n.toFixed(20).replace(/\.?0+$/, '') || '0';
+    }
+
+    const cursorScore = hasMore && last
+      ? (last.hot_score_cursor && !last.hot_score_cursor.includes('e') && !last.hot_score_cursor.includes('E')
+          ? last.hot_score_cursor
+          : toDecimalString(last.hot_score_cursor ?? last.hot_score))
+      : null;
+
     res.json({
       posts:                page,
       evaluation_timestamp: evaluationTimestamp,
       session_seed:         sessionSeed,
       next_cursor: hasMore && last
-        ? { score: last.hot_score_cursor || String(last.hot_score), id: Number(last.id) }
+        ? { score: cursorScore, id: Number(last.id) }
         : null,
       has_more: hasMore,
     });
