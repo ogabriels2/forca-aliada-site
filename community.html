@@ -588,30 +588,60 @@ img{display:block}
 .post-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform var(--t-med) var(--ease)}
 .post-collage[data-count="1"] .post-media img{max-height:520px;object-fit:contain;background:var(--bg)}
 .post-card:hover .post-media img{transform:scale(1.015)}
-/* preview comments */
-.preview-comments{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:4px}
-.preview-row{font-size:12px;color:var(--ink-2);line-height:1.4;display:flex;align-items:flex-start;gap:4px}
-.preview-row svg{width:14px;height:14px;flex-shrink:0;margin-top:1px}
-.preview-row strong{color:var(--ink);font-weight:700}
-/* ─── redesigned inline comment preview in feed ─── */
-.preview-comments{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+/* ─── thread-style inline comment preview in feed ─── */
+/* ─── thread-style inline comment preview in feed ─── */
+.preview-comments{
+  margin-top:0;padding-top:0;
+  display:grid;gap:0;padding-left:0;
+}
+/* Vertical connector line: post-author avatar → comment avatars */
+.post-layout.has-comments .post-av-col{
+  display:flex;flex-direction:column;align-items:center;
+}
+.post-av-connector{
+  flex:1;width:2px;min-height:12px;
+  background:var(--line-strong);border-radius:1px;margin-top:5px;
+}
+.post-card:has(.preview-comments){padding-bottom:4px}
+
+/* Each comment row is a sub-thread entry */
 .preview-row{
-  display:flex;align-items:flex-start;gap:7px;
-  padding:5px 0;font-size:12.5px;line-height:1.4;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:10px;
+  padding:7px 0 0;
+  align-items:flex-start;
 }
-.preview-row:first-child{padding-top:0}
+.preview-row:last-of-type{padding-bottom:2px}
+/* Comment avatar column — also vertical for chaining */
+.preview-row-av-col{
+  display:flex;flex-direction:column;align-items:center;
+}
 .preview-row-av{
-  width:20px;height:20px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-top:1px;
+  width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0;
+  border:1px solid var(--line);
 }
-.preview-row-body{min-width:0;flex:1}
-.preview-row-author{font-weight:750;color:var(--ink);font-size:12px;margin-right:4px}
-.preview-row-text{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:inline}
+/* Tiny connector below last comment avatar (just visual breathing room) */
+.preview-row-av-col .preview-sub-line{
+  flex:1;width:2px;min-height:6px;
+  background:var(--line);border-radius:1px;margin-top:4px;
+  display:none;
+}
+.preview-row:not(:last-of-type) .preview-sub-line{display:block}
+.preview-row-body{min-width:0;padding-top:4px}
+.preview-row-meta{display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap}
+.preview-row-author{font-weight:750;color:var(--ink);font-size:12.5px;cursor:pointer}
+.preview-row-author:hover{color:var(--accent)}
+.preview-row-time{font-family:var(--ff-mono);font-size:10px;color:var(--ink-3);font-weight:500}
+.preview-row-text{font-size:13px;color:var(--ink-2);line-height:1.45;overflow-wrap:anywhere;display:block}
 .preview-more-btn{
-  margin-top:6px;display:inline-flex;align-items:center;gap:4px;
-  font-size:12px;color:var(--accent);font-weight:650;cursor:pointer;
-  background:none;border:none;padding:2px 0;
+  display:flex;align-items:center;gap:5px;
+  margin-top:8px;margin-left:52px; /* align with comment text */
+  font-size:12px;color:var(--accent);font-weight:700;cursor:pointer;
+  background:none;border:none;padding:3px 8px;border-radius:6px;
+  transition:background var(--t-fast);
 }
-.preview-more-btn:hover{text-decoration:underline}
+.preview-more-btn:hover{background:var(--accent-soft);text-decoration:none}
 
 /* ─── who liked / who reposted bottom sheet ─── */
 .social-sheet-overlay{
@@ -722,14 +752,13 @@ img{display:block}
 .pa-save.is-on{color:#f5a623}
 .pa-save.is-on svg{fill:#f5a623;stroke:#f5a623}
 .pa-save:hover{color:#f5a623}
-.pa-likes-who,.pa-reposts-who{
-  height:22px;width:22px;padding:0;border-radius:50%;
-  display:inline-flex;align-items:center;justify-content:center;
-  color:var(--ink-3);opacity:0.55;margin-left:-3px;
-  transition:opacity var(--t-fast),background var(--t-fast),color var(--t-fast);
+/* pa-likes-who / pa-reposts-who buttons removed — likes/reposts
+   tooltip is now triggered by clicking/long-pressing the count numbers */
+/* Like count becomes interactive — subtle hint */
+.pa-like[data-has-likers="1"] span{
+  cursor:pointer;text-decoration-line:underline;text-decoration-style:dotted;
+  text-underline-offset:2px;
 }
-.pa-likes-who:hover{opacity:1;background:var(--danger-soft);color:var(--danger)}
-.pa-reposts-who:hover{opacity:1;background:var(--success-soft);color:var(--success)}
 /* ─── POLLS ─── */
 .poll-container{
   margin-top:10px;
@@ -2226,13 +2255,6 @@ body::after{
   font-size:14.5px;
   line-height:1.7;
   color:var(--ink);
-}
-.preview-comments{
-  border-top-color:var(--line);
-  background:color-mix(in srgb,var(--surface-soft) 45%,transparent);
-  margin-top:11px;
-  padding:9px;
-  border-radius:6px;
 }
 .pa{
   height:32px;
@@ -4636,8 +4658,11 @@ function postCardHTML(p){
   const postUrl=communityUrl({post:targetPostId});
   return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" data-record-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
     ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(p.display_name||reposter)} repostou</span></div>`:''}
-    <div class="post-layout">
-      <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${esc(avSrc)}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'">
+    <div class="post-layout ${rc.length?'has-comments':''}" style="display:grid;grid-template-columns:42px minmax(0,1fr);gap:10px">
+      <div class="post-av-col" style="display:flex;flex-direction:column;align-items:center">
+        <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${esc(avSrc)}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'">
+        ${rc.length?`<div class="post-av-connector"></div>`:''}
+      </div>
       <div>
         <div class="post-head">
           <div class="post-author">
@@ -4670,18 +4695,16 @@ function postCardHTML(p){
         <div class="post-content">${mentionHTML(displayContent)}</div>
         ${mediaHTML}
         ${p.poll ? pollHTML(p) : ''}
-        ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>{const cmc=c.minecraft_name||c.username||'?';const cShown=c.display_name||cmc;const cAv=c.avatar_url||(c.photo_url?''+c.photo_url:'')||'assets/images/fa-icon-light.png';return`<div class="preview-row"><img class="preview-row-av" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='assets/images/fa-icon-light.png'"><div class="preview-row-body"><span class="preview-row-author">${esc(cShown)}</span><span class="preview-row-text"> ${mentionHTML(c.content||'')}</span></div></div>`;}).join('')}${p.comments_count>2?`<button class="preview-more-btn" data-action="open-thread">${IC.comment} Ver mais ${num(p.comments_count-2)} respostas</button>`:p.comments_count>0?`<button class="preview-more-btn" data-action="open-thread">${IC.comment} Ver conversa completa</button>`:''}</div>`:''}
         <div class="post-actions">
-          <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-label="Curtir">${IC.heart}<span>${num(Number(p.likes_count) || 0)}</span></button>
-          ${Number(p.likes_count)>0?`<button class="pa pa-likes-who" data-action="show-likers" aria-label="Ver quem curtiu" title="Ver quem curtiu"><svg viewBox="0 0 24 24" width="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>`:''}
+          <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" ${Number(p.likes_count)>0?`data-has-likers="1"`:''}aria-label="Curtir" title="${Number(p.likes_count)>0?'Clique longo (mobile) ou clique no número para ver quem curtiu':''}">${IC.heart}<span data-action-likes="${Number(p.likes_count)>0?'show-likers':''}">${num(Number(p.likes_count) || 0)}</span></button>
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
           <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
-          ${Number(p.reposts_count)>0?`<button class="pa pa-reposts-who" data-action="show-reposters" aria-label="Ver quem repostou" title="Ver quem repostou"><svg viewBox="0 0 24 24" width="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>`:''}
           <button class="pa pa-save ${p.saved_by_me?'is-on':''}" data-action="save" aria-label="${p.saved_by_me?'Remover dos salvos':'Salvar post'}">${IC.save}<span>${Number(p.saves_count)>0?num(Number(p.saves_count)):''}</span></button>
           <button class="pa pa-share" data-action="share" aria-label="Compartilhar">${IC.share}</button>
-        </div></div>
+        </div>
       </div>
     </div>
+    ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map((c,cidx,arr)=>{const cmc=c.minecraft_name||c.username||'?';const cShown=c.display_name||cmc;const cAv=c.avatar_url||(c.photo_url?''+c.photo_url:'')||'assets/images/fa-icon-light.png';const cHandle=c.username||cmc;return`<div class="preview-row"><div class="preview-row-av-col"><img class="preview-row-av js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='assets/images/fa-icon-light.png'"><div class="preview-sub-line"></div></div><div class="preview-row-body"><div class="preview-row-meta"><span class="preview-row-author js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}">${esc(cShown)}</span><span class="preview-row-time">${esc(time(c.created_at))}</span></div><span class="preview-row-text">${mentionHTML(c.content||'')}</span></div></div>`;}).join('')}${p.comments_count>2?`<button class="preview-more-btn" data-action="open-thread">${IC.comment} Ver mais ${num(p.comments_count-2)} respostas</button>`:p.comments_count>0&&rc.length>0?`<button class="preview-more-btn" data-action="open-thread">${IC.comment} Ver conversa completa</button>`:''}</div>`:''}
   </article>`;
 }
 function emptyFeed(){
@@ -7595,6 +7618,8 @@ function bindEvents(){
         const a=act.dataset.action;
         if(a==='menu'){e.stopPropagation();openPostMenu(act.closest('.more-btn'));return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
+        if(a==='show-likers'){e.stopPropagation();showSocialSheet(id,'likes');return}
+        if(a==='show-reposters'){e.stopPropagation();showSocialSheet(id,'reposts');return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
         if(a==='repost'){openRepostPopover(id,act.closest('.pa-repost'));return}
         if(a==='pin'){setPostPinned(id,true);return}
@@ -7618,8 +7643,37 @@ function bindEvents(){
       }
     }
     if(e.target.closest('[data-back]')){Router.navigate('/community');return}
+
+    /* ── Likes count click → show likers (desktop: click, already handled via data-action-likes delegation below) ── */
+    const likesSpan=e.target.closest('[data-action-likes="show-likers"]');
+    if(likesSpan){
+      e.stopPropagation();
+      const card=likesSpan.closest('.post-card');
+      if(card) showSocialSheet(card.dataset.postId,'likes');
+      return;
+    }
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>{if(m.id==='crop-modal'){state.cropQueue=[];destroyCropper()}closeModal(m.id)})});
+
+  /* ── Long-press on like button/count to show likers (mobile UX) ── */
+  let _lpTimer=null, _lpFired=false;
+  document.addEventListener('pointerdown',e=>{
+    const likeBtn=e.target.closest('.pa-like[data-has-likers="1"]');
+    if(!likeBtn)return;
+    _lpFired=false;
+    clearTimeout(_lpTimer);
+    _lpTimer=setTimeout(()=>{
+      _lpFired=true;
+      const card=likeBtn.closest('.post-card');
+      if(card) showSocialSheet(card.dataset.postId,'likes');
+    },500);
+  },{passive:true});
+  document.addEventListener('pointerup',()=>{clearTimeout(_lpTimer);});
+  document.addEventListener('pointercancel',()=>{clearTimeout(_lpTimer);});
+  /* Prevent the normal like toggle on pointerup if long-press fired */
+  document.addEventListener('click',e=>{
+    if(_lpFired&&e.target.closest('.pa-like')){e.stopImmediatePropagation();_lpFired=false;}
+  },true);
 
   // Ativar modal de postagem (FAB)
   $('#fab-post')?.addEventListener('click', () => {
