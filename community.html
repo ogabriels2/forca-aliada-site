@@ -6075,6 +6075,11 @@ function bindSubthreadEvents(container, rootComment, postId, initialSort) {
     if (dcb) { e.stopPropagation(); deleteCommentFromSubthread(postId, dcb.dataset.deleteComment, rootComment.id); return; }
     const rcb = e.target.closest('[data-report-comment]');
     if (rcb) { e.stopPropagation(); reportContent('comment', rcb.dataset.reportComment); return; }
+
+    const repostBtn = e.target.closest('[data-comment-repost]');
+    if (repostBtn) { e.stopPropagation(); await repostComment(repostBtn.dataset.commentRepost, repostBtn.dataset.commentContent, repostBtn.dataset.commentAuthor, postId); return; }
+    const shareBtn = e.target.closest('[data-comment-share]');
+    if (shareBtn) { e.stopPropagation(); openCommentSharePopover(shareBtn.dataset.commentShare, shareBtn.dataset.commentContent, shareBtn); return; }
   });
 
   let replyInProgress = false;
@@ -8817,7 +8822,7 @@ boot();
 </script>
 
 <script src="assets/js/social-chat.js?v=chat7-20260608"></script>
-<script src="assets/js/community_comments_fix.js"></script>
+<!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
    Se o social-chat.js carregado não corresponder à versão esperada (ex: o
