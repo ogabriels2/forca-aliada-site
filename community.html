@@ -4767,7 +4767,7 @@ async function loadFeed({reset=false}={}){
     // Guard: se o DOM ainda não está pronto (ex: transição de rota),
     // list pode ser null — sem o try{} envolvendo, qualquer acesso a list
     // lançaria TypeError fora do catch, deixando state.loading=true para sempre.
-    if(!list){return;}
+    if(!list){ state.loading=false; return; } // guard: DOM ainda não pronto — reseta loading antes de sair
     if(reset){
       state.cursor=null;
       state.feedEvaluationTimestamp=new Date().toISOString();
@@ -4810,8 +4810,12 @@ async function loadFeed({reset=false}={}){
   }catch(e){
     const list2=$('#feed-list');
     list2?.querySelector('.feed-loading-row')?.remove();
-    if(reset&&list2) list2.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Feed indisponível</h3><p>${esc(e.message)}</p></div>`;
-    else if(!reset) toast('error','Erro ao carregar mais',e.message);
+    if(reset){
+      if(list2) list2.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Feed indisponível</h3><p>${esc(e.message)}</p></div>`;
+      else toast('error','Erro ao carregar feed',e.message); // fallback quando DOM não está pronto
+    } else {
+      toast('error','Erro ao carregar mais',e.message);
+    }
   }finally{
     state.loading=false;
   }
