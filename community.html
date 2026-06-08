@@ -3109,7 +3109,7 @@ body::after{
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="community.html" aria-label="Início da comunidade">
+    <a class="brand" href="community.html" aria-label="Início da comunidade" data-spa-home>
       <span class="brand-mark" aria-hidden="true">
         <img class="brand-logo" id="brand-logo-img" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
       </span>
@@ -4675,6 +4675,8 @@ function switchTab(filter){
     Router.navigate('/community');
     return;
   }
+  // Se o filtro já está ativo e o feed está carregado, não recarrega desnecessariamente
+  if(state.filter===filter&&state.posts.length>0&&!state.loading) return;
   state.filter=filter;
   // hide new posts pill when changing tab
   const pill=$('#new-posts-pill');if(pill) pill.hidden=true;
@@ -6874,6 +6876,8 @@ function showFeedRoute(){
   setRailActive(activeFilter);
   updateCommunityPulse();
   // Recarrega se estava em outra rota com escopo diferente, ou se não há posts ainda
+  // Guarda: se boot() já disparou loadFeed (state._bootFeedLoaded), não duplica
+  if(state._bootFeedLoaded) return;
   if(hadScope) loadFeed({reset:true});
   else if(!state.posts.length) loadFeed({reset:true});
   // Se já tem posts e voltou de uma thread/perfil, mantém o feed como estava
@@ -6893,6 +6897,15 @@ function showSearchRoute(query){
 
 /* ======================= EVENT DELEGATION ======================= */
 function bindEvents(){
+  // Intercepta links [data-spa-home] para navegar via SPA sem recarregar a página
+  document.querySelectorAll('[data-spa-home]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.preventDefault();
+      if(!state.routeActive&&window.scrollY<=200){_refreshFeedWithVariety();return;}
+      if(!state.routeActive&&window.scrollY>200){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>_refreshFeedWithVariety(),350);return;}
+      Router.navigate('/community');
+    });
+  });
   $('#theme-btn').addEventListener('click',toggleTheme);
   $('#user-btn').addEventListener('click',e=>{
     e.stopPropagation();
@@ -7773,7 +7786,10 @@ async function boot(){
   try{await loadMe();}
   catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
   await loadAffiliations();
+  // Marca que o feed já foi carregado pelo boot para o showFeedRoute não duplicar
+  state._bootFeedLoaded = true;
   await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]);
+  state._bootFeedLoaded = false;
   Router.init();
   startPollSync();
 }
