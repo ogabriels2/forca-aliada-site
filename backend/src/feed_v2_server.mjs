@@ -503,7 +503,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
   if (hasCursor) {
     cursorScore = Number(req.query.cursor_score);
     cursorId    = parseInt(req.query.cursor_id, 10);
-    if (!Number.isFinite(cursorScore) || !cursorId) {
+    if (!Number.isFinite(cursorScore) || cursorId == null || cursorId <= 0) {
       return res.status(400).json({ error: 'Cursor invalido' });
     }
   }
