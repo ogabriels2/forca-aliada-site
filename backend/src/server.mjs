@@ -41,6 +41,7 @@ import {
   commentUpgradeSchemaSql,
   registerCommentUpgradeEndpoints,
 } from './server_comments_patch.mjs';
+import { registerCommentThreadFix } from './server_comment_thread_fix.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -6517,6 +6518,12 @@ savePostEndpoint(app, auth, pool);
 unsavePostEndpoint(app, auth, pool);
 notInterestedEndpoint(app, auth, pool);
 undoNotInterestedEndpoint(app, auth, pool);
+
+// ── Comment Thread Fix: endpoint /thread robusto + público + /share/comment ──
+registerCommentThreadFix(app, pool, auth, {
+  primaryIntegrationFieldsSql,
+  socialRankSql,
+});
 
 // ── Comment Upgrade: likes, threading, sort, sub-thread ──────────────────────
 registerCommentUpgradeEndpoints(app, pool, auth, {
