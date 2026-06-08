@@ -42,6 +42,11 @@ import {
   registerCommentUpgradeEndpoints,
 } from './server_comments_patch.mjs';
 import { registerCommentThreadFix } from './server_comment_thread_fix.mjs';
+import {
+  registerChatRealtime,
+  notifyNewMessage,
+  notifyRead,
+} from './server_chat_realtime.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -5095,13 +5100,18 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
     `, params);
 
     const ordered = rows.reverse();
+    // Marca como lido (fire-and-forget) e notifica via SSE o peer
+    const readAt = new Date().toISOString();
     pool.query(
       `INSERT INTO direct_conversation_reads(conversation_id, user_id, last_read_at)
        VALUES($1, $2, NOW())
        ON CONFLICT(conversation_id, user_id)
        DO UPDATE SET last_read_at = NOW()`,
       [conversationId, req.user.sub],
-    ).catch(err => console.warn('[direct read marker skipped]', err?.message || err));
+    ).then(() => {
+      // ── SSE: notifica peer que as mensagens foram vistas
+      notifyRead('direct', conversationId, req.user.sub, readAt);
+    }).catch(err => console.warn('[direct read marker skipped]', err?.message || err));
     res.json({ rows: ordered, has_more: rows.length === limit, next_before: ordered[0]?.id || null });
   } catch (e) {
     console.error('[GET /api/me/conversations/:id/messages]', e);
@@ -5170,6 +5180,13 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
       previewText: body,
     }).catch(err => console.warn('[direct_message notification skipped]', err?.message || err));
 
+    // ── SSE fan-out: push instantâneo para o peer (e outras abas do remetente)
+    notifyNewMessage('direct', conversationId, {
+      ...rows[0],
+      username: req.user.username,
+      minecraft_name: req.user.minecraft_name,
+    });
+
     res.status(201).json(rows[0]);
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
@@ -5198,6 +5215,8 @@ app.post('/api/me/conversations/:id/read', auth, async (req, res) => {
        DO UPDATE SET last_read_at = NOW()`,
       [conversationId, req.user.sub],
     );
+    // ── SSE: notifica o peer que esta conversa foi lida
+    notifyRead('direct', conversationId, req.user.sub, new Date().toISOString());
     res.json({ ok: true });
   } catch (e) {
     console.error('[POST /api/me/conversations/:id/read]', e);
@@ -5348,6 +5367,12 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
     await client.query('UPDATE chat_groups SET last_message_at=NOW() WHERE id=$1', [groupId]);
     await client.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
     await client.query('COMMIT');
+    // ── SSE fan-out: push instantâneo para membros do grupo
+    notifyNewMessage('group', groupId, {
+      ...rows[0],
+      username: req.user.username,
+      minecraft_name: req.user.minecraft_name,
+    });
     res.status(201).json(rows[0]);
   } catch (e) {
     await client.query('ROLLBACK');
@@ -8693,6 +8718,11 @@ app.use((err, req, res, _next) => {
   if (res.headersSent) return;
   res.status(status).json({ error: status < 500 ? err.message : 'internal error' });
 });
+
+// ─────────────────────────────────────────────
+// Chat Realtime (SSE + delivery status)
+// ─────────────────────────────────────────────
+registerChatRealtime(app, pool, auth);
 
 // ─────────────────────────────────────────────
 // Boot
