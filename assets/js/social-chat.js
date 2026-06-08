@@ -1,7 +1,7 @@
 /**
  * Força Aliada — Chat Direto  (social-chat.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION: chat10-20260608
+ * VERSION: chat11-20260608
  *
  * NOVIDADES vs chat7:
  *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 (function () {
-  window._faChatScriptVersion = 'chat10-20260608';
+  window._faChatScriptVersion = 'chat11-20260608';
   if (window.FAChat) return;
 
   // ── Storage seguro ────────────────────────────────────────────────────────────
@@ -78,6 +78,8 @@
     _peerIsOnline: false,
     _myLastReadAt: null,
     pendingAttachments: [],
+    _socialPreviewCache: new Map(),
+    _socialPreviewPending: new Map(),
   };
 
   // ── Fila de envio independente de state.busy ──────────────────────────────────
@@ -525,6 +527,7 @@
     if (!launcher) {
       root.innerHTML = buildFullHTML();
       attachComposeHandlers();
+      initMessageEnhancements(root);
       return;
     }
 
@@ -535,6 +538,7 @@
     if (!panel) {
       root.innerHTML = buildFullHTML();
       attachComposeHandlers();
+      initMessageEnhancements(root);
       return;
     }
 
@@ -549,6 +553,7 @@
       panel.dataset.viewKey = viewKey;
       panel.innerHTML = renderChatApp();
       attachComposeHandlers();
+      initMessageEnhancements(panel);
       if (hasCurrent) updateScroll();
       return;
     }
@@ -558,7 +563,7 @@
       const msgList = panel.querySelector('[data-chat-messages]');
       if (msgList) {
         msgList.innerHTML = renderMessagesContent();
-        initAudioPlayers(msgList);
+        initMessageEnhancements(msgList);
       }
     }
   }
@@ -710,7 +715,7 @@
 
     if (state.loadingMessages || !state.messages.length) {
       list.innerHTML = renderMessagesContent();
-      initAudioPlayers(list);
+      initMessageEnhancements(list);
       if (scroll) updateScroll();
       return;
     }
@@ -923,8 +928,7 @@
     const wrapper = document.createElement('div');
     wrapper.innerHTML = renderMessage(msg, isGroupFirst, isGroupLast);
     const node = wrapper.firstElementChild;
-    // Inicializa players de áudio que estejam no nó criado
-    if (node) initAudioPlayers(node);
+    if (node) initMessageEnhancements(node);
     return node;
   }
 
@@ -1401,6 +1405,171 @@
     container.querySelectorAll('[data-audio-player]').forEach(initAudioPlayer);
   }
 
+  function socialTargetFromUrl(rawUrl = '') {
+    try {
+      const parsed = new URL(rawUrl, location.href);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+      const allowedHosts = new Set([location.host, ...bases.map(base => {
+        try { return new URL(base).host; } catch { return ''; }
+      }).filter(Boolean)]);
+      if (!allowedHosts.has(parsed.host)) return null;
+
+      const postPath = parsed.pathname.match(/\/share\/post\/(\d+)\/?$/i);
+      const commentPath = parsed.pathname.match(/\/share\/comment\/(\d+)\/?$/i);
+      const postQuery = parsed.searchParams.get('post')
+        || (/(?:^|\/)post\.html$/i.test(parsed.pathname) ? parsed.searchParams.get('id') : '');
+      if (postPath?.[1] || /^\d+$/.test(String(postQuery || ''))) {
+        return { kind: 'post', id: String(postPath?.[1] || postQuery) };
+      }
+      if (commentPath?.[1]) return { kind: 'comment', id: String(commentPath[1]) };
+    } catch {}
+    return null;
+  }
+
+  function messageUrls(body = '') {
+    return [...String(body || '').matchAll(/https?:\/\/[^\s<>"']+/gi)]
+      .map(match => match[0].replace(/[),.;!?]+$/g, ''))
+      .filter(Boolean);
+  }
+
+  function renderMessageBody(body = '') {
+    const text = String(body || '');
+    if (!text) return '';
+    const re = /https?:\/\/[^\s<>"']+/gi;
+    let html = '';
+    let cursor = 0;
+    for (const match of text.matchAll(re)) {
+      const raw = match[0];
+      const index = match.index || 0;
+      const cleanUrl = raw.replace(/[),.;!?]+$/g, '');
+      const suffix = raw.slice(cleanUrl.length);
+      html += esc(text.slice(cursor, index));
+      const target = socialTargetFromUrl(cleanUrl);
+      if (target) {
+        const label = target.kind === 'post' ? 'Abrir postagem' : 'Abrir comentario';
+        html += `<a class="fa-chat-message-link is-internal" href="${esc(cleanUrl)}" data-chat-open-${target.kind}="${esc(target.id)}">${esc(label)}</a>${esc(suffix)}`;
+      } else {
+        html += `<a class="fa-chat-message-link" href="${esc(cleanUrl)}" target="_blank" rel="noopener noreferrer">${esc(cleanUrl)}</a>${esc(suffix)}`;
+      }
+      cursor = index + raw.length;
+    }
+    html += esc(text.slice(cursor));
+    return html;
+  }
+
+  function renderInternalSocialPreviews(body = '') {
+    const seen = new Set();
+    const targets = messageUrls(body).map(socialTargetFromUrl).filter(Boolean).filter(target => {
+      const key = `${target.kind}:${target.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 2);
+    if (!targets.length) return '';
+    return `<div class="fa-chat-social-previews">${targets.map(target => `
+      <div class="fa-chat-social-preview is-loading" data-chat-social-preview="${target.kind}:${esc(target.id)}">
+        <span class="fa-chat-social-preview-shimmer"></span>
+        <span class="fa-chat-social-preview-shimmer is-short"></span>
+      </div>`).join('')}</div>`;
+  }
+
+  function socialPreviewAuthor(row = {}) {
+    return row.display_name || row.minecraft_name || row.username || 'Jogador';
+  }
+
+  function renderSocialPreviewCard(kind, payload = {}) {
+    if (kind === 'comment') {
+      const comment = payload.root_comment || {};
+      const post = payload.original_post || {};
+      const author = socialPreviewAuthor(comment);
+      return `
+        <button class="fa-chat-social-card fa-chat-social-card--comment" type="button" data-chat-open-post="${esc(comment.post_id || post.id || '')}">
+          <span class="fa-chat-social-card-brand">Forca Aliada · comentario</span>
+          <span class="fa-chat-social-card-author"><img src="${skin(comment.minecraft_name || comment.username || 'Steve', 50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(comment.username || comment.minecraft_name || 'jogador')}</small></span>
+          <span class="fa-chat-social-card-text">${esc(comment.content || 'Comentario da comunidade')}</span>
+          <span class="fa-chat-social-card-context">${esc(String(post.content || 'Abrir conversa completa').slice(0, 120))}</span>
+        </button>`;
+    }
+
+    const post = payload || {};
+    const author = socialPreviewAuthor(post);
+    const media = (Array.isArray(post.media_urls) ? post.media_urls : []).find(Boolean);
+    return `
+      <button class="fa-chat-social-card" type="button" data-chat-open-post="${esc(post.id || '')}">
+        ${media ? `<img class="fa-chat-social-card-cover" src="${esc(media)}" alt="" loading="lazy">` : ''}
+        <span class="fa-chat-social-card-main">
+          <span class="fa-chat-social-card-brand">Forca Aliada · postagem</span>
+          <span class="fa-chat-social-card-author"><img src="${skin(post.minecraft_name || post.username || 'Steve', 50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(post.username || post.minecraft_name || 'jogador')}</small></span>
+          <span class="fa-chat-social-card-text">${esc(post.content || 'Postagem da comunidade')}</span>
+          <span class="fa-chat-social-card-stats">${Number(post.likes_count || 0).toLocaleString('pt-BR')} curtidas · ${Number(post.comments_count || 0).toLocaleString('pt-BR')} comentarios</span>
+        </span>
+      </button>`;
+  }
+
+  function socialPreviewError(kind, id) {
+    return `<button class="fa-chat-social-card is-unavailable" type="button" data-chat-open-${kind}="${esc(id)}"><strong>Conteudo indisponivel</strong><small>Abrir na comunidade</small></button>`;
+  }
+
+  async function loadSocialPreview(kind, id) {
+    const key = `${kind}:${id}`;
+    if (state._socialPreviewCache.has(key)) return state._socialPreviewCache.get(key);
+    if (state._socialPreviewPending.has(key)) return state._socialPreviewPending.get(key);
+    const pending = api(kind === 'post'
+      ? `/api/community/posts/${encodeURIComponent(id)}`
+      : `/api/community/comments/${encodeURIComponent(id)}/thread`
+    ).then(data => {
+      state._socialPreviewCache.set(key, data);
+      return data;
+    }).finally(() => state._socialPreviewPending.delete(key));
+    state._socialPreviewPending.set(key, pending);
+    return pending;
+  }
+
+  function hydrateInternalPreviews(container) {
+    container.querySelectorAll('[data-chat-social-preview]').forEach(async preview => {
+      if (preview.dataset.previewReady === '1') return;
+      preview.dataset.previewReady = '1';
+      const [kind, id] = String(preview.dataset.chatSocialPreview || '').split(':');
+      if (!kind || !id) return;
+      try {
+        const data = await loadSocialPreview(kind, id);
+        if (!preview.isConnected) return;
+        preview.className = 'fa-chat-social-preview';
+        preview.innerHTML = renderSocialPreviewCard(kind, data);
+      } catch {
+        if (!preview.isConnected) return;
+        preview.className = 'fa-chat-social-preview';
+        preview.innerHTML = socialPreviewError(kind, id);
+      }
+    });
+  }
+
+  function initMessageEnhancements(container) {
+    if (!container) return;
+    initAudioPlayers(container);
+    initLazyVideos(container);
+    hydrateInternalPreviews(container);
+  }
+
+  function initLazyVideos(container) {
+    container.querySelectorAll('[data-chat-video-src]').forEach(video => {
+      if (video.dataset.videoReady === '1') return;
+      const activate = () => {
+        if (video.dataset.videoReady === '1') return;
+        const src = video.dataset.chatVideoSrc;
+        if (!src) return;
+        video.dataset.videoReady = '1';
+        video.src = src;
+        video.load();
+        video.play().catch(() => {});
+      };
+      video.addEventListener('click', activate, { once: true });
+      video.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') activate();
+      }, { once: true });
+    });
+  }
+
   function renderMessageAttachments(attachments = [], isMe = false) {
     if (!attachments.length) return '';
     return `<div class="fa-chat-media-grid">${attachments.map((att, idx) => {
@@ -1409,17 +1578,17 @@
       const size = formatFileSize(att.size);
       const menu = renderAttachmentMenu(att, idx);
       if (att.type === 'image' && url) {
-        return `<div class="fa-chat-attachment fa-chat-attachment--image" data-chat-attachment><img class="fa-chat-media-img" src="${esc(url)}" alt="${esc(name)}" loading="lazy">${menu}</div>`;
+        return `<div class="fa-chat-attachment fa-chat-attachment--image" data-chat-attachment><button class="fa-chat-image-open" type="button" data-chat-image-open="${esc(url)}" data-chat-image-name="${esc(name)}" aria-label="Ver imagem em tela cheia"><img class="fa-chat-media-img" src="${esc(url)}" alt="${esc(name)}" loading="lazy"></button>${menu}</div>`;
       }
       if (att.type === 'video' && url) {
-        return `<div class="fa-chat-attachment fa-chat-attachment--video" data-chat-attachment><video class="fa-chat-media-video" src="${esc(url)}" controls preload="metadata" playsinline></video>${menu}</div>`;
+        return `<div class="fa-chat-attachment fa-chat-attachment--video" data-chat-attachment><video class="fa-chat-media-video" data-chat-video-src="${esc(url)}" controls preload="none" playsinline tabindex="0" aria-label="Reproduzir ${esc(name)}"></video>${menu}</div>`;
       }
       if (att.type === 'audio') {
         // Player customizado — sem <audio controls> nativo, sem menu de download via fetch
         return `<div class="fa-chat-attachment fa-chat-attachment--audio" data-chat-attachment>${renderAudioPlayer(att, isMe)}</div>`;
       }
       if (att.type === 'pdf' && url) {
-        return `<div class="fa-chat-attachment fa-chat-attachment--pdf" data-chat-attachment><div class="fa-chat-pdf-card"><iframe class="fa-chat-pdf-preview" src="${esc(url)}#toolbar=0&navpanes=0" title="${esc(name)}" loading="lazy"></iframe><span><strong>${esc(name)}</strong><small>${esc(size || 'PDF')}</small></span></div>${menu}</div>`;
+        return `<div class="fa-chat-attachment fa-chat-attachment--pdf" data-chat-attachment><div class="fa-chat-pdf-card"><span class="fa-chat-pdf-icon">PDF</span><span class="fa-chat-file-meta"><strong>${esc(name)}</strong><small>${esc(['Documento PDF', size].filter(Boolean).join(' · '))}</small></span><button class="fa-chat-pdf-download" type="button" data-chat-download-url="${esc(url)}" data-chat-download-name="${esc(name)}" aria-label="Baixar PDF">${icons.download}<span>Baixar</span></button></div></div>`;
       }
       return `
         <div class="fa-chat-attachment fa-chat-attachment--file" data-chat-attachment><div class="fa-chat-file-card">
@@ -1433,7 +1602,7 @@
     const url = att.preview_url || att.url || '';
     const name = att.name || attachmentPreviewText([att]) || 'arquivo';
     // Áudio tem download inline no próprio player — não precisa de menu separado
-    if (!url || url.startsWith('blob:') || att.type === 'audio') return '';
+    if (!url || url.startsWith('blob:') || att.type === 'audio' || att.type === 'pdf') return '';
     return `
       <button class="fa-chat-attach-menu-btn" type="button" data-chat-attachment-menu="${esc(idx)}" aria-label="Opcoes do anexo" title="Opcoes">${icons.more}</button>
       <div class="fa-chat-attach-menu" role="menu">
@@ -1456,7 +1625,7 @@
     // Tick fica DENTRO da bubble, após o conteúdo, na linha do timestamp (modelo WhatsApp)
     const tickHTML = isMe ? renderTick(message) : '';
     const attachmentsHTML = renderMessageAttachments(messageAttachments(message), isMe);
-    const bodyHTML = message.body ? `<span class="fa-chat-bubble-body">${esc(message.body)}</span>` : '';
+    const bodyHTML = message.body ? `<span class="fa-chat-bubble-body">${renderMessageBody(message.body)}</span>${renderInternalSocialPreviews(message.body)}` : '';
 
     return `
       <div class="fa-chat-bubble-row ${isMe?'is-me':''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
@@ -1751,6 +1920,158 @@
     }
   }
 
+  let chatViewer = null;
+  let chatViewerItems = [];
+  let chatViewerIndex = 0;
+  let chatViewerScale = 1;
+  let chatViewerSwipeX = null;
+
+  function currentConversationImages() {
+    return state.messages.flatMap(message => messageAttachments(message)
+      .filter(att => att.type === 'image' && (att.preview_url || att.url))
+      .map(att => ({
+        url: att.preview_url || att.url,
+        name: att.name || 'Imagem',
+        sender: message.minecraft_name || message.username || '',
+      })));
+  }
+
+  function ensureChatViewer() {
+    if (chatViewer?.isConnected) return chatViewer;
+    chatViewer = document.createElement('div');
+    chatViewer.className = 'fa-chat-viewer';
+    chatViewer.setAttribute('aria-hidden', 'true');
+    chatViewer.innerHTML = `
+      <div class="fa-chat-viewer-bg" data-chat-viewer-close></div>
+      <div class="fa-chat-viewer-topbar">
+        <div><strong data-chat-viewer-title>Imagem</strong><small data-chat-viewer-count></small></div>
+        <div class="fa-chat-viewer-tools">
+          <button type="button" data-chat-viewer-zoom-out aria-label="Diminuir zoom">−</button>
+          <button type="button" data-chat-viewer-zoom-reset aria-label="Restaurar zoom">100%</button>
+          <button type="button" data-chat-viewer-zoom-in aria-label="Aumentar zoom">+</button>
+          <button type="button" data-chat-viewer-download aria-label="Baixar imagem">${icons.download}</button>
+          <button type="button" data-chat-viewer-close aria-label="Fechar">${icons.close}</button>
+        </div>
+      </div>
+      <button class="fa-chat-viewer-nav is-prev" type="button" data-chat-viewer-prev aria-label="Imagem anterior">${icons.back}</button>
+      <div class="fa-chat-viewer-stage" data-chat-viewer-stage><img data-chat-viewer-img alt=""></div>
+      <button class="fa-chat-viewer-nav is-next" type="button" data-chat-viewer-next aria-label="Proxima imagem">${icons.back}</button>`;
+    document.body.appendChild(chatViewer);
+
+    chatViewer.addEventListener('click', event => {
+      if (event.target.closest('[data-chat-viewer-close]')) { closeChatViewer(); return; }
+      if (event.target.closest('[data-chat-viewer-prev]')) { moveChatViewer(-1); return; }
+      if (event.target.closest('[data-chat-viewer-next]')) { moveChatViewer(1); return; }
+      if (event.target.closest('[data-chat-viewer-zoom-in]')) { setChatViewerScale(chatViewerScale + .25); return; }
+      if (event.target.closest('[data-chat-viewer-zoom-out]')) { setChatViewerScale(chatViewerScale - .25); return; }
+      if (event.target.closest('[data-chat-viewer-zoom-reset]')) { setChatViewerScale(1); return; }
+      if (event.target.closest('[data-chat-viewer-download]')) {
+        const item = chatViewerItems[chatViewerIndex];
+        if (item) downloadAttachment(item.url, item.name);
+      }
+    });
+    chatViewer.querySelector('[data-chat-viewer-stage]')?.addEventListener('wheel', event => {
+      event.preventDefault();
+      setChatViewerScale(chatViewerScale + (event.deltaY < 0 ? .2 : -.2));
+    }, { passive: false });
+    chatViewer.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'touch' || event.target.closest('button')) return;
+      chatViewerSwipeX = event.clientX;
+    });
+    chatViewer.addEventListener('pointerup', event => {
+      if (chatViewerSwipeX === null) return;
+      const distance = event.clientX - chatViewerSwipeX;
+      chatViewerSwipeX = null;
+      if (Math.abs(distance) > 48 && chatViewerScale === 1) moveChatViewer(distance > 0 ? -1 : 1);
+    });
+    document.addEventListener('keydown', event => {
+      if (!chatViewer?.classList.contains('is-open')) return;
+      if (event.key === 'Escape') closeChatViewer();
+      if (event.key === 'ArrowLeft') moveChatViewer(-1);
+      if (event.key === 'ArrowRight') moveChatViewer(1);
+      if (event.key === '+' || event.key === '=') setChatViewerScale(chatViewerScale + .25);
+      if (event.key === '-') setChatViewerScale(chatViewerScale - .25);
+    });
+    return chatViewer;
+  }
+
+  function setChatViewerScale(value) {
+    chatViewerScale = Math.max(.5, Math.min(4, Number(value || 1)));
+    const img = chatViewer?.querySelector('[data-chat-viewer-img]');
+    const reset = chatViewer?.querySelector('[data-chat-viewer-zoom-reset]');
+    if (img) img.style.transform = `scale(${chatViewerScale})`;
+    if (reset) reset.textContent = `${Math.round(chatViewerScale * 100)}%`;
+  }
+
+  function renderChatViewerItem() {
+    const item = chatViewerItems[chatViewerIndex];
+    if (!item || !chatViewer) return;
+    const img = chatViewer.querySelector('[data-chat-viewer-img]');
+    const title = chatViewer.querySelector('[data-chat-viewer-title]');
+    const count = chatViewer.querySelector('[data-chat-viewer-count]');
+    const prev = chatViewer.querySelector('[data-chat-viewer-prev]');
+    const next = chatViewer.querySelector('[data-chat-viewer-next]');
+    if (img) { img.src = item.url; img.alt = item.name; }
+    if (title) title.textContent = item.name;
+    if (count) count.textContent = `${chatViewerIndex + 1} de ${chatViewerItems.length}${item.sender ? ` · ${item.sender}` : ''}`;
+    if (prev) prev.hidden = chatViewerItems.length < 2;
+    if (next) next.hidden = chatViewerItems.length < 2;
+    setChatViewerScale(1);
+  }
+
+  function moveChatViewer(direction) {
+    if (chatViewerItems.length < 2) return;
+    chatViewerIndex = (chatViewerIndex + direction + chatViewerItems.length) % chatViewerItems.length;
+    renderChatViewerItem();
+  }
+
+  function openChatViewer(url, name = 'Imagem') {
+    const viewer = ensureChatViewer();
+    chatViewerItems = currentConversationImages();
+    let index = chatViewerItems.findIndex(item => item.url === url);
+    if (index < 0) {
+      chatViewerItems.push({ url, name, sender: '' });
+      index = chatViewerItems.length - 1;
+    }
+    chatViewerIndex = index;
+    viewer.classList.add('is-open');
+    viewer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('fa-chat-viewer-open');
+    renderChatViewerItem();
+    viewer.querySelector('[data-chat-viewer-close]')?.focus();
+  }
+
+  function closeChatViewer() {
+    if (!chatViewer) return;
+    chatViewer.classList.remove('is-open');
+    chatViewer.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('fa-chat-viewer-open');
+    chatViewerItems = [];
+    chatViewerIndex = 0;
+    setChatViewerScale(1);
+  }
+
+  function openCommunityPost(postId) {
+    if (!postId) return;
+    closePanel();
+    if (typeof window.navigatePost === 'function') window.navigatePost(String(postId));
+    else location.href = `community.html?post=${encodeURIComponent(postId)}`;
+  }
+
+  async function openCommunityComment(commentId) {
+    if (!commentId) return;
+    closePanel();
+    if (typeof window.navigateCommentThread === 'function') {
+      window.navigateCommentThread(String(commentId));
+      return;
+    }
+    try {
+      const data = await loadSocialPreview('comment', String(commentId));
+      const postId = data?.root_comment?.post_id || data?.original_post?.id;
+      if (postId) location.href = `community.html?post=${encodeURIComponent(postId)}`;
+    } catch {}
+  }
+
   async function uploadPendingAttachments(attachments = []) {
     if (!attachments.length) return [];
     const formData = new FormData();
@@ -1913,6 +2234,7 @@
     state.open = false;
     closeSSE();
     stopPresenceBeacon();
+    closeChatViewer();
     const panel = root.querySelector('.fa-chat-panel');
     if (panel) { panel.style.height=''; panel.style.top=''; }
     render();
@@ -1951,7 +2273,12 @@
         data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80&t=${Date.now()}`);
         rows = Array.isArray(data.rows) ? data.rows : [];
       }
-      state.messages = dedupeMessages(rows);
+      const pending = state.messages.filter(message => String(message.id || '').startsWith('tmp-'));
+      const serverClientRefs = new Set(rows.map(message => String(message.client_ref || '')).filter(Boolean));
+      state.messages = dedupeMessages([
+        ...rows,
+        ...pending.filter(message => !serverClientRefs.has(String(message.client_ref || message.id || ''))),
+      ]);
       state.loadingMessages = false;
       state.error = '';
       if (k) state._msgCache[k] = state.messages.slice();
@@ -1997,7 +2324,12 @@
         data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=80&t=${Date.now()}`);
         rows = Array.isArray(data.rows) ? data.rows : [];
       }
-      state.messages = dedupeMessages(rows);
+      const pending = state.messages.filter(message => String(message.id || '').startsWith('tmp-'));
+      const serverClientRefs = new Set(rows.map(message => String(message.client_ref || '')).filter(Boolean));
+      state.messages = dedupeMessages([
+        ...rows,
+        ...pending.filter(message => !serverClientRefs.has(String(message.client_ref || message.id || ''))),
+      ]);
       state.loadingMessages = false;
       state.error = '';
       if (k) state._msgCache[k] = state.messages.slice();
@@ -2053,8 +2385,10 @@
 
   async function openWithUser(user) {
     if (!user?.id) return;
-    const draft = typeof arguments[1]==='string' ? arguments[1] : String(arguments[1]?.draft||'');
-    if (draft) state.pendingDraft = draft;
+    const options = typeof arguments[1] === 'string' ? { draft: arguments[1] } : (arguments[1] || {});
+    const draft = String(options.draft || '').trim().slice(0, 500);
+    const sendNow = Boolean(options.sendNow || options.immediate);
+    if (draft && !sendNow) state.pendingDraft = draft;
     state.open = true;
     syncBodyChatState();
     state.current = null;
@@ -2065,9 +2399,23 @@
     try {
       await ensureMe();
       const conv = await api('/api/me/conversations', { method:'POST', body:JSON.stringify({target_id:user.id}) });
-      await loadConversations();
-      await openConversation(conv);
-      applyPendingDraft();
+      const openingConversation = openConversation(conv);
+      if (draft && sendNow) {
+        state.pendingDraft = '';
+        queueSend({
+          body: draft,
+          attachments: [],
+          currentConv: conv,
+          currentKind: 'direct',
+          currentMe: state.me,
+        });
+      }
+      await openingConversation;
+      if (!sendNow) {
+        applyPendingDraft();
+      }
+      loadConversations().catch(() => {});
+      return conv;
     } finally {
       state.loadingConversations = false;
     }
@@ -2249,12 +2597,33 @@
     const recordCancel= event.target.closest('[data-chat-record-cancel]');
     const attachMenu  = event.target.closest('[data-chat-attachment-menu]');
     const downloadBtn = event.target.closest('[data-chat-download-url]');
+    const imageOpen   = event.target.closest('[data-chat-image-open]');
+    const openPost    = event.target.closest('[data-chat-open-post]');
+    const openComment = event.target.closest('[data-chat-open-comment]');
 
     if (!attachMenu && !downloadBtn && !event.target.closest('.fa-chat-attach-menu')) {
       closeAttachmentMenus();
     }
 
     try {
+      if (imageOpen) {
+        event.preventDefault();
+        event.stopPropagation();
+        openChatViewer(imageOpen.dataset.chatImageOpen, imageOpen.dataset.chatImageName || 'Imagem');
+        return;
+      }
+      if (openPost) {
+        event.preventDefault();
+        event.stopPropagation();
+        openCommunityPost(openPost.dataset.chatOpenPost);
+        return;
+      }
+      if (openComment) {
+        event.preventDefault();
+        event.stopPropagation();
+        await openCommunityComment(openComment.dataset.chatOpenComment);
+        return;
+      }
       if (downloadBtn) {
         event.stopPropagation();
         closeAttachmentMenus();
@@ -2539,7 +2908,7 @@
     open: openPanel,
     close: closePanel,
     openWithUser,
-    shareWithUser: async (user, text) => openWithUser(user, text),
+    shareWithUser: async (user, text) => openWithUser(user, { draft: text, sendNow: true }),
     refresh: async () => {
       await Promise.all([loadUnread(), loadConversations(), loadGroups(), loadFriends()]);
       updateConversationList();
