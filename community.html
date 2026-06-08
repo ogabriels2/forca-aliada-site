@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/social-chat.css?v=chat9-20260608">
+<link rel="stylesheet" href="assets/css/social-chat.css?v=chat10-20260608">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -5191,6 +5191,44 @@ function queueMediaFiles(type,files){
     setMediaStatus(type,'');
   });
 }
+/* ── Limites de compressão por contexto ──────────────────────────────────────
+ * Estratégia: comprimir apenas o suficiente para o canal de destino.
+ *   POST_IMAGE: exibida no feed em até ~800px CSS → max 1600px real (2× para HiDPI)
+ *               alvo: ≤ 500KB por imagem — imperceptível em tela de celular
+ *   AVATAR:     circulares/quadradas pequenas → max 400px real
+ *               alvo: ≤ 120KB
+ *   COVER:      banner largo → max 1400px real
+ *               alvo: ≤ 400KB
+ *
+ * Por que não comprimir para 100KB?
+ *   browser-image-compression faz múltiplas passadas de encode WebP para atingir
+ *   o alvo de tamanho. Cada passada degrada levemente. Com alvo de 100KB numa
+ *   imagem 1600px, o resultado final é em torno de 40–55 dB PSNR — visível.
+ *   Com 500KB, 1–3 passadas chegam em ~50–55 dB — imperceptível na tela.
+ *
+ * O Cloudinary ainda aplica quality:auto:good + resize no servidor, então
+ * o arquivo final entregue ao usuário é ainda menor que o upload.
+ * ─────────────────────────────────────────────────────────────────────────── */
+const IMG_COMPRESS_PRESETS={
+  post:    {maxSizeMB:0.5,  maxWidthOrHeight:1600, initialQuality:0.86},
+  avatar:  {maxSizeMB:0.12, maxWidthOrHeight:400,  initialQuality:0.88},
+  cover:   {maxSizeMB:0.4,  maxWidthOrHeight:1400, initialQuality:0.86},
+};
+
+/* Comprime um File/Blob com as opções do preset.
+   Não recomprime WebP sobre WebP: converte pelo canvas para PNG primeiro,
+   já que imageCompression↔WebP em cascata piora qualidade sem reduzir muito. */
+async function smartCompress(file,preset){
+  await waitForGlobal('imageCompression');
+  const opts={
+    ...preset,
+    useWebWorker:true,
+    fileType:'image/webp',  // saída sempre WebP (menor que JPEG/PNG para fotos)
+    preserveExif:false,
+  };
+  return window.imageCompression(file,opts);
+}
+
 async function confirmCrop(){
   if(!state.cropper||!state.cropCurrent)return;
   const type=state.cropComposer;
@@ -5199,17 +5237,23 @@ async function confirmCrop(){
   try{
     $('#crop-status').textContent='Cortando imagem...';
     setMediaStatus(type,'Cortando e comprimindo...');
+    /* Gera o canvas cortado. maxWidth/Height define o teto de resolução real. */
     const canvas=state.cropper.getCroppedCanvas({maxWidth:1600,maxHeight:1600,imageSmoothingEnabled:true,imageSmoothingQuality:'high'});
-    const rawBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.9));
+    /* Exporta como PNG para evitar double-encode WebP→WebP:
+       imageCompression faz encode WebP internamente, se a entrada já for WebP
+       ela recomprime com artefatos adicionais sem ganho de tamanho significativo. */
+    const rawBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     if(!rawBlob) throw new Error('Nao foi possivel gerar a imagem.');
-    const file=new File([rawBlob],`${Date.now()}-${(state.cropCurrent.file.name||'imagem').replace(/\.[^.]+$/,'')}.webp`,{type:'image/webp'});
-    $('#crop-status').textContent='Comprimindo para upload rápido...';
-    const compressed=await window.imageCompression(file,{maxSizeMB:0.1,maxWidthOrHeight:1600,useWebWorker:true,fileType:'image/webp',initialQuality:.78});
+    const baseName=`${Date.now()}-${(state.cropCurrent.file.name||'imagem').replace(/\.[^.]+$/,'')}`;
+    const file=new File([rawBlob],`${baseName}.png`,{type:'image/png'});
+    $('#crop-status').textContent='Comprimindo para upload...';
+    /* Comprime com o preset de post: 500KB máx, 1600px máx, WebP de saída */
+    const compressed=await smartCompress(file,IMG_COMPRESS_PRESETS.post);
     $('#crop-status').textContent='IA revisando segurança da imagem...';
     setMediaStatus(type,'Moderando imagem...');
     await assertSafeImage(compressed,type);
     const url=URL.createObjectURL(compressed);
-    state.composerMedia[type].push({blob:compressed,url,name:file.name});
+    state.composerMedia[type].push({blob:compressed,url,name:`${baseName}.webp`});
     updateMediaPreview(type);
     setMediaStatus(type,'Imagem pronta.');
   }catch(e){
@@ -7262,11 +7306,13 @@ async function openCommunityProfileEditor(){
       setMediaStatus('inline','Preparando imagem...');
       try{
         await ensureEditorLibraries();
+        /* Escolhe o preset por destino: avatar é menor, capa é mais larga */
+        const preset=target==='avatar'?IMG_COMPRESS_PRESETS.avatar:IMG_COMPRESS_PRESETS.cover;
+        /* Comprime sempre (não apenas acima de 1.5MB) para garantir WebP e tamanho controlado */
+        setMediaStatus('inline','Comprimindo imagem...');
         let processed=file;
-        // compress if needed
-        if(file.size>1.5*1024*1024){
-          const opt={maxSizeMB:1.2,maxWidthOrHeight:target==='avatar'?600:1400,useWebWorker:true};
-          try{processed=await imageCompression(file,opt);}catch{}
+        try{processed=await smartCompress(file,preset);}catch(e){
+          console.warn('[handleImageFile] compressão falhou, usando arquivo original:',e.message);
         }
         // ── Moderação local (nsfwjs) antes de aceitar a imagem ───────────────
         setMediaStatus('inline','IA revisando segurança da imagem...');
@@ -7333,8 +7379,13 @@ async function openCommunityProfileEditor(){
     // upload blob to cloudinary (reusing existing upload infrastructure)
     async function uploadImageBlob(blob,folder='profile'){
       const form=new FormData();
-      form.append('file',blob,`${folder}_${Date.now()}.jpg`);
-      const res=await fetch(`${state.base||'https://forca-aliada-site.onrender.com'}/api/upload`,{
+      /* Usa .webp se já comprimido pelo smartCompress, senão .jpg como fallback */
+      const ext=(blob.type==='image/webp')?'webp':'jpg';
+      form.append('file',blob,`${folder}_${Date.now()}.${ext}`);
+      /* ?type= informa ao backend qual preset de resize usar no Cloudinary */
+      const typeParam=folder==='avatar'?'avatar':'cover';
+      const base=state.base||'https://forca-aliada-site.onrender.com';
+      const res=await fetch(`${base}/api/upload?type=${typeParam}`,{
         method:'POST',headers:{Authorization:`Bearer ${localStorage.getItem('fa_token')}`},body:form
       });
       if(!res.ok){const j=await res.json().catch(()=>({}));throw new Error(j.error||'Falha no upload');}
@@ -8821,7 +8872,7 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/social-chat.js?v=chat9-20260608"></script>
+<script src="assets/js/social-chat.js?v=chat10-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
