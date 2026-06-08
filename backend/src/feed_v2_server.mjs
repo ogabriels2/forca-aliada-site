@@ -78,6 +78,159 @@ DROP TRIGGER IF EXISTS trg_post_saves_affinity ON post_saves;
 CREATE TRIGGER trg_post_saves_affinity
 AFTER INSERT OR DELETE ON post_saves
 FOR EACH ROW EXECUTE FUNCTION fa_post_saves_affinity_trigger();
+
+-- ── last_engaged_at: timestamp do engajamento mais recente no post ────────────
+-- Permite que posts antigos que recebam nova interação ressurjam no feed,
+-- pois a gravidade temporal passa a decair a partir desse ponto, não da criação.
+ALTER TABLE user_posts ADD COLUMN IF NOT EXISTS last_engaged_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_user_posts_last_engaged ON user_posts(last_engaged_at DESC NULLS LAST);
+
+-- ── Função helper: atualiza last_engaged_at no post-alvo (ou no original, em reposts) ──
+CREATE OR REPLACE FUNCTION fa_update_post_last_engaged(p_post_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE user_posts
+  SET last_engaged_at = NOW()
+  WHERE id = p_post_id OR repost_of_id = p_post_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ── Trigger: like adicionado ou removido ──────────────────────────────────────
+CREATE OR REPLACE FUNCTION fa_post_likes_last_engaged_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM fa_update_post_last_engaged(NEW.post_id);
+    RETURN NEW;
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_post_likes_last_engaged ON post_likes;
+CREATE TRIGGER trg_post_likes_last_engaged
+AFTER INSERT ON post_likes
+FOR EACH ROW EXECUTE FUNCTION fa_post_likes_last_engaged_trigger();
+
+-- ── Trigger: comentário criado (não em deleção) ───────────────────────────────
+CREATE OR REPLACE FUNCTION fa_post_comments_last_engaged_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND COALESCE(NEW.is_deleted, FALSE) = FALSE THEN
+    PERFORM fa_update_post_last_engaged(NEW.post_id);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_post_comments_last_engaged ON post_comments;
+CREATE TRIGGER trg_post_comments_last_engaged
+AFTER INSERT ON post_comments
+FOR EACH ROW EXECUTE FUNCTION fa_post_comments_last_engaged_trigger();
+
+-- ── Trigger: repost criado ────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION fa_post_reposts_last_engaged_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.repost_of_id IS NOT NULL THEN
+    PERFORM fa_update_post_last_engaged(NEW.repost_of_id);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_post_reposts_last_engaged ON user_posts;
+CREATE TRIGGER trg_post_reposts_last_engaged
+AFTER INSERT ON user_posts
+FOR EACH ROW EXECUTE FUNCTION fa_post_reposts_last_engaged_trigger();
+
+-- ── Trigger: save adicionado ──────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION fa_post_saves_last_engaged_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM fa_update_post_last_engaged(NEW.post_id);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_post_saves_last_engaged ON post_saves;
+CREATE TRIGGER trg_post_saves_last_engaged
+AFTER INSERT ON post_saves
+FOR EACH ROW EXECUTE FUNCTION fa_post_saves_last_engaged_trigger();
+
+-- ── Trigger: voto em enquete ──────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION fa_poll_votes_last_engaged_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    -- post_poll_votes tem poll_id; precisa encontrar o post_id via post_polls
+    UPDATE user_posts up
+    SET last_engaged_at = NOW()
+    FROM post_polls pp
+    WHERE pp.id = NEW.poll_id
+      AND (up.id = pp.post_id OR up.repost_of_id = pp.post_id);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_poll_votes_last_engaged ON post_poll_votes;
+CREATE TRIGGER trg_poll_votes_last_engaged
+AFTER INSERT ON post_poll_votes
+FOR EACH ROW EXECUTE FUNCTION fa_poll_votes_last_engaged_trigger();
+
+-- ── Backfill: posts já existentes recebem o last_engaged_at retroativo ────────
+-- Para cada post, pega o timestamp do engajamento mais recente entre todas
+-- as tabelas (likes, comentários, reposts, saves, votos).
+-- Posts sem nenhum engajamento ficam com NULL → o algoritmo usa created_at.
+-- Executado com UPDATE ... WHERE last_engaged_at IS NULL para ser idempotente.
+UPDATE user_posts p
+SET last_engaged_at = latest.ts
+FROM (
+  SELECT post_id, MAX(ts) AS ts
+  FROM (
+    -- Curtidas
+    SELECT post_id, MAX(created_at) AS ts
+    FROM post_likes
+    GROUP BY post_id
+
+    UNION ALL
+
+    -- Comentários ativos
+    SELECT post_id, MAX(created_at) AS ts
+    FROM post_comments
+    WHERE is_deleted = FALSE
+    GROUP BY post_id
+
+    UNION ALL
+
+    -- Reposts (o post original recebe o timestamp do repost)
+    SELECT repost_of_id AS post_id, MAX(created_at) AS ts
+    FROM user_posts
+    WHERE repost_of_id IS NOT NULL
+    GROUP BY repost_of_id
+
+    UNION ALL
+
+    -- Saves
+    SELECT post_id, MAX(created_at) AS ts
+    FROM post_saves
+    GROUP BY post_id
+
+    UNION ALL
+
+    -- Votos em enquetes
+    SELECT pp.post_id, MAX(ppv.created_at) AS ts
+    FROM post_poll_votes ppv
+    JOIN post_polls pp ON pp.id = ppv.poll_id
+    GROUP BY pp.post_id
+  ) all_events
+  GROUP BY post_id
+) latest
+WHERE p.id = latest.post_id
+  AND p.last_engaged_at IS NULL;
 `;
 
 // =============================================================================
@@ -436,6 +589,9 @@ app.get('/api/community/feed', auth, async (req, res) => {
         SELECT
                p.id, p.content, p.media_urls, p.created_at, p.updated_at,
                p.edit_count, p.is_pinned, p.pinned_at, p.created_by_user_id, p.repost_of_id,
+               -- Âncora temporal: usa o engajamento mais recente se existir,
+               -- senão cai de volta para created_at (posts sem nenhuma interação).
+               COALESCE(p.last_engaged_at, p.created_at) AS age_anchor,
                COALESCE(p.repost_of_id, p.id)         AS target_id,
                COALESCE(op.content, p.content)        AS target_content,
                op.content                             AS repost_original_content,
@@ -592,12 +748,14 @@ app.get('/api/community/feed', auth, async (req, res) => {
 
           -- ④ SINAL SOCIAL (seguindo o autor + frescor)
           -- Posts muito recentes de quem sigo recebem um boost forte (não fique por ver!).
+          -- "Recente" baseia-se na última interação (age_anchor), não só na criação.
+          -- Efeito: um post antigo que acabou de receber 10 curtidas pode ganhar o boost.
           -- Posts mais antigos de seguidos: boost moderado.
           -- Descoberta (não segue): sem boost, compete pela qualidade pura.
           (CASE
             WHEN m.is_following
-                 AND EXTRACT(EPOCH FROM ($3::timestamptz - m.created_at)) / 3600.0 < 2.0
-              THEN 2.2   -- Post fresquíssimo de quem sigo: máxima prioridade
+                 AND EXTRACT(EPOCH FROM ($3::timestamptz - m.age_anchor)) / 3600.0 < 2.0
+              THEN 2.2   -- Post/engajamento fresquíssimo de quem sigo: máxima prioridade
             WHEN m.is_following
               THEN 1.6   -- Post de quem sigo (qualquer idade)
             ELSE 1.0     -- Descoberta: sem bônus social
@@ -613,11 +771,14 @@ app.get('/api/community/feed', auth, async (req, res) => {
           END)::double precision AS media_mult,
 
           -- ⑥ GRAVIDADE TEMPORAL (decay estilo HackerNews, diferenciado por relação)
+          -- Usa age_anchor = COALESCE(last_engaged_at, created_at).
+          -- Efeito: um post de 7 dias que acaba de receber um like hoje tem sua
+          -- "idade efetiva" resetada para o momento desse like — ressurge no feed.
+          -- Posts sem nenhum engajamento usam created_at normalmente.
           -- Posts de seguidos decaem MAIS DEVAGAR (expoente 1.55 vs 1.90).
-          -- Efeito: posts antigos de quem sigo ainda aparecem; post viral de desconhecido some rápido.
-          -- +2h no denominador: evita divisão por zero para posts com < 1h de vida.
+          -- +2h no denominador: evita divisão por zero para posts/engajamentos < 1h.
           POWER(
-            GREATEST(0.0, EXTRACT(EPOCH FROM ($3::timestamptz - m.created_at)) / 3600.0 + 2.0),
+            GREATEST(0.0, EXTRACT(EPOCH FROM ($3::timestamptz - m.age_anchor)) / 3600.0 + 2.0),
             CASE WHEN m.is_following THEN 1.55 ELSE 1.90 END
           )::double precision AS temporal_gravity,
 
