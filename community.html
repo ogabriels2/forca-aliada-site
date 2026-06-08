@@ -1077,6 +1077,125 @@ img{display:block}
 .comment-row p{margin-top:3px;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .deleted{color:var(--ink-3);font-style:italic}
 
+/* ─── Sort bar (barra de classificação dos comentários) ─── */
+.comments-sort-bar{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:9px 14px;
+  background:var(--surface-solid);
+  border:1px solid var(--line);border-radius:var(--r-lg) var(--r-lg) 0 0;
+  border-bottom:none;
+  font-size:12px;font-weight:700;color:var(--ink-3);
+}
+.comments-sort-bar span{margin-right:auto;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase}
+.sort-btn{
+  height:27px;padding:0 10px;border-radius:999px;
+  font-size:11.5px;font-weight:800;cursor:pointer;
+  border:1.5px solid transparent;
+  background:transparent;color:var(--ink-3);
+  transition:color var(--t-fast),background var(--t-fast),border-color var(--t-fast);
+}
+.sort-btn:hover{background:var(--surface-soft);color:var(--ink-2)}
+.sort-btn.active{
+  border-color:var(--accent-mid);
+  background:var(--accent-soft);color:var(--accent);
+}
+.comments-list-wrap{
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  overflow:hidden;box-shadow:var(--shadow-sm);
+}
+.comments-list-wrap.has-sort-bar{
+  border-radius:0 0 var(--r-lg) var(--r-lg);
+}
+.comments-list-wrap.has-sort-bar .comments-list{
+  border-radius:0;
+}
+/* ─── Comment row upgrades ─── */
+.comment-row{
+  position:relative;
+  cursor:pointer;
+}
+.comment-row:not(.is-deleted):hover::after{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  background:var(--accent);
+  border-radius:0 2px 2px 0;
+  opacity:0;
+  transition:opacity var(--t-fast);
+}
+.comment-row:not(.is-deleted):hover::after{opacity:1}
+.comment-meta{
+  display:flex;align-items:center;gap:8px;
+  margin-top:4px;
+}
+.comment-pa{
+  display:inline-flex;align-items:center;gap:3.5px;
+  height:24px;padding:0 7px;border-radius:999px;
+  font-size:11.5px;font-weight:800;cursor:pointer;
+  background:transparent;color:var(--ink-3);
+  border:none;
+  transition:color var(--t-fast),background var(--t-fast);
+}
+.comment-pa:hover{background:var(--surface-soft);color:var(--ink-2)}
+.comment-pa.is-on{color:var(--danger)}
+.comment-pa.is-on svg{fill:var(--danger);stroke:var(--danger)}
+.comment-pa svg{width:13px;height:13px;transition:transform .18s var(--ease)}
+.comment-pa.popping svg{transform:scale(1.45)}
+.comment-pa-replies{color:var(--accent)}
+.comment-pa-replies svg{stroke:var(--accent)}
+.comment-replies-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:800;color:var(--accent);
+  background:var(--accent-soft);border-radius:999px;
+  padding:2px 8px;margin-top:4px;cursor:pointer;
+  border:1.5px solid var(--accent-mid);
+  transition:background var(--t-fast);
+}
+.comment-replies-badge:hover{background:var(--accent-mid)}
+/* ─── Sub-thread view ─── */
+.subthread-hero{
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  background:var(--surface);box-shadow:var(--shadow-sm);
+  padding:13px;margin-bottom:2px;
+}
+.subthread-context{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 12px;border-bottom:1px solid var(--line);
+  background:var(--accent-soft);border-radius:var(--r-md) var(--r-md) 0 0;
+  font-size:12px;font-weight:700;color:var(--accent);
+}
+.subthread-context svg{width:14px;height:14px;flex-shrink:0}
+.subthread-original-post{
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  background:var(--surface-solid);
+  overflow:hidden;box-shadow:var(--shadow-xs);
+  cursor:pointer;transition:background var(--t-fast);
+}
+.subthread-original-post:hover{background:var(--surface-hover)}
+.subthread-original-post-inner{
+  display:grid;grid-template-columns:36px minmax(0,1fr);gap:8px;
+  padding:10px 12px;
+}
+.subthread-original-post-inner img{width:36px;height:36px;border-radius:9px;object-fit:cover}
+.subthread-root-comment{
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  background:var(--surface);
+  overflow:hidden;box-shadow:var(--shadow-sm);
+}
+.subthread-root-comment .comment-row{
+  background:color-mix(in srgb,var(--accent-soft) 60%,var(--surface-solid));
+  border-left:3px solid var(--accent);
+}
+.subthread-root-comment .comment-row:hover::after{display:none}
+.subthread-connector{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 14px;color:var(--ink-3);font-size:11.5px;font-weight:700;
+}
+.subthread-connector::before,.subthread-connector::after{
+  content:'';flex:1;height:1px;background:var(--line);
+}
+
 /* ─── Thread social counts bar ─── */
 .thread-social-counts{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
@@ -5721,23 +5840,282 @@ async function setPostPinned(id,pinned){
     loadFeed({reset:true});
   }catch(e){toast('error','Fixacao nao salva',e.message)}
 }
-async function deleteComment(postId,commentId,post){
-  const ok=await confirmDialog({title:'Remover comentario',msg:'O comentario sera ocultado da thread e a acao ficara registrada.',confirmText:'Remover',danger:true});
-  if(!ok)return;
-  try{
-    await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,{method:'DELETE'});
-    const commentsResp2=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`);
-    const commentsList2=Array.isArray(commentsResp2)?commentsResp2:(Array.isArray(commentsResp2?.comments)?commentsResp2.comments:[]);
-    const list=$('#thread-comments');if(list)list.innerHTML=commentsHTML(commentsList2);
-    const nextCount=Math.max(0,Number(post?.comments_count||0)-1);
-    if(post)post.comments_count=nextCount;
-    const fp=findPost(postId);if(fp)fp.comments_count=nextCount;
-    const tc=$('.thread-count');if(tc)tc.textContent=`${num(nextCount)} respostas`;
-    toast('success','Comentario removido','A thread foi atualizada.');
-  }catch(e){toast('error','Comentario nao removido',e.message)}
+async function deleteComment(postId, commentId, post) {
+  const ok = await confirmDialog({ title: 'Remover comentário', msg: 'O comentário será ocultado da thread e a ação ficará registrada.', confirmText: 'Remover', danger: true });
+  if (!ok) return;
+  try {
+    await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
+    const commentsResp2 = await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`);
+    const commentsList2 = Array.isArray(commentsResp2) ? commentsResp2 : (Array.isArray(commentsResp2?.comments) ? commentsResp2.comments : []);
+    renderThreadComments(commentsList2, postId, post, commentsResp2?.next_cursor || null, commentsResp2?.has_more || false, commentsResp2?.sort || 'oldest');
+    const nextCount = Math.max(0, Number(post?.comments_count || 0) - 1);
+    if (post) post.comments_count = nextCount;
+    const fp = findPost(postId); if (fp) fp.comments_count = nextCount;
+    const tc = $('.thread-count'); if (tc) tc.textContent = `${num(nextCount)} respostas`;
+    toast('success', 'Comentário removido', 'A thread foi atualizada.');
+  } catch (e) { toast('error', 'Comentário não removido', e.message); }
 }
 
-/* ======================= EDIT ======================= */
+async function deleteCommentFromSubthread(postId, commentId, rootCommentId) {
+  const ok = await confirmDialog({ title: 'Remover resposta', msg: 'A resposta será ocultada.', confirmText: 'Remover', danger: true });
+  if (!ok) return;
+  try {
+    await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
+    const resp = await api(`/api/community/comments/${encodeURIComponent(rootCommentId)}/thread`);
+    const newReplies = Array.isArray(resp.replies) ? resp.replies : [];
+    const repliesWrap = $('#subthread-replies');
+    if (repliesWrap) repliesWrap.innerHTML = buildSubthreadRepliesHTML(newReplies, resp.has_more, resp.next_cursor, rootCommentId, postId, resp.sort || 'relevance');
+    toast('success', 'Resposta removida', '');
+  } catch (e) { toast('error', 'Não foi possível remover', e.message); }
+}
+
+/* ======================= NAVIGATE COMMENT THREAD ======================= */
+async function navigateCommentThread(commentId, fromPostId) {
+  showRouteUI(`
+    <div class="route-top">
+      <button class="btn btn-ghost btn-sm" data-back-to-post data-post-id="${esc(fromPostId)}">${IC.back} Voltar para thread</button>
+      <span class="crumb-path">Respostas ao comentário</span>
+    </div>
+    <div class="skel" style="height:100px;border-radius:var(--r-md)"></div>
+    <div class="skel" style="height:80px;border-radius:var(--r-md)"></div>
+    <div class="skel" style="height:180px;border-radius:var(--r-md)"></div>
+  `);
+
+  try {
+    const data = await api(`/api/community/comments/${encodeURIComponent(commentId)}/thread`);
+    const rootComment = data.root_comment;
+    const originalPost = data.original_post;
+    const replies = Array.isArray(data.replies) ? data.replies : [];
+    const postId = rootComment.post_id || fromPostId;
+    const sort = data.sort || 'relevance';
+
+    const postAuthorShown = originalPost ? displayName(originalPost) : 'Jogador';
+    const postContent = originalPost?.content ? String(originalPost.content).slice(0, 120) + (originalPost.content.length > 120 ? '…' : '') : '';
+    const postAv = originalPost ? avatar(originalPost, 40) : fallbackAvatar('Jogador', 40);
+    const postMc = originalPost?.minecraft_name || originalPost?.username || 'Jogador';
+
+    const routeCol = $('#route-col');
+    routeCol.innerHTML = `
+      <div class="route-top">
+        <button class="btn btn-ghost btn-sm" data-back-to-post data-post-id="${esc(postId)}">${IC.back} Voltar para thread</button>
+        <span class="crumb-path">Respostas ao comentário</span>
+      </div>
+
+      ${originalPost ? `
+      <div class="subthread-original-post" data-nav-post="${esc(postId)}" role="button" tabindex="0" aria-label="Ver post original">
+        <div class="subthread-context">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          Comentando em um post de <strong>${esc(postAuthorShown)}</strong>
+        </div>
+        <div class="subthread-original-post-inner">
+          <img src="${esc(postAv)}" alt="${esc(postAuthorShown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(postAuthorShown, 40)}'">
+          <div>
+            <div class="comment-author">
+              <strong>${esc(postAuthorShown)}</strong>
+              <span class="handle">@${esc(postMc)}</span>
+              <span class="ts">· ${esc(time(originalPost.created_at))}</span>
+            </div>
+            <p style="font-size:13px;margin-top:3px;color:var(--ink-2);line-height:1.4">${esc(postContent)}</p>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <div class="subthread-root-comment" id="subthread-root">
+        ${commentsHTML([rootComment], { isSubthread: true })}
+      </div>
+
+      <div class="subthread-connector">respostas</div>
+
+      <div class="reply-bar" id="subreply-bar">
+        <img class="av42" src="${esc(state.me ? avatar(state.me, 50) : fallbackAvatar('Jogador', 50))}" alt="Seu avatar" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(state.me), 50)}'">
+        <textarea class="reply-ta" id="subreply-ta" maxlength="280" placeholder="Responder a @${esc(displayName(rootComment))}…" aria-label="Responder ao comentário"></textarea>
+        <button class="btn btn-primary btn-sm" id="subreply-btn">Responder</button>
+      </div>
+
+      <div id="subthread-replies">
+        ${buildSubthreadRepliesHTML(replies, data.has_more, data.next_cursor, rootComment.id, postId, sort)}
+      </div>
+    `;
+
+    bindSubthreadEvents(routeCol, rootComment, postId, sort);
+
+  } catch (e) {
+    showRouteUI(`
+      <div class="route-top"><button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button></div>
+      <div class="empty-card"><div class="empty-icon">${IC.err || IC.comment}</div><h3>Comentário indisponível</h3><p>${esc(e.message)}</p></div>
+    `);
+    $('#route-col').addEventListener('click', ev => {
+      if (ev.target.closest('[data-back]')) Router.navigate('/community');
+    }, { once: true });
+  }
+}
+
+function buildSubthreadRepliesHTML(replies, hasMore, nextCursor, rootCommentId, postId, sort) {
+  const sorts = [
+    { key: 'relevance', label: 'Relevância' },
+    { key: 'recent',    label: 'Recentes' },
+    { key: 'oldest',    label: 'Antigos' },
+    { key: 'top',       label: 'Top' },
+  ];
+  const sortBarHTML = `
+    <div class="comments-sort-bar" id="subreplies-sort-bar">
+      <span>${num(replies.length)} ${replies.length === 1 ? 'resposta' : 'respostas'}</span>
+      ${sorts.map(s => `<button class="sort-btn${sort === s.key ? ' active' : ''}" data-sort="${s.key}">${s.label}</button>`).join('')}
+    </div>
+  `;
+  const listHTML = commentsHTML(replies, { isSubthread: true });
+  return `
+    ${sortBarHTML}
+    <div class="comments-list-wrap has-sort-bar" id="subreplies-list-wrap">
+      ${listHTML}
+    </div>
+    ${hasMore && nextCursor ? `<div class="load-more-comments-wrap" id="subreplies-load-more">
+      <button class="btn btn-ghost btn-sm" data-subreplies-cursor="${esc(nextCursor)}">Carregar mais respostas</button>
+    </div>` : ''}
+  `;
+}
+
+function bindSubthreadEvents(container, rootComment, postId, initialSort) {
+  let currentSort = initialSort;
+
+  container.addEventListener('click', async e => {
+    if (e.target.closest('[data-back-to-post]')) {
+      const pid = e.target.closest('[data-back-to-post]').dataset.postId || postId;
+      navigatePost(pid);
+      return;
+    }
+    if (e.target.closest('[data-back]')) { Router.navigate('/community'); return; }
+
+    if (e.target.closest('[data-nav-post]') && !e.target.closest('button')) {
+      navigatePost(e.target.closest('[data-nav-post]').dataset.navPost || postId);
+      return;
+    }
+
+    const likeBtn = e.target.closest('[data-comment-like]');
+    if (likeBtn) { e.stopPropagation(); await handleCommentLike(likeBtn); return; }
+
+    const replyToBtn = e.target.closest('[data-reply-to-comment]');
+    if (replyToBtn) {
+      e.stopPropagation();
+      const name = replyToBtn.dataset.replyName || '';
+      const ta = $('#subreply-ta');
+      if (ta) { ta.placeholder = `Responder a @${name}…`; ta.focus(); }
+      return;
+    }
+
+    const sortBtn = e.target.closest('#subreplies-sort-bar [data-sort]');
+    if (sortBtn) {
+      const newSort = sortBtn.dataset.sort;
+      if (newSort === currentSort) return;
+      currentSort = newSort;
+      sortBtn.closest('#subreplies-sort-bar').querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === newSort));
+      const listWrap = $('#subreplies-list-wrap');
+      if (listWrap) listWrap.innerHTML = '<div class="skel" style="height:80px;border-radius:var(--r-md);margin:8px 12px"></div>';
+      try {
+        const resp = await api(`/api/community/comments/${encodeURIComponent(rootComment.id)}/thread?sort=${newSort}`);
+        const newReplies = Array.isArray(resp.replies) ? resp.replies : [];
+        const repliesWrap = $('#subthread-replies');
+        if (repliesWrap) repliesWrap.innerHTML = buildSubthreadRepliesHTML(newReplies, resp.has_more, resp.next_cursor, rootComment.id, postId, newSort);
+      } catch (err) { toast('error', 'Erro ao reordenar', err.message); }
+      return;
+    }
+
+    const loadMoreBtn = e.target.closest('[data-subreplies-cursor]');
+    if (loadMoreBtn) {
+      const cursor = loadMoreBtn.dataset.subrepliesCursor;
+      setBtnLoad(loadMoreBtn, true, 'Carregando');
+      try {
+        const resp = await api(`/api/community/comments/${encodeURIComponent(rootComment.id)}/thread?cursor=${encodeURIComponent(cursor)}&sort=${currentSort}`);
+        const more = Array.isArray(resp.replies) ? resp.replies : [];
+        const moreHtml = commentsHTML(more, { isSubthread: true });
+        if (moreHtml) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = moreHtml;
+          const list = tmp.querySelector('.comments-list');
+          if (list) {
+            const existingList = container.querySelector('#subreplies-list-wrap .comments-list');
+            if (existingList) list.querySelectorAll('.comment-row').forEach(r => existingList.appendChild(r));
+          }
+        }
+        if (!resp.has_more || !resp.next_cursor) loadMoreBtn.closest('#subreplies-load-more').remove();
+        else { loadMoreBtn.dataset.subrepliesCursor = resp.next_cursor; setBtnLoad(loadMoreBtn, false, 'Carregar mais'); }
+      } catch (err) { toast('error', 'Erro ao carregar', ''); setBtnLoad(loadMoreBtn, false, 'Tentar novamente'); }
+      return;
+    }
+
+    const jp = e.target.closest('.js-profile');
+    if (jp && !e.target.closest('button')) {
+      const uid = jp.dataset.uid || jp.closest('[data-uid]')?.dataset.uid;
+      const mc = jp.dataset.mc || jp.closest('[data-mc]')?.dataset.mc;
+      const identifier = uid ? `id:${uid}` : mc;
+      if (identifier) navigateProfile(identifier);
+      return;
+    }
+
+    const dcb = e.target.closest('[data-delete-comment]');
+    if (dcb) { e.stopPropagation(); deleteCommentFromSubthread(postId, dcb.dataset.deleteComment, rootComment.id); return; }
+    const rcb = e.target.closest('[data-report-comment]');
+    if (rcb) { e.stopPropagation(); reportContent('comment', rcb.dataset.reportComment); return; }
+  });
+
+  let replyInProgress = false;
+  const replyTA = $('#subreply-ta');
+  const replyBtn = $('#subreply-btn');
+  replyTA?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) { e.preventDefault(); if (!replyInProgress) replyBtn?.click(); }
+  });
+  replyTA?.addEventListener('input', () => { replyTA.style.height = 'auto'; replyTA.style.height = Math.min(replyTA.scrollHeight, 130) + 'px'; });
+  replyBtn?.addEventListener('click', async () => {
+    if (replyInProgress) return;
+    const content = replyTA.value.trim();
+    if (!content || content.length > 280) return;
+    replyInProgress = true;
+    setBtnLoad(replyBtn, true, 'Enviando');
+    try {
+      await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ content, parent_comment_id: rootComment.id }),
+      });
+      replyTA.value = '';
+      const resp = await api(`/api/community/comments/${encodeURIComponent(rootComment.id)}/thread?sort=${currentSort}`);
+      const newReplies = Array.isArray(resp.replies) ? resp.replies : [];
+      const repliesWrap = $('#subthread-replies');
+      if (repliesWrap) repliesWrap.innerHTML = buildSubthreadRepliesHTML(newReplies, resp.has_more, resp.next_cursor, rootComment.id, postId, currentSort);
+      const fp = findPost(postId);
+      if (fp) { fp.comments_count = Number(fp.comments_count || 0) + 1; renderFeed(); }
+      toast('success', 'Resposta enviada!', '');
+    } catch (err) { toast('error', 'Resposta não enviada', err.message); }
+    finally { setBtnLoad(replyBtn, false, 'Responder'); replyInProgress = false; }
+  });
+}
+
+async function handleCommentLike(btn) {
+  if (!state.me) return toast('warning', 'Faça login para curtir', '');
+  const commentId = btn.dataset.commentLike;
+  const liked = btn.dataset.liked === '1';
+  btn.dataset.liked = liked ? '0' : '1';
+  btn.classList.toggle('is-on', !liked);
+  btn.classList.add('popping');
+  setTimeout(() => btn.classList.remove('popping'), 380);
+  const countEl = document.querySelector(`[data-comment-likes-count="${commentId}"]`);
+  const currentCount = Number(countEl?.textContent?.replace(/\D/g, '') || 0);
+  if (countEl) countEl.textContent = liked ? (currentCount - 1 > 0 ? num(currentCount - 1) : '') : num(currentCount + 1);
+  try {
+    const resp = await api(`/api/community/comments/${encodeURIComponent(commentId)}/like`, {
+      method: liked ? 'DELETE' : 'POST',
+    });
+    if (countEl && resp?.likes_count !== undefined) {
+      countEl.textContent = resp.likes_count > 0 ? num(resp.likes_count) : '';
+    }
+  } catch (err) {
+    btn.dataset.liked = liked ? '1' : '0';
+    btn.classList.toggle('is-on', liked);
+    if (countEl) countEl.textContent = currentCount > 0 ? num(currentCount) : '';
+    toast('error', 'Like não salvo', err.message);
+  }
+}
+
+
 async function editPostInline(id,card){
   const post=findPost(id);if(!post||!card)return;
   const contentEl=card.querySelector('.post-content');if(!contentEl)return;
@@ -5858,11 +6236,12 @@ async function renderPostRoute(id){
   try{
     const[post,commentsResp]=await Promise.all([
       api(`/api/community/posts/${encodeURIComponent(id)}`),
-      api(`/api/community/posts/${encodeURIComponent(id)}/comments`)
+      api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=relevance`)
     ]);
     const comments=Array.isArray(commentsResp)?commentsResp:(Array.isArray(commentsResp?.comments)?commentsResp.comments:[]);
     let commentsNextCursor=commentsResp?.next_cursor||null;
     let commentsHasMore=commentsResp?.has_more||false;
+    const commentsSort=commentsResp?.sort||'relevance';
     const cached=findPost(id);if(cached)Object.assign(cached,post);else state.posts.unshift(post);
     state.activeThreadPost = post;
     document.title=`Post de ${post.minecraft_name||post.username||'jogador'} | Força Aliada`;
@@ -5935,40 +6314,10 @@ async function renderPostRoute(id){
         <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
         <button class="btn btn-primary btn-sm" id="reply-btn">Responder</button>
       </div>
-      <div id="thread-comments">${commentsHTML(comments)}${commentsHasMore?'<div class="load-more-comments-wrap"><button class="btn btn-ghost btn-sm load-more-comments-btn" data-cursor="'+commentsNextCursor+'">Carregar mais respostas</button></div>':''}</div>
+      <div id="thread-comments"></div>
     `;
+    renderThreadComments(comments, id, post, commentsNextCursor, commentsHasMore, commentsSort);
     bindThreadEvents(post,id);
-    // After DOM is rendered, wire up load-more if has_more
-    if(commentsHasMore&&commentsNextCursor){
-      const wrap=$('#thread-comments');
-      if(wrap){
-        const lmDiv=document.createElement('div');
-        lmDiv.className='load-more-comments-wrap';
-        const lmBtn=document.createElement('button');
-        lmBtn.className='btn btn-ghost btn-sm load-more-comments-btn';
-        lmBtn.textContent='Carregar mais respostas';
-        lmDiv.appendChild(lmBtn);
-        wrap.appendChild(lmDiv);
-        let curCursor2=commentsNextCursor;
-        lmBtn.addEventListener('click',async()=>{
-          setBtnLoad(lmBtn,true,'Carregando');
-          try{
-            const resp2=await api(`/api/community/posts/${encodeURIComponent(id)}/comments?cursor=${encodeURIComponent(curCursor2)}`);
-            const moreC=Array.isArray(resp2)?resp2:(Array.isArray(resp2?.comments)?resp2.comments:[]);
-            curCursor2=resp2?.next_cursor||null;
-            const moreHM=resp2?.has_more||false;
-            const moreHtml2=commentsHTML(moreC);
-            if(moreHtml2){
-              const tmp2=document.createElement('div');tmp2.innerHTML=moreHtml2;
-              const list2=tmp2.querySelector('.comments-list');
-              if(list2){const eList2=wrap.querySelector('.comments-list');if(eList2)list2.querySelectorAll('.comment-row').forEach(r=>eList2.appendChild(r));}
-            }
-            if(!moreHM||!curCursor2)lmDiv.remove();
-            else setBtnLoad(lmBtn,false,'Carregar mais respostas');
-          }catch(e2){toast('error','Erro ao carregar','');setBtnLoad(lmBtn,false,'Tentar novamente');}
-        });
-      }
-    }
     // Also add likes/reposts count click handlers in the thread view
     addThreadLikersRepostersBtns(post,id);
   }catch(e){
@@ -6012,6 +6361,21 @@ function bindThreadEvents(post,id){
     if(act==='report-thread'){reportContent('post',id);return}
     if(act==='copy-thread'){copyLink(id);return}
   });
+  // ── Like em comentário ──
+  col.addEventListener('click', async e => {
+    const likeBtn = e.target.closest('[data-comment-like]');
+    if (!likeBtn) return;
+    e.stopPropagation();
+    await handleCommentLike(likeBtn);
+  });
+  // ── Abrir sub-thread de comentário ──
+  col.addEventListener('click', e => {
+    const openBtn = e.target.closest('[data-open-comment-thread]');
+    if (!openBtn) return;
+    if (e.target.closest('button') && !openBtn.matches('button')) return;
+    e.stopPropagation();
+    navigateCommentThread(openBtn.dataset.openCommentThread, id);
+  });
   $('#thread-like')?.addEventListener('click',async()=>{
     const btn=$('#thread-like');const liked=Boolean(post.liked_by_me);
     post.liked_by_me=!liked;post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?-1:1));
@@ -6039,7 +6403,7 @@ function bindThreadEvents(post,id){
       ta.value='';
       const commentsResp3=await api(`/api/community/posts/${encodeURIComponent(id)}/comments`);
       const commentsList3=Array.isArray(commentsResp3)?commentsResp3:(Array.isArray(commentsResp3?.comments)?commentsResp3.comments:[]);
-      renderThreadComments(commentsList3,id,post,commentsResp3?.next_cursor||null,commentsResp3?.has_more||false);
+      renderThreadComments(commentsList3,id,post,commentsResp3?.next_cursor||null,commentsResp3?.has_more||false,commentsResp3?.sort||'relevance');
       post.comments_count=Number(post.comments_count||0)+1;
       const fp=findPost(id);if(fp)fp.comments_count=post.comments_count;
       const tc=$('.thread-count');if(tc)tc.textContent=`${num(post.comments_count)} respostas`;
@@ -6182,59 +6546,143 @@ async function showSocialSheet(postId,startTab='likes'){
 }
 
 /* ======================= RENDER THREAD COMMENTS with load-more ======================= */
-function renderThreadComments(comments,postId,post,nextCursor,hasMore){
-  const wrap=$('#thread-comments');
-  if(!wrap)return;
-  wrap.innerHTML=commentsHTML(comments);
-  if(hasMore&&nextCursor){
-    const lmDiv=document.createElement('div');
-    lmDiv.className='load-more-comments-wrap';
-    const lmBtn=document.createElement('button');
-    lmBtn.className='btn btn-ghost btn-sm load-more-comments-btn';
-    lmBtn.textContent='Carregar mais respostas';
+function renderThreadComments(comments, postId, post, nextCursor, hasMore, sort = 'oldest') {
+  const wrap = $('#thread-comments');
+  if (!wrap) return;
+
+  const sorts = [
+    { key: 'relevance', label: 'Relevância' },
+    { key: 'recent',    label: 'Recentes' },
+    { key: 'oldest',    label: 'Antigos' },
+    { key: 'top',       label: 'Top' },
+  ];
+  const sortBarHTML = `
+    <div class="comments-sort-bar" id="comments-sort-bar">
+      <span>Respostas</span>
+      ${sorts.map(s => `<button class="sort-btn${sort === s.key ? ' active' : ''}" data-sort="${s.key}">${s.label}</button>`).join('')}
+    </div>
+  `;
+
+  const commentsListHTML = commentsHTML(comments);
+  const hasComments = Array.isArray(comments) && comments.length > 0;
+
+  wrap.innerHTML = `
+    ${sortBarHTML}
+    <div class="comments-list-wrap${hasComments ? ' has-sort-bar' : ''}" id="comments-list-wrap">
+      ${commentsListHTML}
+    </div>
+  `;
+
+  if (hasMore && nextCursor) {
+    const lmDiv = document.createElement('div');
+    lmDiv.className = 'load-more-comments-wrap';
+    const lmBtn = document.createElement('button');
+    lmBtn.className = 'btn btn-ghost btn-sm load-more-comments-btn';
+    lmBtn.textContent = 'Carregar mais respostas';
     lmDiv.appendChild(lmBtn);
     wrap.appendChild(lmDiv);
-    let curCursor=nextCursor;
-    lmBtn.addEventListener('click',async()=>{
-      setBtnLoad(lmBtn,true,'Carregando');
-      try{
-        const resp=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments?cursor=${encodeURIComponent(curCursor)}`);
-        const moreComments=Array.isArray(resp)?resp:(Array.isArray(resp?.comments)?resp.comments:[]);
-        curCursor=resp?.next_cursor||null;
-        const moreHasMore=resp?.has_more||false;
-        // Insert more comments before the load-more button
-        const moreHtml=commentsHTML(moreComments);
-        if(moreHtml){
-          const tmp=document.createElement('div');
-          tmp.innerHTML=moreHtml;
-          const list=tmp.querySelector('.comments-list');
-          if(list){
-            const existingList=wrap.querySelector('.comments-list');
-            if(existingList){
-              list.querySelectorAll('.comment-row').forEach(r=>existingList.appendChild(r));
-            }
+    let curCursor = nextCursor;
+    lmBtn.addEventListener('click', async () => {
+      setBtnLoad(lmBtn, true, 'Carregando');
+      try {
+        const resp = await api(`/api/community/posts/${encodeURIComponent(postId)}/comments?cursor=${encodeURIComponent(curCursor)}&sort=${encodeURIComponent(sort)}`);
+        const moreComments = Array.isArray(resp) ? resp : (Array.isArray(resp?.comments) ? resp.comments : []);
+        curCursor = resp?.next_cursor || null;
+        const moreHasMore = resp?.has_more || false;
+        const moreHtml = commentsHTML(moreComments);
+        if (moreHtml) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = moreHtml;
+          const list = tmp.querySelector('.comments-list');
+          if (list) {
+            const existingList = wrap.querySelector('.comments-list');
+            if (existingList) list.querySelectorAll('.comment-row').forEach(r => existingList.appendChild(r));
           }
         }
-        if(!moreHasMore||!curCursor)lmDiv.remove();
-        else setBtnLoad(lmBtn,false,'Carregar mais respostas');
-        if(post)post.comments_count=Math.max(post.comments_count||0,Number(post.comments_count||0));
-      }catch(e){toast('error','Erro ao carregar','');setBtnLoad(lmBtn,false,'Tentar novamente');}
+        if (!moreHasMore || !curCursor) lmDiv.remove();
+        else setBtnLoad(lmBtn, false, 'Carregar mais respostas');
+      } catch (e2) {
+        toast('error', 'Erro ao carregar', '');
+        setBtnLoad(lmBtn, false, 'Tentar novamente');
+      }
+    });
+  }
+
+  let currentSort = sort;
+  const sortBar = wrap.querySelector('#comments-sort-bar');
+  if (sortBar) {
+    sortBar.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-sort]');
+      if (!btn) return;
+      const newSort = btn.dataset.sort;
+      if (newSort === currentSort) return;
+      currentSort = newSort;
+      sortBar.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === newSort));
+      const listWrap = wrap.querySelector('#comments-list-wrap');
+      if (listWrap) listWrap.innerHTML = '<div class="skel" style="height:80px;border-radius:var(--r-md);margin:8px 12px"></div>';
+      try {
+        const resp = await api(`/api/community/posts/${encodeURIComponent(postId)}/comments?sort=${newSort}`);
+        const newComments = Array.isArray(resp) ? resp : (Array.isArray(resp?.comments) ? resp.comments : []);
+        const newHasMore = resp?.has_more || false;
+        const newCursor = resp?.next_cursor || null;
+        renderThreadComments(newComments, postId, post, newCursor, newHasMore, newSort);
+      } catch (e) {
+        toast('error', 'Erro ao reordenar', e.message);
+      }
     });
   }
 }
 
-function commentsHTML(comments){
-  if(!Array.isArray(comments)||!comments.length)
-    return`<div class="empty-card"><div class="empty-icon">${IC.comment}</div><h3>Nenhuma resposta ainda</h3><p>Seja o primeiro a responder esta thread.</p></div>`;
-  return`<div class="comments-list">${comments.map(c=>{
-    const mc=c.minecraft_name||c.username||'Jogador';const shown=displayName(c);const del=Boolean(c.is_deleted);
-    const isMyComment=state.me&&Number(c.author_id)===Number(state.me.id);
-    const canDelete=(isMyComment||canModerate())&&!del;
-    const tools=[
-      canDelete?`<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentario">${IC.trash}</button>`:'',
-      !isMyComment&&!del?`<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentario">${IC.flag}</button>`:''
+function commentsHTML(comments, opts = {}) {
+  const { isSubthread = false } = opts;
+  if (!Array.isArray(comments) || !comments.length)
+    return `<div class="empty-card"><div class="empty-icon">${IC.comment}</div><h3>Nenhuma resposta ainda</h3><p>Seja o primeiro a responder esta thread.</p></div>`;
+
+  return `<div class="comments-list">${comments.map(c => {
+    const mc = c.minecraft_name || c.username || 'Jogador';
+    const shown = displayName(c);
+    const del = Boolean(c.is_deleted);
+    const isMyComment = state.me && Number(c.author_id) === Number(state.me.id);
+    const canDelete = (isMyComment || canModerate()) && !del;
+    const likesCount = Number(c.likes_count || 0);
+    const replyCount = Number(c.reply_count || 0);
+    const likedByMe = Boolean(c.liked_by_me);
+
+    const tools = [
+      canDelete ? `<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentário">${IC.trash}</button>` : '',
+      !isMyComment && !del ? `<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentário">${IC.flag}</button>` : ''
     ].filter(Boolean).join('');
-    return`<article class="comment-row"><img src="${esc(avatar(c,50))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><div class="comment-author"><strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong>${verifiedBadgeHTML(c)}<span class="handle">@${esc(handleName(c))}</span><span class="ts">· ${esc(time(c.created_at))}</span>${tools}</div><p class="${del?'deleted':''}">${del?esc(c.content):mentionHTML(c.content)}</p></div></article>`;
+
+    const heartSVG = `<svg viewBox="0 0 24 24" fill="${likedByMe ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+    const replySVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+
+    const interactionBar = del ? '' : `
+      <div class="comment-meta">
+        <button class="comment-pa${likedByMe ? ' is-on' : ''}" data-comment-like="${esc(c.id)}" data-liked="${likedByMe ? '1' : '0'}" aria-label="${likedByMe ? 'Descurtir' : 'Curtir'} comentário">
+          ${heartSVG}<span data-comment-likes-count="${esc(c.id)}">${likesCount > 0 ? num(likesCount) : ''}</span>
+        </button>
+        ${!isSubthread ? `<button class="comment-pa comment-pa-replies" data-open-comment-thread="${esc(c.id)}" aria-label="Ver respostas">
+          ${replySVG}<span>${replyCount > 0 ? `${num(replyCount)} ${replyCount === 1 ? 'resposta' : 'respostas'}` : 'Responder'}</span>
+        </button>` : `<button class="comment-pa comment-pa-replies" data-reply-to-comment="${esc(c.id)}" data-reply-name="${esc(shown)}" aria-label="Responder">
+          ${replySVG}<span>Responder</span>
+        </button>`}
+      </div>
+    `;
+
+    return `<article class="comment-row${del ? ' is-deleted' : ''}" data-comment-id="${esc(c.id)}" ${!del && !isSubthread ? `data-open-comment-thread="${esc(c.id)}"` : ''}>
+      <img src="${esc(avatar(c, 50))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown, 50)}'">
+      <div>
+        <div class="comment-author">
+          <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong>
+          ${verifiedBadgeHTML(c)}
+          <span class="handle">@${esc(handleName(c))}</span>
+          <span class="ts">· ${esc(time(c.created_at))}</span>
+          ${tools}
+        </div>
+        <p class="${del ? 'deleted' : ''}">${del ? esc(c.content) : mentionHTML(c.content)}</p>
+        ${interactionBar}
+      </div>
+    </article>`;
   }).join('')}</div>`;
 }
 
