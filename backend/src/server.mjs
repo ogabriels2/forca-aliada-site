@@ -5745,8 +5745,12 @@ function uploadCommunityImage(file, userId) {
       unique_filename: true,
       overwrite: false,
       context: { uploaded_by: String(userId || '') },
+      // Resize: limite de 1600px no lado maior (c_limit não aumenta imagens menores).
+      // quality:auto:good — visualmente transparente na tela, melhor que :eco para fotos.
+      // strip_profile — remove EXIF/ICC sem afetar visual (poupa ~10-30KB por imagem).
       transformation: [
-        { fetch_format: 'webp', quality: 'auto:eco', flags: 'strip_profile' },
+        { width: 1600, height: 1600, crop: 'limit' },
+        { fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' },
       ],
     }, (err, result) => {
       clearTimeout(timeout);
@@ -5806,7 +5810,11 @@ function uploadChatAttachment(file, userId) {
     };
     if (kind === 'image' && !/^image\/gif$/i.test(file.mimetype || '')) {
       options.format = 'webp';
-      options.transformation = [{ fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' }];
+      // Chat: 1200px máximo — imagens de chat são menores que posts no feed.
+      options.transformation = [
+        { width: 1200, height: 1200, crop: 'limit' },
+        { fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' },
+      ];
     }
     const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
       clearTimeout(timeout);
@@ -5951,7 +5959,17 @@ app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async
         unique_filename: true,
         overwrite: false,
         context: { uploaded_by: String(req.user.sub || '') },
-        transformation: [{ fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' }],
+        // Perfis: 800px máx para avatares, 1800px para capas.
+        // O tipo vem como query param (?type=avatar|cover), defaultando para cover.
+        // quality:auto:good — boa qualidade visual, WebP já é muito eficiente.
+        transformation: [
+          {
+            width: (req.query.type === 'avatar') ? 800 : 1800,
+            height: (req.query.type === 'avatar') ? 800 : 600,
+            crop: 'limit',
+          },
+          { fetch_format: 'webp', quality: 'auto:good', flags: 'strip_profile' },
+        ],
       }, (err, result) => {
         clearTimeout(timeout);
         if (err) return fail(err);
