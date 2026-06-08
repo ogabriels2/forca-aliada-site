@@ -28,6 +28,15 @@ import crypto from 'crypto';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import https from 'https';
+import {
+  feedV2SchemaSql,
+  impressionsEndpoint,
+  savePostEndpoint,
+  unsavePostEndpoint,
+  notInterestedEndpoint,
+  undoNotInterestedEndpoint,
+  feedV2Endpoint,
+} from './feed_v2_server.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -530,6 +539,14 @@ const affiliationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas alteracoes de afiliadas. Aguarde alguns minutos.' },
+});
+const impressionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit:    60,
+  keyGenerator: (req) => String(req.user?.sub || req.ip),
+  standardHeaders: true,
+  legacyHeaders:   false,
+  message: { error: 'Limite de impressões atingido.' },
 });
 
 // ─────────────────────────────────────────────
@@ -1225,6 +1242,7 @@ ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 `;
 await pool.query(featureSchemaSql);
+  await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
 
   // Audit schema — executado no boot, não lazily
   for (const statement of AUDIT_SCHEMA_STATEMENTS) {
@@ -5938,275 +5956,16 @@ app.get('/api/community/posts', auth, async (req, res) => {
   }
 });
 
-// ── SISTEMA DE COMENTÁRIOS ──
-// Feed recomendado: simula um "For You" preditivo usando apenas matematica em SQL.
-// Ajustes rapidos:
-// - likes 1.5 / comentarios 2.5: comentarios valem mais por serem intencao mais forte.
-// - affinity_score * 0.2: aumenta descoberta personalizada sem criar bolha absoluta.
-// - following 1.5: aumenta posts de quem o usuario segue; suba para focar em Following, desca para Discovery.
-// - gravidade 1.8: estilo HackerNews; maior = feed mais fresco, menor = posts bons duram mais.
-// - jitter 15%: exploracao controlada para o feed nao parecer sempre igual.
-// O jitter e deterministico por evaluation_timestamp + post_id para a paginacao keyset nao duplicar posts.
-app.get('/api/community/feed', auth, async (req, res) => {
-  const limit = clampInt(req.query.limit, 20, 1, 50);
-  const filter = req.query.filter || 'all';
-  const rawEvaluation = String(req.query.evaluation_timestamp || '').trim();
-  const evaluationDate = rawEvaluation ? new Date(rawEvaluation) : new Date();
-  if (!Number.isFinite(evaluationDate.getTime())) {
-    return res.status(400).json({ error: 'evaluation_timestamp invalido' });
-  }
-  const evaluationTimestamp = evaluationDate.toISOString();
-
-  let cursorScore = null;
-  let cursorId = null;
-  const hasCursor = req.query.cursor_score !== undefined || req.query.cursor_id !== undefined;
-  if (hasCursor) {
-    cursorScore = Number(req.query.cursor_score);
-    cursorId = parseInt(req.query.cursor_id, 10);
-    if (!Number.isFinite(cursorScore) || !cursorId) {
-      return res.status(400).json({ error: 'Cursor invalido' });
-    }
-  }
-
-  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
-  const hashtag = req.query.hashtag ? sanitize(req.query.hashtag).replace(/^#/, '').toLowerCase() : null;
-  const params = [req.user.sub, limit + 1, evaluationTimestamp, cursorScore, cursorId];
-  const conditions = [
-    `NOT EXISTS (
-      SELECT 1 FROM user_blocks ub
-      WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
-         OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
-    )`,
-    `NOT EXISTS (
-      SELECT 1 FROM user_blocks oub
-      WHERE ou.id IS NOT NULL
-        AND ((oub.blocker_id = $1 AND oub.blocked_id = ou.id)
-          OR (oub.blocker_id = ou.id AND oub.blocked_id = $1))
-    )`,
-  ];
-
-  if (filter === 'following') {
-    conditions.push(`(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`);
-  }
-  if (search) {
-    params.push(search);
-    conditions.push(`(LOWER(p.content) LIKE $${params.length}
-      OR LOWER(COALESCE(op.content, '')) LIKE $${params.length}
-      OR LOWER(COALESCE(u.minecraft_name, u.username, '')) LIKE $${params.length}
-      OR LOWER(COALESCE(ou.minecraft_name, ou.username, '')) LIKE $${params.length})`);
-  }
-  if (hashtag) {
-    params.push(hashtag);
-    conditions.push(`EXISTS (
-      SELECT 1
-      FROM regexp_matches(COALESCE(p.content, '') || ' ' || COALESCE(op.content, ''), '#([[:alnum:]_]{2,32})', 'g') AS hx(tag_match)
-      WHERE LOWER(hx.tag_match[1]) = $${params.length}
-    )`);
-  }
-
-  const whereClause = `WHERE ${conditions.join(' AND ')}`;
-  try {
-    const { rows } = await pool.query(`
-      WITH base AS (
-        SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
-               p.created_by_user_id,
-               p.repost_of_id,
-               COALESCE(p.repost_of_id, p.id) AS target_id,
-               COALESCE(op.content, p.content) AS target_content,
-               op.content AS repost_original_content,
-               op.media_urls AS repost_original_media_urls,
-               op.created_at AS repost_original_created_at,
-               ou.id AS repost_original_author_id,
-               ou.username AS repost_original_username,
-               ou.minecraft_name AS repost_original_minecraft_name,
-               ou.photo_url AS repost_original_photo_url,
-               COALESCE(oup.display_name, '') AS repost_original_display_name,
-               COALESCE(oup.avatar_url, '') AS repost_original_avatar_url,
-               ou.role AS repost_original_role,
-               ${primaryIntegrationFieldsSql('ou')} AS repost_original_integration,
-               ${socialRankSql('ou', 'opb')} AS repost_original_rank,
-               ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
-               u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role, u.is_platform_verified,
-               ou.is_platform_verified AS repost_original_is_platform_verified,
-               COALESCE(up.display_name, '') AS display_name,
-               COALESCE(up.avatar_url, '') AS avatar_url,
-               COALESCE(up.cover_url, '') AS cover_url,
-               ${primaryIntegrationFieldsSql('u')} AS integration,
-               ${socialRankSql('u', 'pb')} AS rank,
-               ${socialMeritSql('u', 'pb')} AS merit,
-               EXISTS(
-                 SELECT 1 FROM user_follows uf
-                 WHERE uf.follower_id = $1 AND uf.following_id = p.author_id
-               ) AS is_following
-        FROM user_posts p
-        JOIN users u ON p.author_id = u.id
-        LEFT JOIN user_preferences up ON up.user_id = u.id
-        LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
-        LEFT JOIN user_posts op ON op.id = p.repost_of_id
-        LEFT JOIN users ou ON ou.id = op.author_id
-        LEFT JOIN user_preferences oup ON oup.user_id = ou.id
-        LEFT JOIN player_balances opb ON LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
-        ${whereClause}
-      ),
-      metrics AS (
-        SELECT b.*,
-               COALESCE(likes.likes_count, 0)::int AS likes_count,
-               COALESCE(comments.comments_count, 0)::int AS comments_count,
-               COALESCE(reposts.reposts_count, 0)::int AS reposts_count,
-               COALESCE(aff.affinity_sum, 0)::double precision AS affinity_sum
-        FROM base b
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*)::int AS likes_count
-          FROM post_likes pl
-          WHERE pl.post_id = b.target_id
-        ) likes ON TRUE
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*)::int AS comments_count
-          FROM post_comments pc
-          WHERE pc.post_id = b.target_id AND pc.is_deleted = FALSE
-        ) comments ON TRUE
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*)::int AS reposts_count
-          FROM user_posts rp
-          WHERE rp.repost_of_id = b.target_id
-        ) reposts ON TRUE
-        LEFT JOIN LATERAL (
-          SELECT COALESCE(SUM(uta.affinity_score), 0)::double precision AS affinity_sum
-          FROM (
-            SELECT DISTINCT LOWER(rx.tag_match[1]) AS tag
-            FROM regexp_matches(COALESCE(b.target_content, ''), '#([[:alnum:]_]{2,32})', 'g') AS rx(tag_match)
-          ) tags
-          JOIN user_tag_affinity uta
-            ON uta.user_id = $1
-           AND uta.tag = tags.tag
-        ) aff ON TRUE
-      ),
-      scored AS (
-        SELECT m.*,
-               -- Engajamento logaritmico: cresce com likes/comentarios, mas famosos nao disparam ao infinito.
-               (LOG(GREATEST(1.0, (m.likes_count * 1.5) + (m.comments_count * 2.5))) + 1.0)::double precision AS engagement_score,
-               -- Afinidade vetorial: soma tags que o usuario ja curtiu/comentou e converte em multiplicador.
-               (1.0 + (COALESCE(m.affinity_sum, 0) * 0.2))::double precision AS affinity_multiplier,
-               -- Social: posts de seguidos recebem tracao, mas ainda competem por qualidade/tempo.
-               (CASE WHEN m.is_following THEN 1.5 ELSE 1.0 END)::double precision AS social_multiplier,
-               -- Gravidade temporal: evaluation_timestamp fica congelado durante a sessao de scroll.
-               POWER((GREATEST(0.0, EXTRACT(EPOCH FROM ($3::timestamptz - m.created_at)) / 3600.0) + 2.0), 1.8)::double precision AS temporal_gravity,
-               -- Jitter deterministico equivalente a RANDOM()*0.15, sem quebrar cursor composto.
-               (1.0 + ((MOD(ABS(hashtext(m.id::text || ':' || $3::text)::bigint), 100000)::double precision / 100000.0) * 0.15))::double precision AS random_noise
-        FROM metrics m
-      ),
-      raw_score AS (
-        SELECT s.*,
-               ((s.engagement_score * s.affinity_multiplier * s.social_multiplier) / s.temporal_gravity) * s.random_noise AS raw_hot_score
-        FROM scored s
-      ),
-      author_ranked AS (
-        SELECT r.*,
-               ROW_NUMBER() OVER (PARTITION BY r.author_id ORDER BY r.raw_hot_score DESC, r.id DESC) AS author_diversity_rank
-        FROM raw_score r
-      ),
-      final AS (
-        SELECT a.*,
-               (a.raw_hot_score / CASE
-                 WHEN a.author_diversity_rank = 1 THEN 1.0
-                 WHEN a.author_diversity_rank = 2 THEN 1.5
-                 ELSE 2.0
-               END)::double precision AS hot_score
-        FROM author_ranked a
-      )
-      SELECT f.id, f.content, f.media_urls, f.created_at, f.updated_at, f.edit_count, f.is_pinned, f.pinned_at,
-             f.created_by_user_id,
-             f.repost_of_id,
-             f.repost_original_content,
-             f.repost_original_media_urls,
-             f.repost_original_created_at,
-             f.repost_original_author_id,
-             f.repost_original_username,
-             f.repost_original_minecraft_name,
-             f.repost_original_photo_url,
-             f.repost_original_display_name,
-             f.repost_original_avatar_url,
-             f.repost_original_role,
-             f.repost_original_integration,
-             f.repost_original_rank,
-             f.repost_original_merit,
-             f.likes_count,
-             f.reposts_count,
-             f.comments_count,
-             f.author_id, f.username, f.minecraft_name, f.photo_url, f.role,
-             f.is_platform_verified,
-             f.repost_original_is_platform_verified,
-             f.display_name, f.avatar_url, f.cover_url,
-             f.integration,
-             f.rank, f.merit,
-             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = f.target_id AND pl.user_id = $1) AS liked_by_me,
-             EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = f.target_id AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me,
-             COALESCE(recent.recent_comments, '[]'::json) AS recent_comments,
-             f.hot_score,
-             f.engagement_score,
-             f.affinity_multiplier,
-             f.social_multiplier,
-             f.temporal_gravity,
-             f.random_noise,
-             f.author_diversity_rank,
-             f.hot_score::text AS hot_score_cursor,
-             poll_lateral.poll_data AS poll
-      FROM final f
-      LEFT JOIN LATERAL (
-        SELECT json_agg(row_to_json(rc)) AS recent_comments
-        FROM (
-          SELECT pc.id, pc.content, pc.created_at, cu.username, cu.minecraft_name
-          FROM post_comments pc
-          JOIN users cu ON cu.id = pc.author_id
-          WHERE pc.post_id = f.target_id
-            AND pc.is_deleted = FALSE
-            AND NOT EXISTS (
-              SELECT 1 FROM user_blocks cub
-              WHERE (cub.blocker_id = $1 AND cub.blocked_id = cu.id)
-                 OR (cub.blocker_id = cu.id AND cub.blocked_id = $1)
-            )
-          ORDER BY pc.created_at DESC
-          LIMIT 3
-        ) rc
-      ) recent ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT json_build_object(
-          'id', pp.id,
-          'ends_at', pp.ends_at,
-          'is_closed', (pp.ends_at < NOW()),
-          'user_vote_id', (SELECT ppv.option_id FROM post_poll_votes ppv WHERE ppv.poll_id = pp.id AND ppv.user_id = $1),
-          'options', COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', ppo.id,
-              'text', ppo.text,
-              'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
-            ) ORDER BY ppo.sort_order)
-            FROM post_poll_options ppo
-            WHERE ppo.poll_id = pp.id
-          ), '[]'::json)
-        ) AS poll_data
-        FROM post_polls pp
-        WHERE pp.post_id = f.target_id
-        LIMIT 1
-      ) poll_lateral ON TRUE
-      WHERE ($4::double precision IS NULL OR $5::integer IS NULL OR (f.hot_score, f.id) < ($4::double precision, $5::integer))
-      ORDER BY f.hot_score DESC, f.id DESC
-      LIMIT $2
-    `, params);
-
-    const page = rows.slice(0, limit);
-    const last = page.at(-1);
-    const hasMore = rows.length > limit;
-    res.json({
-      posts: page,
-      evaluation_timestamp: evaluationTimestamp,
-      next_cursor: hasMore && last ? { score: last.hot_score_cursor || String(last.hot_score), id: Number(last.id) } : null,
-      has_more: hasMore,
-    });
-  } catch (e) {
-    console.error('[GET /api/community/feed]', e);
-    res.status(500).json({ error: 'Erro ao buscar o feed recomendado.' });
-  }
+// ── FEED RECOMENDADO v2 ──────────────────────────────────────────────────────
+// Substituído pelo algoritmo Feed v2 (feed_v2_server.mjs).
+// Novos sinais: saves, reposts, velocidade, penalidade de visualização,
+// exclusão de sessão, bônus de mídia, diversidade de autores e session noise.
+feedV2Endpoint(app, auth, pool, {
+  clampInt,
+  sanitize,
+  primaryIntegrationFieldsSql,
+  socialRankSql,
+  socialMeritSql,
 });
 
 app.get('/api/community/posts/:id', auth, async (req, res) => {
@@ -6706,6 +6465,13 @@ app.delete('/api/community/posts/:id/like', auth, async (req, res) => {
     client.release();
   }
 });
+
+// ── Feed v2: impressões, saves, não tenho interesse ──────────────────────────
+impressionsEndpoint(app, auth, pool, impressionLimiter);
+savePostEndpoint(app, auth, pool);
+unsavePostEndpoint(app, auth, pool);
+notInterestedEndpoint(app, auth, pool);
+undoNotInterestedEndpoint(app, auth, pool);
 
 // Apagar o próprio post
 app.patch('/api/community/posts/:id', auth, async (req, res) => {
@@ -8866,7 +8632,7 @@ app.use((err, req, res, _next) => {
 // ─────────────────────────────────────────────
 // Boot
 // ─────────────────────────────────────────────
-const PORT = process.env.PORT || 8787;
+const PORT = process.env.PORT || 3000;
 migrate()
 .then(seedAdmin)
 .then(() => {
