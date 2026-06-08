@@ -300,9 +300,10 @@ function communityMediaUploadMiddleware(req, res, next) {
 
 const CHAT_ATTACHMENT_MAX_FILES = 4;
 const CHAT_ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
-const CHAT_ATTACHMENT_TYPES = new Set(['image', 'video', 'pdf', 'file']);
+const CHAT_ATTACHMENT_TYPES = new Set(['image', 'video', 'audio', 'pdf', 'file']);
 const CHAT_ALLOWED_FILE_EXTENSIONS = new Set([
   'pdf',
+  'mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus', 'webm',
   'doc', 'docx',
   'xls', 'xlsx',
   'ppt', 'pptx',
@@ -316,6 +317,7 @@ function chatAttachmentKind(file = {}) {
   const ext = (name.split('.').pop() || '').toLowerCase();
   if (/^image\/(png|jpe?g|webp|gif|avif|bmp|heic|heif)$/i.test(mime)) return 'image';
   if (/^video\/(mp4|webm|quicktime|x-matroska|x-msvideo|mpeg)$/i.test(mime)) return 'video';
+  if (/^audio\//i.test(mime)) return 'audio';
   if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
   if (CHAT_ALLOWED_FILE_EXTENSIONS.has(ext)) return 'file';
   return null;
@@ -1625,6 +1627,7 @@ function chatAttachmentPreviewText(attachments = []) {
   const type = list[0]?.type;
   if (type === 'image') return 'Imagem';
   if (type === 'video') return 'Video';
+  if (type === 'audio') return 'Audio';
   if (type === 'pdf') return 'PDF';
   return 'Arquivo';
 }
@@ -5788,7 +5791,7 @@ function uploadChatAttachment(file, userId) {
     const timeout = setTimeout(() => {
       fail(new Error('Cloudinary demorou para responder ao upload.'));
     }, 60000);
-    const resourceType = kind === 'image' ? 'image' : kind === 'video' ? 'video' : 'raw';
+    const resourceType = kind === 'image' ? 'image' : ['video', 'audio'].includes(kind) ? 'video' : 'raw';
     const folder = process.env.CLOUDINARY_CHAT_FOLDER || `forca-aliada/chat/${kind}`;
     const options = {
       folder,
