@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/social-chat.css?v=chat7-20260602">
+<link rel="stylesheet" href="assets/css/social-chat.css?v=chat7-20260608">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -800,7 +800,29 @@ img{display:block}
 .skel::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--surface-solid) 70%,transparent),transparent);animation:shimmer 1.4s infinite}
 @keyframes shimmer{to{transform:translateX(100%)}}
 .post-skel{height:116px;border-radius:0;border-bottom:1px solid var(--line)}
-.load-more-area{display:grid;place-items:center;padding:13px 0 3px}
+.load-more-area{display:grid;place-items:center;padding:16px 0 6px;min-height:60px}
+/* ── fim de feed ── */
+.feed-end-card{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  padding:28px 20px 32px;text-align:center;
+  border-top:1px solid var(--line);
+  background:var(--surface);
+}
+.feed-end-icon{
+  width:40px;height:40px;border-radius:12px;
+  background:var(--accent-soft);color:var(--accent);
+  display:grid;place-items:center;margin-bottom:2px;
+}
+.feed-end-icon svg{width:18px;height:18px}
+.feed-end-card strong{font-size:13.5px;font-weight:800}
+.feed-end-card p{font-size:12px;color:var(--ink-3);line-height:1.5;max-width:280px}
+/* ── spinner inline no feed ── */
+.feed-loading-row{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:20px 0 16px;color:var(--ink-3);font-size:12px;font-weight:600;
+  border-top:1px solid var(--line);
+}
+.feed-loading-row .load-more-spinner{width:18px;height:18px;border-width:2px}
 /* ─── NEW POSTS PILL ─── */
 .new-posts-pill{
   position:sticky;
@@ -3306,12 +3328,26 @@ body::after{
         <div class="post-skel skel"></div>
         <div class="post-skel skel"></div>
         <div class="post-skel skel"></div>
+        <div class="post-skel skel"></div>
+        <div class="post-skel skel"></div>
       </div>
     </div>
-    <div class="load-more-area" id="load-more-wrap" hidden>
-      <button class="btn btn-secondary btn-sm" id="load-more-btn">Carregar mais</button>
+    <!-- sentinel fora do feed-list-wrap mas dentro do feed-col, para o IntersectionObserver disparar antes do fim da tela -->
+    <div id="feed-sentinel" aria-hidden="true" style="height:1px;margin-top:-1px"></div>
+    <div class="load-more-area" id="load-more-wrap" hidden aria-live="polite">
+      <div class="load-more-spinner" id="feed-spinner" hidden></div>
+      <div class="feed-end-card" id="feed-end-card" hidden>
+        <div class="feed-end-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <strong id="feed-end-title">Você viu tudo por agora!</strong>
+        <p id="feed-end-msg">Novas postagens aparecem conforme a comunidade for ativa. Volte mais tarde!</p>
+        <button class="btn btn-secondary btn-sm" id="feed-end-refresh-btn" style="margin-top:4px">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Atualizar feed
+        </button>
+      </div>
     </div>
-    <div id="feed-sentinel" style="height:1px"></div>
   </main>
 
   <!-- ROUTE VIEW — thread/perfil, substitui feed-col -->
@@ -3781,7 +3817,7 @@ const ImpressionTracker = (() => {
   window.addEventListener('beforeunload', flush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
   return {
-    get sessionSeed() { return _seed; },
+    get sessionSeed() { return sessionStorage.getItem(SEED_KEY) || _seed; },
     get isNewSession() { return _isNew; },
     clearNewSession() { _isNew = false; },
     recordReaction,
@@ -4524,9 +4560,12 @@ function renderFeed({append=false}={}){
   if(!list)return;
   if(!state.posts.length){
     list.innerHTML=emptyFeed();
+    _hideFeedLoading();
     updateMiniStats();updateCommunityPulse();return;
   }
   if(append){
+    // Remove spinner inline se existia
+    list.querySelector('.feed-loading-row')?.remove();
     $$('.post-skel').forEach(el=>el.remove());
     const existing=new Set($$('.post-card').map(el=>Number(el.dataset.postId)));
     const html=state.posts.filter(p=>!existing.has(Number(p.repost_of_id||p.id))).map(postCardHTML).join('');
@@ -4534,11 +4573,51 @@ function renderFeed({append=false}={}){
   }else{
     list.innerHTML=state.posts.map(postCardHTML).join('');
   }
-  // hide load-more; auto-scroll via sentinel handles it
-  $('#load-more-wrap').hidden=true;
+  _hideFeedLoading();
   updateMiniStats();
   updateCommunityPulse();
   ImpressionTracker.reObserve();
+}
+
+/* helpers para estado de loading/fim de feed */
+function _showFeedSpinner(){
+  const wrap=$('#load-more-wrap');
+  const spinner=$('#feed-spinner');
+  const card=$('#feed-end-card');
+  if(!wrap)return;
+  wrap.hidden=false;
+  if(spinner) spinner.hidden=false;
+  if(card) card.hidden=true;
+}
+function _showFeedEnd(){
+  const wrap=$('#load-more-wrap');
+  const spinner=$('#feed-spinner');
+  const card=$('#feed-end-card');
+  if(!wrap)return;
+  // Mensagens variadas baseadas no número de posts vistos
+  const msgs=[
+    {title:'Você viu tudo por agora!',msg:'Novas postagens aparecem conforme a comunidade for ativa. Volte mais tarde!'},
+    {title:'Tudo em dia no feed!',msg:'Você chegou ao fim. Que tal criar um post ou interagir com alguém?'},
+    {title:'Fim das postagens por agora.',msg:'A comunidade está crescendo. Novos posts aparecem o tempo todo!'},
+  ];
+  const m=msgs[Math.floor(state.posts.length/10)%msgs.length];
+  const titleEl=$('#feed-end-title');
+  const msgEl=$('#feed-end-msg');
+  if(titleEl) titleEl.textContent=m.title;
+  if(msgEl) msgEl.textContent=m.msg;
+  wrap.hidden=false;
+  if(spinner) spinner.hidden=true;
+  if(card) card.hidden=false;
+}
+function _hideFeedLoading(){
+  const wrap=$('#load-more-wrap');
+  const spinner=$('#feed-spinner');
+  const card=$('#feed-end-card');
+  if(!wrap)return;
+  if(spinner) spinner.hidden=true;
+  if(card) card.hidden=true;
+  // Só esconde o wrap se não há fim de feed para exibir
+  if(!(!state.hasMore&&state.posts.length>0)) wrap.hidden=true;
 }
 async function loadFeed({reset=false}={}){
   if(state.loading||(!state.hasMore&&!reset))return;
@@ -4549,7 +4628,15 @@ async function loadFeed({reset=false}={}){
     state.feedEvaluationTimestamp=new Date().toISOString();
     state.hasMore=true;
     state.posts=[];
-    list.innerHTML=skels(3);
+    _hideFeedLoading();
+    list.innerHTML=skels(5);
+  } else {
+    // Mostra spinner inline dentro da lista enquanto carrega mais
+    if(!list.querySelector('.feed-loading-row')){
+      list.insertAdjacentHTML('beforeend',
+        '<div class="feed-loading-row" aria-label="Carregando mais postagens"><div class="load-more-spinner"></div><span>Carregando…</span></div>'
+      );
+    }
   }
   try{
     if(!state.feedEvaluationTimestamp) state.feedEvaluationTimestamp=new Date().toISOString();
@@ -4568,10 +4655,18 @@ async function loadFeed({reset=false}={}){
     state.cursor=data.next_cursor||null;
     state.hasMore=Boolean(data.next_cursor||data.has_more);
     renderFeed({append:!reset});
+    // Após renderizar: se não tem mais posts, mostra card de fim de feed
+    if(!state.hasMore&&state.posts.length>0){
+      _showFeedEnd();
+    }
   }catch(e){
+    // Remove spinner inline em caso de erro
+    list.querySelector('.feed-loading-row')?.remove();
     if(reset) list.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Feed indisponível</h3><p>${esc(e.message)}</p></div>`;
     else toast('error','Erro ao carregar mais',e.message);
-  }finally{state.loading=false;$('#load-more-wrap').hidden=!state.hasMore||!state.posts.length}
+  }finally{
+    state.loading=false;
+  }
 }
 function switchTab(filter){
   // If we're in profile/thread route and user clicks a feed tab → go to community home first
@@ -6778,8 +6873,10 @@ function showFeedRoute(){
   $$('[data-filter]').forEach(b=>b.classList.toggle('is-active',b.dataset.filter===activeFilter));
   setRailActive(activeFilter);
   updateCommunityPulse();
+  // Recarrega se estava em outra rota com escopo diferente, ou se não há posts ainda
   if(hadScope) loadFeed({reset:true});
   else if(!state.posts.length) loadFeed({reset:true});
+  // Se já tem posts e voltou de uma thread/perfil, mantém o feed como estava
 }
 function showHashtagRoute(tag){
   state.searchQuery='';state.hashtag=String(tag||'').replace(/^#/,'').trim();
@@ -6846,7 +6943,7 @@ function bindEvents(){
   });
   $$('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
   $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.filter)));
-  $('#load-more-btn').addEventListener('click',()=>loadFeed({reset:false}));
+  $('#load-more-btn')?.addEventListener('click',()=>loadFeed({reset:false}));
   $('#notif-btn').addEventListener('click',e=>{
     e.stopPropagation();
     if(matchMedia('(max-width: 768px)').matches){
@@ -6901,7 +6998,26 @@ function bindEvents(){
     }
   });
   $('#global-search')?.addEventListener('focus',e=>openSearchPage(e.currentTarget.value.trim()));
-  $('#mobile-home-btn')?.addEventListener('click',()=>Router.navigate('/community'));
+  $('#mobile-home-btn')?.addEventListener('click',()=>{
+    const isOnFeed=!state.routeActive;
+    const scrolledDown=window.scrollY>200;
+
+    if(!isOnFeed){
+      // Está numa rota diferente (thread, perfil) → vai para o feed
+      Router.navigate('/community');
+      return;
+    }
+
+    // Já está no feed
+    if(scrolledDown){
+      // Está rolado para baixo → sobe suavemente e depois refresha com novas recomendações
+      window.scrollTo({top:0,behavior:'smooth'});
+      setTimeout(()=>_refreshFeedWithVariety(),350);
+    } else {
+      // Já está no topo → refresha direto com novas recomendações
+      _refreshFeedWithVariety();
+    }
+  });
   $('#mobile-search-btn')?.addEventListener('click',()=>openSearchModal());
   $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
   function openChat(){
@@ -7126,20 +7242,20 @@ function bindEvents(){
     setTimeout(() => $('#modal-ta')?.focus(), 100);
   });
 
-  // infinite scroll — auto-loads more when sentinel enters view
+  // Botão "Atualizar feed" no card de fim de feed
+  $('#feed-end-refresh-btn')?.addEventListener('click',()=>_refreshFeedWithVariety());
+
+  // ── infinite scroll: dispara 600px antes do fim (extra-antecipado para mobile) ──
   const sentinel=$('#feed-sentinel');
   if(sentinel){
+    // Usa rootMargin grande para disparar bem antes de chegar no sentinel no mobile
     const obs=new IntersectionObserver(entries=>{
-      if(entries.some(en=>en.isIntersecting)&&!state.routeActive&&state.hasMore&&!state.loading){
-        const wrap=$('#load-more-wrap');
-        if(wrap) wrap.innerHTML='<div class="load-more-spinner"></div>';
-        wrap.hidden=false;
-        loadFeed({reset:false}).then(()=>{
-          if(wrap) wrap.innerHTML='';
-          wrap.hidden=true;
-        });
-      }
-    },{rootMargin:'400px 0px'});
+      if(!entries.some(en=>en.isIntersecting)) return;
+      if(state.routeActive||state.loading||!state.hasMore) return;
+      // Mostra spinner externo enquanto a requisição não começa
+      _showFeedSpinner();
+      loadFeed({reset:false});
+    },{rootMargin:'0px 0px 800px 0px',threshold:0});
     obs.observe(sentinel);
   }
 
@@ -7609,6 +7725,43 @@ function bindEvents(){
 })();
 
 
+/* ======================= REFRESH INTELIGENTE DO FEED ======================= */
+/*
+ * Estratégia inspirada em feeds como Twitter/TikTok:
+ * - Ao re-abrir a home, o usuário já viu os posts anteriores
+ * - Geramos um novo session_seed para o servidor saber que é uma nova "sessão de leitura"
+ * - As impressões já registradas (ImpressionTracker) ficam no servidor e o algoritmo
+ *   usa isso para diversificar: menos posts já vistos, mais conteúdo novo/descoberta
+ * - Também sincronizamos as impressões pendentes antes de resetar, garantindo que
+ *   o servidor tenha o sinal completo de interesse para recomendar melhor
+ */
+function _refreshFeedWithVariety(){
+  if(state.routeActive) return;
+  if(state.loading) return;
+
+  // 1. Flush impressões pendentes para o servidor ter dados frescos
+  ImpressionTracker.flush().catch(()=>{});
+
+  // 2. Gera novo session_seed → servidor entende como nova sessão de leitura
+  //    e diversifica o ranking (penaliza posts já muito vistos por este usuário)
+  const newSeed=(typeof crypto!=='undefined'&&crypto.randomUUID)
+    ?crypto.randomUUID()
+    :Math.random().toString(36).slice(2)+Date.now().toString(36);
+  sessionStorage.setItem('fa_feed_session_seed_v2',newSeed);
+  // Força o ImpressionTracker a usar o novo seed na próxima chamada
+  // (ele lê do sessionStorage no próximo acesso à property sessionSeed)
+
+  // 3. Reseta o timestamp de avaliação → busca posts mais recentes também
+  state.feedEvaluationTimestamp=new Date().toISOString();
+
+  // 4. Esconde pill de novos posts (vai recarregar mesmo)
+  const pill=$('#new-posts-pill');
+  if(pill) pill.hidden=true;
+
+  // 5. Recarrega o feed com reset completo
+  loadFeed({reset:true});
+}
+
 Router.register('/community',showFeedRoute);
 Router.register('/community.html',showFeedRoute);
 Router.register('/community/post/:id',renderPostRoute);
@@ -7627,7 +7780,7 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/social-chat.js?v=chat7-20260602"></script>
+<script src="assets/js/social-chat.js?v=chat7-20260608"></script>
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
    Se o social-chat.js carregado não corresponder à versão esperada (ex: o
@@ -7637,7 +7790,7 @@ boot();
    Anti-loop: o redirect só ocorre se ?_v= ainda não corresponder à versão.
 ──────────────────────────────────────────────────────────────────────────── */
 (function () {
-  var EXPECTED = 'chat7-20260602';
+  var EXPECTED = 'chat7-20260608';
   var alreadyBusted = location.search.indexOf('_v=' + EXPECTED) !== -1;
   if (!alreadyBusted && window._faChatScriptVersion !== EXPECTED) {
     var base = location.href.split('?')[0].split('#')[0];
