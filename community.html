@@ -8670,6 +8670,28 @@ async function boot(){
   startPollSync();
 }
 boot();
+
+/* ── Expose internals para scripts externos (community_comments_fix.js) ── */
+window.state            = state;
+window.api              = api;
+window.esc              = esc;
+window.num              = num;
+window.time             = time;
+window.toast            = toast;
+window.displayName      = displayName;
+window.handleName       = handleName;
+window.avatar           = avatar;
+window.fallbackAvatar   = fallbackAvatar;
+window.mentionHTML      = mentionHTML;
+window.canModerate      = canModerate;
+window.verifiedBadgeHTML= verifiedBadgeHTML;
+window.commentsHTML     = commentsHTML;
+window.loadFeed         = loadFeed;
+window.showRouteUI      = showRouteUI;
+window.navigatePost     = navigatePost;
+window.buildSubthreadRepliesHTML = buildSubthreadRepliesHTML;
+window.bindSubthreadEvents       = bindSubthreadEvents;
+window.IC               = IC;
 </script>
 
 <script src="assets/js/social-chat.js?v=chat7-20260608"></script>
