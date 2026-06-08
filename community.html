@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/social-chat.css?v=chat11-20260608">
+<link rel="stylesheet" href="assets/css/social-chat.css?v=chat12-20260608">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -1447,17 +1447,53 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .account-menu button:hover{background:var(--surface-hover)}
 .account-menu button.danger{color:#ef4444}
 .account-mobile-only{display:none!important}
-.share-summary{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg)}
-.share-summary strong{font-size:13.5px;font-weight:850}
-.share-summary p{margin:0;color:var(--ink-2);font-size:12.5px;line-height:1.4}
-.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.share-chat-list{display:grid;gap:6px;margin-top:8px}
-.share-chat-row{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-soft);text-align:left;cursor:pointer;color:var(--ink)}
-.share-chat-row:hover{border-color:var(--accent);background:var(--accent-soft)}
-.share-chat-row img{width:34px;height:34px;border-radius:8px;object-fit:cover}
+.share-sheet{width:min(590px,100%);background:#0c0c0b!important;border-color:color-mix(in srgb,var(--accent) 42%,var(--line))!important}
+.share-sheet .sheet-header{background:#11110f}
+.share-sheet .sheet-body{min-height:0;display:grid;grid-template-rows:auto auto auto auto minmax(0,1fr);gap:11px;padding:12px;overflow:hidden}
+.share-summary{display:grid;gap:5px;padding:11px 12px;border:1px solid color-mix(in srgb,var(--accent) 58%,transparent);border-radius:10px;background:#050505}
+.share-summary strong{font-size:13.5px;font-weight:850;color:#f5f1e8}
+.share-summary p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;color:#aaa397;font-size:12px;line-height:1.4}
+.share-actions{display:flex;gap:7px}
+.share-actions .btn{flex:1}
+.share-recipient-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.share-recipient-search{min-width:0;display:flex;align-items:center;gap:7px;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:#151512;color:var(--ink-3)}
+.share-recipient-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.share-recipient-search svg{width:14px;height:14px;flex:0 0 auto}
+.share-recipient-search input{width:100%;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:12.5px}
+.share-filter-bar{display:flex;gap:5px}
+.share-filter-btn{height:38px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:#151512;color:var(--ink-2);font-size:11px;font-weight:800;cursor:pointer}
+.share-filter-btn.is-active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.share-recipient-meta{min-height:20px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink-3);font-size:10.5px}
+.share-recipient-meta strong{color:var(--ink-2);font-size:11px}
+.share-chat-list{min-height:152px;max-height:min(330px,42vh);display:grid;align-content:start;gap:6px;overflow:auto;padding-right:3px}
+.share-chat-row{width:100%;display:grid;grid-template-columns:38px minmax(0,1fr) 26px;gap:9px;align-items:center;padding:8px;border:1px solid transparent;border-radius:10px;background:#151512;text-align:left;cursor:pointer;color:var(--ink);transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast)}
+.share-chat-row:hover{border-color:color-mix(in srgb,var(--accent) 58%,transparent);background:#191914;transform:translateY(-1px)}
+.share-chat-row.is-selected{border-color:var(--accent);background:color-mix(in srgb,var(--accent-soft) 48%,#121210)}
+.share-chat-row img,.share-chat-group-av{width:38px;height:38px;border-radius:9px;object-fit:cover}
+.share-chat-group-av{display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);background:#070706;color:var(--accent)}
+.share-chat-group-av svg{width:18px!important;height:18px!important}
 .share-chat-row strong{display:block;font-size:12.5px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.share-chat-row small{display:block;color:var(--ink-3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.share-chat-row svg{width:14px;height:14px;color:var(--accent)}
+.share-chat-row small{display:block;margin-top:2px;color:var(--ink-3);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-chat-check{width:22px;height:22px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:999px;color:transparent}
+.share-chat-check svg{width:12px;height:12px}
+.share-chat-row.is-selected .share-chat-check{border-color:var(--accent);background:var(--accent);color:#090908}
+.share-footer{display:grid;gap:8px;padding:10px 12px;background:#11110f}
+.share-message-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;width:100%;padding:8px 8px 8px 11px;border:1px solid var(--line);border-radius:12px;background:#080808}
+.share-message-wrap:focus-within{border-color:var(--accent)}
+.share-message-wrap textarea{width:100%;min-height:38px;max-height:96px;resize:none;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:12.5px;line-height:1.45}
+.share-message-wrap textarea::placeholder{color:var(--ink-3)}
+.share-send-btn{min-width:96px;align-self:stretch}
+.share-send-status{display:flex;align-items:center;justify-content:space-between;gap:9px;width:100%;color:var(--ink-3);font-size:10.5px}
+.share-send-status strong{color:var(--accent)}
+@media(max-width:620px){
+  .share-sheet{height:min(720px,calc(100dvh - 20px))}
+  .share-recipient-tools{grid-template-columns:1fr}
+  .share-filter-bar{display:grid;grid-template-columns:repeat(3,1fr)}
+  .share-filter-btn{height:34px;padding:0 6px}
+  .share-chat-list{max-height:none;min-height:0}
+  .share-message-wrap{grid-template-columns:1fr}
+  .share-send-btn{min-height:38px}
+}
 .repost-popover{
   position:fixed;
   z-index:9995;
@@ -1675,6 +1711,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   box-shadow:var(--shadow-lg);pointer-events:auto;
   animation:toastIn var(--t-med) var(--ease);
 }
+.toast.has-action{grid-template-columns:30px minmax(0,1fr) auto auto}
 .toast.success{border-left-color:var(--success)}
 .toast.error{border-left-color:var(--danger)}
 .toast.warning{border-left-color:var(--warning)}
@@ -1685,6 +1722,8 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .toast-ic svg{width:14px;height:14px}
 .toast strong{display:block;font-size:12px;font-weight:800}
 .toast small{display:block;margin-top:1px;color:var(--ink-2);font-size:11px;line-height:1.3}
+.toast-action{min-height:28px;padding:0 9px;border:1px solid color-mix(in srgb,var(--accent) 54%,var(--line));border-radius:7px;background:var(--accent-soft);color:var(--accent);font:inherit;font-size:10.5px;font-weight:850;cursor:pointer;white-space:nowrap}
+.toast-action:hover{background:var(--accent);color:#090908}
 .toast .x{width:24px;height:24px;border-radius:999px;color:var(--ink-3);cursor:pointer;display:grid;place-items:center}
 .toast .x:hover{color:var(--ink)}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -3737,9 +3776,9 @@ body::after{
 
 <!-- SHARE MODAL -->
 <div class="backdrop" id="share-modal" aria-hidden="true" role="presentation">
-  <div class="sheet sheet-sm" role="dialog" aria-modal="true" aria-labelledby="share-title">
+  <div class="sheet share-sheet" role="dialog" aria-modal="true" aria-labelledby="share-title">
     <div class="sheet-header">
-      <h2 id="share-title">Compartilhar</h2>
+      <h2 id="share-title">Enviar por mensagem</h2>
       <button class="close-btn" data-close="share-modal" aria-label="Fechar">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
@@ -3753,9 +3792,31 @@ body::after{
         <button class="btn btn-secondary btn-sm" type="button" id="share-copy-btn">Copiar link</button>
         <a class="btn btn-primary btn-sm" id="share-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       </div>
-      <div style="margin-top:14px">
-        <div class="section-title" style="margin-bottom:7px"><strong>Enviar pelo chat</strong><span>conversas recentes</span></div>
-        <div class="share-chat-list" id="share-chat-list"><div class="skel" style="height:48px;border-radius:8px"></div></div>
+      <div class="share-recipient-tools">
+        <label class="share-recipient-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input id="share-recipient-search" type="search" placeholder="Buscar pessoas e grupos" autocomplete="off">
+        </label>
+        <div class="share-filter-bar" aria-label="Filtrar destinos">
+          <button class="share-filter-btn is-active" type="button" data-share-filter="all">Todos</button>
+          <button class="share-filter-btn" type="button" data-share-filter="direct">Pessoas</button>
+          <button class="share-filter-btn" type="button" data-share-filter="group">Grupos</button>
+        </div>
+      </div>
+      <div class="share-recipient-meta">
+        <strong id="share-recipient-count">Escolha quem vai receber</strong>
+        <span>O conteúdo será enviado sem abrir o chat</span>
+      </div>
+      <div class="share-chat-list" id="share-chat-list"><div class="skel" style="height:52px;border-radius:10px"></div></div>
+    </div>
+    <div class="sheet-footer share-footer">
+      <div class="share-message-wrap">
+        <textarea id="share-message-input" maxlength="500" rows="2" placeholder="Adicionar uma mensagem opcional..."></textarea>
+        <button class="btn btn-primary share-send-btn" type="button" id="share-send-btn" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Enviar</button>
+      </div>
+      <div class="share-send-status">
+        <span>A mensagem opcional aparecerá logo abaixo do conteúdo.</span>
+        <strong id="share-message-count">0/500</strong>
       </div>
     </div>
   </div>
@@ -4314,18 +4375,20 @@ const IC={
   user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>',
   send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+  group:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 15c3.5 0 6 2 6 5"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
   save:'<svg viewBox="0 0 24 24" width="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
   eyeOff:'<svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
   userMinus:'<svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/></svg>',
 };
-function toast(type,title,msg='',dur=4000){
+function toast(type,title,msg='',dur=4000,action=null){
   const stack=$('#toast-stack');
   const cls={success:'success',error:'error',warning:'warning'}[type]||'';
   const icon={success:IC.ok,error:IC.err,warning:IC.warn}[type]||IC.info;
   const el=document.createElement('div');
-  el.className=`toast ${cls}`;
-  el.innerHTML=`<div class="toast-ic">${icon}</div><div><strong>${esc(title)}</strong><small>${esc(msg)}</small></div><button class="x" aria-label="Fechar"><svg viewBox="0 0 24 24" width="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+  el.className=`toast ${cls}${action?.label?' has-action':''}`;
+  el.innerHTML=`<div class="toast-ic">${icon}</div><div><strong>${esc(title)}</strong><small>${esc(msg)}</small></div>${action?.label?`<button class="toast-action" type="button">${esc(action.label)}</button>`:''}<button class="x" aria-label="Fechar"><svg viewBox="0 0 24 24" width="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+  el.querySelector('.toast-action')?.addEventListener('click',()=>{removeToast(el);action?.onClick?.()});
   el.querySelector('.x').onclick=()=>removeToast(el);
   stack.appendChild(el);
   if(dur) setTimeout(()=>removeToast(el),dur);
@@ -6379,6 +6442,12 @@ async function editPostInline(id,card){
 
 /* ======================= SHARE ======================= */
 let shareContext=null;
+let shareTargets=[];
+let shareSelected=new Map();
+let shareFilter='all';
+let shareSending=false;
+let shareSearchTimer=null;
+let shareSearchSeq=0;
 function publicPostShareUrl(id){
   return `${API_BASE.replace(/\/+$/,'')}/share/post/${encodeURIComponent(id)}`;
 }
@@ -6400,39 +6469,76 @@ async function copyLink(id){
   try{await navigator.clipboard.writeText(url);toast('success','Link copiado!',url)}
   catch{toast('info','Copie manualmente',url)}
 }
-function shareDraft(details){
-  const text=details.text?`"${details.text.slice(0,120)}"\n${details.url}`:details.url;
-  return text.slice(0,500);
-}
 async function copyShareContext(details){
   const url=String(details?.url||'');
   if(!url)return;
   try{await navigator.clipboard.writeText(url);toast('success','Link copiado!',url)}
   catch{toast('info','Copie manualmente',url)}
 }
+function shareTargetKey(target){return `${target.kind}:${target.id}`}
+function shareClientRef(kind='share'){return `${kind}-${Date.now()}-${Math.random().toString(16).slice(2,10)}`.slice(0,80)}
+function updateShareSendState(){
+  const count=shareSelected.size;
+  const countEl=$('#share-recipient-count');
+  const sendBtn=$('#share-send-btn');
+  const message=$('#share-message-input');
+  const messageCount=$('#share-message-count');
+  if(countEl)countEl.textContent=count?`${count} destino${count===1?' selecionado':'s selecionados'}`:'Escolha quem vai receber';
+  if(sendBtn)sendBtn.disabled=!count||shareSending;
+  if(messageCount)messageCount.textContent=`${message?.value.length||0}/500`;
+}
 async function openShareDetails(details){
   shareContext=details;
+  shareTargets=[];
+  shareSelected=new Map();
+  shareFilter='all';
+  shareSending=false;
   $('#share-summary-title').textContent=details.title;
   $('#share-summary-text').textContent=details.text||'Link pronto para compartilhar.';
   $('#share-whatsapp-link').href=`https://wa.me/?text=${encodeURIComponent(`${details.title}\n${details.url}`)}`;
+  const search=$('#share-recipient-search');
+  const message=$('#share-message-input');
+  if(search){
+    search.value='';
+    search.oninput=()=>{
+      renderShareChatList(false);
+      clearTimeout(shareSearchTimer);
+      const term=search.value.trim();
+      const seq=++shareSearchSeq;
+      if(term.length<2)return;
+      shareSearchTimer=setTimeout(()=>searchSharePeople(term,seq),240);
+    };
+  }
+  if(message){
+    message.value='';
+    message.oninput=()=>{
+      message.style.height='auto';
+      message.style.height=Math.min(message.scrollHeight,96)+'px';
+      updateShareSendState();
+    };
+  }
+  $$('.share-filter-btn').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.shareFilter==='all'));
+  updateShareSendState();
   openModal('share-modal');
   renderShareChatList(true);
   try{
-    const [convs,friends]=await Promise.all([
-      api('/api/me/conversations?limit=8').catch(()=>({rows:[]})),
-      api('/api/me/friends?limit=12').catch(()=>({rows:[]})),
+    const [convs,groups,friends]=await Promise.all([
+      api('/api/me/conversations?limit=30').catch(()=>({rows:[]})),
+      api('/api/me/group-conversations?limit=30').catch(()=>({rows:[]})),
+      api('/api/me/friends?limit=50').catch(()=>({rows:[]})),
     ]);
     const seen=new Set();
-    const rows=[
-      ...(Array.isArray(convs.rows)?convs.rows.map(c=>({id:c.other_id,name:nameOfShare(c),meta:c.last_message_body||'Conversa recente'})):[]),
-      ...(Array.isArray(friends.rows)?friends.rows.map(f=>({id:f.id,name:displayName(f),meta:f.is_online?'Online agora':'Amigo da comunidade'})):[]),
+    shareTargets=[
+      ...(Array.isArray(convs.rows)?convs.rows.map(c=>({kind:'direct',id:c.other_id,name:nameOfShare(c),meta:c.last_message_body||'Conversa recente'})):[]),
+      ...(Array.isArray(groups.rows)?groups.rows.map(g=>({kind:'group',id:g.id,name:g.name||'Grupo',meta:`${Number(g.member_count||0)} membros`,group:g})):[]),
+      ...(Array.isArray(friends.rows)?friends.rows.map(f=>({kind:'direct',id:f.id,name:displayName(f),meta:f.is_online?'Online agora':'Amigo da comunidade'})):[]),
     ].filter(row=>{
-      const id=String(row.id||'');
-      if(!id||seen.has(id))return false;
-      seen.add(id);
+      const key=shareTargetKey(row);
+      if(!row.id||seen.has(key))return false;
+      seen.add(key);
       return true;
-    }).slice(0,14);
-    renderShareChatList(false,rows);
+    }).slice(0,60);
+    renderShareChatList(false);
   }catch(e){
     const list=$('#share-chat-list');
     if(list)list.innerHTML=`<div class="empty-card"><p>${esc(e.message||'Nao foi possivel carregar conversas.')}</p></div>`;
@@ -6444,18 +6550,117 @@ async function openShareSheet(id){
 function nameOfShare(row){
   return row.other_minecraft_name||row.other_username||row.minecraft_name||row.username||row.name||'Jogador';
 }
-function renderShareChatList(loading=false,rows=[]){
+function renderShareChatList(loading=false){
   const list=$('#share-chat-list');if(!list)return;
-  if(loading){list.innerHTML='<div class="skel" style="height:48px;border-radius:8px"></div><div class="skel" style="height:48px;border-radius:8px"></div>';return}
+  if(loading){list.innerHTML='<div class="skel" style="height:52px;border-radius:10px"></div><div class="skel" style="height:52px;border-radius:10px"></div><div class="skel" style="height:52px;border-radius:10px"></div>';return}
+  const term=String($('#share-recipient-search')?.value||'').trim().toLowerCase();
+  const rows=shareTargets.filter(row=>(shareFilter==='all'||row.kind===shareFilter)&&(!term||`${row.name} ${row.meta}`.toLowerCase().includes(term)));
   if(!rows.length){list.innerHTML='<div class="empty-card"><p>Nenhuma conversa recente. Abra um perfil para iniciar chat.</p></div>';return}
   list.innerHTML=rows.map(row=>{
     const name=row.name||'Jogador';
-    return `<button class="share-chat-row" type="button" data-share-chat-user="${esc(row.id)}" data-share-chat-name="${esc(name)}">
-      <img src="${esc(skin(name,50))}" alt="${esc(name)}" onerror="this.onerror=null; this.src='${fallbackAvatar(name,50)}'">
+    const key=shareTargetKey(row);
+    const selected=shareSelected.has(key);
+    const avatar=row.kind==='group'
+      ? `<span class="share-chat-group-av">${IC.group}</span>`
+      : `<img src="${esc(skin(name,50))}" alt="${esc(name)}" onerror="this.onerror=null; this.src='${fallbackAvatar(name,50)}'">`;
+    return `<button class="share-chat-row${selected?' is-selected':''}" type="button" data-share-target="${esc(key)}" aria-pressed="${selected?'true':'false'}">
+      ${avatar}
       <span><strong>${esc(name)}</strong><small>${esc(row.meta||'Enviar no chat')}</small></span>
-      ${IC.send}
+      <i class="share-chat-check">${IC.ok}</i>
     </button>`;
   }).join('');
+  updateShareSendState();
+}
+function toggleShareTarget(key){
+  const target=shareTargets.find(row=>shareTargetKey(row)===key);
+  if(!target)return;
+  if(shareSelected.has(key))shareSelected.delete(key);
+  else shareSelected.set(key,target);
+  renderShareChatList(false);
+}
+async function searchSharePeople(term,seq){
+  try{
+    const rows=await api(`/api/community/players?${new URLSearchParams({search:term,limit:'20'})}`);
+    if(seq!==shareSearchSeq||String($('#share-recipient-search')?.value||'').trim()!==term)return;
+    const existing=new Set(shareTargets.map(shareTargetKey));
+    (Array.isArray(rows)?rows:[]).forEach(person=>{
+      if(!person?.id||Number(person.id)===Number(state.me?.id))return;
+      const target={kind:'direct',id:person.id,name:displayName(person),meta:`@${person.username||person.minecraft_name||'jogador'}`};
+      const key=shareTargetKey(target);
+      if(existing.has(key))return;
+      existing.add(key);
+      shareTargets.push(target);
+    });
+    renderShareChatList(false);
+  }catch{}
+}
+async function sendShareTarget(target,optionalMessage='',shareUrl=''){
+  let endpoint='';
+  let resultTarget={...target};
+  if(target.kind==='group'){
+    endpoint=`/api/me/group-conversations/${encodeURIComponent(target.id)}/messages`;
+  }else{
+    const conv=await api('/api/me/conversations',{method:'POST',body:JSON.stringify({target_id:target.id})});
+    endpoint=`/api/me/conversations/${encodeURIComponent(conv.id)}/messages`;
+    resultTarget={...target,conversationId:conv.id};
+  }
+  const sendBody=body=>api(endpoint,{
+    method:'POST',
+    body:JSON.stringify({body,attachments:[],client_ref:shareClientRef(target.kind)}),
+    timeoutMs:30000,
+  });
+  await sendBody(String(shareUrl||'').slice(0,500));
+  if(optionalMessage)await sendBody(optionalMessage.slice(0,500));
+  return resultTarget;
+}
+function openSharedConversation(target,total=1){
+  let attempts=0;
+  const open=()=>{
+    attempts++;
+    if(!window.FAChat){
+      if(attempts<30)setTimeout(open,150);
+      return;
+    }
+    if(total>1){window.FAChat.open();return}
+    if(target.kind==='group'){
+      if(window.FAChat.openGroup)window.FAChat.openGroup(target.group||{id:target.id,name:target.name});
+      else window.FAChat.open();
+      return;
+    }
+    if(window.FAChat.openWithUser)window.FAChat.openWithUser({id:target.id,minecraft_name:target.name});
+    else window.FAChat.open();
+  };
+  open();
+}
+async function sendShareSelection(){
+  if(shareSending||!shareContext||!shareSelected.size)return;
+  shareSending=true;
+  updateShareSendState();
+  const button=$('#share-send-btn');
+  setBtnLoad(button,true,'Enviando');
+  const optionalMessage=String($('#share-message-input')?.value||'').trim();
+  const selected=[...shareSelected.values()];
+  const shareUrl=String(shareContext.url||'');
+  closeModal('share-modal');
+  const results=await Promise.allSettled(selected.map(target=>sendShareTarget(target,optionalMessage,shareUrl)));
+  const sent=results.filter(result=>result.status==='fulfilled').map(result=>result.value);
+  const failed=results.length-sent.length;
+  shareSending=false;
+  if(!sent.length){
+    setBtnLoad(button,false,'Enviar');
+    updateShareSendState();
+    toast('error','Nao foi possivel enviar','Verifique sua conexao e tente novamente.');
+    return;
+  }
+  setBtnLoad(button,false,'Enviar');
+  window.FAChat?.refresh?.().catch(()=>{});
+  const message=failed
+    ? `Enviado para ${sent.length}; ${failed} destino${failed===1?' falhou':'s falharam'}.`
+    : `Enviado para ${sent.length} destino${sent.length===1?'':'s'} sem interromper o feed.`;
+  toast('success','Mensagem enviada',message,8000,{
+    label:'Abrir conversa',
+    onClick:()=>openSharedConversation(sent[0],sent.length),
+  });
 }
 
 /* ======================= NAVIGATE ======================= */
@@ -8252,20 +8457,23 @@ function bindEvents(){
     const notificationRoute=e.target.closest('[data-notification-route]');
     if(notificationRoute){e.preventDefault();$('#notif-menu')?.classList.remove('show');Router.navigate(communityUrl({notifications:'1'}));return}
     if(e.target.closest('#share-copy-btn')&&shareContext){e.preventDefault();copyShareContext(shareContext);return}
-    const shareChat=e.target.closest('[data-share-chat-user]');
-    if(shareChat&&shareContext){
+    const shareFilterBtn=e.target.closest('[data-share-filter]');
+    if(shareFilterBtn&&shareContext){
       e.preventDefault();
-      if(!window.FAChat?.shareWithUser){
-        toast('warn','Chat indisponivel','Aguarde o chat carregar e tente novamente.');
-        openChat();
-        return;
-      }
-      closeModal('share-modal');
-      window.FAChat.shareWithUser(
-        {id:shareChat.dataset.shareChatUser,minecraft_name:shareChat.dataset.shareChatName},
-        shareDraft(shareContext)
-      ).then(()=>toast('success','Enviado no chat','O conteudo foi enviado instantaneamente.'))
-       .catch(err=>toast('error','Nao foi possivel enviar',err?.message||'Tente novamente.'));
+      shareFilter=shareFilterBtn.dataset.shareFilter||'all';
+      $$('.share-filter-btn').forEach(btn=>btn.classList.toggle('is-active',btn===shareFilterBtn));
+      renderShareChatList(false);
+      return;
+    }
+    const shareTarget=e.target.closest('[data-share-target]');
+    if(shareTarget&&shareContext){
+      e.preventDefault();
+      toggleShareTarget(shareTarget.dataset.shareTarget);
+      return;
+    }
+    if(e.target.closest('#share-send-btn')&&shareContext){
+      e.preventDefault();
+      sendShareSelection();
       return;
     }
     const repostChoice=e.target.closest('#_repost_popover [data-repost-choice]');
@@ -8984,7 +9192,7 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/social-chat.js?v=chat11-20260608"></script>
+<script src="assets/js/social-chat.js?v=chat12-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
@@ -8995,7 +9203,7 @@ boot();
    Anti-loop: o redirect só ocorre se ?_v= ainda não corresponder à versão.
 ──────────────────────────────────────────────────────────────────────────── */
 (function () {
-  var EXPECTED = 'chat11-20260608';
+  var EXPECTED = 'chat12-20260608';
   var alreadyBusted = location.search.indexOf('_v=' + EXPECTED) !== -1;
   if (!alreadyBusted && window._faChatScriptVersion !== EXPECTED) {
     var base = location.href.split('?')[0].split('#')[0];
