@@ -1197,7 +1197,7 @@
     const wf = syntheticWaveform(name);
     const hasDl = Boolean(url && !url.startsWith('blob:'));
     return `
-      <div class="fa-chat-audio-player ${isMe ? 'is-me' : ''}" data-audio-player data-audio-src="${esc(url)}" data-audio-name="${esc(name)}">
+      <div class="fa-chat-audio-player ${isMe ? 'is-me' : ''}" data-audio-player data-audio-src="${esc(url)}" data-audio-name="${esc(name)}" data-audio-mime="${esc(att.mime_type || '')}">
         <button class="fa-cap-play" type="button" data-audio-play aria-label="Reproduzir áudio">
           <svg class="fa-cap-icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v14l11-7-11-7z"/></svg>
           <svg class="fa-cap-icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -1235,22 +1235,70 @@
     if (!playerEl || playerEl._audioInited) return;
     playerEl._audioInited = true;
 
-    const src = playerEl.dataset.audioSrc;
+    const src        = playerEl.dataset.audioSrc;
+    const mimeHint   = playerEl.dataset.audioMime || '';
     if (!src) return;
 
-    // IMPORTANTE: não setar audio.src na inicialização.
-    // O Cloudinary raw devolve application/octet-stream sem extensão na URL,
-    // e qualquer request automático (preload, src imediato) faz o browser
-    // disparar download. O src só é setado ao clicar play.
-    // O botão de download também NÃO usa <a href download> pelo mesmo motivo —
-    // usa data-audio-dl e chama downloadAttachment() manualmente.
     const audio = new Audio();
     audio.preload = 'none';
-    let srcLoaded = false;
-    let currentSpeed = 1;
-    function ensureSrc() {
-      if (!srcLoaded) { srcLoaded = true; audio.src = src; }
+
+    // ── Resolução de MIME para Cloudinary raw ─────────────────────────────────
+    // O Cloudinary resource_type:'raw' serve SEMPRE Content-Type: application/octet-stream,
+    // mesmo com extensão na URL (ex: audio-1234.webm). Isso faz o browser disparar
+    // download automático ao setar audio.src = url diretamente.
+    //
+    // Solução: ao primeiro play, fazemos fetch() da URL com mode:'cors' e criamos
+    // um Blob URL com o MIME correto deduzido da extensão ou do campo mime_type
+    // salvo no dataset. O browser toca o Blob URL sem disparar download.
+    //
+    // Se o fetch falhar por CORS (blob: URLs nunca têm CORS), usamos src direto
+    // como fallback — nesse caso o browser pode ou não disparar download dependendo
+    // da configuração de CORS do Cloudinary da conta.
+    let blobUrl      = null;   // blob: URL criado via fetch
+    let srcReady     = false;  // true quando audio.src já foi setado
+    let loadingBlob  = false;  // fetch em andamento
+
+    function guessMime(url = '', hint = '') {
+      if (hint && hint !== 'application/octet-stream') return hint;
+      const ext = (url.split('?')[0].split('.').pop() || '').toLowerCase();
+      return { webm: 'audio/webm', ogg: 'audio/ogg', oga: 'audio/ogg',
+               opus: 'audio/ogg;codecs=opus', mp4: 'audio/mp4',
+               m4a: 'audio/mp4', aac: 'audio/aac', mp3: 'audio/mpeg',
+               wav: 'audio/wav' }[ext] || 'audio/webm';
     }
+
+    async function ensureSrc() {
+      if (srcReady) return;
+      if (loadingBlob) return;
+      // Blob: URLs (preview de gravação local) → setar direto, sem fetch
+      if (src.startsWith('blob:')) {
+        audio.src = src;
+        srcReady = true;
+        return;
+      }
+      loadingBlob = true;
+      playerEl.classList.add('is-loading');
+      try {
+        const res = await fetch(src, { mode: 'cors', cache: 'force-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const arrayBuffer = await res.arrayBuffer();
+        const mime = guessMime(src, mimeHint);
+        const blob = new Blob([arrayBuffer], { type: mime });
+        blobUrl = URL.createObjectURL(blob);
+        audio.src = blobUrl;
+        srcReady = true;
+      } catch {
+        // Fallback: tenta direto — pode funcionar se o Cloudinary estiver configurado
+        // para servir o Content-Type correto via transformação fl_attachment:false
+        audio.src = src;
+        srcReady = true;
+      } finally {
+        loadingBlob = false;
+        playerEl.classList.remove('is-loading');
+      }
+    }
+
+    let currentSpeed = 1;
 
     const playBtn  = playerEl.querySelector('[data-audio-play]');
     const trackEl  = playerEl.querySelector('[data-audio-track]');
@@ -1262,59 +1310,51 @@
     const speedBtn = playerEl.querySelector('[data-audio-speed]');
     const dlBtn    = playerEl.querySelector('[data-audio-dl]');
 
-    function setPlaying(v) {
-      playerEl.classList.toggle('is-playing', v);
-    }
+    function setPlaying(v) { playerEl.classList.toggle('is-playing', v); }
+
     function updateProgress() {
       if (!audio.duration || !isFinite(audio.duration)) return;
       const pct = (audio.currentTime / audio.duration) * 100;
-      if (fillEl) fillEl.style.width = `${pct}%`;
-      if (thumbEl) thumbEl.style.left = `${pct}%`;
-      if (timeEl) timeEl.textContent = formatDuration(Math.floor(audio.currentTime));
-      // Atualiza waveform: ilumina as barras já tocadas
+      if (fillEl)  fillEl.style.width  = `${pct}%`;
+      if (thumbEl) thumbEl.style.left  = `${pct}%`;
+      if (timeEl)  timeEl.textContent  = formatDuration(Math.floor(audio.currentTime));
       if (wfEl) {
         const spans = wfEl.querySelectorAll('span');
-        const prog = Math.round((pct / 100) * spans.length);
+        const prog  = Math.round((pct / 100) * spans.length);
         spans.forEach((s, i) => s.classList.toggle('played', i < prog));
       }
     }
 
-    // Botão de velocidade
-    if (speedBtn) {
-      speedBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        currentSpeed = nextSpeed(currentSpeed);
-        audio.playbackRate = currentSpeed;
-        speedBtn.textContent = speedLabel(currentSpeed);
-        speedBtn.dataset.speedActive = currentSpeed !== 1 ? 'true' : '';
-        speedBtn.classList.toggle('is-active', currentSpeed !== 1);
-      });
-    }
+    // Botão de velocidade 1× → 1.5× → 2× → 1×
+    speedBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      currentSpeed = nextSpeed(currentSpeed);
+      audio.playbackRate = currentSpeed;
+      speedBtn.textContent = speedLabel(currentSpeed);
+      speedBtn.classList.toggle('is-active', currentSpeed !== 1);
+    });
 
-    // Botão de download — usa downloadAttachment() para evitar href direto
-    // que causaria download automático em URLs Cloudinary sem extensão
-    if (dlBtn) {
-      dlBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        const dlUrl  = dlBtn.dataset.audioDl;
-        const dlName = dlBtn.dataset.audioDlName;
-        if (dlUrl) downloadAttachment(dlUrl, dlName);
-      });
-    }
+    // Botão de download — chama downloadAttachment() para evitar href direto
+    // (que dispararia download automático via octet-stream)
+    dlBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      const dlUrl  = dlBtn.dataset.audioDl;
+      const dlName = dlBtn.dataset.audioDlName;
+      if (dlUrl) downloadAttachment(dlUrl, dlName);
+    });
 
     function seekTo(e) {
       if (!audio.duration || !isFinite(audio.duration)) return;
-      const rect = trackEl.getBoundingClientRect();
+      const rect   = trackEl.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const ratio  = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       audio.currentTime = ratio * audio.duration;
       updateProgress();
     }
 
     audio.addEventListener('loadedmetadata', () => {
-      if (durEl && audio.duration && isFinite(audio.duration)) {
+      if (durEl && audio.duration && isFinite(audio.duration))
         durEl.textContent = formatDuration(Math.floor(audio.duration));
-      }
     });
     audio.addEventListener('timeupdate', updateProgress);
     audio.addEventListener('ended', () => { setPlaying(false); audio.currentTime = 0; updateProgress(); });
@@ -1322,32 +1362,38 @@
     audio.addEventListener('play',  () => setPlaying(true));
     audio.addEventListener('error', () => { playerEl.classList.add('has-error'); });
 
-    playBtn?.addEventListener('click', e => {
+    playBtn?.addEventListener('click', async e => {
       e.stopPropagation();
-      ensureSrc();
-      // Para qualquer outro player ativo na página
+      // Para qualquer outro player ativo
       root.querySelectorAll('[data-audio-player].is-playing').forEach(el => {
-        if (el !== playerEl && el._audioEl) { el._audioEl.pause(); }
+        if (el !== playerEl && el._audioEl) el._audioEl.pause();
       });
+      if (!srcReady) {
+        await ensureSrc();
+        audio.play().catch(() => {});
+        return;
+      }
       if (audio.paused) audio.play().catch(() => {});
       else audio.pause();
     });
 
-    // Seek via clique/toque na track
-    trackEl?.addEventListener('click', e => { e.stopPropagation(); ensureSrc(); seekTo(e); });
+    // Seek
+    trackEl?.addEventListener('click', e => { e.stopPropagation(); if (srcReady) seekTo(e); });
     let _dragging = false;
     trackEl?.addEventListener('mousedown', e => {
-      _dragging = true;
-      seekTo(e);
+      if (!srcReady) return;
+      _dragging = true; seekTo(e);
       const onMove = ev => { if (_dragging) seekTo(ev); };
       const onUp   = () => { _dragging = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     });
-    trackEl?.addEventListener('touchstart', e => { seekTo(e); }, { passive: true });
-    trackEl?.addEventListener('touchmove',  e => { seekTo(e); }, { passive: true });
+    trackEl?.addEventListener('touchstart', e => { if (srcReady) seekTo(e); }, { passive: true });
+    trackEl?.addEventListener('touchmove',  e => { if (srcReady) seekTo(e); }, { passive: true });
 
-    playerEl._audioEl = audio;
+    playerEl._audioEl  = audio;
+    playerEl._blobUrl  = () => blobUrl;
+    playerEl._revoke   = () => { if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; } };
   }
 
   /* ── Inicializa todos os players num container ────────────────────────────── */

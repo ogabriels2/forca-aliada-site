@@ -1166,53 +1166,103 @@
 }
 
 /* ── Audio Player Customizado ─────────────────────────────────────────────── */
+
+/* ── A bubble que envolve o player fica "nua": sem padding, sem background
+   extra, sem border própria. O player já tem tudo isso.
+   Usa :has() — suportado Chrome 105+, Safari 15.4+, Firefox 121+.
+   Fallback: mesmo sem :has() a pior coisa que acontece é a borda dupla,
+   que a regra abaixo em .fa-chat-attachment--audio também mitiga. ─────────── */
+.fa-chat-bubble:has(> .fa-chat-media-grid > .fa-chat-attachment--audio:only-child) {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+/* Remove margem-bottom da media-grid quando é só áudio */
+.fa-chat-bubble:has(> .fa-chat-media-grid > .fa-chat-attachment--audio:only-child) .fa-chat-media-grid {
+  margin: 0;
+  gap: 0;
+}
+
+/* Garante que o container do attachment não adicione padding extra */
+.fa-chat-attachment--audio {
+  overflow: visible;
+}
+
 .fa-chat-audio-player {
-  width: min(280px, 72vw);
+  width: min(290px, 74vw);
   display: grid;
-  grid-template-columns: 42px minmax(0,1fr);
+  grid-template-columns: 44px minmax(0,1fr);
   gap: 10px;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: color-mix(in srgb, currentColor 8%, transparent);
-  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  padding: 10px 14px 10px 10px;
+  border-radius: 17px;
+  background: var(--fc-bub-them);
+  border: 1px solid var(--fc-border);
   cursor: default;
   user-select: none;
+  transition: background .15s;
+}
+
+/* Player dentro de bubble de quem enviou — dourado sem borda */
+.fa-chat-bubble-row.is-me .fa-chat-audio-player {
+  background: var(--fc-bub-me);
+  border-color: color-mix(in srgb, var(--fc-bub-me) 60%, transparent);
+}
+
+/* Estado de loading: spinner sutil no player */
+.fa-chat-audio-player.is-loading { opacity: .7; pointer-events: none; }
+.fa-chat-audio-player.is-loading .fa-cap-play { animation: fcCapSpin .8s linear infinite; }
+@keyframes fcCapSpin {
+  to { transform: rotate(360deg); }
 }
 
 /* Botão play/pause */
 .fa-cap-play {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: currentColor;
-  color: inherit;
+  background: var(--fc-ink-2, rgba(255,255,255,.72));
+  color: var(--fc-bub-them-text, #f0ede6);
   cursor: pointer;
-  transition: transform .15s, opacity .15s;
+  transition: transform .15s, opacity .15s, background .15s;
 }
 
-.fa-cap-play:hover { transform: scale(1.08); }
-.fa-cap-play:active { transform: scale(.92); }
+.fa-cap-play:hover  { transform: scale(1.08); }
+.fa-cap-play:active { transform: scale(.90);  }
 
-/* Ícone dentro do botão (contraste invertido) */
+/* Ícone dentro do botão */
 .fa-cap-play svg {
   width: 18px;
   height: 18px;
-  /* força contraste: botão é currentColor, ícone precisa ser fundo */
-  color: var(--fc-panel, #141412);
+  color: var(--fc-bub-them, #1f1f1c);
   flex: 0 0 auto;
 }
 
-/* Bubble de quem enviou: botão dourado sobre fundo dourado — corrige contraste */
+/* Bubble do remetente (dourado) */
 .fa-chat-bubble-row.is-me .fa-cap-play {
-  background: rgba(0,0,0,.25);
+  background: rgba(0,0,0,.28);
+  color: var(--fc-bub-me-text, #0e0d09);
 }
 .fa-chat-bubble-row.is-me .fa-cap-play svg {
   color: var(--fc-bub-me-text, #0e0d09);
+}
+
+[data-theme="light"] .fa-cap-play {
+  background: var(--fc-ink-3, rgba(0,0,0,.45));
+}
+[data-theme="light"] .fa-cap-play svg {
+  color: #fff;
+}
+[data-theme="light"] .fa-chat-bubble-row.is-me .fa-cap-play {
+  background: rgba(0,0,0,.22);
+}
+[data-theme="light"] .fa-chat-bubble-row.is-me .fa-cap-play svg {
+  color: #fff;
 }
 
 .fa-cap-icon-pause { display: none; }
@@ -1234,39 +1284,43 @@
 .fa-cap-waveform {
   display: flex;
   align-items: center;
-  gap: 2px;
-  height: 22px;
+  gap: 2.5px;
+  height: 24px;
   pointer-events: none;
 }
 
 .fa-cap-waveform span {
   flex: 1;
   min-width: 2px;
-  max-width: 4px;
+  max-width: 3px;
   border-radius: 999px;
-  background: currentColor;
-  opacity: .28;
+  background: var(--fc-ink-2, rgba(255,255,255,.55));
+  opacity: .35;
   transition: opacity .12s;
 }
 
 .fa-cap-waveform span.played {
-  opacity: .72;
+  opacity: .85;
+}
+
+/* Me: waveform mais escuro */
+.fa-chat-bubble-row.is-me .fa-cap-waveform span {
+  background: rgba(0,0,0,.55);
+}
+.fa-chat-bubble-row.is-me .fa-cap-waveform span.played {
+  background: rgba(0,0,0,.85);
+  opacity: 1;
 }
 
 .fa-chat-audio-player.is-playing .fa-cap-waveform span {
   animation: fcWfPulse 1.1s ease-in-out infinite alternate;
 }
-
-.fa-chat-audio-player.is-playing .fa-cap-waveform span:nth-child(2n) {
-  animation-delay: .18s;
-}
-.fa-chat-audio-player.is-playing .fa-cap-waveform span:nth-child(3n) {
-  animation-delay: .36s;
-}
+.fa-chat-audio-player.is-playing .fa-cap-waveform span:nth-child(2n) { animation-delay: .18s; }
+.fa-chat-audio-player.is-playing .fa-cap-waveform span:nth-child(3n) { animation-delay: .36s; }
 
 @keyframes fcWfPulse {
-  from { opacity: .28; }
-  to   { opacity: .72; }
+  from { opacity: .3; }
+  to   { opacity: .85; }
 }
 
 /* Track de progresso */
@@ -1274,9 +1328,10 @@
   position: relative;
   height: 3px;
   border-radius: 999px;
-  background: color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, var(--fc-ink-2) 25%, transparent);
   cursor: pointer;
   touch-action: none;
+  transition: height .12s;
 }
 
 .fa-cap-progress-track:hover { height: 4px; }
@@ -1286,10 +1341,13 @@
   inset: 0;
   right: auto;
   border-radius: 999px;
-  background: currentColor;
-  opacity: .72;
+  background: var(--fc-ink-2, rgba(255,255,255,.72));
   pointer-events: none;
   transition: width .08s linear;
+}
+
+.fa-chat-bubble-row.is-me .fa-cap-progress-fill {
+  background: rgba(0,0,0,.55);
 }
 
 .fa-cap-progress-thumb {
@@ -1299,9 +1357,13 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--fc-ink, #f0ede6);
   pointer-events: none;
   transition: transform .12s;
+}
+
+.fa-chat-bubble-row.is-me .fa-cap-progress-thumb {
+  background: rgba(0,0,0,.7);
 }
 
 .fa-cap-progress-track:hover .fa-cap-progress-thumb,
@@ -1309,25 +1371,30 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* Rodapé: tempo + botão de download */
+/* Rodapé: tempo + velocidade + duração + download */
 .fa-cap-foot {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .fa-cap-time,
 .fa-cap-dur {
   font-size: 10px;
   font-weight: 800;
-  opacity: .56;
+  opacity: .55;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  color: var(--fc-ink, #f0ede6);
+}
+
+.fa-chat-bubble-row.is-me .fa-cap-time,
+.fa-chat-bubble-row.is-me .fa-cap-dur {
+  color: rgba(0,0,0,.7);
 }
 
 .fa-cap-time { min-width: 26px; }
-
-.fa-cap-dur { margin-left: auto; }
+.fa-cap-dur  { margin-left: auto; }
 
 /* ── Botão de velocidade 1×/1.5×/2× ── */
 .fa-cap-speed {
@@ -1339,46 +1406,39 @@
   padding: 0 5px;
   border: 0;
   border-radius: 6px;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-  color: currentColor;
+  background: rgba(255,255,255,.12);
+  color: var(--fc-ink-2, rgba(255,255,255,.72));
   font-size: 10px;
   font-weight: 900;
   font-family: inherit;
   letter-spacing: -.01em;
   cursor: pointer;
-  opacity: .55;
+  opacity: .75;
   transition: opacity .15s, background .15s, transform .1s;
   flex: 0 0 auto;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 
-.fa-cap-speed:hover {
-  opacity: .85;
-  background: color-mix(in srgb, currentColor 22%, transparent);
-}
+.fa-cap-speed:hover  { opacity: 1; background: rgba(255,255,255,.2); }
 .fa-cap-speed:active { transform: scale(.88); }
-
-/* Velocidade ativa (≠ 1×) — destaque dourado */
 .fa-cap-speed.is-active {
   opacity: 1;
-  background: color-mix(in srgb, currentColor 28%, transparent);
+  background: rgba(255,255,255,.22);
   font-weight: 950;
+  color: #fff;
 }
 
-/* Na bubble de quem enviou (fundo dourado) — contraste extra */
+/* Bubble do remetente (fundo dourado) */
 .fa-chat-bubble-row.is-me .fa-cap-speed {
-  background: rgba(0,0,0,.18);
+  background: rgba(0,0,0,.15);
+  color: rgba(0,0,0,.7);
 }
-.fa-chat-bubble-row.is-me .fa-cap-speed:hover {
-  background: rgba(0,0,0,.28);
-}
-.fa-chat-bubble-row.is-me .fa-cap-speed.is-active {
-  background: rgba(0,0,0,.32);
-}
+.fa-chat-bubble-row.is-me .fa-cap-speed:hover    { background: rgba(0,0,0,.25); }
+.fa-chat-bubble-row.is-me .fa-cap-speed.is-active { background: rgba(0,0,0,.28); color: rgba(0,0,0,.9); }
 
-/* Botão de download inline — agora é <button> em vez de <a> para evitar
-   download automático em URLs Cloudinary sem extensão (octet-stream) */
+/* Botão de download — <button> em vez de <a> para evitar download automático
+   via Content-Type: application/octet-stream do Cloudinary raw */
 .fa-cap-dl {
   display: grid;
   place-items: center;
@@ -1388,17 +1448,22 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: currentColor;
+  color: var(--fc-ink-2, rgba(255,255,255,.72));
   opacity: .5;
   cursor: pointer;
-  transition: opacity .13s, background .13s;
+  transition: opacity .13s, background .13s, transform .1s;
   flex: 0 0 auto;
   -webkit-tap-highlight-color: transparent;
 }
 
-.fa-cap-dl:hover { opacity: .88; background: color-mix(in srgb, currentColor 10%, transparent); }
+.fa-cap-dl:hover  { opacity: .9;  background: rgba(255,255,255,.12); }
 .fa-cap-dl:active { opacity: 1; transform: scale(.88); }
-.fa-cap-dl svg { width: 13px; height: 13px; }
+.fa-cap-dl svg    { width: 13px; height: 13px; }
+
+.fa-chat-bubble-row.is-me .fa-cap-dl {
+  color: rgba(0,0,0,.7);
+}
+.fa-chat-bubble-row.is-me .fa-cap-dl:hover { background: rgba(0,0,0,.14); }
 
 .fa-chat-pdf-preview {
   width: 100%;
