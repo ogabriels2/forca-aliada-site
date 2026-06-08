@@ -1,19 +1,36 @@
+/**
+ * Força Aliada — Chat Direto  (social-chat.js)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * VERSION: chat8-20260608
+ *
+ * NOVIDADES vs chat7:
+ *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
+ *    Fallback automático para polling rápido (3s) se SSE não disponível
+ *  • Fila de envio paralela — enviar com ↵ antes da anterior terminar; ordem garantida
+ *  • Enter envia / Shift+Enter nova linha  (configurável)
+ *  • Ticks de status WhatsApp:
+ *       ⏳  pending   — enviando (animado)
+ *       ✓   sent      — servidor confirmou, peer ainda não recebeu
+ *       ✓✓  delivered — peer está online (user_sessions recente)
+ *       ✓✓🔵 read     — peer abriu a conversa (last_read_at > msg.created_at)
+ *  • Presença instantânea via SSE: online dot atualiza sem re-render
+ *  • Heartbeat de sessão leve (POST /api/me/presence a cada 30s)
+ *  • Sem remover state.busy — substituído por send queue independente
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
 (function () {
-  // Versão do script — deve coincidir com o ?v= do <script> em community.html
-  window._faChatScriptVersion = 'chat7-20260602';
-
+  window._faChatScriptVersion = 'chat8-20260608';
   if (window.FAChat) return;
 
+  // ── Storage seguro ────────────────────────────────────────────────────────────
   const safeStorage = (() => {
-    try {
-      return window.localStorage || window.__FA_STORAGE__ || null;
-    } catch {
-      return window.__FA_STORAGE__ || null;
-    }
+    try { return window.localStorage || window.__FA_STORAGE__ || null; }
+    catch { return window.__FA_STORAGE__ || null; }
   })();
   const token = safeStorage?.getItem('fa_token') || '';
   if (!token) return;
 
+  // ── API bases ─────────────────────────────────────────────────────────────────
   const PROD = 'https://forca-aliada-site.onrender.com';
   const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
   const LOCAL_API = 'http://localhost:3000';
@@ -21,6 +38,7 @@
   const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
   const bases = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 
+  // ── Estado global ─────────────────────────────────────────────────────────────
   const state = {
     open: false,
     tab: 'conversations',
@@ -33,14 +51,13 @@
     current: null,
     currentKind: null,
     messages: [],
-    // [FIX] Per-conversation message cache: key = "direct:id" or "group:id"
-    _msgCache: {},
+    _msgCache: {},       // key "direct:id" → msg[]
     unread: 0,
     search: '',
     groupCreating: false,
     groupName: '',
     groupMemberIds: [],
-    busy: false,
+    busy: false,         // mantido para operações não-mensagem (criar grupo, etc.)
     error: '',
     loadingConversations: false,
     loadingGroups: false,
@@ -49,58 +66,293 @@
     warmed: false,
     pendingDraft: '',
     _sentRequests: new Set(),
+    // Delivery status da conversa atual
+    _peerLastReadAt: null,    // ISO string
+    _peerIsOnline: false,
+    _myLastReadAt: null,
   };
 
-  // [FIX] Cache key helper
-  function cacheKey() {
+  // ── Fila de envio independente de state.busy ──────────────────────────────────
+  // Permite enviar uma msg antes de a anterior ser confirmada pelo servidor,
+  // mantendo a ordem FIFO via Promise chain.
+  let _sendQueue = Promise.resolve();
+
+  function queueSend(body) {
+    _sendQueue = _sendQueue.then(() => _doSendMessage(body)).catch(() => {});
+    return _sendQueue;
+  }
+
+  // ── SSE (Server-Sent Events) ──────────────────────────────────────────────────
+  let _sseConn = null;           // EventSource atual
+  let _sseKey = null;            // "direct:id" ou "group:id"
+  let _sseReconnectTimer = null;
+  let _sseFallbackActive = false;
+
+  function sseKey() {
     if (!state.current) return null;
     return `${state.currentKind}:${state.current.id}`;
   }
 
-  const icons = {
-    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
-    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
-    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
-    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg>',
-    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
-    group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  function openSSE() {
+    const key = sseKey();
+    if (!key || _sseConn) return;
+    if (typeof EventSource === 'undefined') { _sseFallbackActive = true; return; }
+
+    _sseKey = key;
+    const [kind, convId] = key.split(':');
+    // EventSource não suporta headers customizados — enviamos token como ?_token=
+    // O server_chat_realtime.mjs valida esse token identicamente ao header Authorization
+    const url = `${bases[0]}/api/me/chat/stream?conv=${encodeURIComponent(convId)}&kind=${kind}&_token=${encodeURIComponent(token)}`;
+
+    try {
+      const es = new EventSource(url);
+      _sseConn = es;
+      _sseFallbackActive = false;
+
+      es.addEventListener('connected', () => {
+        _sseFallbackActive = false;
+        clearTimeout(_sseReconnectTimer);
+      });
+
+      es.addEventListener('message', handleSSEMessage);
+      es.addEventListener('read', handleSSERead);
+      es.addEventListener('presence', handleSSEPresence);
+
+      es.onerror = () => {
+        // SSE não disponível (servidor sem patch) → cai para polling rápido
+        es.close();
+        _sseConn = null;
+        _sseFallbackActive = true;
+      };
+    } catch {
+      _sseFallbackActive = true;
+    }
+  }
+
+  function closeSSE() {
+    if (_sseConn) { _sseConn.close(); _sseConn = null; }
+    _sseKey = null;
+    _sseFallbackActive = false;
+    clearTimeout(_sseReconnectTimer);
+  }
+
+  function handleSSEMessage(evt) {
+    try {
+      const payload = JSON.parse(evt.data);
+      const msg = payload.message || payload;
+      if (!msg?.id) return;
+
+      // Ignora se mudou de conversa
+      if (!state.current || String(state.current.id) !== String(msg.conversation_id || msg.group_id || '')) {
+        // Pode ser notificação de outra conversa — atualiza badge
+        loadUnreadSilent();
+        return;
+      }
+
+      // Adiciona se não existe ainda (o remetente já inseriu via optimistic)
+      const alreadyIn = state.messages.some(m =>
+        String(m.id) === String(msg.id) ||
+        (m.client_status === 'pending' && m.body === msg.body && Number(m.sender_id) === Number(msg.sender_id))
+      );
+      if (!alreadyIn) {
+        // Enriquece com dados do me se for minha mensagem
+        const isMe = Number(msg.sender_id) === Number(state.me?.id);
+        if (isMe) {
+          msg.username = state.me?.username;
+          msg.minecraft_name = state.me?.minecraft_name;
+        }
+        state.messages.push(msg);
+        state.messages = dedupeMessages(state.messages);
+        const k = cacheKey();
+        if (k) state._msgCache[k] = state.messages.slice();
+        const list = root.querySelector('[data-chat-messages]');
+        const wasNearBottom = !list || (list.scrollHeight - list.scrollTop - list.clientHeight) < 80;
+        updateMessagesList({ scroll: wasNearBottom });
+      } else {
+        // Talvez seja uma mensagem pending que o servidor confirmou via SSE
+        // (quando OUTRO cliente do mesmo user envia)
+        replacePendingWithReal(msg);
+      }
+    } catch { /* parse error silencioso */ }
+  }
+
+  function handleSSERead(evt) {
+    try {
+      const payload = JSON.parse(evt.data);
+      const { userId, lastReadAt } = payload;
+      if (!userId || !lastReadAt) return;
+
+      // Se for o peer lendo
+      if (Number(userId) !== Number(state.me?.id)) {
+        state._peerLastReadAt = lastReadAt;
+        updateAllMessageTicks();
+      }
+    } catch { /* silencioso */ }
+  }
+
+  function handleSSEPresence(evt) {
+    try {
+      const payload = JSON.parse(evt.data);
+      const { userId, online } = payload;
+      if (!userId || Number(userId) === Number(state.me?.id)) return;
+
+      state._peerIsOnline = Boolean(online);
+
+      // Atualiza o online dot no peerbar sem re-render completo
+      const panel = root.querySelector('.fa-chat-panel');
+      const dot = panel?.querySelector('.fa-chat-online-dot.fa-chat-online-dot--peer');
+      const peerbar = panel?.querySelector('.fa-chat-peerbar small');
+
+      if (state.currentKind !== 'group') {
+        if (online && !dot) {
+          const avWrap = panel?.querySelector('.fa-chat-av-wrap--peer');
+          avWrap?.insertAdjacentHTML('beforeend', '<span class="fa-chat-online-dot fa-chat-online-dot--peer"></span>');
+        } else if (!online && dot) {
+          dot.remove();
+        }
+        if (peerbar) {
+          const handle = state.current ? `@${handleOf(state.current)}` : '';
+          const friend = state.current?.is_friend ? ' · amigo' : '';
+          peerbar.textContent = `${handle}${online ? ' · online' : friend}`;
+        }
+      }
+
+      // Atualiza ticks quando peer fica online (pode ter delivered)
+      if (online) updateAllMessageTicks();
+    } catch { /* silencioso */ }
+  }
+
+  // ── Ticks de delivery ─────────────────────────────────────────────────────────
+  // Estado dos ticks por mensagem (só minhas):
+  // pending → sent → delivered → read
+  function calcTickStatus(msg) {
+    if (msg.client_status === 'pending') return 'pending';
+    if (msg.client_status === 'failed')  return 'failed';
+    if (String(msg.id).startsWith('tmp-')) return 'pending';
+
+    const msgAt = msg.created_at ? new Date(msg.created_at).getTime() : 0;
+
+    // read: peer abriu depois que a msg foi criada
+    if (state._peerLastReadAt) {
+      const readAt = new Date(state._peerLastReadAt).getTime();
+      if (readAt >= msgAt) return 'read';
+    }
+
+    // delivered: peer está online
+    if (state._peerIsOnline) return 'delivered';
+
+    // sent: servidor confirmou
+    return 'sent';
+  }
+
+  const TICK_HTML = {
+    pending:   `<svg class="fa-tick" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.8" stroke-dasharray="37.7" stroke-dashoffset="37.7" class="fa-tick-spin"/></svg>`,
+    sent:      `<svg class="fa-tick" viewBox="0 0 16 10" fill="none"><path d="M1 5l4 4 9-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    delivered: `<svg class="fa-tick" viewBox="0 0 20 10" fill="none"><path d="M1 5l4 4 9-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5l4 4 9-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    read:      `<svg class="fa-tick fa-tick--read" viewBox="0 0 20 10" fill="none"><path d="M1 5l4 4 9-8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5l4 4 9-8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    failed:    `<svg class="fa-tick fa-tick--fail" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 5v4M8 11v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   };
 
+  function renderTick(msg) {
+    const isMe = Number(msg.sender_id) === Number(state.me?.id);
+    if (!isMe) return '';
+    const status = calcTickStatus(msg);
+    return `<span class="fa-tick-wrap" data-tick-status="${status}">${TICK_HTML[status] || ''}</span>`;
+  }
+
+  function updateAllMessageTicks() {
+    const list = root.querySelector('[data-chat-messages]');
+    if (!list || !state.current) return;
+    list.querySelectorAll('[data-msg-id]').forEach(node => {
+      const msgId = node.dataset.msgId;
+      const msg = state.messages.find(m => String(m.id) === msgId);
+      if (!msg) return;
+      const isMe = Number(msg.sender_id) === Number(state.me?.id);
+      if (!isMe) return;
+      const tickWrap = node.querySelector('.fa-tick-wrap');
+      if (!tickWrap) return;
+      const status = calcTickStatus(msg);
+      if (tickWrap.dataset.tickStatus === status) return; // sem mudança
+      tickWrap.dataset.tickStatus = status;
+      tickWrap.innerHTML = TICK_HTML[status] || '';
+    });
+  }
+
+  // ── Poll de status (presença + read receipts) ─────────────────────────────────
+  // Polled apenas quando SSE está desconectado ou como backup a cada 15s
+  async function pollConversationStatus() {
+    if (!state.current || state.currentKind === 'group') return;
+    try {
+      const data = await api(`/api/me/conversations/${encodeURIComponent(state.current.id)}/status`);
+      const changed = (
+        data.peer_last_read_at !== state._peerLastReadAt ||
+        data.peer_is_online !== state._peerIsOnline
+      );
+      state._peerLastReadAt = data.peer_last_read_at || null;
+      state._peerIsOnline   = Boolean(data.peer_is_online);
+      state._myLastReadAt   = data.my_last_read_at || null;
+      if (changed) updateAllMessageTicks();
+    } catch { /* silencioso */ }
+  }
+
+  // ── Heartbeat de presença web ─────────────────────────────────────────────────
+  let _presenceTimer = null;
+  function startPresenceBeacon() {
+    stopPresenceBeacon();
+    _presenceTimer = setInterval(() => {
+      if (!state.open) return;
+      const convKey = sseKey();
+      api('/api/me/presence', {
+        method: 'POST',
+        body: JSON.stringify({ conv_key: convKey }),
+        timeoutMs: 8000,
+      }).catch(() => {});
+    }, 30_000);
+  }
+  function stopPresenceBeacon() {
+    clearInterval(_presenceTimer);
+    _presenceTimer = null;
+  }
+
+  // ── SVG icons ─────────────────────────────────────────────────────────────────
+  const icons = {
+    chat:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    back:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
+    send:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7Z"/><path d="M22 2 11 13"/></svg>',
+    user:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+    group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    plus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  };
+
+  // ── DOM root ──────────────────────────────────────────────────────────────────
   const root = document.createElement('div');
   root.id = 'fa-chat-root';
   document.body.appendChild(root);
   let fabObserver = null;
 
-  const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    "'": '&#39;',
-    '"': '&quot;',
-  }[ch]));
-
-  const nameOf = person => person?.minecraft_name
-    || person?.other_minecraft_name
-    || person?.username
-    || person?.other_username
-    || 'Steve';
-
-  const handleOf = person => person?.username || person?.other_username || nameOf(person);
-  const groupNameOf = group => group?.name || 'Grupo';
-  const skin = (name, size = 50) => `https://minotar.net/helm/${encodeURIComponent((name || 'Steve').trim() || 'Steve')}/${size}.png`;
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  const esc = v => String(v ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  const nameOf = p => p?.minecraft_name || p?.other_minecraft_name || p?.username || p?.other_username || 'Steve';
+  const handleOf = p => p?.username || p?.other_username || nameOf(p);
+  const groupNameOf = g => g?.name || 'Grupo';
+  const skin = (name, size=50) => `https://minotar.net/helm/${encodeURIComponent((name||'Steve').trim()||'Steve')}/${size}.png`;
   const rel = value => {
     if (!value) return '';
-    const d = new Date(value);
-    const diff = Math.max(0, (Date.now() - d.getTime()) / 1000);
-    if (diff < 45) return 'agora';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    if (diff < 172800) return 'ontem';
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    const diff = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
+    if (diff < 45)      return 'agora';
+    if (diff < 3600)    return `${Math.floor(diff/60)}m`;
+    if (diff < 86400)   return `${Math.floor(diff/3600)}h`;
+    if (diff < 172800)  return 'ontem';
+    return new Date(value).toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
   };
-  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  function cacheKey() {
+    if (!state.current) return null;
+    return `${state.currentKind}:${state.current.id}`;
+  }
 
+  // ── API fetch com fallback ────────────────────────────────────────────────────
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
     headers.set('Authorization', `Bearer ${token}`);
@@ -119,7 +371,7 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         return data;
       } catch (e) {
-        err = e.name === 'AbortError' ? new Error('A API demorou para responder. Tente novamente em alguns segundos.') : e;
+        err = e.name === 'AbortError' ? new Error('A API demorou para responder.') : e;
       } finally {
         clearTimeout(timeout);
       }
@@ -127,9 +379,7 @@
     throw err;
   }
 
-  // [FIX] Stable render: only rebuild full DOM when switching major states.
-  // When the panel is open and we're just updating sub-sections, use targeted DOM updates.
-  // This eliminates the panel flicker caused by full innerHTML replacement every poll cycle.
+  // ── Render helpers ─────────────────────────────────────────────────────────────
   function currentViewKey() {
     return state.current ? `${state.currentKind}:${state.current.id}` : 'inbox';
   }
@@ -137,44 +387,37 @@
   function render() {
     syncFabPosition();
     syncBodyChatState();
-
     const isOpen = state.open;
     const hasCurrent = Boolean(state.current);
 
-    // Launcher button: always update in-place if it exists
     let launcher = root.querySelector('.fa-chat-launcher');
     if (!launcher) {
-      // First render — build everything from scratch
       root.innerHTML = buildFullHTML();
-      attachComposeAutoResize();
+      attachComposeHandlers();
       return;
     }
 
-    // Update launcher badge in-place
     launcher.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     _updateBadgeInLauncher(launcher);
 
-    // Panel visibility
     let panel = root.querySelector('.fa-chat-panel');
     if (!panel) {
       root.innerHTML = buildFullHTML();
-      attachComposeAutoResize();
+      attachComposeHandlers();
       return;
     }
 
-    // Toggle open class without rebuilding
     panel.classList.toggle('is-open', isOpen);
     panel.classList.toggle('has-thread', hasCurrent);
     panel.classList.toggle('has-inbox', !hasCurrent);
 
     if (!isOpen) return;
 
-    // Determine if we need to switch between inbox/thread views
     const viewKey = currentViewKey();
     if (panel.dataset.viewKey !== viewKey || !panel.querySelector('.fa-chat-app')) {
       panel.dataset.viewKey = viewKey;
       panel.innerHTML = renderChatApp();
-      attachComposeAutoResize();
+      attachComposeHandlers();
       if (hasCurrent) updateScroll();
       return;
     }
@@ -188,11 +431,11 @@
 
   function buildFullHTML() {
     return `
-      <button class="fa-chat-launcher" type="button" data-chat-toggle aria-label="Mensagens" aria-expanded="${state.open ? 'true' : 'false'}">
+      <button class="fa-chat-launcher" type="button" data-chat-toggle aria-label="Mensagens" aria-expanded="${state.open}">
         ${icons.chat}
         ${state.unread ? `<span class="fa-chat-badge">${state.unread > 99 ? '99+' : esc(state.unread)}</span>` : ''}
       </button>
-      <section class="fa-chat-panel ${state.open ? 'is-open' : ''} ${state.current ? 'has-thread' : 'has-inbox'}" data-view-key="${esc(currentViewKey())}" aria-label="Mensagens diretas">
+      <section class="fa-chat-panel ${state.open?'is-open':''} ${state.current?'has-thread':'has-inbox'}" data-view-key="${esc(currentViewKey())}" aria-label="Mensagens diretas">
         ${renderChatApp()}
       </section>`;
   }
@@ -200,9 +443,7 @@
   function renderChatApp() {
     return `
       <div class="fa-chat-app">
-        <aside class="fa-chat-sidebar" aria-label="Conversas">
-          ${renderSidebar()}
-        </aside>
+        <aside class="fa-chat-sidebar" aria-label="Conversas">${renderSidebar()}</aside>
         <section class="fa-chat-stage" aria-label="${state.current ? 'Conversa aberta' : 'Nenhuma conversa selecionada'}">
           ${state.current ? renderThread() : renderThreadEmpty()}
         </section>
@@ -211,14 +452,14 @@
 
   function renderSidebar() {
     return `
-        <div class="fa-chat-top">
-          <div class="fa-chat-title">
-            <span class="fa-chat-peer-av">${icons.chat}</span>
-            <div><strong>Mensagens</strong><span>${state.conversations.length || state.groups.length ? 'Conversas e grupos' : 'Amigos e comunidade'}</span></div>
-          </div>
-          <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
+      <div class="fa-chat-top">
+        <div class="fa-chat-title">
+          <span class="fa-chat-peer-av">${icons.chat}</span>
+          <div><strong>Mensagens</strong><span>${state.conversations.length||state.groups.length ? 'Conversas e grupos':'Amigos e comunidade'}</span></div>
         </div>
-        ${renderInbox()}`;
+        <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
+      </div>
+      ${renderInbox()}`;
   }
 
   function updateSidebar() {
@@ -228,12 +469,12 @@
     panel.classList.toggle('has-inbox', !state.current);
     const list = panel.querySelector('.fa-chat-list');
     if (list) {
-      if (state.tab === 'conversations') list.innerHTML = renderConversations();
-      else if (state.tab === 'groups') list.innerHTML = renderGroups();
-      else if (state.tab === 'friends') list.innerHTML = renderFriends();
+      if (state.tab==='conversations') list.innerHTML = renderConversations();
+      else if (state.tab==='groups') list.innerHTML = renderGroups();
+      else if (state.tab==='friends') list.innerHTML = renderFriends();
     }
     panel.querySelectorAll('[data-chat-tab]').forEach(btn => {
-      btn.classList.toggle('is-active', btn.dataset.chatTab === state.tab);
+      btn.classList.toggle('is-active', btn.dataset.chatTab===state.tab);
     });
   }
 
@@ -242,22 +483,16 @@
       <div class="fa-chat-empty-stage">
         <span class="fa-chat-empty-icon">${icons.chat}</span>
         <strong>Escolha uma conversa</strong>
-        <p>Abra um chat recente, busque alguem ou compartilhe uma postagem direto para uma pessoa.</p>
+        <p>Abra um chat recente, busque alguém ou compartilhe uma postagem direto para uma pessoa.</p>
       </div>`;
   }
 
   function _updateBadgeInLauncher(launcher) {
     const currentBadge = launcher.querySelector('.fa-chat-badge');
-    if (!state.unread) {
-      currentBadge?.remove();
-      return;
-    }
+    if (!state.unread) { currentBadge?.remove(); return; }
     const text = state.unread > 99 ? '99+' : String(state.unread);
-    if (currentBadge) {
-      currentBadge.textContent = text;
-    } else {
-      launcher.insertAdjacentHTML('beforeend', `<span class="fa-chat-badge">${esc(text)}</span>`);
-    }
+    if (currentBadge) currentBadge.textContent = text;
+    else launcher.insertAdjacentHTML('beforeend', `<span class="fa-chat-badge">${esc(text)}</span>`);
   }
 
   function updateLauncherBadge() {
@@ -265,18 +500,16 @@
     if (!launcher) { render(); return; }
     launcher.setAttribute('aria-expanded', state.open ? 'true' : 'false');
     _updateBadgeInLauncher(launcher);
-    // Sync unread badge on the topbar desktop button and mobile nav button
-    ['#desktop-chat-btn', '#mobile-chat-btn'].forEach(sel => {
+    ['#desktop-chat-btn','#mobile-chat-btn'].forEach(sel => {
       const btn = document.querySelector(sel);
       if (!btn) return;
       let dot = btn.querySelector('.fa-chat-nav-badge');
       if (!state.unread) { dot?.remove(); return; }
       const text = state.unread > 99 ? '99+' : String(state.unread);
-      if (dot) { dot.textContent = text; }
+      if (dot) dot.textContent = text;
       else {
         btn.style.position = 'relative';
-        btn.insertAdjacentHTML('beforeend',
-          `<span class="fa-chat-nav-badge" aria-hidden="true">${esc(text)}</span>`);
+        btn.insertAdjacentHTML('beforeend', `<span class="fa-chat-nav-badge" aria-hidden="true">${esc(text)}</span>`);
       }
     });
   }
@@ -289,28 +522,17 @@
   function syncFabPosition() {
     const fab = document.querySelector('.fab-post');
     const mobileNav = document.querySelector('.mobile-bottom-nav');
-    const navVisible = Boolean(
-      mobileNav
-      && getComputedStyle(mobileNav).display !== 'none'
-      && mobileNav.getBoundingClientRect().height > 0
-    );
+    const navVisible = Boolean(mobileNav && getComputedStyle(mobileNav).display !== 'none' && mobileNav.getBoundingClientRect().height > 0);
     root.classList.toggle('fa-chat-has-mobile-nav', navVisible);
     if (navVisible) {
       const navRect = mobileNav.getBoundingClientRect();
-      const bottomGap = Math.max(0, window.innerHeight - navRect.bottom);
-      root.style.setProperty('--fa-chat-mobile-nav-height', `${Math.ceil(navRect.height + bottomGap)}px`);
+      root.style.setProperty('--fa-chat-mobile-nav-height', `${Math.ceil(navRect.height + Math.max(0, window.innerHeight - navRect.bottom))}px`);
     } else {
       root.style.setProperty('--fa-chat-mobile-nav-height', '0px');
     }
-    if (!fab) {
-      root.classList.remove('fa-chat-has-fab');
-      return;
-    }
+    if (!fab) { root.classList.remove('fa-chat-has-fab'); return; }
     const rect = fab.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1 || getComputedStyle(fab).display === 'none') {
-      root.classList.remove('fa-chat-has-fab');
-      return;
-    }
+    if (rect.width < 1 || rect.height < 1 || getComputedStyle(fab).display === 'none') { root.classList.remove('fa-chat-has-fab'); return; }
     root.classList.add('fa-chat-has-fab');
     const styles = getComputedStyle(fab);
     root.style.setProperty('--fa-chat-fab-right', `${Math.max(14, window.innerWidth - rect.right)}px`);
@@ -324,128 +546,100 @@
     const buttons = Array.from(nav.querySelectorAll('.mbtn'));
     const chatButton = nav.querySelector('#mobile-chat-btn');
     if (!chatButton) return;
-    if (state.open) {
-      // Marca só o botão do chat como ativo; todos os outros ficam inativos
-      buttons.forEach(btn => btn.classList.toggle('is-active', btn === chatButton));
-    } else {
-      // Chat fechado: remove is-active do botão do chat (a nav cuida dos outros)
-      chatButton.classList.remove('is-active');
-    }
+    if (state.open) buttons.forEach(btn => btn.classList.toggle('is-active', btn === chatButton));
+    else chatButton.classList.remove('is-active');
   }
 
   function recalcUnread() {
-    const directUnread = state.conversations.reduce((sum, conv) => sum + Number(conv.unread_count || 0), 0);
-    const groupUnread = state.groups.reduce((sum, group) => sum + Number(group.unread_count || 0), 0);
-    state.unread = directUnread + groupUnread;
+    state.unread = state.conversations.reduce((s, c) => s + Number(c.unread_count||0), 0)
+                 + state.groups.reduce((s, g) => s + Number(g.unread_count||0), 0);
   }
 
   function updateConversationList() {
     const panel = root.querySelector('.fa-chat-panel');
-    const list = root.querySelector('.fa-chat-list');
-    // Sync tab active classes
-    if (panel) {
-      panel.querySelectorAll('[data-chat-tab]').forEach(btn => {
-        btn.classList.toggle('is-active', btn.dataset.chatTab === state.tab);
-      });
-    }
+    const list  = root.querySelector('.fa-chat-list');
+    if (panel) panel.querySelectorAll('[data-chat-tab]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.chatTab===state.tab));
     if (!list || state.current) return;
-    if (state.tab === 'conversations') list.innerHTML = renderConversations();
-    if (state.tab === 'groups') list.innerHTML = renderGroups();
-    if (state.tab === 'friends') list.innerHTML = renderFriends();
+    if (state.tab==='conversations') list.innerHTML = renderConversations();
+    if (state.tab==='groups')        list.innerHTML = renderGroups();
+    if (state.tab==='friends')       list.innerHTML = renderFriends();
     updateLauncherBadge();
   }
 
   function updateMessagesList({ scroll = false } = {}) {
     const list = root.querySelector('[data-chat-messages]');
     if (!list || !state.current) return;
-    state.messages = dedupeMessages(state.messages);
 
-    // Update cache first
+    state.messages = dedupeMessages(state.messages);
     const k = cacheKey();
     if (k) state._msgCache[k] = state.messages.slice();
 
-    // If loading or no messages, full replace is fine (no existing nodes to preserve)
     if (state.loadingMessages || !state.messages.length) {
       list.innerHTML = renderMessagesContent();
       if (scroll) updateScroll();
       return;
     }
 
-    // Show/update inline error banner without touching messages
+    // Error banner
     let errBanner = list.querySelector('.fa-chat-inline-error');
     if (state.error) {
       const errHTML = `<div class="fa-chat-inline-error"><strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button></div>`;
       if (!errBanner) list.insertAdjacentHTML('afterbegin', errHTML);
-      else errBanner.innerHTML = `<strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button>`;
+      else errBanner.innerHTML = `<strong>Erro</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button>`;
     } else {
       errBanner?.remove();
     }
 
-    // Remove empty-state placeholder if messages now exist
     list.querySelector('.fa-chat-empty')?.remove();
     list.querySelector('.fa-chat-message-loading')?.remove();
     removeDuplicateMessageNodes(list);
 
-    // --- Differential append: only insert truly new messages ---
-    // Build a set of IDs already rendered (data-msg-id) and map tmp→real merges
     const renderedIds = new Set();
-    const pendingNodes = new Map(); // tmpId → DOM node
+    const pendingNodes = new Map();
     list.querySelectorAll('[data-msg-id]').forEach(node => {
       const id = node.dataset.msgId;
       renderedIds.add(id);
       if (id.startsWith('tmp-')) pendingNodes.set(id, node);
     });
 
-    // Compute date-separator awareness
     let prevDateLabel = null;
-    // Collect existing date labels
-    list.querySelectorAll('[data-date-sep]').forEach(sep => {
-      // mark existing separators by their label
-    });
-
     const allMsgs = state.messages;
     for (let i = 0; i < allMsgs.length; i++) {
       const msg = allMsgs[i];
       const msgId = String(msg.id);
-      const prevMsg = i > 0 ? allMsgs[i - 1] : null;
-      const nextMsg = i < allMsgs.length - 1 ? allMsgs[i + 1] : null;
+      const prevMsg = i > 0 ? allMsgs[i-1] : null;
+      const nextMsg = i < allMsgs.length-1 ? allMsgs[i+1] : null;
 
-      // --- Date pill separator logic ---
+      // Date separator
       const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString('pt-BR') : null;
       if (msgDate && msgDate !== prevDateLabel) {
         prevDateLabel = msgDate;
-        const sepId = `datesep-${msgDate.replace(/\//g, '-')}`;
+        const sepId = `datesep-${msgDate.replace(/\//g,'-')}`;
         if (!list.querySelector(`[data-date-sep="${CSS.escape(sepId)}"]`)) {
-          const label = formatDatePill(msg.created_at);
-          const sepHTML = `<div class="fa-chat-date-sep" data-date-sep="${esc(sepId)}"><span>${esc(label)}</span></div>`;
-          list.insertAdjacentHTML('beforeend', sepHTML);
+          list.insertAdjacentHTML('beforeend', `<div class="fa-chat-date-sep" data-date-sep="${esc(sepId)}"><span>${esc(formatDatePill(msg.created_at))}</span></div>`);
         }
       }
 
-      // Grouping context for this message
       const isMe = Number(msg.sender_id) === Number(state.me?.id);
-      const sameSenderAsPrev = prevMsg && Number(prevMsg.sender_id) === Number(msg.sender_id) && sameMinute(prevMsg.created_at, msg.created_at);
-      const sameSenderAsNext = nextMsg && Number(nextMsg.sender_id) === Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
-      const isGroupFirst = !sameSenderAsPrev;
-      const isGroupLast = !sameSenderAsNext;
-      const alreadyRendered = renderedIds.has(msgId);
+      const samePrev = prevMsg && Number(prevMsg.sender_id)===Number(msg.sender_id) && sameMinute(prevMsg.created_at, msg.created_at);
+      const sameNext = nextMsg && Number(nextMsg.sender_id)===Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
+      const isGroupFirst = !samePrev;
+      const isGroupLast  = !sameNext;
 
-      // --- Handle tmp→real merge ---
-      if (!alreadyRendered && !msgId.startsWith('tmp-')) {
-        // Check if a pending node exists for this real message (matched by body+sender, or explicit index match)
-        // Find any pending tmp node that was optimistically sent by me with same body
+      // tmp→real merge
+      if (!renderedIds.has(msgId) && !msgId.startsWith('tmp-')) {
         let mergedTmp = null;
         pendingNodes.forEach((node, tmpId) => {
-          // If this real msg replaced a tmp (already swapped in state.messages at sendMessage), node is stale
-          // We detect by checking if a tmp with same content still sits in DOM but not in state
-          const sameBubble = (node.querySelector('.fa-chat-bubble')?.textContent || '').includes(String(msg.body || ''));
+          // Busca no body específico para não capturar o timestamp no textContent
+          const bodyEl = node.querySelector('.fa-chat-bubble-body');
+          const bubbleText = bodyEl ? bodyEl.textContent : (node.querySelector('.fa-chat-bubble')?.textContent||'');
+          const sameBubble = bubbleText.includes(String(msg.body||''));
           const sameSide = node.classList.contains('is-me') === isMe;
-          if (!mergedTmp && sameBubble && sameSide && !state.messages.some(m => m.id === tmpId)) {
+          if (!mergedTmp && sameBubble && sameSide && !state.messages.some(m=>m.id===tmpId)) {
             mergedTmp = { node, tmpId };
           }
         });
         if (mergedTmp) {
-          // Upgrade the tmp node in-place to real message
           const newNode = buildMessageNode(msg, isMe, isGroupFirst, isGroupLast);
           mergedTmp.node.replaceWith(newNode);
           pendingNodes.delete(mergedTmp.tmpId);
@@ -455,58 +649,59 @@
       }
 
       if (renderedIds.has(msgId)) {
-        // Already rendered — update status/grouping classes in-place
         const existingNode = list.querySelector(`[data-msg-id="${CSS.escape(msgId)}"]`);
         if (existingNode) {
-          // Update client_status class
-          existingNode.classList.toggle('is-pending', msg.client_status === 'pending');
-          existingNode.classList.toggle('is-failed', msg.client_status === 'failed');
-          // Update grouping classes
+          existingNode.classList.toggle('is-pending', msg.client_status==='pending');
+          existingNode.classList.toggle('is-failed',  msg.client_status==='failed');
           existingNode.classList.toggle('is-group-first', isGroupFirst);
-          existingNode.classList.toggle('is-group-last', isGroupLast);
+          existingNode.classList.toggle('is-group-last',  isGroupLast);
           existingNode.classList.toggle('is-grouped', !isGroupFirst);
-          // Update avatar visibility (for group-first only)
           const av = existingNode.querySelector('.fa-chat-bubble-av');
           if (av) av.style.visibility = isGroupFirst ? 'visible' : 'hidden';
-          // Update time text
+          // Atualiza tick
+          const tickWrap = existingNode.querySelector('.fa-tick-wrap');
+          if (tickWrap && isMe) {
+            const status = calcTickStatus(msg);
+            if (tickWrap.dataset.tickStatus !== status) {
+              tickWrap.dataset.tickStatus = status;
+              tickWrap.innerHTML = TICK_HTML[status] || '';
+            }
+          }
+          // Atualiza time
           const timeEl = existingNode.querySelector('time');
-          if (timeEl) {
-            const status = msg.client_status === 'pending' ? 'enviando' : msg.client_status === 'failed' ? 'não enviada' : rel(msg.created_at);
-            timeEl.textContent = status + (msg.client_error ? ` — ${msg.client_error}` : '');
-          }
-          // Update failed alert icon
+          if (timeEl) timeEl.textContent = msgTimeText(msg);
+          // Fail alert (fica antes do bubble, dentro do bubble-wrap)
           const alertIcon = existingNode.querySelector('.fa-chat-fail-alert');
-          if (msg.client_status === 'failed' && !alertIcon) {
+          if (msg.client_status==='failed' && !alertIcon) {
             existingNode.querySelector('.fa-chat-bubble-wrap')?.insertAdjacentHTML('afterbegin',
-              `<button class="fa-chat-fail-alert" data-chat-retry="${esc(msgId)}" title="Tentar reenviar">⚠</button>`
-            );
-          } else if (msg.client_status !== 'failed') {
-            alertIcon?.remove();
-          }
+              `<button class="fa-chat-fail-alert" data-chat-retry="${esc(msgId)}" title="Tentar reenviar">⚠</button>`);
+          } else if (msg.client_status!=='failed') alertIcon?.remove();
         }
         continue;
       }
 
-      // New message — append to list
       const newNode = buildMessageNode(msg, isMe, isGroupFirst, isGroupLast);
       newNode.classList.add('is-new');
       list.appendChild(newNode);
       renderedIds.add(msgId);
-
-      // Trigger fade-in animation via rAF (class added one frame later)
       requestAnimationFrame(() => newNode.classList.remove('is-new'));
     }
 
     if (scroll) updateScroll();
   }
 
+  function msgTimeText(msg) {
+    if (msg.client_status === 'pending') return 'enviando...';
+    if (msg.client_status === 'failed')  return `não enviada${msg.client_error ? ` — ${msg.client_error}` : ''}`;
+    return rel(msg.created_at);
+  }
+
   function dedupeMessages(rows) {
     const seen = new Set();
-    return (Array.isArray(rows) ? rows : []).filter(message => {
-      const id = String(message?.id ?? '');
+    return (Array.isArray(rows) ? rows : []).filter(m => {
+      const id = String(m?.id ?? '');
       if (!id || seen.has(id)) return false;
-      seen.add(id);
-      return true;
+      seen.add(id); return true;
     });
   }
 
@@ -520,76 +715,98 @@
     });
   }
 
-  // Helper: are two ISO timestamps in the same minute?
+  function replacePendingWithReal(realMsg) {
+    const list = root.querySelector('[data-chat-messages]');
+    if (!list) return;
+    const isMe = Number(realMsg.sender_id) === Number(state.me?.id);
+    let found = false;
+    list.querySelectorAll('[data-msg-id]').forEach(node => {
+      if (found) return;
+      const id = node.dataset.msgId;
+      if (!id.startsWith('tmp-')) return;
+      // Busca o conteúdo no .fa-chat-bubble-body (novo) ou fallback para bubble inteiro
+      const bodyEl = node.querySelector('.fa-chat-bubble-body');
+      const bubbleText = bodyEl ? bodyEl.textContent : (node.querySelector('.fa-chat-bubble')?.textContent || '');
+      if (bubbleText.includes(String(realMsg.body||'')) && node.classList.contains('is-me') === isMe) {
+        node.dataset.msgId = String(realMsg.id);
+        node.classList.remove('is-pending');
+        const timeEl = node.querySelector('time');
+        if (timeEl) timeEl.textContent = rel(realMsg.created_at);
+        const tickWrap = node.querySelector('.fa-tick-wrap');
+        if (tickWrap && isMe) {
+          const status = calcTickStatus(realMsg);
+          tickWrap.dataset.tickStatus = status;
+          tickWrap.innerHTML = TICK_HTML[status] || '';
+        }
+        // Update state.messages too
+        const idx = state.messages.findIndex(m => m.id === id);
+        if (idx >= 0) {
+          state.messages[idx] = { ...realMsg, username: state.me?.username, minecraft_name: state.me?.minecraft_name };
+          const k = cacheKey();
+          if (k) state._msgCache[k] = state.messages.slice();
+        }
+        found = true;
+      }
+    });
+  }
+
   function sameMinute(a, b) {
     if (!a || !b) return false;
     const da = new Date(a), db = new Date(b);
-    return da.getFullYear() === db.getFullYear() &&
-      da.getMonth() === db.getMonth() &&
-      da.getDate() === db.getDate() &&
-      da.getHours() === db.getHours() &&
-      da.getMinutes() === db.getMinutes();
+    return da.getFullYear()===db.getFullYear() && da.getMonth()===db.getMonth() &&
+           da.getDate()===db.getDate() && da.getHours()===db.getHours() && da.getMinutes()===db.getMinutes();
   }
 
-  // Helper: build a message DOM node (real Element, not just string)
   function buildMessageNode(msg, isMe, isGroupFirst, isGroupLast) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = renderMessage(msg, isGroupFirst, isGroupLast);
     return wrapper.firstElementChild;
   }
 
-  // Helper: date pill label
   function formatDatePill(iso) {
     if (!iso) return '';
     const d = new Date(iso);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(); today.setHours(0,0,0,0);
     const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const diff = Math.floor((today - msgDay) / 86400000);
     if (diff === 0) return 'Hoje';
     if (diff === 1) return 'Ontem';
-    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return d.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'});
   }
 
   function renderInbox() {
     return `
       <div class="fa-chat-tabs" role="tablist">
-        <button class="fa-chat-tab ${state.tab === 'conversations' ? 'is-active' : ''}" type="button" data-chat-tab="conversations">Conversas</button>
-        <button class="fa-chat-tab ${state.tab === 'groups' ? 'is-active' : ''}" type="button" data-chat-tab="groups">Grupos</button>
-        <button class="fa-chat-tab ${state.tab === 'friends' ? 'is-active' : ''}" type="button" data-chat-tab="friends">Amigos</button>
+        <button class="fa-chat-tab ${state.tab==='conversations'?'is-active':''}" type="button" data-chat-tab="conversations">Conversas</button>
+        <button class="fa-chat-tab ${state.tab==='groups'?'is-active':''}" type="button" data-chat-tab="groups">Grupos</button>
+        <button class="fa-chat-tab ${state.tab==='friends'?'is-active':''}" type="button" data-chat-tab="friends">Amigos</button>
       </div>
       <div class="fa-chat-body">
         <div class="fa-chat-search">
-          <input type="search" data-chat-search placeholder="${state.tab === 'friends' ? 'Buscar pessoas' : state.tab === 'groups' ? 'Buscar grupos ou membros' : 'Buscar conversa'}" value="${esc(state.search)}" autocomplete="off">
+          <input type="search" data-chat-search placeholder="${state.tab==='friends'?'Buscar pessoas':state.tab==='groups'?'Buscar grupos':'Buscar conversa'}" value="${esc(state.search)}" autocomplete="off">
         </div>
-        <div class="fa-chat-list">${state.tab === 'friends' ? renderFriends() : state.tab === 'groups' ? renderGroups() : renderConversations()}</div>
+        <div class="fa-chat-list">${state.tab==='friends'?renderFriends():state.tab==='groups'?renderGroups():renderConversations()}</div>
       </div>`;
   }
 
   function renderConversations() {
     const term = state.search.trim().toLowerCase();
-    const rows = state.conversations.filter(conv => {
-      const name = nameOf(conv).toLowerCase();
-      const handle = handleOf(conv).toLowerCase();
-      return !term || name.includes(term) || handle.includes(term);
+    const rows = state.conversations.filter(c => {
+      const n = nameOf(c).toLowerCase(), h = handleOf(c).toLowerCase();
+      return !term || n.includes(term) || h.includes(term);
     });
-
-    if (state.error && !rows.length) return `<div class="fa-chat-error"><strong>Nao foi possivel carregar</strong><small>${esc(state.error)}</small><button class="fa-chat-retry-btn" type="button" data-chat-reload-list>Tentar novamente</button></div>`;
+    if (state.error && !rows.length) return `<div class="fa-chat-error"><strong>Não foi possível carregar</strong><small>${esc(state.error)}</small><button class="fa-chat-retry-btn" type="button" data-chat-reload-list>Tentar novamente</button></div>`;
     if (state.loadingConversations && !rows.length) return loadingRows();
-    if (!rows.length) {
-      return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para comecar.</div>';
-    }
+    if (!rows.length) return '<div class="fa-chat-empty"><strong>Nenhuma conversa ainda</strong>Abra um perfil e use Mensagem para começar.</div>';
     return rows.map(conv => {
       const name = nameOf(conv);
       const preview = conv.last_message_body || (conv.is_friend ? 'Amigos na comunidade' : 'Conversa aberta');
-      const verifiedBadge = conv.is_platform_verified
-        ? `<span class="fa-chat-verified" title="Conta verificada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>`
-        : '';
+      const verified = conv.is_platform_verified ? `<span class="fa-chat-verified" title="Verificado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>` : '';
       return `
-        <button class="fa-chat-row ${conv.unread_count ? 'is-unread' : ''}" type="button" data-chat-conv="${esc(conv.id)}">
-          <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
-          <span class="fa-chat-row-meta"><strong>${esc(name)}${verifiedBadge}</strong><small>${esc(preview)}</small></span>
-          ${conv.unread_count ? `<span class="fa-chat-pill">${esc(conv.unread_count)}</span>` : `<small>${esc(rel(conv.last_message_at || conv.conversation_last_message_at))}</small>`}
+        <button class="fa-chat-row ${conv.unread_count?'is-unread':''}" type="button" data-chat-conv="${esc(conv.id)}">
+          <img src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'">
+          <span class="fa-chat-row-meta"><strong>${esc(name)}${verified}</strong><small>${esc(preview)}</small></span>
+          ${conv.unread_count ? `<span class="fa-chat-pill">${esc(conv.unread_count)}</span>` : `<small>${esc(rel(conv.last_message_at||conv.conversation_last_message_at))}</small>`}
         </button>`;
     }).join('');
   }
@@ -599,57 +816,36 @@
     const source = isSearching ? state.people : state.friends;
     const requestRows = isSearching ? [] : state.requests;
     if (state.loadingFriends && !source.length && !requestRows.length) return loadingRows();
-
-    // Follower requests section (only when not searching)
     const requestHtml = requestRows.length ? `
       <div class="fa-chat-section-head"><strong>Seguidores recentes</strong></div>
-      ${requestRows.map(person => friendRow(person, 'follow-back')).join('')}` : '';
-
-    // Friends / search results section
+      ${requestRows.map(p => friendRow(p,'follow-back')).join('')}` : '';
     const sectionLabel = isSearching ? 'Resultados' : 'Amigos';
     const listHtml = source.length
-      ? source.map(person => {
-          // When searching, show add-friend btn for people not yet friends
-          const kind = isSearching
-            ? (person.is_friend ? 'friend' : 'add')
-            : 'friend';
-          return friendRow(person, kind);
-        }).join('')
+      ? source.map(p => friendRow(p, isSearching ? (p.is_friend?'friend':'add') : 'friend')).join('')
       : (isSearching
-          ? '<div class="fa-chat-empty"><strong>Ninguem encontrado</strong>Tente buscar por usuario ou nome do Minecraft.</div>'
-          : '<div class="fa-chat-empty"><strong>Nenhum amigo ainda</strong>Busque jogadores pelo campo acima para adicionar amigos.</div>');
-
+          ? '<div class="fa-chat-empty"><strong>Ninguém encontrado</strong>Tente buscar por usuário ou nome do Minecraft.</div>'
+          : '<div class="fa-chat-empty"><strong>Nenhum amigo ainda</strong>Busque jogadores pelo campo acima.</div>');
     return `${requestHtml}<div class="fa-chat-section-head"><strong>${sectionLabel}</strong></div>${listHtml}`;
   }
 
   function renderGroups() {
     if (state.groupCreating) return renderGroupCreator();
     const term = state.search.trim().toLowerCase();
-    const rows = state.groups.filter(group => {
-      const name = groupNameOf(group).toLowerCase();
-      const preview = String(group.last_message_body || group.last_sender_name || '').toLowerCase();
-      return !term || name.includes(term) || preview.includes(term);
+    const rows = state.groups.filter(g => {
+      const n = groupNameOf(g).toLowerCase(), p = String(g.last_message_body||g.last_sender_name||'').toLowerCase();
+      return !term || n.includes(term) || p.includes(term);
     });
-    const create = `
-      <button class="fa-chat-new-group" type="button" data-chat-new-group>
-        <span>${icons.plus}</span>
-        <strong>Novo grupo</strong>
-        <small>Converse com varios amigos em um so lugar</small>
-      </button>`;
+    const create = `<button class="fa-chat-new-group" type="button" data-chat-new-group><span>${icons.plus}</span><strong>Novo grupo</strong><small>Converse com vários amigos</small></button>`;
     if (state.loadingGroups && !rows.length) return `${create}${loadingRows()}`;
-    if (!rows.length) {
-      return `${create}<div class="fa-chat-empty"><strong>Nenhum grupo ainda</strong>Crie um grupo com amigos ou seguidores para conversar melhor.</div>`;
-    }
+    if (!rows.length) return `${create}<div class="fa-chat-empty"><strong>Nenhum grupo ainda</strong>Crie um grupo com amigos.</div>`;
     return create + rows.map(group => {
       const name = groupNameOf(group);
-      const preview = group.last_message_body
-        ? `${group.last_sender_name || 'Alguem'}: ${group.last_message_body}`
-        : `${Number(group.member_count || 0)} membros`;
+      const preview = group.last_message_body ? `${group.last_sender_name||'Alguém'}: ${group.last_message_body}` : `${Number(group.member_count||0)} membros`;
       return `
-        <button class="fa-chat-row ${group.unread_count ? 'is-unread' : ''}" type="button" data-chat-group="${esc(group.id)}">
+        <button class="fa-chat-row ${group.unread_count?'is-unread':''}" type="button" data-chat-group="${esc(group.id)}">
           <span class="fa-chat-group-av">${icons.group}</span>
           <span class="fa-chat-row-meta"><strong>${esc(name)}</strong><small>${esc(preview)}</small></span>
-          ${group.unread_count ? `<span class="fa-chat-pill">${esc(group.unread_count)}</span>` : `<small>${esc(rel(group.last_message_at || group.group_last_message_at || group.created_at))}</small>`}
+          ${group.unread_count ? `<span class="fa-chat-pill">${esc(group.unread_count)}</span>` : `<small>${esc(rel(group.last_message_at||group.group_last_message_at||group.created_at))}</small>`}
         </button>`;
     }).join('');
   }
@@ -657,106 +853,78 @@
   function renderGroupCreator() {
     const selected = new Set(state.groupMemberIds.map(String));
     const source = state.search.trim() ? state.people : state.friends;
-    const rows = source.filter(person => !state.me || Number(person.id) !== Number(state.me.id));
+    const rows = source.filter(p => !state.me || Number(p.id)!==Number(state.me.id));
     return `
       <form class="fa-chat-group-maker" data-chat-group-form>
         <div class="fa-chat-maker-head">
           <button class="fa-chat-icon-btn" type="button" data-chat-cancel-group aria-label="Voltar">${icons.back}</button>
-          <div><strong>Novo grupo</strong><small>${selected.size ? `${selected.size} selecionado${selected.size > 1 ? 's' : ''}` : 'Escolha pelo menos uma pessoa'}</small></div>
+          <div><strong>Novo grupo</strong><small>${selected.size ? `${selected.size} selecionado${selected.size>1?'s':''}` : 'Escolha pelo menos uma pessoa'}</small></div>
         </div>
         <input class="fa-chat-group-name" data-chat-group-name maxlength="80" placeholder="Nome do grupo" value="${esc(state.groupName)}" autocomplete="off">
         <div class="fa-chat-selected">${selected.size ? state.groupMemberIds.map(id => {
-          const person = [...state.friends, ...state.people].find(item => String(item.id) === String(id));
-          return `<span>${esc(nameOf(person || { username: `#${id}` }))}</span>`;
-        }).join('') : '<small>Os grupos ajudam a reunir amigos, squads e times sem misturar conversas diretas.</small>'}</div>
+          const p = [...state.friends,...state.people].find(p2=>String(p2.id)===String(id));
+          return `<span>${esc(nameOf(p||{username:`#${id}`}))}</span>`;
+        }).join('') : '<small>Grupos ajudam a reunir amigos, squads e times.</small>'}</div>
         <div class="fa-chat-member-list">
-          ${state.loadingFriends && !rows.length ? loadingRows() : rows.length ? rows.map(person => {
-            const name = nameOf(person);
-            const checked = selected.has(String(person.id));
-            return `
-              <button class="fa-chat-member ${checked ? 'is-selected' : ''}" type="button" data-chat-member-toggle="${esc(person.id)}">
-                <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
-                <span><strong>${esc(name)}</strong><small>@${esc(handleOf(person))}</small></span>
-                <i>${checked ? '✓' : '+'}</i>
-              </button>`;
-          }).join('') : '<div class="fa-chat-empty"><strong>Ninguem encontrado</strong>Busque amigos ou perfis publicos.</div>'}
+          ${state.loadingFriends && !rows.length ? loadingRows() : rows.length ? rows.map(p => {
+            const name = nameOf(p), checked = selected.has(String(p.id));
+            return `<button class="fa-chat-member ${checked?'is-selected':''}" type="button" data-chat-member-toggle="${esc(p.id)}"><img src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'"><span><strong>${esc(name)}</strong><small>@${esc(handleOf(p))}</small></span><i>${checked?'✓':'+'}</i></button>`;
+          }).join('') : '<div class="fa-chat-empty"><strong>Ninguém encontrado</strong>Busque amigos ou perfis públicos.</div>'}
         </div>
-        <button class="fa-chat-create" type="submit" ${state.busy || !state.groupName.trim() || !selected.size ? 'disabled' : ''}>Criar grupo</button>
+        <button class="fa-chat-create" type="submit" ${state.busy||!state.groupName.trim()||!selected.size?'disabled':''}>Criar grupo</button>
       </form>`;
   }
 
-  // kind: 'friend' | 'add' | 'follow-back'
   function friendRow(person, kind) {
     const name = nameOf(person);
-    const meta = person.bio || (person.is_online ? 'Online agora' : `${person.rank || 'Ferro'} - ${Number(person.followers_count || 0).toLocaleString('pt-BR')} seg.`);
-    const verifiedBadge = person.is_platform_verified
-      ? `<span class="fa-chat-verified" title="Conta verificada"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`
-      : '';
-
+    const meta = person.bio || (person.is_online?'Online agora':`${person.rank||'Ferro'} - ${Number(person.followers_count||0).toLocaleString('pt-BR')} seg.`);
+    const verified = person.is_platform_verified ? `<span class="fa-chat-verified" title="Verificado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>` : '';
     let actionHtml = '';
-    if (kind === 'follow-back') {
-      actionHtml = `<span class="fa-chat-pill" data-follow-back>+</span>`;
-    } else if (kind === 'add') {
-      const sent = state._sentRequests && state._sentRequests.has(String(person.id));
-      actionHtml = `
-        <button class="fa-chat-add-btn ${sent ? 'is-sent' : ''}" type="button"
-          data-add-friend="${esc(person.id)}"
-          title="${sent ? 'Solicitação enviada' : 'Adicionar amigo'}"
-          aria-label="${sent ? 'Solicitação enviada' : 'Adicionar amigo'}">
-          ${sent
-            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`
-            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>`
-          }
-        </button>`;
+    if (kind==='follow-back') actionHtml = `<span class="fa-chat-pill" data-follow-back>+</span>`;
+    else if (kind==='add') {
+      const sent = state._sentRequests?.has(String(person.id));
+      actionHtml = `<button class="fa-chat-add-btn ${sent?'is-sent':''}" type="button" data-add-friend="${esc(person.id)}" title="${sent?'Solicitação enviada':'Adicionar amigo'}">${sent?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>`}</button>`;
     }
-
     return `
       <button class="fa-chat-friend" type="button" data-chat-user="${esc(person.id)}" data-chat-name="${esc(name)}">
         <span class="fa-chat-av-wrap">
-          <img src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'">
+          <img src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'">
           ${person.is_online ? '<span class="fa-chat-online-dot"></span>' : ''}
         </span>
-        <span class="fa-chat-friend-meta">
-          <strong>${esc(name)}${verifiedBadge}</strong>
-          <small>${esc(meta)}</small>
-        </span>
+        <span class="fa-chat-friend-meta"><strong>${esc(name)}${verified}</strong><small>${esc(meta)}</small></span>
         ${actionHtml}
       </button>`;
   }
 
   function loadingRows() {
-    return Array.from({ length: 5 }, () => '<div class="fa-chat-skel"><span></span><i></i><b></b></div>').join('');
+    return Array.from({length:5}, ()=>'<div class="fa-chat-skel"><span></span><i></i><b></b></div>').join('');
   }
 
   function renderThread() {
     const conv = state.current;
-    const isGroup = state.currentKind === 'group';
+    const isGroup = state.currentKind==='group';
     const name = isGroup ? groupNameOf(conv) : nameOf(conv);
-    const isOnline = !isGroup && conv.is_online;
+    const isOnline = !isGroup && (conv.is_online || state._peerIsOnline);
     const onlineDot = isOnline ? '<span class="fa-chat-online-dot fa-chat-online-dot--peer"></span>' : '';
-    const verifiedBadgePeer = !isGroup && conv.is_platform_verified
-      ? `<span class="fa-chat-verified" title="Conta verificada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>`
-      : '';
+    const verified = !isGroup && conv.is_platform_verified ? `<span class="fa-chat-verified" title="Verificado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>` : '';
     return `
       <div class="fa-chat-thread">
         <div class="fa-chat-peerbar">
           <button class="fa-chat-icon-btn" type="button" data-chat-back aria-label="Voltar">${icons.back}</button>
           ${isGroup
             ? `<span class="fa-chat-peer-av fa-chat-group-av">${icons.group}</span>`
-            : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${skin(name, 50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'"/>${onlineDot}</span>`
+            : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'"/>${onlineDot}</span>`
           }
-          <div><strong>${esc(name)}${verifiedBadgePeer}</strong><small>${isGroup ? `${Number(conv.member_count || 0)} membros` : `@${esc(handleOf(conv))}${isOnline ? ' · online' : conv.is_friend ? ' · amigo' : ''}`}</small></div>
-          ${isGroup ? '' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Abrir perfil">${icons.user}</button>`}
+          <div><strong>${esc(name)}${verified}</strong><small>${isGroup?`${Number(conv.member_count||0)} membros`:`@${esc(handleOf(conv))}${isOnline?' · online':conv.is_friend?' · amigo':''}`}</small></div>
+          ${isGroup ? '' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Ver perfil">${icons.user}</button>`}
           <button class="fa-chat-icon-btn" type="button" data-chat-close aria-label="Fechar">${icons.close}</button>
         </div>
-        <div class="fa-chat-messages" data-chat-messages>
-          ${renderMessagesContent()}
-        </div>
+        <div class="fa-chat-messages" data-chat-messages>${renderMessagesContent()}</div>
         <div class="fa-chat-compose-wrap">
           <div data-chat-char-counter></div>
           <form class="fa-chat-compose" data-chat-form>
             <div class="fa-chat-compose-pill">
-              <textarea data-chat-input maxlength="500" rows="1" placeholder="Mensagem..." aria-label="Mensagem"></textarea>
+              <textarea data-chat-input maxlength="500" rows="1" placeholder="Mensagem... (↵ para enviar)" aria-label="Mensagem"></textarea>
               <button class="fa-chat-send" type="submit" aria-label="Enviar">${icons.send}</button>
             </div>
           </form>
@@ -766,74 +934,51 @@
 
   function renderMessagesContent() {
     const error = state.error ? `<div class="fa-chat-inline-error"><strong>Erro ao carregar mensagens</strong><span>${esc(state.error)}</span><button type="button" data-chat-reload>Recarregar</button></div>` : '';
-    if (state.loadingMessages) {
-      return `<div class="fa-chat-message-loading"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>Carregando...</span></div>`;
-    }
-    if (state.error && !state.messages.length) {
-      return `${error}<div class="fa-chat-empty"><strong>Historico indisponivel</strong>Use Recarregar ou abra a conversa de novo em alguns segundos.</div>`;
-    }
-    if (!state.messages.length) {
-      return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind === 'group' ? 'As mensagens do grupo ficam aqui.' : 'Mensagens diretas ficam aqui.'}</div>`;
-    }
+    if (state.loadingMessages) return `<div class="fa-chat-message-loading"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>Carregando...</span></div>`;
+    if (state.error && !state.messages.length) return `${error}<div class="fa-chat-empty"><strong>Histórico indisponível</strong>Use Recarregar ou abra a conversa novamente.</div>`;
+    if (!state.messages.length) return `${error}<div class="fa-chat-empty"><strong>Comece a conversa</strong>${state.currentKind==='group'?'As mensagens do grupo ficam aqui.':'Mensagens diretas ficam aqui.'}</div>`;
 
-    // Full render with grouping logic (used on initial load / thread switch)
     let html = error;
     let prevDateLabel = null;
     for (let i = 0; i < state.messages.length; i++) {
       const msg = state.messages[i];
-      const prevMsg = i > 0 ? state.messages[i - 1] : null;
-      const nextMsg = i < state.messages.length - 1 ? state.messages[i + 1] : null;
-      const isMe = Number(msg.sender_id) === Number(state.me?.id);
-      const sameSenderAsPrev = prevMsg && Number(prevMsg.sender_id) === Number(msg.sender_id) && sameMinute(prevMsg.created_at, msg.created_at);
-      const sameSenderAsNext = nextMsg && Number(nextMsg.sender_id) === Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
-      const isGroupFirst = !sameSenderAsPrev;
-      const isGroupLast = !sameSenderAsNext;
+      const prevMsg = i > 0 ? state.messages[i-1] : null;
+      const nextMsg = i < state.messages.length-1 ? state.messages[i+1] : null;
+      const samePrev = prevMsg && Number(prevMsg.sender_id)===Number(msg.sender_id) && sameMinute(prevMsg.created_at, msg.created_at);
+      const sameNext = nextMsg && Number(nextMsg.sender_id)===Number(msg.sender_id) && sameMinute(msg.created_at, nextMsg.created_at);
 
-      // Date separator
       const msgDate = msg.created_at ? new Date(msg.created_at).toLocaleDateString('pt-BR') : null;
       if (msgDate && msgDate !== prevDateLabel) {
         prevDateLabel = msgDate;
-        const sepId = `datesep-${msgDate.replace(/\//g, '-')}`;
-        const label = formatDatePill(msg.created_at);
-        html += `<div class="fa-chat-date-sep" data-date-sep="${esc(sepId)}"><span>${esc(label)}</span></div>`;
+        const sepId = `datesep-${msgDate.replace(/\//g,'-')}`;
+        html += `<div class="fa-chat-date-sep" data-date-sep="${esc(sepId)}"><span>${esc(formatDatePill(msg.created_at))}</span></div>`;
       }
-
-      html += renderMessage(msg, isGroupFirst, isGroupLast);
+      html += renderMessage(msg, !samePrev, !sameNext);
     }
     return html;
   }
 
-  function renderMessage(message, isGroupFirst = true, isGroupLast = true) {
+  function renderMessage(message, isGroupFirst=true, isGroupLast=true) {
     const isMe = Number(message.sender_id) === Number(state.me?.id);
     const sender = message.minecraft_name || message.username || 'Steve';
-    const status = message.client_status === 'pending' ? 'enviando' : message.client_status === 'failed' ? 'não enviada' : rel(message.created_at);
-    const statusText = status + (message.client_error ? ` — ${esc(message.client_error)}` : '');
     const clientClass = message.client_status ? `is-${esc(message.client_status)}` : '';
-    const groupClasses = [
-      isGroupFirst ? 'is-group-first' : 'is-grouped',
-      isGroupLast ? 'is-group-last' : '',
-    ].filter(Boolean).join(' ');
-
-    const failAlert = message.client_status === 'failed'
-      ? `<button class="fa-chat-fail-alert" data-chat-retry="${esc(message.id)}" title="Tentar reenviar">⚠</button>`
-      : '';
-
-    // Avatar: only show on first of group, hidden otherwise (preserves layout)
+    const groupClasses = [isGroupFirst?'is-group-first':'is-grouped', isGroupLast?'is-group-last':''].filter(Boolean).join(' ');
+    const failAlert = message.client_status==='failed' ? `<button class="fa-chat-fail-alert" data-chat-retry="${esc(message.id)}" title="Tentar reenviar">⚠</button>` : '';
     const showAvatar = !isMe;
     const avatarHTML = showAvatar
-      ? `<img class="fa-chat-bubble-av" src="${skin(sender, 50)}" alt="${esc(sender)}" onerror="this.onerror=null;this.src='${skin('Steve', 50)}'" style="visibility:${isGroupFirst ? 'visible' : 'hidden'}">`
+      ? `<img class="fa-chat-bubble-av" src="${skin(sender,50)}" alt="${esc(sender)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'" style="visibility:${isGroupFirst?'visible':'hidden'}">`
       : `<span class="fa-chat-bubble-av-spacer"></span>`;
-
-    // Show name in group chats, only on first of a block
-    const showName = state.currentKind === 'group' && !isMe && isGroupFirst;
+    const showName = state.currentKind==='group' && !isMe && isGroupFirst;
     const nameHTML = showName ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : '';
+    // Tick fica DENTRO da bubble, após o conteúdo, na linha do timestamp (modelo WhatsApp)
+    const tickHTML = isMe ? renderTick(message) : '';
 
     return `
-      <div class="fa-chat-bubble-row ${isMe ? 'is-me' : ''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
+      <div class="fa-chat-bubble-row ${isMe?'is-me':''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
         ${!isMe ? avatarHTML : ''}
         <div class="fa-chat-bubble-wrap">
           ${failAlert}
-          <div class="fa-chat-bubble ${isGroupFirst ? 'has-tail' : ''}">${nameHTML}${esc(message.body)}<time>${statusText}</time></div>
+          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''}">${nameHTML}<span class="fa-chat-bubble-body">${esc(message.body)}</span><span class="fa-chat-meta-row"><time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
         </div>
         ${isMe ? avatarHTML : ''}
       </div>`;
@@ -846,27 +991,50 @@
     });
   }
 
-  // [FIX] Auto-resize textarea height as user types
-  function attachComposeAutoResize() {
+  // ── Compose: auto-resize + Enter/Shift+Enter ──────────────────────────────────
+  function attachComposeHandlers() {
     const textarea = root.querySelector('[data-chat-input]');
     if (!textarea) return;
+
+    // Auto-resize
     textarea.addEventListener('input', function () {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 110) + 'px';
     });
+
+    // Enter envia / Shift+Enter = nova linha
+    textarea.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const form = this.closest('[data-chat-form]');
+        if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+    });
+
+    // Char counter
+    textarea.addEventListener('input', function () {
+      const counter = root.querySelector('[data-chat-char-counter]');
+      if (!counter) return;
+      const remaining = 500 - this.value.length;
+      const show = this.value.length > 440;
+      counter.textContent = show ? `${remaining} restantes` : '';
+      counter.style.opacity = show ? '1' : '0';
+      counter.style.color = remaining < 20 ? 'var(--fc-red,#ff5f52)' : 'var(--fc-ink-3,#7a756a)';
+    });
   }
 
   function applyPendingDraft() {
-    const draft = String(state.pendingDraft || '').trim();
+    const draft = String(state.pendingDraft||'').trim();
     if (!draft) return;
     const textarea = root.querySelector('[data-chat-input]');
     if (!textarea) return;
-    textarea.value = draft.slice(0, 500);
+    textarea.value = draft.slice(0,500);
     state.pendingDraft = '';
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.dispatchEvent(new Event('input', {bubbles:true}));
     textarea.focus();
   }
 
+  // ── API calls ─────────────────────────────────────────────────────────────────
   async function ensureMe() {
     if (state.me) return state.me;
     state.me = await api('/api/me');
@@ -876,11 +1044,19 @@
   async function loadUnread() {
     try {
       const data = await api('/api/me/messages/unread-count');
-      state.unread = Number(data.count || 0);
+      state.unread = Number(data.count||0);
       updateLauncherBadge();
-    } catch {
-      state.unread = 0;
-    }
+    } catch { state.unread = 0; }
+  }
+
+  async function loadUnreadSilent() {
+    try {
+      const data = await api('/api/me/messages/unread-count');
+      if (Number(data.count||0) !== state.unread) {
+        state.unread = Number(data.count||0);
+        updateLauncherBadge();
+      }
+    } catch { /* silencioso */ }
   }
 
   async function loadConversations() {
@@ -889,11 +1065,7 @@
       state.conversations = Array.isArray(data.rows) ? data.rows : [];
       recalcUnread();
     } catch (e) {
-      // Só expõe o erro no inbox (sem conversa aberta).
-      // Quando há uma thread aberta o erro de lista não deve poluir o chat.
-      if (!state.current) {
-        state.error = e.message || 'Nao foi possivel carregar.';
-      }
+      if (!state.current) state.error = e.message || 'Não foi possível carregar.';
     }
   }
 
@@ -914,62 +1086,44 @@
         api('/api/me/friends?limit=50'),
         api('/api/me/friend-requests?limit=20'),
       ]);
-      state.friends = Array.isArray(friends.rows) ? friends.rows : [];
-      state.requests = Array.isArray(requests.rows) ? requests.rows : (Array.isArray(requests) ? requests : []);
-    } catch {
-      state.friends = [];
-      state.requests = [];
-    }
+      state.friends  = Array.isArray(friends.rows)   ? friends.rows   : [];
+      state.requests = Array.isArray(requests.rows)  ? requests.rows  : (Array.isArray(requests) ? requests : []);
+    } catch { state.friends = []; state.requests = []; }
   }
 
   async function searchPeople(term) {
-    if (!term.trim()) {
-      state.people = [];
-      return;
-    }
+    if (!term.trim()) { state.people = []; return; }
     try {
-      const params = new URLSearchParams({ search: term.trim(), limit: '12' });
-      const rows = await api(`/api/community/players?${params}`);
+      const rows = await api(`/api/community/players?${new URLSearchParams({search:term.trim(),limit:'12'})}`);
       state.people = Array.isArray(rows) ? rows : [];
-    } catch {
-      state.people = [];
-    }
+    } catch { state.people = []; }
   }
 
+  // ── Abrir / fechar painel ─────────────────────────────────────────────────────
   async function openPanel() {
     state.open = true;
-    // Preserva a tab que o usuário estava vendo; só inicia em 'conversations' na primeira vez
     if (!state.tab) state.tab = 'conversations';
     state.error = '';
     render();
     state.loadingConversations = !state.conversations.length;
     state.loadingGroups = !state.groups.length;
     state.loadingFriends = !state.friends.length;
-    // Only show loading skeletons if lists are empty (first open)
-    if (state.loadingConversations || state.loadingGroups || state.loadingFriends) {
-      updateConversationList();
-    }
+    if (state.loadingConversations||state.loadingGroups||state.loadingFriends) updateConversationList();
+    startPresenceBeacon();
     try {
       await ensureMe();
     } catch (e) {
-      state.loadingConversations = false;
-      state.loadingGroups = false;
-      state.loadingFriends = false;
-      const msg = e.message || '';
-      if (msg.includes('401') || msg.includes('invalid token') || msg.includes('session revoked') || msg.includes('missing token')) {
-        state.error = 'Sessão expirada. Recarregue a página.';
-      } else {
-        state.error = msg || 'Serviço indisponível. Tente novamente.';
-      }
+      state.loadingConversations = state.loadingGroups = state.loadingFriends = false;
+      const msg = e.message||'';
+      state.error = (msg.includes('401')||msg.includes('invalid token')||msg.includes('session revoked'))
+        ? 'Sessão expirada. Recarregue a página.' : msg||'Serviço indisponível.';
       updateConversationList();
       return;
     }
     try {
       await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
     } finally {
-      state.loadingConversations = false;
-      state.loadingGroups = false;
-      state.loadingFriends = false;
+      state.loadingConversations = state.loadingGroups = state.loadingFriends = false;
       updateConversationList();
       updateLauncherBadge();
     }
@@ -977,63 +1131,24 @@
 
   function closePanel() {
     state.open = false;
-    // Reset any keyboard-avoidance inline styles
+    closeSSE();
+    stopPresenceBeacon();
     const panel = root.querySelector('.fa-chat-panel');
-    if (panel) { panel.style.height = ''; panel.style.top = ''; }
+    if (panel) { panel.style.height=''; panel.style.top=''; }
     render();
   }
 
   async function openConversation(conv) {
+    // Fecha SSE anterior se era outra conversa
+    if (_sseKey && _sseKey !== `direct:${conv.id}`) closeSSE();
+
     state.current = conv;
     state.currentKind = 'direct';
+    state._peerLastReadAt = null;
+    state._peerIsOnline = conv.is_online || false;
 
-    // [FIX] Restore cached messages immediately (no blank flash while loading)
     const k = cacheKey();
-    const cached = k ? (state._msgCache[k] || []) : [];
-    state.messages = cached;
-    state.loadingMessages = cached.length === 0; // only show spinner if truly no history
-    state.error = '';
-
-    render();
-    if (cached.length) updateScroll();
-
-    try {
-      let data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80`);
-      let rows = Array.isArray(data.rows) ? data.rows : [];
-      if (!rows.length && conv.last_message_id) {
-        await wait(450);
-        data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80&t=${Date.now()}`);
-        rows = Array.isArray(data.rows) ? data.rows : [];
-      }
-      state.messages = dedupeMessages(rows);
-      state.loadingMessages = false;
-      state.error = ''; // mensagens carregadas com sucesso — limpa qualquer erro anterior
-      // Update cache
-      if (k) state._msgCache[k] = state.messages.slice();
-
-      conv.unread_count = 0;
-      // loadConversations pode falhar sem afetar o chat aberto
-      try {
-        await loadConversations();
-      } catch { /* silencioso — não afeta a thread */ }
-      state.current = state.conversations.find(item => Number(item.id) === Number(conv.id)) || conv;
-
-      updateMessagesList({ scroll: true });
-    } catch (e) {
-      state.messages = cached; // fallback to cache on error
-      state.loadingMessages = false;
-      state.error = (!cached.length && !conv.last_message_id) ? '' : (e.message || 'Erro ao carregar mensagens');
-      updateMessagesList({ scroll: false });
-    }
-  }
-
-  async function openGroupConversation(group) {
-    state.current = group;
-    state.currentKind = 'group';
-
-    // [FIX] Restore cached messages immediately
-    const k = cacheKey();
-    const cached = k ? (state._msgCache[k] || []) : [];
+    const cached = k ? (state._msgCache[k]||[]) : [];
     state.messages = cached;
     state.loadingMessages = cached.length === 0;
     state.error = '';
@@ -1041,60 +1156,100 @@
     render();
     if (cached.length) updateScroll();
 
+    // Abre SSE imediatamente (antes do fetch — para não perder msgs que chegam durante o load)
+    openSSE();
+
+    // Poll de status de delivery em paralelo
+    pollConversationStatus().catch(()=>{});
+
+    try {
+      let data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80`);
+      let rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length && conv.last_message_id) {
+        await wait(350);
+        data = await api(`/api/me/conversations/${encodeURIComponent(conv.id)}/messages?limit=80&t=${Date.now()}`);
+        rows = Array.isArray(data.rows) ? data.rows : [];
+      }
+      state.messages = dedupeMessages(rows);
+      state.loadingMessages = false;
+      state.error = '';
+      if (k) state._msgCache[k] = state.messages.slice();
+      conv.unread_count = 0;
+      try { await loadConversations(); } catch { /* silencioso */ }
+      state.current = state.conversations.find(c=>Number(c.id)===Number(conv.id)) || conv;
+      // Sincroniza peerIsOnline com dados frescos da conversa
+      if (state.current.is_online !== undefined) state._peerIsOnline = state.current.is_online;
+      updateMessagesList({ scroll: true });
+      updateAllMessageTicks();
+    } catch (e) {
+      state.messages = cached;
+      state.loadingMessages = false;
+      state.error = (!cached.length && !conv.last_message_id) ? '' : (e.message||'Erro ao carregar mensagens');
+      updateMessagesList({ scroll: false });
+    }
+  }
+
+  async function openGroupConversation(group) {
+    if (_sseKey && _sseKey !== `group:${group.id}`) closeSSE();
+
+    state.current = group;
+    state.currentKind = 'group';
+    state._peerLastReadAt = null;
+    state._peerIsOnline = false;
+
+    const k = cacheKey();
+    const cached = k ? (state._msgCache[k]||[]) : [];
+    state.messages = cached;
+    state.loadingMessages = cached.length === 0;
+    state.error = '';
+
+    render();
+    if (cached.length) updateScroll();
+    openSSE();
+
     try {
       let data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=80`);
       let rows = Array.isArray(data.rows) ? data.rows : [];
       if (!rows.length && group.last_message_id) {
-        await wait(450);
+        await wait(350);
         data = await api(`/api/me/group-conversations/${encodeURIComponent(group.id)}/messages?limit=80&t=${Date.now()}`);
         rows = Array.isArray(data.rows) ? data.rows : [];
       }
       state.messages = dedupeMessages(rows);
       state.loadingMessages = false;
-      state.error = ''; // mensagens carregadas com sucesso — limpa erro anterior
+      state.error = '';
       if (k) state._msgCache[k] = state.messages.slice();
-
       group.unread_count = 0;
-      // loadGroups pode falhar sem afetar o chat aberto
-      try {
-        await loadGroups();
-      } catch { /* silencioso */ }
-      state.current = state.groups.find(item => Number(item.id) === Number(group.id)) || group;
-
+      try { await loadGroups(); } catch { /* silencioso */ }
+      state.current = state.groups.find(g=>Number(g.id)===Number(group.id)) || group;
       updateMessagesList({ scroll: true });
     } catch (e) {
       state.messages = cached;
       state.loadingMessages = false;
-      state.error = (!cached.length && !group.last_message_id) ? '' : (e.message || 'Erro ao carregar mensagens');
+      state.error = (!cached.length && !group.last_message_id) ? '' : (e.message||'Erro ao carregar mensagens');
       updateMessagesList({ scroll: false });
     }
   }
 
   async function refreshCurrentMessages() {
-    if (!state.current || state.busy) return;
-    const isGroup = state.currentKind === 'group';
-    const data = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages?limit=80`);
+    if (!state.current) return;
+    const isGroup = state.currentKind==='group';
+    const data = await api(`/${isGroup?'api/me/group-conversations':'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages?limit=80`);
     const nextMessages = dedupeMessages(Array.isArray(data.rows) ? data.rows : []);
 
-    // Merge: keep pending/failed tmp messages; replace tmp with real if IDs match by index
-    const pendingMsgs = state.messages.filter(m => String(m.id).startsWith('tmp-'));
-    // Merge server messages into state, preserving pending tmp messages that haven't been confirmed
-    const serverIds = new Set(nextMessages.map(m => String(m.id)));
+    const pendingMsgs = state.messages.filter(m=>String(m.id).startsWith('tmp-'));
+    const serverIds = new Set(nextMessages.map(m=>String(m.id)));
     const merged = [...nextMessages];
-
-    // Re-append any pending/failed tmp messages that server doesn't know about yet
     for (const pending of pendingMsgs) {
-      if (!serverIds.has(String(pending.id))) {
-        merged.push(pending);
-      }
+      if (!serverIds.has(String(pending.id))) merged.push(pending);
     }
 
-    const before = state.messages.filter(m => !String(m.id).startsWith('tmp-')).map(m => m.id).join(',');
-    const after = nextMessages.map(m => m.id).join(',');
+    const before = state.messages.filter(m=>!String(m.id).startsWith('tmp-')).map(m=>m.id).join(',');
+    const after  = nextMessages.map(m=>m.id).join(',');
 
     if (before !== after) {
       const list = root.querySelector('[data-chat-messages]');
-      const wasNearBottom = !list || (list.scrollHeight - list.scrollTop - list.clientHeight) < 80;
+      const wasNearBottom = !list || (list.scrollHeight-list.scrollTop-list.clientHeight) < 80;
       state.messages = merged;
       const k = cacheKey();
       if (k) state._msgCache[k] = merged.slice();
@@ -1103,19 +1258,19 @@
 
     if (isGroup) {
       await loadGroups();
-      state.current = state.groups.find(item => Number(item.id) === Number(state.current.id)) || state.current;
+      state.current = state.groups.find(g=>Number(g.id)===Number(state.current.id))||state.current;
     } else {
       await loadConversations();
-      state.current = state.conversations.find(item => Number(item.id) === Number(state.current.id)) || state.current;
+      state.current = state.conversations.find(c=>Number(c.id)===Number(state.current.id))||state.current;
     }
     updateLauncherBadge();
+    // Atualiza ticks depois de refresh
+    updateAllMessageTicks();
   }
 
   async function openWithUser(user) {
     if (!user?.id) return;
-    const draft = typeof arguments[1] === 'string'
-      ? arguments[1]
-      : String(arguments[1]?.draft || '');
+    const draft = typeof arguments[1]==='string' ? arguments[1] : String(arguments[1]?.draft||'');
     if (draft) state.pendingDraft = draft;
     state.open = true;
     syncBodyChatState();
@@ -1126,10 +1281,7 @@
     render();
     try {
       await ensureMe();
-      const conv = await api('/api/me/conversations', {
-        method: 'POST',
-        body: JSON.stringify({ target_id: user.id }),
-      });
+      const conv = await api('/api/me/conversations', { method:'POST', body:JSON.stringify({target_id:user.id}) });
       await loadConversations();
       await openConversation(conv);
       applyPendingDraft();
@@ -1138,71 +1290,110 @@
     }
   }
 
-  async function sendMessage(textarea) {
+  // ── Envio de mensagem (fila paralela) ─────────────────────────────────────────
+  async function handleFormSubmit(textarea) {
     const body = textarea.value.trim();
-    if (!body || !state.current || state.busy) return;
-    const isGroup = state.currentKind === 'group';
-    const form = textarea.closest('[data-chat-form]');
-    const sendButton = form?.querySelector('.fa-chat-send');
-    const tempId = `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const savedBody = textarea.value;
-    state.busy = true;
-    state.error = '';
+    if (!body || !state.current) return;
+    if (body.length > 500) return;
+
+    // Captura contexto imediatamente (antes do await)
+    const currentConv = state.current;
+    const currentKind = state.currentKind;
+    const currentMe   = state.me;
+
     textarea.value = '';
-    textarea.style.height = 'auto'; // [FIX] reset textarea height after send
-    textarea.disabled = true;
-    if (sendButton) sendButton.disabled = true;
-    state.messages.push({
+    textarea.style.height = 'auto';
+    textarea.focus();
+
+    // Atualiza counter
+    const counter = root.querySelector('[data-chat-char-counter]');
+    if (counter) { counter.textContent = ''; counter.style.opacity='0'; }
+
+    // Enfileira o envio (garante ordem)
+    queueSend({ body, currentConv, currentKind, currentMe });
+  }
+
+  async function _doSendMessage({ body, currentConv, currentKind, currentMe }) {
+    // Verifica se ainda estamos na mesma conversa
+    const stillSameConv = state.current && Number(state.current.id)===Number(currentConv.id) && state.currentKind===currentKind;
+
+    const isGroup = currentKind==='group';
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    const optimistic = {
       id: tempId,
-      sender_id: state.me?.id,
+      sender_id: currentMe?.id,
       body,
       created_at: new Date().toISOString(),
-      username: state.me?.username,
-      minecraft_name: state.me?.minecraft_name,
+      username: currentMe?.username,
+      minecraft_name: currentMe?.minecraft_name,
       client_status: 'pending',
-    });
-    updateMessagesList({ scroll: true });
+    };
+
+    // Insere optimistic na conversa certa
+    if (stillSameConv) {
+      state.messages.push(optimistic);
+      updateMessagesList({ scroll: true });
+    }
+
     try {
-      const msg = await api(`/${isGroup ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({ body }),
-        timeoutMs: 30000,
-      });
+      const msg = await api(
+        `/${isGroup?'api/me/group-conversations':'api/me/conversations'}/${encodeURIComponent(currentConv.id)}/messages`,
+        { method:'POST', body:JSON.stringify({body}), timeoutMs:20000 }
+      );
+
       const saved = {
         ...msg,
-        username: state.me?.username,
-        minecraft_name: state.me?.minecraft_name,
+        username: currentMe?.username,
+        minecraft_name: currentMe?.minecraft_name,
       };
-      const idx = state.messages.findIndex(item => item.id === tempId);
-      if (idx >= 0) state.messages[idx] = saved;
-      else state.messages.push(saved);
-      // Update cache
-      const k = cacheKey();
-      if (k) state._msgCache[k] = state.messages.slice();
 
-      if (isGroup) await loadGroups();
-      else await loadConversations();
-      updateMessagesList({ scroll: true });
-      updateLauncherBadge();
-    } catch (e) {
-      state.error = e.message || 'Mensagem nao enviada.';
-      const failed = state.messages.find(item => item.id === tempId);
-      if (failed) {
-        failed.client_status = 'failed';
-        failed.client_error = state.error;
+      if (stillSameConv && state.current && Number(state.current.id)===Number(currentConv.id)) {
+        const idx = state.messages.findIndex(m=>m.id===tempId);
+        if (idx >= 0) state.messages[idx] = saved;
+        else state.messages.push(saved);
+        const k = `${currentKind}:${currentConv.id}`;
+        if (k) state._msgCache[k] = state.messages.slice();
+
+        // Polling de status imediato pós-envio para detectar entrega rápida
+        setTimeout(() => pollConversationStatus(), 1500);
+
+        updateMessagesList({ scroll: true });
+        updateLauncherBadge();
       }
-      textarea.value = savedBody;
-      updateMessagesList({ scroll: true });
-    } finally {
-      state.busy = false;
-      textarea.disabled = false;
-      if (sendButton) sendButton.disabled = false;
-      textarea.focus();
+
+      // Atualiza lista de conversas em background
+      if (isGroup) loadGroups().catch(()=>{});
+      else loadConversations().catch(()=>{});
+
+    } catch (e) {
+      // Marca como falhou na UI
+      if (stillSameConv) {
+        const failed = state.messages.find(m=>m.id===tempId);
+        if (failed) {
+          failed.client_status = 'failed';
+          failed.client_error = e.message || 'Falhou';
+        }
+        state.error = e.message || 'Mensagem não enviada.';
+        updateMessagesList({ scroll: true });
+      }
     }
   }
 
+  // ── Retry de mensagem falha ───────────────────────────────────────────────────
+  async function retryFailedMessage(tmpId) {
+    const msg = state.messages.find(m=>m.id===tmpId);
+    if (!msg) return;
+    const body = msg.body;
+    // Remove a mensagem falha
+    state.messages = state.messages.filter(m=>m.id!==tmpId);
+    updateMessagesList({ scroll: false });
+    // Re-enfileira
+    queueSend({ body, currentConv: state.current, currentKind: state.currentKind, currentMe: state.me });
+  }
+
   async function followBack(userId) {
-    await api(`/api/me/follows/${encodeURIComponent(userId)}`, { method: 'POST' });
+    await api(`/api/me/follows/${encodeURIComponent(userId)}`, {method:'POST'});
     await loadFriends();
     await loadConversations();
     updateConversationList();
@@ -1210,15 +1401,12 @@
 
   async function createGroup() {
     const name = state.groupName.trim();
-    const memberIds = [...new Set(state.groupMemberIds.map(id => parseInt(id, 10)).filter(Boolean))];
+    const memberIds = [...new Set(state.groupMemberIds.map(id=>parseInt(id,10)).filter(Boolean))];
     if (!name || !memberIds.length || state.busy) return;
     state.busy = true;
     updateConversationList();
     try {
-      const group = await api('/api/me/group-conversations', {
-        method: 'POST',
-        body: JSON.stringify({ name, member_ids: memberIds }),
-      });
+      const group = await api('/api/me/group-conversations', {method:'POST', body:JSON.stringify({name, member_ids:memberIds})});
       state.groupCreating = false;
       state.groupName = '';
       state.groupMemberIds = [];
@@ -1226,52 +1414,57 @@
       await loadGroups();
       await openGroupConversation(group);
     } catch (e) {
-      state.error = e.message || 'Grupo nao criado.';
+      state.error = e.message||'Grupo não criado.';
       updateConversationList();
     } finally {
       state.busy = false;
     }
   }
 
+  // ── Event delegation ──────────────────────────────────────────────────────────
   let searchTimer = null;
-  root.addEventListener('click', async event => {
-    const toggle = event.target.closest('[data-chat-toggle]');
-    const close = event.target.closest('[data-chat-close]');
-    const tab = event.target.closest('[data-chat-tab]');
-    const convBtn = event.target.closest('[data-chat-conv]');
-    const groupBtn = event.target.closest('[data-chat-group]');
-    const userBtn = event.target.closest('[data-chat-user]');
-    const back = event.target.closest('[data-chat-back]');
-    const profile = event.target.closest('[data-chat-profile]');
-    const newGroup = event.target.closest('[data-chat-new-group]');
-    const cancelGroup = event.target.closest('[data-chat-cancel-group]');
-    const memberToggle = event.target.closest('[data-chat-member-toggle]');
-    const reload = event.target.closest('[data-chat-reload]');
-    const reloadList = event.target.closest('[data-chat-reload-list]');
 
-    const addFriend = event.target.closest('[data-add-friend]');
+  root.addEventListener('click', async event => {
+    const toggle      = event.target.closest('[data-chat-toggle]');
+    const close       = event.target.closest('[data-chat-close]');
+    const tab         = event.target.closest('[data-chat-tab]');
+    const convBtn     = event.target.closest('[data-chat-conv]');
+    const groupBtn    = event.target.closest('[data-chat-group]');
+    const userBtn     = event.target.closest('[data-chat-user]');
+    const back        = event.target.closest('[data-chat-back]');
+    const profile     = event.target.closest('[data-chat-profile]');
+    const newGroup    = event.target.closest('[data-chat-new-group]');
+    const cancelGroup = event.target.closest('[data-chat-cancel-group]');
+    const memberToggle= event.target.closest('[data-chat-member-toggle]');
+    const reload      = event.target.closest('[data-chat-reload]');
+    const reloadList  = event.target.closest('[data-chat-reload-list]');
+    const addFriend   = event.target.closest('[data-add-friend]');
+    const retry       = event.target.closest('[data-chat-retry]');
 
     try {
+      if (retry) {
+        event.stopPropagation();
+        await retryFailedMessage(retry.dataset.chatRetry);
+        return;
+      }
       if (addFriend) {
         event.stopPropagation();
         const userId = String(addFriend.dataset.addFriend);
         if (state._sentRequests.has(userId)) return;
         state._sentRequests.add(userId);
-        // Optimistic UI: swap icon to checkmark immediately
         addFriend.classList.add('is-sent');
         addFriend.title = 'Solicitação enviada';
         addFriend.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
         try {
-          await api(`/api/me/follows/${encodeURIComponent(userId)}`, { method: 'POST' });
+          await api(`/api/me/follows/${encodeURIComponent(userId)}`, {method:'POST'});
           await loadFriends();
           updateConversationList();
         } catch (e) {
-          // Revert on failure
           state._sentRequests.delete(userId);
           addFriend.classList.remove('is-sent');
           addFriend.title = 'Adicionar amigo';
           addFriend.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>`;
-          state.error = e.message || 'Nao foi possivel adicionar.';
+          state.error = e.message||'Não foi possível adicionar.';
           updateConversationList();
         }
         return;
@@ -1282,44 +1475,42 @@
         closePanel();
       } else if (reloadList) {
         state.error = '';
-        state.loadingConversations = true;
-        state.loadingGroups = true;
+        state.loadingConversations = state.loadingGroups = true;
         updateConversationList();
         try {
           await ensureMe();
           await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
         } finally {
-          state.loadingConversations = false;
-          state.loadingGroups = false;
+          state.loadingConversations = state.loadingGroups = false;
           updateConversationList();
           updateLauncherBadge();
         }
       } else if (reload) {
         if (!state.current) return;
-        if (state.currentKind === 'group') await openGroupConversation(state.current);
+        if (state.currentKind==='group') await openGroupConversation(state.current);
         else await openConversation(state.current);
       } else if (tab) {
         state.tab = tab.dataset.chatTab;
         state.search = '';
         state.groupCreating = false;
-        if (state.tab === 'friends') state.loadingFriends = !state.friends.length;
-        if (state.tab === 'groups') state.loadingGroups = !state.groups.length;
-        // Partial update: just refresh list
+        if (state.tab==='friends') state.loadingFriends = !state.friends.length;
+        if (state.tab==='groups')  state.loadingGroups  = !state.groups.length;
         updateConversationList();
-        if (state.tab === 'friends') {
+        if (state.tab==='friends') {
+          state.loadingFriends = true;
           await loadFriends();
           state.loadingFriends = false;
         }
-        if (state.tab === 'groups') {
+        if (state.tab==='groups') {
           await Promise.all([loadGroups(), loadFriends()]);
           state.loadingGroups = false;
         }
         updateConversationList();
       } else if (convBtn) {
-        const conv = state.conversations.find(item => Number(item.id) === Number(convBtn.dataset.chatConv));
+        const conv = state.conversations.find(c=>Number(c.id)===Number(convBtn.dataset.chatConv));
         if (conv) await openConversation(conv);
       } else if (groupBtn) {
-        const group = state.groups.find(item => Number(item.id) === Number(groupBtn.dataset.chatGroup));
+        const group = state.groups.find(g=>Number(g.id)===Number(groupBtn.dataset.chatGroup));
         if (group) await openGroupConversation(group);
       } else if (userBtn) {
         const follow = event.target.closest('[data-follow-back]');
@@ -1328,22 +1519,24 @@
           await followBack(userBtn.dataset.chatUser);
           return;
         }
-        await openWithUser({ id: userBtn.dataset.chatUser, minecraft_name: userBtn.dataset.chatName });
+        await openWithUser({id:userBtn.dataset.chatUser, minecraft_name:userBtn.dataset.chatName});
       } else if (back) {
+        closeSSE();
         state.current = null;
         state.currentKind = null;
         state.messages = [];
+        state._peerLastReadAt = null;
+        state._peerIsOnline = false;
         render();
-        // Recarrega a lista da tab que o usuário está vendo (não infere pelo tipo de conversa)
-        if (state.tab === 'groups') await loadGroups();
-        else if (state.tab === 'friends') await loadFriends();
+        if (state.tab==='groups') await loadGroups();
+        else if (state.tab==='friends') await loadFriends();
         else await loadConversations();
         updateConversationList();
       } else if (profile) {
         const target = `id:${profile.dataset.chatProfile}`;
-        closePanel(); // fecha o chat antes de navegar
-        if (typeof window.navigateProfile === 'function') window.navigateProfile(target);
-        else location.href = `profile.html?id=${encodeURIComponent(target)}`;
+        closePanel();
+        if (typeof window.navigateProfile==='function') window.navigateProfile(target);
+        else location.href=`profile.html?id=${encodeURIComponent(target)}`;
       } else if (newGroup) {
         state.groupCreating = true;
         state.search = '';
@@ -1360,12 +1553,12 @@
       } else if (memberToggle) {
         const id = String(memberToggle.dataset.chatMemberToggle);
         state.groupMemberIds = state.groupMemberIds.includes(id)
-          ? state.groupMemberIds.filter(item => item !== id)
+          ? state.groupMemberIds.filter(i=>i!==id)
           : [...state.groupMemberIds, id].slice(0, 19);
         updateConversationList();
       }
     } catch (e) {
-      state.error = e.message || 'Acao nao concluida.';
+      state.error = e.message||'Ação não concluída.';
       updateConversationList();
     }
   });
@@ -1378,27 +1571,15 @@
       if (submit) submit.disabled = state.busy || !state.groupName.trim() || !state.groupMemberIds.length;
       return;
     }
-    const chatInput = event.target.closest('[data-chat-input]');
-    if (chatInput) {
-      const counter = root.querySelector('[data-chat-char-counter]');
-      if (counter) {
-        const remaining = 500 - chatInput.value.length;
-        const show = chatInput.value.length > 440;
-        counter.textContent = show ? `${remaining} restantes` : '';
-        counter.style.opacity = show ? '1' : '0';
-        counter.style.color = remaining < 20 ? 'var(--fc-red,#ff5f52)' : 'var(--fc-ink-3,#7a756a)';
-      }
-      return;
-    }
     const input = event.target.closest('[data-chat-search]');
     if (!input) return;
     state.search = input.value;
     clearTimeout(searchTimer);
     searchTimer = setTimeout(async () => {
-      if (state.tab === 'friends' || (state.tab === 'groups' && state.groupCreating)) await searchPeople(state.search);
+      if (state.tab==='friends' || (state.tab==='groups' && state.groupCreating)) await searchPeople(state.search);
       const list = root.querySelector('.fa-chat-list');
       if (list) {
-        list.innerHTML = state.tab === 'friends' ? renderFriends() : state.tab === 'groups' ? renderGroups() : renderConversations();
+        list.innerHTML = state.tab==='friends' ? renderFriends() : state.tab==='groups' ? renderGroups() : renderConversations();
         updateLauncherBadge();
       }
     }, 180);
@@ -1406,45 +1587,40 @@
 
   root.addEventListener('submit', event => {
     const groupForm = event.target.closest('[data-chat-group-form]');
-    if (groupForm) {
-      event.preventDefault();
-      createGroup();
-      return;
-    }
+    if (groupForm) { event.preventDefault(); createGroup(); return; }
     const form = event.target.closest('[data-chat-form]');
     if (!form) return;
     event.preventDefault();
     const textarea = form.querySelector('[data-chat-input]');
-    sendMessage(textarea);
+    if (textarea) handleFormSubmit(textarea);
   });
 
   document.addEventListener('click', event => {
     const navButton = event.target.closest('.mobile-bottom-nav .mbtn');
     if (!navButton) return;
     syncFabPosition();
-    if (navButton.id === 'mobile-chat-btn') return;
+    if (navButton.id==='mobile-chat-btn') return;
     if (state.open) closePanel();
   }, true);
 
-  // ── Mobile keyboard: scroll to bottom when soft keyboard closes ──
+  // ── Mobile keyboard ────────────────────────────────────────────────────────────
   (function setupKeyboardAvoidance() {
     const vv = window.visualViewport;
     if (!vv) return;
-    let prevHeight = vv.height;
-    let rafId = null;
+    let prevHeight = vv.height, rafId = null;
     vv.addEventListener('resize', () => {
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         const keyboardClosed = vv.height > prevHeight;
         prevHeight = vv.height;
-        if (!keyboardClosed) return;
-        if (!state.open || window.innerWidth > 768) return;
+        if (!keyboardClosed || !state.open || window.innerWidth > 768) return;
         const msgs = root.querySelector('[data-chat-messages]');
         if (msgs) msgs.scrollTop = msgs.scrollHeight;
       });
     }, { passive: true });
   })();
 
+  // ── Public API ────────────────────────────────────────────────────────────────
   window.FAChat = {
     open: openPanel,
     close: closePanel,
@@ -1457,6 +1633,7 @@
     },
   };
 
+  // ── Warm up ───────────────────────────────────────────────────────────────────
   async function warmChat() {
     if (state.warmed) return;
     state.warmed = true;
@@ -1465,9 +1642,7 @@
       await Promise.all([loadConversations(), loadGroups(), loadFriends()]);
       if (state.open && !state.current) updateConversationList();
       else updateLauncherBadge();
-    } catch {
-      state.warmed = false;
-    }
+    } catch { state.warmed = false; }
   }
 
   render();
@@ -1475,41 +1650,61 @@
   window.addEventListener('resize', syncFabPosition, { passive: true });
   if ('MutationObserver' in window) {
     fabObserver = new MutationObserver(syncFabPosition);
-    fabObserver.observe(document.body, { childList: true, subtree: true });
+    fabObserver.observe(document.body, { childList:true, subtree:true });
   }
+
   loadUnread();
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(() => warmChat(), { timeout: 8000 });
-  } else {
-    setTimeout(() => warmChat(), 2000);
-  }
+
+  if ('requestIdleCallback' in window) requestIdleCallback(()=>warmChat(), {timeout:8000});
+  else setTimeout(()=>warmChat(), 2000);
+
+  // ── Poll loop ─────────────────────────────────────────────────────────────────
+  // Com SSE ativo: polling raro apenas como backup de segurança
+  // Sem SSE (fallback): polling mais rápido
   let _chatPollFailures = 0;
   let _lastPoll = 0;
+  let _lastStatusPoll = 0;
+
   setInterval(async () => {
     const now = Date.now();
-    // In active thread: poll every 8s. Background unread: poll every 20s. Inbox open: 10s.
-    const interval = state.current ? 8000 : (!state.open ? 20000 : 10000);
+
+    // Polling de status de delivery a cada 15s quando em thread ativa
+    if (state.current && state.currentKind==='direct' && now - _lastStatusPoll > 15000) {
+      _lastStatusPoll = now;
+      pollConversationStatus().catch(()=>{});
+    }
+
+    // Intervalo adaptativo:
+    // SSE ativo em thread → backup a cada 30s
+    // Fallback (sem SSE) em thread → 3s
+    // Inbox aberto → 10s
+    // Background → 25s
+    const hasSse = Boolean(_sseConn && !_sseFallbackActive);
+    const interval = state.current
+      ? (hasSse ? 30000 : 3000)
+      : (!state.open ? 25000 : 10000);
+
     if (now - _lastPoll < interval) return;
     if (document.hidden && !state.current) return;
     if (_chatPollFailures >= 3) {
-      // Back-off: skip every other tick after 3 failures
       if (_chatPollFailures % 2 !== 0) { _chatPollFailures++; return; }
     }
     _lastPoll = now;
+
     try {
       if (!state.open) {
         await loadUnread();
       } else if (state.current) {
         await refreshCurrentMessages();
-      } else if (state.open) {
-        if (state.tab === 'groups') await loadGroups();
+      } else {
+        if (state.tab==='groups') await loadGroups();
         else await loadConversations();
         updateConversationList();
       }
       _chatPollFailures = 0;
     } catch {
       _chatPollFailures++;
-      // Poll failures are silent — don't overwrite UI error state
     }
-  }, 2000);
+  }, 1500); // tick a cada 1.5s para que o fallback (3s) seja efetivo
+
 })();
