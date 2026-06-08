@@ -1183,7 +1183,11 @@
   }
 
   /* ── Player de áudio customizado ──────────────────────────────────────────────
-     Renderiza HTML; initAudioPlayer() conecta a lógica depois de inserir no DOM. */
+     Renderiza HTML; initAudioPlayer() conecta a lógica depois de inserir no DOM.
+     NOTA: o botão de download usa data-audio-dl (não <a href download>) para evitar
+     que o browser dispare download automático em URLs do Cloudinary sem extensão
+     (application/octet-stream). O click é interceptado em initAudioPlayer() e
+     chama downloadAttachment() manualmente. */
   function renderAudioPlayer(att, isMe) {
     const url = att.url || '';
     const name = att.name || 'Áudio';
@@ -1191,7 +1195,7 @@
     const knownDur = att.duration ? Math.round(Number(att.duration)) : null;
     const durLabel = knownDur ? formatDuration(knownDur) : '0:00';
     const wf = syntheticWaveform(name);
-    const dlUrl = url && !url.startsWith('blob:') ? url : '';
+    const hasDl = Boolean(url && !url.startsWith('blob:'));
     return `
       <div class="fa-chat-audio-player ${isMe ? 'is-me' : ''}" data-audio-player data-audio-src="${esc(url)}" data-audio-name="${esc(name)}">
         <button class="fa-cap-play" type="button" data-audio-play aria-label="Reproduzir áudio">
@@ -1206,13 +1210,24 @@
           </div>
           <div class="fa-cap-foot">
             <span class="fa-cap-time" data-audio-time>0:00</span>
+            <button class="fa-cap-speed" type="button" data-audio-speed aria-label="Velocidade de reprodução" title="Velocidade">1×</button>
             <span class="fa-cap-dur" data-audio-dur>${esc(durLabel)}</span>
-            ${dlUrl ? `<a class="fa-cap-dl" href="${esc(dlUrl)}" download="${esc(name)}" target="_blank" rel="noopener noreferrer" title="Baixar áudio" aria-label="Baixar áudio">
+            ${hasDl ? `<button class="fa-cap-dl" type="button" data-audio-dl="${esc(url)}" data-audio-dl-name="${esc(name)}" title="Baixar áudio" aria-label="Baixar áudio">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M5 16l7 5 7-5"/><path d="M3 20h18"/></svg>
-            </a>` : ''}
+            </button>` : ''}
           </div>
         </div>
       </div>`;
+  }
+
+  // Ciclo de velocidades do player de áudio
+  const AUDIO_SPEEDS = [1, 1.5, 2];
+  function nextSpeed(current) {
+    const idx = AUDIO_SPEEDS.indexOf(current);
+    return AUDIO_SPEEDS[(idx + 1) % AUDIO_SPEEDS.length];
+  }
+  function speedLabel(speed) {
+    return speed === 1 ? '1×' : speed === 1.5 ? '1.5×' : '2×';
   }
 
   /* ── Inicializa player de áudio num nó já no DOM ──────────────────────────── */
@@ -1227,9 +1242,12 @@
     // O Cloudinary raw devolve application/octet-stream sem extensão na URL,
     // e qualquer request automático (preload, src imediato) faz o browser
     // disparar download. O src só é setado ao clicar play.
+    // O botão de download também NÃO usa <a href download> pelo mesmo motivo —
+    // usa data-audio-dl e chama downloadAttachment() manualmente.
     const audio = new Audio();
     audio.preload = 'none';
     let srcLoaded = false;
+    let currentSpeed = 1;
     function ensureSrc() {
       if (!srcLoaded) { srcLoaded = true; audio.src = src; }
     }
@@ -1241,6 +1259,8 @@
     const timeEl   = playerEl.querySelector('[data-audio-time]');
     const durEl    = playerEl.querySelector('[data-audio-dur]');
     const wfEl     = playerEl.querySelector('[data-audio-waveform]');
+    const speedBtn = playerEl.querySelector('[data-audio-speed]');
+    const dlBtn    = playerEl.querySelector('[data-audio-dl]');
 
     function setPlaying(v) {
       playerEl.classList.toggle('is-playing', v);
@@ -1258,6 +1278,30 @@
         spans.forEach((s, i) => s.classList.toggle('played', i < prog));
       }
     }
+
+    // Botão de velocidade
+    if (speedBtn) {
+      speedBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        currentSpeed = nextSpeed(currentSpeed);
+        audio.playbackRate = currentSpeed;
+        speedBtn.textContent = speedLabel(currentSpeed);
+        speedBtn.dataset.speedActive = currentSpeed !== 1 ? 'true' : '';
+        speedBtn.classList.toggle('is-active', currentSpeed !== 1);
+      });
+    }
+
+    // Botão de download — usa downloadAttachment() para evitar href direto
+    // que causaria download automático em URLs Cloudinary sem extensão
+    if (dlBtn) {
+      dlBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const dlUrl  = dlBtn.dataset.audioDl;
+        const dlName = dlBtn.dataset.audioDlName;
+        if (dlUrl) downloadAttachment(dlUrl, dlName);
+      });
+    }
+
     function seekTo(e) {
       if (!audio.duration || !isFinite(audio.duration)) return;
       const rect = trackEl.getBoundingClientRect();

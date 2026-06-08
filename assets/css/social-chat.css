@@ -1329,20 +1329,75 @@
 
 .fa-cap-dur { margin-left: auto; }
 
-/* Botão de download inline */
+/* ── Botão de velocidade 1×/1.5×/2× ── */
+.fa-cap-speed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 20px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: currentColor;
+  font-size: 10px;
+  font-weight: 900;
+  font-family: inherit;
+  letter-spacing: -.01em;
+  cursor: pointer;
+  opacity: .55;
+  transition: opacity .15s, background .15s, transform .1s;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fa-cap-speed:hover {
+  opacity: .85;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.fa-cap-speed:active { transform: scale(.88); }
+
+/* Velocidade ativa (≠ 1×) — destaque dourado */
+.fa-cap-speed.is-active {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 28%, transparent);
+  font-weight: 950;
+}
+
+/* Na bubble de quem enviou (fundo dourado) — contraste extra */
+.fa-chat-bubble-row.is-me .fa-cap-speed {
+  background: rgba(0,0,0,.18);
+}
+.fa-chat-bubble-row.is-me .fa-cap-speed:hover {
+  background: rgba(0,0,0,.28);
+}
+.fa-chat-bubble-row.is-me .fa-cap-speed.is-active {
+  background: rgba(0,0,0,.32);
+}
+
+/* Botão de download inline — agora é <button> em vez de <a> para evitar
+   download automático em URLs Cloudinary sem extensão (octet-stream) */
 .fa-cap-dl {
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
+  padding: 0;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: currentColor;
   opacity: .5;
+  cursor: pointer;
   transition: opacity .13s, background .13s;
   flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .fa-cap-dl:hover { opacity: .88; background: color-mix(in srgb, currentColor 10%, transparent); }
+.fa-cap-dl:active { opacity: 1; transform: scale(.88); }
 .fa-cap-dl svg { width: 13px; height: 13px; }
 
 .fa-chat-pdf-preview {
