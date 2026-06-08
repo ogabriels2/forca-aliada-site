@@ -1074,7 +1074,7 @@ img{display:block}
 .comment-author strong:hover{color:var(--accent)}
 .comment-author .handle{font-size:11px;color:var(--ink-3);font-weight:500}
 .comment-author .ts{font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
-.comment-row p{margin-top:3px;font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.comment-row p{margin-top:4px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
 .deleted{color:var(--ink-3);font-style:italic}
 
 /* ─── Sort bar (barra de classificação dos comentários) ─── */
@@ -1144,6 +1144,25 @@ img{display:block}
 .comment-pa.popping svg{transform:scale(1.45)}
 .comment-pa-replies{color:var(--accent)}
 .comment-pa-replies svg{stroke:var(--accent)}
+.comment-pa-like:hover{background:var(--danger-soft)!important;color:var(--danger)!important}
+.comment-pa-repost:hover,.comment-pa-repost.is-on{background:var(--success-soft)!important;color:var(--success)!important}
+.comment-pa-share:hover{background:var(--success-soft)!important;color:var(--success)!important}
+@keyframes cLikePop{0%{transform:scale(1)}40%{transform:scale(1.5)}70%{transform:scale(.9)}100%{transform:scale(1)}}
+.comment-pa-like.popping svg{animation:cLikePop .32s var(--ease)}
+.comment-share-popover{
+  position:fixed;z-index:9996;width:220px;padding:6px;
+  border:1px solid var(--line);border-radius:10px;
+  background:var(--surface-solid);box-shadow:var(--shadow-lg);
+  animation:fadeIn .12s var(--ease);
+}
+.comment-share-popover button{
+  width:100%;min-height:36px;display:flex;align-items:center;gap:9px;
+  padding:7px 9px;border-radius:7px;color:var(--ink);
+  font-size:12.5px;font-weight:800;text-align:left;cursor:pointer;
+  background:none;border:none;font-family:var(--ff);
+}
+.comment-share-popover button:hover{background:var(--accent-soft);color:var(--accent)}
+.comment-share-popover svg{width:15px;height:15px;flex-shrink:0}
 .comment-replies-badge{
   display:inline-flex;align-items:center;gap:4px;
   font-size:11px;font-weight:800;color:var(--accent);
@@ -6115,6 +6134,93 @@ async function handleCommentLike(btn) {
   }
 }
 
+/* ── Repost de comentário (quote) ── */
+async function repostComment(commentId, commentContent, authorHandle, postId) {
+  if (!state.me) return toast('warning', 'Faça login para repostar', '');
+  const quoteText = `"${String(commentContent || '').trim().slice(0, 200)}" — @${authorHandle}`;
+  const repostSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>`;
+  const back = document.createElement('div');
+  back.className = 'backdrop show';
+  back.innerHTML = `
+    <div class="sheet sheet-sm" role="dialog" aria-modal="true">
+      <div class="sheet-header">
+        <h2>Repostar comentário</h2>
+        <button class="close-btn" data-rqc-cancel aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <div style="padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);margin-bottom:12px;color:var(--ink-2);font-size:13px;line-height:1.55;border-left:3px solid var(--accent-mid)">
+          ${esc(quoteText)}
+        </div>
+        <textarea class="sheet-ta" id="cmt-repost-ta" maxlength="280" rows="3" placeholder="Adicione um comentário (opcional)…"></textarea>
+      </div>
+      <div class="sheet-footer">
+        <button class="btn btn-secondary btn-sm" data-rqc-cancel>Cancelar</button>
+        <button class="btn btn-primary btn-sm" data-rqc-send>${repostSVG} Repostar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+  document.body.classList.add('modal-open');
+  const finish = async (send) => {
+    back.remove();
+    if (!document.querySelectorAll('.backdrop.show').length) document.body.classList.remove('modal-open');
+    if (!send) return;
+    const userComment = back.querySelector('#cmt-repost-ta')?.value.trim() || '';
+    const fullContent = userComment ? `${userComment}\n\n${quoteText}` : quoteText;
+    try {
+      await api(`/api/community/posts/${encodeURIComponent(postId)}/repost`, {
+        method: 'POST',
+        body: JSON.stringify({ content: fullContent.slice(0, 280) }),
+      });
+      loadFeed({ reset: true });
+      toast('success', 'Repost feito!', 'Aparece no seu feed.');
+    } catch (e) {
+      toast('error', 'Repost não concluído', e.message);
+    }
+  };
+  back.addEventListener('click', e => {
+    if (e.target.closest('[data-rqc-cancel]') || e.target === back) finish(false);
+    if (e.target.closest('[data-rqc-send]')) finish(true);
+  });
+  setTimeout(() => back.querySelector('#cmt-repost-ta')?.focus(), 60);
+}
+
+/* ── Share popover de comentário ── */
+let _commentSharePopover = null;
+function closeCommentSharePopover() { _commentSharePopover?.remove(); _commentSharePopover = null; }
+function openCommentSharePopover(commentId, commentContent, btn) {
+  closeCommentSharePopover();
+  const url = `${API_BASE.replace(/\/+$/, '')}/share/comment/${encodeURIComponent(commentId)}`;
+  const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+  const waIcon   = `<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>`;
+  const pop = document.createElement('div');
+  pop.className = 'comment-share-popover';
+  pop.innerHTML = `
+    <button type="button" data-csp-copy>${copyIcon} Copiar link do comentário</button>
+    <button type="button" data-csp-wa>${waIcon} Compartilhar no WhatsApp</button>`;
+  pop.querySelector('[data-csp-copy]').onclick = async () => {
+    closeCommentSharePopover();
+    try { await navigator.clipboard.writeText(url); toast('success', 'Link copiado!', url); }
+    catch { toast('info', 'Copie manualmente', url); }
+  };
+  pop.querySelector('[data-csp-wa]').onclick = () => {
+    closeCommentSharePopover();
+    const text = commentContent ? `"${String(commentContent).slice(0, 100)}"` : '';
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`, '_blank', 'noopener,noreferrer');
+  };
+  document.body.appendChild(pop);
+  _commentSharePopover = pop;
+  const rect = btn.getBoundingClientRect();
+  const popW = 220;
+  let top = rect.bottom + 6, left = rect.left;
+  if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+  if (left < 8) left = 8;
+  if (top + 120 > window.innerHeight - 10) top = rect.top - 120;
+  pop.style.cssText = `top:${top}px;left:${left}px`;
+  setTimeout(() => document.addEventListener('click', closeCommentSharePopover, { once: true }), 50);
+}
+
 
 async function editPostInline(id,card){
   const post=findPost(id);if(!post||!card)return;
@@ -6367,6 +6473,20 @@ function bindThreadEvents(post,id){
     if (!likeBtn) return;
     e.stopPropagation();
     await handleCommentLike(likeBtn);
+  });
+  // ── Repost de comentário ──
+  col.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-comment-repost]');
+    if (!btn) return;
+    e.stopPropagation();
+    await repostComment(btn.dataset.commentRepost, btn.dataset.commentContent, btn.dataset.commentAuthor, id);
+  });
+  // ── Share de comentário ──
+  col.addEventListener('click', e => {
+    const btn = e.target.closest('[data-comment-share]');
+    if (!btn) return;
+    e.stopPropagation();
+    openCommentSharePopover(btn.dataset.commentShare, btn.dataset.commentContent, btn);
   });
   // ── Abrir sub-thread de comentário ──
   col.addEventListener('click', e => {
@@ -6638,34 +6758,55 @@ function commentsHTML(comments, opts = {}) {
   if (!Array.isArray(comments) || !comments.length)
     return `<div class="empty-card"><div class="empty-icon">${IC.comment}</div><h3>Nenhuma resposta ainda</h3><p>Seja o primeiro a responder esta thread.</p></div>`;
 
+  const repostSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>`;
+  const shareSVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+  const trashSVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>`;
+  const flagSVG   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+  const replySVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+
   return `<div class="comments-list">${comments.map(c => {
-    const mc = c.minecraft_name || c.username || 'Jogador';
-    const shown = displayName(c);
-    const del = Boolean(c.is_deleted);
+    const mc        = c.minecraft_name || c.username || 'Jogador';
+    const shown     = displayName(c);
+    const handle    = handleName(c);
+    const del       = Boolean(c.is_deleted);
     const isMyComment = state.me && Number(c.author_id) === Number(state.me.id);
     const canDelete = (isMyComment || canModerate()) && !del;
     const likesCount = Number(c.likes_count || 0);
-    const replyCount = Number(c.reply_count || 0);
-    const likedByMe = Boolean(c.liked_by_me);
-
-    const tools = [
-      canDelete ? `<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentário">${IC.trash}</button>` : '',
-      !isMyComment && !del ? `<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentário">${IC.flag}</button>` : ''
-    ].filter(Boolean).join('');
+    const replyCount = Number(c.reply_count  || 0);
+    const likedByMe  = Boolean(c.liked_by_me);
 
     const heartSVG = `<svg viewBox="0 0 24 24" fill="${likedByMe ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-    const replySVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+
+    const moderationTools = !del ? [
+      canDelete    ? `<button class="btn btn-ghost btn-xs" data-delete-comment="${esc(c.id)}" style="opacity:0.7;padding:0 6px;margin-left:4px" aria-label="Remover comentário">${trashSVG}</button>` : '',
+      !isMyComment ? `<button class="btn btn-ghost btn-xs" data-report-comment="${esc(c.id)}" style="opacity:0.55;padding:0 6px;margin-left:4px" aria-label="Denunciar comentário">${flagSVG}</button>` : '',
+    ].filter(Boolean).join('') : '';
 
     const interactionBar = del ? '' : `
       <div class="comment-meta">
-        <button class="comment-pa${likedByMe ? ' is-on' : ''}" data-comment-like="${esc(c.id)}" data-liked="${likedByMe ? '1' : '0'}" aria-label="${likedByMe ? 'Descurtir' : 'Curtir'} comentário">
+        <button class="comment-pa comment-pa-like${likedByMe ? ' is-on' : ''}"
+          data-comment-like="${esc(c.id)}" data-liked="${likedByMe ? '1' : '0'}"
+          aria-label="${likedByMe ? 'Descurtir' : 'Curtir'} comentário">
           ${heartSVG}<span data-comment-likes-count="${esc(c.id)}">${likesCount > 0 ? num(likesCount) : ''}</span>
         </button>
-        ${!isSubthread ? `<button class="comment-pa comment-pa-replies" data-open-comment-thread="${esc(c.id)}" aria-label="Ver respostas">
-          ${replySVG}<span>${replyCount > 0 ? `${num(replyCount)} ${replyCount === 1 ? 'resposta' : 'respostas'}` : 'Responder'}</span>
-        </button>` : `<button class="comment-pa comment-pa-replies" data-reply-to-comment="${esc(c.id)}" data-reply-name="${esc(shown)}" aria-label="Responder">
-          ${replySVG}<span>Responder</span>
-        </button>`}
+        ${!isSubthread
+          ? `<button class="comment-pa comment-pa-replies" data-open-comment-thread="${esc(c.id)}" aria-label="Ver respostas">
+               ${replySVG}<span>${replyCount > 0 ? `${num(replyCount)} ${replyCount === 1 ? 'resposta' : 'respostas'}` : 'Responder'}</span>
+             </button>`
+          : `<button class="comment-pa comment-pa-replies" data-reply-to-comment="${esc(c.id)}" data-reply-name="${esc(shown)}" aria-label="Responder">
+               ${replySVG}<span>Responder</span>
+             </button>`
+        }
+        <button class="comment-pa comment-pa-repost"
+          data-comment-repost="${esc(c.id)}"
+          data-comment-content="${esc(String(c.content || '').slice(0, 200))}"
+          data-comment-author="${esc(handle)}"
+          aria-label="Repostar comentário">${repostSVG}</button>
+        <button class="comment-pa comment-pa-share"
+          data-comment-share="${esc(c.id)}"
+          data-comment-content="${esc(String(c.content || '').slice(0, 200))}"
+          aria-label="Compartilhar comentário">${shareSVG}</button>
+        ${moderationTools}
       </div>
     `;
 
@@ -6675,9 +6816,8 @@ function commentsHTML(comments, opts = {}) {
         <div class="comment-author">
           <strong class="js-profile" data-mc="${esc(mc)}" data-uid="${esc(c.author_id)}">${esc(shown)}</strong>
           ${verifiedBadgeHTML(c)}
-          <span class="handle">@${esc(handleName(c))}</span>
+          <span class="handle">@${esc(handle)}</span>
           <span class="ts">· ${esc(time(c.created_at))}</span>
-          ${tools}
         </div>
         <p class="${del ? 'deleted' : ''}">${del ? esc(c.content) : mentionHTML(c.content)}</p>
         ${interactionBar}
@@ -7741,6 +7881,10 @@ function showSearchRoute(query){
 
 /* ======================= EVENT DELEGATION ======================= */
 function bindEvents(){
+  // Fecha share popover de comentário ao clicar fora
+  document.addEventListener('click', e => {
+    if (_commentSharePopover && !_commentSharePopover.contains(e.target)) closeCommentSharePopover();
+  });
   // Intercepta links [data-spa-home] para navegar via SPA sem recarregar a página
   document.querySelectorAll('[data-spa-home]').forEach(el=>{
     el.addEventListener('click',e=>{
@@ -8670,28 +8814,6 @@ async function boot(){
   startPollSync();
 }
 boot();
-
-/* ── Expose internals para scripts externos (community_comments_fix.js) ── */
-window.state            = state;
-window.api              = api;
-window.esc              = esc;
-window.num              = num;
-window.time             = time;
-window.toast            = toast;
-window.displayName      = displayName;
-window.handleName       = handleName;
-window.avatar           = avatar;
-window.fallbackAvatar   = fallbackAvatar;
-window.mentionHTML      = mentionHTML;
-window.canModerate      = canModerate;
-window.verifiedBadgeHTML= verifiedBadgeHTML;
-window.commentsHTML     = commentsHTML;
-window.loadFeed         = loadFeed;
-window.showRouteUI      = showRouteUI;
-window.navigatePost     = navigatePost;
-window.buildSubthreadRepliesHTML = buildSubthreadRepliesHTML;
-window.bindSubthreadEvents       = bindSubthreadEvents;
-window.IC               = IC;
 </script>
 
 <script src="assets/js/social-chat.js?v=chat7-20260608"></script>
