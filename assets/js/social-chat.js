@@ -1,7 +1,7 @@
 /**
  * Força Aliada — Chat Direto  (social-chat.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION: chat11-20260608
+ * VERSION: chat12-20260608
  *
  * NOVIDADES vs chat7:
  *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 (function () {
-  window._faChatScriptVersion = 'chat11-20260608';
+  window._faChatScriptVersion = 'chat12-20260608';
   if (window.FAChat) return;
 
   // ── Storage seguro ────────────────────────────────────────────────────────────
@@ -1473,6 +1473,13 @@
       </div>`).join('')}</div>`;
   }
 
+  function isInternalSocialLinkOnly(body = '') {
+    const text = String(body || '').trim();
+    const urls = messageUrls(text);
+    if (urls.length !== 1 || !socialTargetFromUrl(urls[0])) return false;
+    return text.replace(urls[0], '').trim() === '';
+  }
+
   function socialPreviewAuthor(row = {}) {
     return row.display_name || row.minecraft_name || row.username || 'Jogador';
   }
@@ -1495,7 +1502,7 @@
     const author = socialPreviewAuthor(post);
     const media = (Array.isArray(post.media_urls) ? post.media_urls : []).find(Boolean);
     return `
-      <button class="fa-chat-social-card" type="button" data-chat-open-post="${esc(post.id || '')}">
+      <button class="fa-chat-social-card ${media ? 'has-media' : 'no-media'}" type="button" data-chat-open-post="${esc(post.id || '')}">
         ${media ? `<img class="fa-chat-social-card-cover" src="${esc(media)}" alt="" loading="lazy">` : ''}
         <span class="fa-chat-social-card-main">
           <span class="fa-chat-social-card-brand">Forca Aliada · postagem</span>
@@ -1625,14 +1632,16 @@
     // Tick fica DENTRO da bubble, após o conteúdo, na linha do timestamp (modelo WhatsApp)
     const tickHTML = isMe ? renderTick(message) : '';
     const attachmentsHTML = renderMessageAttachments(messageAttachments(message), isMe);
-    const bodyHTML = message.body ? `<span class="fa-chat-bubble-body">${renderMessageBody(message.body)}</span>${renderInternalSocialPreviews(message.body)}` : '';
+    const previewHTML = message.body ? renderInternalSocialPreviews(message.body) : '';
+    const socialOnly = Boolean(previewHTML && isInternalSocialLinkOnly(message.body));
+    const bodyHTML = message.body ? `${socialOnly ? '' : `<span class="fa-chat-bubble-body">${renderMessageBody(message.body)}</span>`}${previewHTML}` : '';
 
     return `
       <div class="fa-chat-bubble-row ${isMe?'is-me':''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
         ${!isMe ? avatarHTML : ''}
         <div class="fa-chat-bubble-wrap">
           ${failAlert}
-          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''}">${nameHTML}${attachmentsHTML}${bodyHTML}<span class="fa-chat-meta-row"><time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
+          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''} ${socialOnly?'is-social-only':''}">${nameHTML}${attachmentsHTML}${bodyHTML}<span class="fa-chat-meta-row"><time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
         </div>
         ${isMe ? avatarHTML : ''}
       </div>`;
@@ -2421,6 +2430,18 @@
     }
   }
 
+  async function openWithGroup(group) {
+    if (!group?.id) return;
+    state.open = true;
+    syncBodyChatState();
+    state.error = '';
+    render();
+    await ensureMe();
+    await openGroupConversation(group);
+    loadGroups().catch(() => {});
+    return group;
+  }
+
   // ── Envio de mensagem (fila paralela) ─────────────────────────────────────────
   async function handleFormSubmit(textarea) {
     if (state.recording.active && state.recording.locked) {
@@ -2908,6 +2929,7 @@
     open: openPanel,
     close: closePanel,
     openWithUser,
+    openGroup: openWithGroup,
     shareWithUser: async (user, text) => openWithUser(user, { draft: text, sendNow: true }),
     refresh: async () => {
       await Promise.all([loadUnread(), loadConversations(), loadGroups(), loadFriends()]);

@@ -1613,9 +1613,11 @@
 .fa-chat-social-preview {
   width: min(310px, 72vw);
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border: 1px solid rgba(201,168,76,.68);
   border-radius: 12px;
-  background: color-mix(in srgb, currentColor 6%, transparent);
+  background: #070706;
+  color: #f0ede6;
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
 }
 
 .fa-chat-social-preview.is-loading {
@@ -1652,6 +1654,10 @@
   text-align: left;
 }
 
+.fa-chat-social-card.no-media {
+  grid-template-columns: minmax(0,1fr);
+}
+
 .fa-chat-social-card--comment,
 .fa-chat-social-card.is-unavailable {
   grid-template-columns: minmax(0,1fr);
@@ -1665,6 +1671,7 @@
   min-height: 116px;
   object-fit: cover;
   background: rgba(0,0,0,.16);
+  border-right: 1px solid rgba(201,168,76,.34);
 }
 
 .fa-chat-social-card-main {
@@ -1681,15 +1688,6 @@
   font-weight: 950;
   letter-spacing: .08em;
   text-transform: uppercase;
-}
-
-.fa-chat-bubble-row.is-me .fa-chat-social-preview {
-  border-color: rgba(0,0,0,.18);
-  background: rgba(255,255,255,.12);
-}
-
-.fa-chat-bubble-row.is-me .fa-chat-social-card-brand {
-  color: rgba(0,0,0,.72);
 }
 
 .fa-chat-social-card-author {
@@ -1751,7 +1749,29 @@
 }
 
 .fa-chat-social-card:hover {
-  background: color-mix(in srgb, currentColor 7%, transparent);
+  background: rgba(201,168,76,.08);
+}
+
+.fa-chat-bubble.is-social-only,
+.fa-chat-bubble-row.is-me .fa-chat-bubble.is-social-only {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--fc-ink-2);
+  box-shadow: none;
+}
+
+.fa-chat-bubble.is-social-only .fa-chat-social-previews {
+  margin-top: 0;
+}
+
+.fa-chat-bubble.is-social-only .fa-chat-meta-row {
+  float: none;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 3px;
+  padding: 0 2px;
 }
 
 .fa-chat-attach-menu-btn {
@@ -2582,6 +2602,7 @@ body.fa-chat-viewer-open {
   }
 
   #fa-chat-root .fa-chat-social-card--comment,
+  #fa-chat-root .fa-chat-social-card.no-media,
   #fa-chat-root .fa-chat-social-card.is-unavailable {
     grid-template-columns: minmax(0,1fr);
   }
