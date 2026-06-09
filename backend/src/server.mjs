@@ -45,6 +45,7 @@ import { registerCommentThreadFix } from './server_comment_thread_fix.mjs';
 import {
   registerChatRealtime,
   notifyNewMessage,
+  notifyMessageUpdate,
   notifyRead,
 } from './server_chat_realtime.mjs';
 
@@ -1278,6 +1279,17 @@ UPDATE direct_messages SET attachments = '[]'::jsonb WHERE attachments IS NULL;
 ALTER TABLE direct_messages ALTER COLUMN attachments SET DEFAULT '[]'::jsonb;
 ALTER TABLE direct_messages ALTER COLUMN attachments SET NOT NULL;
 ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS client_ref VARCHAR(80);
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT REFERENCES direct_messages(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_direct_messages_reply ON direct_messages(reply_to_message_id);
+
+CREATE TABLE IF NOT EXISTS direct_message_reactions (
+  message_id BIGINT NOT NULL REFERENCES direct_messages(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji VARCHAR(16) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (message_id, user_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_direct_message_reactions_message ON direct_message_reactions(message_id);
 
 CREATE TABLE IF NOT EXISTS direct_conversation_reads (
   conversation_id BIGINT NOT NULL REFERENCES direct_conversations(id) ON DELETE CASCADE,
@@ -1326,6 +1338,34 @@ UPDATE chat_group_messages SET attachments = '[]'::jsonb WHERE attachments IS NU
 ALTER TABLE chat_group_messages ALTER COLUMN attachments SET DEFAULT '[]'::jsonb;
 ALTER TABLE chat_group_messages ALTER COLUMN attachments SET NOT NULL;
 ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS client_ref VARCHAR(80);
+ALTER TABLE chat_group_messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT REFERENCES chat_group_messages(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_group_messages_reply ON chat_group_messages(reply_to_message_id);
+
+CREATE TABLE IF NOT EXISTS group_message_reactions (
+  message_id BIGINT NOT NULL REFERENCES chat_group_messages(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji VARCHAR(16) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (message_id, user_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_group_message_reactions_message ON group_message_reactions(message_id);
+
+CREATE TABLE IF NOT EXISTS scheduled_posts (
+  id BIGSERIAL PRIMARY KEY,
+  author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  content TEXT NOT NULL DEFAULT '',
+  media_urls TEXT[] NOT NULL DEFAULT '{}'::text[],
+  poll_options JSONB NOT NULL DEFAULT '[]'::jsonb,
+  poll_duration_hours INTEGER NOT NULL DEFAULT 24,
+  publish_at TIMESTAMPTZ NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','publishing','published','cancelled','failed')),
+  published_post_id INTEGER REFERENCES user_posts(id) ON DELETE SET NULL,
+  failure_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_scheduled_posts_due ON scheduled_posts(status, publish_at);
 `;
 await pool.query(featureSchemaSql);
   await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
@@ -1440,11 +1480,16 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
   'repost',
   'friend_joined',
   'moderation_warn',
+  'comment_like',
+  'comment_reply',
+  'message_reaction',
+  'scheduled_post_published',
 ]);
 
 const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
 const REPORT_REASONS = new Set(['spam', 'hate_speech', 'harassment', 'inappropriate', 'misinformation', 'other']);
 const AFFILIATION_SCOPES = new Set(['post']);
+const CHAT_REACTIONS = new Set(['❤️', '👍', '😂', '😮', '😢', '🔥', '👏']);
 
 function isPrivileged(role) {
   return ['full', 'owner'].includes(role);
@@ -5208,8 +5253,8 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 40, 1, 80);
   const beforeId = req.query.before ? parseInt(req.query.before, 10) : null;
   if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
-  const params = [conversationId, limit];
-  const cursorClause = beforeId ? 'AND dm.id < $3' : '';
+  const params = [conversationId, req.user.sub, limit];
+  const cursorClause = beforeId ? 'AND dm.id < $4' : '';
   if (beforeId) params.push(beforeId);
 
   try {
@@ -5226,14 +5271,40 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
              CASE WHEN dm.is_deleted THEN '[mensagem removida]' ELSE dm.body END AS body,
              CASE WHEN dm.is_deleted THEN '[]'::jsonb ELSE COALESCE(dm.attachments, '[]'::jsonb) END AS attachments,
              dm.client_ref,
+             dm.reply_to_message_id,
              dm.is_deleted, dm.created_at, dm.edited_at,
-             u.username, u.minecraft_name, u.photo_url
+             u.username, u.minecraft_name, u.photo_url,
+             CASE WHEN reply.id IS NULL THEN NULL ELSE jsonb_build_object(
+               'id', reply.id,
+               'sender_id', reply.sender_id,
+               'body', CASE WHEN reply.is_deleted THEN '[mensagem removida]' ELSE reply.body END,
+               'sender_name', COALESCE(reply_sender.minecraft_name, reply_sender.username, 'Jogador'),
+               'is_deleted', reply.is_deleted
+             ) END AS reply_to,
+             COALESCE(reactions.items, '[]'::jsonb) AS reactions,
+             COALESCE(my_reactions.items, '[]'::jsonb) AS my_reactions
       FROM direct_messages dm
       JOIN users u ON u.id = dm.sender_id
+      LEFT JOIN direct_messages reply ON reply.id = dm.reply_to_message_id
+      LEFT JOIN users reply_sender ON reply_sender.id = reply.sender_id
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object('emoji', grouped.emoji, 'count', grouped.total) ORDER BY grouped.latest_at) AS items
+        FROM (
+          SELECT emoji, COUNT(*)::int AS total, MAX(created_at) AS latest_at
+          FROM direct_message_reactions
+          WHERE message_id = dm.id
+          GROUP BY emoji
+        ) grouped
+      ) reactions ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(emoji ORDER BY created_at) AS items
+        FROM direct_message_reactions
+        WHERE message_id = dm.id AND user_id = $2
+      ) my_reactions ON TRUE
       WHERE dm.conversation_id = $1
         ${cursorClause}
       ORDER BY dm.id DESC
-      LIMIT $2
+      LIMIT $3
     `, params);
 
     const ordered = rows.reverse();
@@ -5261,6 +5332,7 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
   const rawBody = sanitizeText(req.body?.body || req.body?.content || '');
   const attachments = normalizeChatAttachments(req.body?.attachments);
   const clientRef = normalizeClientRef(req.body?.client_ref);
+  const replyToMessageId = req.body?.reply_to_message_id ? parseInt(req.body.reply_to_message_id, 10) : null;
   if (!conversationId) return res.status(400).json({ error: 'Conversa invalida' });
   if (rawBody.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
   if (!rawBody && !attachments.length) return res.status(400).json({ error: 'Mensagem invalida. Escreva algo ou envie um anexo.' });
@@ -5268,6 +5340,7 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
 
   const client = await pool.connect();
   let committed = false;
+  let replyPreview = null;
   try {
     await client.query('BEGIN');
     const { rows: convRows } = await client.query(
@@ -5294,12 +5367,30 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'Nao e possivel enviar mensagem nesta conversa.' });
     }
+    if (replyToMessageId) {
+      const { rows: replyRows } = await client.query(
+        `SELECT reply.id, reply.sender_id,
+                CASE WHEN reply.is_deleted THEN '[mensagem removida]' ELSE reply.body END AS body,
+                COALESCE(sender.minecraft_name, sender.username, 'Jogador') AS sender_name,
+                reply.is_deleted
+         FROM direct_messages reply
+         JOIN users sender ON sender.id=reply.sender_id
+         WHERE reply.id=$1 AND reply.conversation_id=$2
+         LIMIT 1`,
+        [replyToMessageId, conversationId],
+      );
+      if (!replyRows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Mensagem respondida nao pertence a esta conversa.' });
+      }
+      replyPreview = replyRows[0];
+    }
 
     const { rows } = await client.query(
-      `INSERT INTO direct_messages(conversation_id, sender_id, body, attachments, client_ref)
-       VALUES($1, $2, $3, $4::jsonb, $5)
-       RETURNING id, conversation_id, sender_id, body, attachments, client_ref, is_deleted, created_at, edited_at`,
-      [conversationId, req.user.sub, body, JSON.stringify(attachments), clientRef],
+      `INSERT INTO direct_messages(conversation_id, sender_id, body, attachments, client_ref, reply_to_message_id)
+       VALUES($1, $2, $3, $4::jsonb, $5, $6)
+       RETURNING id, conversation_id, sender_id, body, attachments, client_ref, reply_to_message_id, is_deleted, created_at, edited_at`,
+      [conversationId, req.user.sub, body, JSON.stringify(attachments), clientRef, replyToMessageId],
     );
     await client.query('UPDATE direct_conversations SET last_message_at=NOW() WHERE id=$1', [conversationId]);
     await client.query(
@@ -5324,11 +5415,12 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
     // ── SSE fan-out: push instantâneo para o peer (e outras abas do remetente)
     notifyNewMessage('direct', conversationId, {
       ...rows[0],
+      reply_to: replyPreview,
       username: req.user.username,
       minecraft_name: req.user.minecraft_name,
     });
 
-    res.status(201).json(rows[0]);
+    res.status(201).json({ ...rows[0], reply_to: replyPreview });
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/me/conversations/:id/messages]', e);
@@ -5472,14 +5564,40 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
              CASE WHEN msg.is_deleted THEN '[mensagem removida]' ELSE msg.body END AS body,
              CASE WHEN msg.is_deleted THEN '[]'::jsonb ELSE COALESCE(msg.attachments, '[]'::jsonb) END AS attachments,
              msg.client_ref,
+             msg.reply_to_message_id,
              msg.created_at, msg.edited_at, msg.is_deleted,
-             u.username, u.minecraft_name, u.photo_url
+             u.username, u.minecraft_name, u.photo_url,
+             CASE WHEN reply.id IS NULL THEN NULL ELSE jsonb_build_object(
+               'id', reply.id,
+               'sender_id', reply.sender_id,
+               'body', CASE WHEN reply.is_deleted THEN '[mensagem removida]' ELSE reply.body END,
+               'sender_name', COALESCE(reply_sender.minecraft_name, reply_sender.username, 'Jogador'),
+               'is_deleted', reply.is_deleted
+             ) END AS reply_to,
+             COALESCE(reactions.items, '[]'::jsonb) AS reactions,
+             COALESCE(my_reactions.items, '[]'::jsonb) AS my_reactions
       FROM chat_group_messages msg
       JOIN users u ON u.id = msg.sender_id
+      LEFT JOIN chat_group_messages reply ON reply.id = msg.reply_to_message_id
+      LEFT JOIN users reply_sender ON reply_sender.id = reply.sender_id
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(jsonb_build_object('emoji', grouped.emoji, 'count', grouped.total) ORDER BY grouped.latest_at) AS items
+        FROM (
+          SELECT emoji, COUNT(*)::int AS total, MAX(created_at) AS latest_at
+          FROM group_message_reactions
+          WHERE message_id = msg.id
+          GROUP BY emoji
+        ) grouped
+      ) reactions ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT jsonb_agg(emoji ORDER BY created_at) AS items
+        FROM group_message_reactions
+        WHERE message_id = msg.id AND user_id = $2
+      ) my_reactions ON TRUE
       WHERE msg.group_id = $1
       ORDER BY msg.id DESC
-      LIMIT $2
-    `, [groupId, limit]);
+      LIMIT $3
+    `, [groupId, req.user.sub, limit]);
     pool.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub])
       .catch(err => console.warn('[group read marker skipped]', err?.message || err));
     res.json({ rows: rows.reverse() });
@@ -5494,11 +5612,13 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
   const rawBody = sanitizeText(req.body?.body || '');
   const attachments = normalizeChatAttachments(req.body?.attachments);
   const clientRef = normalizeClientRef(req.body?.client_ref);
+  const replyToMessageId = req.body?.reply_to_message_id ? parseInt(req.body.reply_to_message_id, 10) : null;
   if (!groupId) return res.status(400).json({ error: 'Grupo invalido' });
   if (rawBody.length > 500) return res.status(400).json({ error: 'Mensagem invalida. Use ate 500 caracteres.' });
   if (!rawBody && !attachments.length) return res.status(400).json({ error: 'Mensagem invalida.' });
   const body = rawBody;
   const client = await pool.connect();
+  let replyPreview = null;
   try {
     await client.query('BEGIN');
     const { rows: allowed } = await client.query('SELECT 1 FROM chat_group_members WHERE group_id=$2 AND user_id=$1 LIMIT 1', [req.user.sub, groupId]);
@@ -5506,11 +5626,29 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Grupo nao encontrado' });
     }
+    if (replyToMessageId) {
+      const { rows: replyRows } = await client.query(
+        `SELECT reply.id, reply.sender_id,
+                CASE WHEN reply.is_deleted THEN '[mensagem removida]' ELSE reply.body END AS body,
+                COALESCE(sender.minecraft_name, sender.username, 'Jogador') AS sender_name,
+                reply.is_deleted
+         FROM chat_group_messages reply
+         JOIN users sender ON sender.id=reply.sender_id
+         WHERE reply.id=$1 AND reply.group_id=$2
+         LIMIT 1`,
+        [replyToMessageId, groupId],
+      );
+      if (!replyRows.length) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Mensagem respondida nao pertence a este grupo.' });
+      }
+      replyPreview = replyRows[0];
+    }
     const { rows } = await client.query(
-      `INSERT INTO chat_group_messages(group_id, sender_id, body, attachments, client_ref)
-       VALUES($1, $2, $3, $4::jsonb, $5)
-       RETURNING id, group_id, sender_id, body, attachments, client_ref, is_deleted, created_at, edited_at`,
-      [groupId, req.user.sub, body, JSON.stringify(attachments), clientRef],
+      `INSERT INTO chat_group_messages(group_id, sender_id, body, attachments, client_ref, reply_to_message_id)
+       VALUES($1, $2, $3, $4::jsonb, $5, $6)
+       RETURNING id, group_id, sender_id, body, attachments, client_ref, reply_to_message_id, is_deleted, created_at, edited_at`,
+      [groupId, req.user.sub, body, JSON.stringify(attachments), clientRef, replyToMessageId],
     );
     await client.query('UPDATE chat_groups SET last_message_at=NOW() WHERE id=$1', [groupId]);
     await client.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
@@ -5518,10 +5656,11 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
     // ── SSE fan-out: push instantâneo para membros do grupo
     notifyNewMessage('group', groupId, {
       ...rows[0],
+      reply_to: replyPreview,
       username: req.user.username,
       minecraft_name: req.user.minecraft_name,
     });
-    res.status(201).json(rows[0]);
+    res.status(201).json({ ...rows[0], reply_to: replyPreview });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/me/group-conversations/:id/messages]', e);
@@ -5530,6 +5669,155 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
     client.release();
   }
 });
+
+async function chatMessageContext(kind, containerId, messageId, viewerId, db = pool) {
+  const isGroup = kind === 'group';
+  const table = isGroup ? 'chat_group_messages' : 'direct_messages';
+  const containerColumn = isGroup ? 'group_id' : 'conversation_id';
+  const membership = isGroup
+    ? 'EXISTS (SELECT 1 FROM chat_group_members gm WHERE gm.group_id=msg.group_id AND gm.user_id=$3)'
+    : 'EXISTS (SELECT 1 FROM direct_conversations dc WHERE dc.id=msg.conversation_id AND (dc.participant_a=$3 OR dc.participant_b=$3))';
+  const { rows } = await db.query(
+    `SELECT msg.id, msg.${containerColumn} AS container_id, msg.sender_id, msg.body, msg.attachments,
+            msg.reply_to_message_id, msg.is_deleted, msg.created_at, msg.edited_at
+     FROM ${table} msg
+     WHERE msg.id=$1 AND msg.${containerColumn}=$2 AND ${membership}
+     LIMIT 1`,
+    [messageId, containerId, viewerId],
+  );
+  return rows[0] || null;
+}
+
+async function chatReactionSummary(kind, messageId, viewerId, db = pool) {
+  const table = kind === 'group' ? 'group_message_reactions' : 'direct_message_reactions';
+  const { rows } = await db.query(
+    `SELECT emoji, COUNT(*)::int AS count, BOOL_OR(user_id=$2) AS reacted_by_me
+     FROM ${table}
+     WHERE message_id=$1
+     GROUP BY emoji
+     ORDER BY MAX(created_at)`,
+    [messageId, viewerId],
+  );
+  return {
+    reactions: rows.map(row => ({ emoji: row.emoji, count: row.count })),
+    my_reactions: rows.filter(row => row.reacted_by_me).map(row => row.emoji),
+  };
+}
+
+function registerChatMessageInteractionRoutes(kind) {
+  const isGroup = kind === 'group';
+  const base = isGroup ? '/api/me/group-conversations/:containerId/messages/:messageId' : '/api/me/conversations/:containerId/messages/:messageId';
+  const table = isGroup ? 'chat_group_messages' : 'direct_messages';
+  const reactionTable = isGroup ? 'group_message_reactions' : 'direct_message_reactions';
+
+  app.patch(base, auth, async (req, res) => {
+    const containerId = parseInt(req.params.containerId, 10);
+    const messageId = parseInt(req.params.messageId, 10);
+    const body = sanitizeText(req.body?.body || '');
+    if (!containerId || !messageId) return res.status(400).json({ error: 'Mensagem invalida.' });
+    if (!body || body.length > 500) return res.status(400).json({ error: 'Use entre 1 e 500 caracteres.' });
+    try {
+      const message = await chatMessageContext(kind, containerId, messageId, req.user.sub);
+      if (!message) return res.status(404).json({ error: 'Mensagem nao encontrada.' });
+      if (Number(message.sender_id) !== Number(req.user.sub)) return res.status(403).json({ error: 'Voce so pode editar suas mensagens.' });
+      if (message.is_deleted) return res.status(409).json({ error: 'Mensagem removida nao pode ser editada.' });
+      const { rows } = await pool.query(
+        `UPDATE ${table} SET body=$1, edited_at=NOW() WHERE id=$2 RETURNING id, body, edited_at, is_deleted`,
+        [body, messageId],
+      );
+      const update = { ...rows[0], sender_id: req.user.sub, [isGroup ? 'group_id' : 'conversation_id']: containerId };
+      notifyMessageUpdate(kind, containerId, update);
+      res.json(update);
+    } catch (e) {
+      console.error(`[PATCH ${base}]`, e);
+      res.status(500).json({ error: 'Erro ao editar mensagem.' });
+    }
+  });
+
+  app.delete(base, auth, async (req, res) => {
+    const containerId = parseInt(req.params.containerId, 10);
+    const messageId = parseInt(req.params.messageId, 10);
+    if (!containerId || !messageId) return res.status(400).json({ error: 'Mensagem invalida.' });
+    try {
+      const message = await chatMessageContext(kind, containerId, messageId, req.user.sub);
+      if (!message) return res.status(404).json({ error: 'Mensagem nao encontrada.' });
+      if (Number(message.sender_id) !== Number(req.user.sub)) return res.status(403).json({ error: 'Voce so pode remover suas mensagens.' });
+      const { rows } = await pool.query(
+        `UPDATE ${table}
+         SET is_deleted=TRUE, deleted_at=NOW(), body='', attachments='[]'::jsonb
+         WHERE id=$1
+         RETURNING id, is_deleted, deleted_at`,
+        [messageId],
+      );
+      const update = {
+        ...rows[0],
+        body: '[mensagem removida]',
+        attachments: [],
+        sender_id: req.user.sub,
+        [isGroup ? 'group_id' : 'conversation_id']: containerId,
+      };
+      notifyMessageUpdate(kind, containerId, update);
+      res.json(update);
+    } catch (e) {
+      console.error(`[DELETE ${base}]`, e);
+      res.status(500).json({ error: 'Erro ao remover mensagem.' });
+    }
+  });
+
+  app.post(`${base}/reactions`, auth, async (req, res) => {
+    const containerId = parseInt(req.params.containerId, 10);
+    const messageId = parseInt(req.params.messageId, 10);
+    const emoji = String(req.body?.emoji || '').trim();
+    if (!containerId || !messageId || !CHAT_REACTIONS.has(emoji)) return res.status(400).json({ error: 'Reacao invalida.' });
+    try {
+      const message = await chatMessageContext(kind, containerId, messageId, req.user.sub);
+      if (!message || message.is_deleted) return res.status(404).json({ error: 'Mensagem nao encontrada.' });
+      await pool.query(
+        `INSERT INTO ${reactionTable}(message_id, user_id, emoji) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`,
+        [messageId, req.user.sub, emoji],
+      );
+      const summary = await chatReactionSummary(kind, messageId, req.user.sub);
+      const update = { id: messageId, sender_id: message.sender_id, ...summary, [isGroup ? 'group_id' : 'conversation_id']: containerId };
+      notifyMessageUpdate(kind, containerId, { ...update, my_reactions: undefined });
+      if (Number(message.sender_id) !== Number(req.user.sub)) {
+        createSocialNotification({
+          recipientId: message.sender_id,
+          actorId: req.user.sub,
+          type: 'message_reaction',
+          entityType: isGroup ? 'group_message' : 'direct_message',
+          entityId: messageId,
+          previewText: `${emoji} ${String(message.body || '').slice(0, 90)}`,
+        }).catch(err => console.warn('[message reaction notification skipped]', err?.message || err));
+      }
+      res.json(update);
+    } catch (e) {
+      console.error(`[POST ${base}/reactions]`, e);
+      res.status(500).json({ error: 'Erro ao reagir a mensagem.' });
+    }
+  });
+
+  app.delete(`${base}/reactions/:emoji`, auth, async (req, res) => {
+    const containerId = parseInt(req.params.containerId, 10);
+    const messageId = parseInt(req.params.messageId, 10);
+    const emoji = String(req.params.emoji || '').trim();
+    if (!containerId || !messageId || !CHAT_REACTIONS.has(emoji)) return res.status(400).json({ error: 'Reacao invalida.' });
+    try {
+      const message = await chatMessageContext(kind, containerId, messageId, req.user.sub);
+      if (!message) return res.status(404).json({ error: 'Mensagem nao encontrada.' });
+      await pool.query(`DELETE FROM ${reactionTable} WHERE message_id=$1 AND user_id=$2 AND emoji=$3`, [messageId, req.user.sub, emoji]);
+      const summary = await chatReactionSummary(kind, messageId, req.user.sub);
+      const update = { id: messageId, sender_id: message.sender_id, ...summary, [isGroup ? 'group_id' : 'conversation_id']: containerId };
+      notifyMessageUpdate(kind, containerId, { ...update, my_reactions: undefined });
+      res.json(update);
+    } catch (e) {
+      console.error(`[DELETE ${base}/reactions/:emoji]`, e);
+      res.status(500).json({ error: 'Erro ao remover reacao.' });
+    }
+  });
+}
+
+registerChatMessageInteractionRoutes('direct');
+registerChatMessageInteractionRoutes('group');
 
 // FEED DE ATIVIDADES (Postagens locais do site)
 // ─────────────────────────────────────────────
@@ -5995,6 +6283,7 @@ app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async
 app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   const content = sanitizeText(req.body?.content || '');
   const mediaUrls = normalizePostMediaUrls(req.body?.media_urls);
+  const requestedPublishAt = req.body?.publish_at ? new Date(req.body.publish_at) : null;
 
   // Poll validation
   const rawPollOptions = req.body?.poll_options;
@@ -6010,11 +6299,27 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   if (hasPoll && pollOptions.length < 2) return res.status(400).json({ error: 'Enquete precisa de pelo menos 2 opcoes.' });
   if (hasPoll && pollDurationHours < 1) return res.status(400).json({ error: 'Duracao invalida.' });
   if (hasPoll && pollOptions.some(o => o.length > 80)) return res.status(400).json({ error: 'Opcao de enquete muito longa (max 80 chars).' });
+  if (requestedPublishAt && Number.isNaN(requestedPublishAt.getTime())) return res.status(400).json({ error: 'Data de agendamento invalida.' });
+  if (requestedPublishAt && requestedPublishAt.getTime() < Date.now() + 30_000) return res.status(400).json({ error: 'Escolha um horario futuro para agendar.' });
+  if (requestedPublishAt && requestedPublishAt.getTime() > Date.now() + 366 * 24 * 3600 * 1000) return res.status(400).json({ error: 'Agende com no maximo um ano de antecedencia.' });
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const publishIdentity = await resolvePublishAuthor(req.user.sub, req.body?.publish_as_user_id, client);
+    if (requestedPublishAt) {
+      const { rows: scheduledRows } = await client.query(
+        `INSERT INTO scheduled_posts(author_id, created_by_user_id, content, media_urls, poll_options, poll_duration_hours, publish_at)
+         VALUES($1,$2,$3,$4::text[],$5::jsonb,$6,$7)
+         RETURNING id, author_id, content, media_urls, poll_options, poll_duration_hours, publish_at, status, created_at`,
+        [publishIdentity.authorId, req.user.sub, content, mediaUrls, JSON.stringify(pollOptions), pollDurationHours, requestedPublishAt],
+      );
+      if (publishIdentity.affiliationId) {
+        await client.query('UPDATE account_affiliations SET last_used_at=NOW(), updated_at=NOW() WHERE id=$1', [publishIdentity.affiliationId]);
+      }
+      await client.query('COMMIT');
+      return res.status(202).json({ scheduled: true, post: scheduledRows[0] });
+    }
     const { rows } = await client.query(
       `INSERT INTO user_posts(author_id, created_by_user_id, content, media_urls)
        VALUES($1, $2, $3, $4::text[])
@@ -6130,6 +6435,165 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
 });
 
 // Buscar o Feed (Geral ou Seguindo) - COM PAGINAÇÃO POR CURSOR (ID)
+app.get('/api/me/scheduled-posts', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT sp.id, sp.author_id, sp.content, sp.media_urls, sp.poll_options, sp.poll_duration_hours,
+              sp.publish_at, sp.status, sp.published_post_id, sp.failure_reason, sp.created_at,
+              u.username, u.minecraft_name, u.photo_url,
+              COALESCE(up.display_name, '') AS display_name,
+              COALESCE(up.avatar_url, '') AS avatar_url
+       FROM scheduled_posts sp
+       JOIN users u ON u.id=sp.author_id
+       LEFT JOIN user_preferences up ON up.user_id=u.id
+       WHERE sp.created_by_user_id=$1
+       ORDER BY CASE WHEN sp.status='scheduled' THEN 0 ELSE 1 END, sp.publish_at ASC
+       LIMIT 100`,
+      [req.user.sub],
+    );
+    res.json({ rows });
+  } catch (e) {
+    console.error('[GET /api/me/scheduled-posts]', e);
+    res.status(500).json({ error: 'Erro ao listar posts agendados.' });
+  }
+});
+
+app.delete('/api/me/scheduled-posts/:id', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Agendamento invalido.' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE scheduled_posts SET status='cancelled', updated_at=NOW()
+       WHERE id=$1 AND created_by_user_id=$2 AND status='scheduled'
+       RETURNING id, status`,
+      [id, req.user.sub],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Agendamento nao encontrado ou ja processado.' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[DELETE /api/me/scheduled-posts/:id]', e);
+    res.status(500).json({ error: 'Erro ao cancelar agendamento.' });
+  }
+});
+
+app.post('/api/me/scheduled-posts/:id/retry', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Agendamento invalido.' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE scheduled_posts
+       SET status='scheduled', failure_reason=NULL, publish_at=GREATEST(publish_at, NOW() + INTERVAL '30 seconds'), updated_at=NOW()
+       WHERE id=$1 AND created_by_user_id=$2 AND status='failed'
+       RETURNING id, status, publish_at`,
+      [id, req.user.sub],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Falha de agendamento nao encontrada.' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('[POST /api/me/scheduled-posts/:id/retry]', e);
+    res.status(500).json({ error: 'Erro ao reagendar post.' });
+  }
+});
+
+let scheduledPostWorkerRunning = false;
+async function publishDueScheduledPosts() {
+  if (scheduledPostWorkerRunning) return;
+  scheduledPostWorkerRunning = true;
+  try {
+    await pool.query(
+      `UPDATE scheduled_posts SET status='scheduled', updated_at=NOW()
+       WHERE status='publishing' AND updated_at < NOW() - INTERVAL '10 minutes'`,
+    );
+    const { rows: due } = await pool.query(
+      `WITH claimed AS (
+         SELECT id FROM scheduled_posts
+         WHERE status='scheduled' AND publish_at <= NOW()
+         ORDER BY publish_at ASC
+         FOR UPDATE SKIP LOCKED
+         LIMIT 12
+       )
+       UPDATE scheduled_posts sp
+       SET status='publishing', updated_at=NOW()
+       FROM claimed
+       WHERE sp.id=claimed.id
+       RETURNING sp.*`,
+    );
+
+    for (const scheduled of due) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const { rows: postRows } = await client.query(
+          `INSERT INTO user_posts(author_id, created_by_user_id, content, media_urls, created_at)
+           VALUES($1,$2,$3,$4::text[],$5)
+           RETURNING id`,
+          [scheduled.author_id, scheduled.created_by_user_id, scheduled.content, scheduled.media_urls || [], scheduled.publish_at],
+        );
+        const postId = postRows[0].id;
+        const options = Array.isArray(scheduled.poll_options) ? scheduled.poll_options.filter(Boolean).slice(0, 4) : [];
+        if (options.length >= 2) {
+          const { rows: pollRows } = await client.query(
+            'INSERT INTO post_polls(post_id, ends_at) VALUES($1, $2) RETURNING id',
+            [postId, new Date(Date.now() + Number(scheduled.poll_duration_hours || 24) * 3600 * 1000)],
+          );
+          for (let index = 0; index < options.length; index++) {
+            await client.query(
+              'INSERT INTO post_poll_options(poll_id, text, sort_order) VALUES($1,$2,$3)',
+              [pollRows[0].id, options[index], index],
+            );
+          }
+        }
+        const mentions = extractMentions(scheduled.content || '');
+        if (mentions.length) {
+          const { rows: mentionedUsers } = await client.query(
+            'SELECT id FROM users WHERE LOWER(username)=ANY($1) OR LOWER(minecraft_name)=ANY($1)',
+            [mentions],
+          );
+          for (const mentioned of mentionedUsers) {
+            if (Number(mentioned.id) === Number(scheduled.author_id)) continue;
+            await client.query(
+              `INSERT INTO content_mentions(content_type, content_id, mentioned_user_id)
+               VALUES('post',$1,$2) ON CONFLICT DO NOTHING`,
+              [postId, mentioned.id],
+            );
+            await optionalTransactionStep(client, 'scheduled post mention notification', () => createSocialNotification({
+              recipientId: mentioned.id,
+              actorId: scheduled.author_id,
+              type: 'mention_post',
+              entityType: 'post',
+              entityId: postId,
+              previewText: scheduled.content,
+            }, client));
+          }
+        }
+        await client.query(
+          `UPDATE scheduled_posts SET status='published', published_post_id=$2, updated_at=NOW() WHERE id=$1`,
+          [scheduled.id, postId],
+        );
+        await client.query(
+          `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text)
+           VALUES($1,NULL,'scheduled_post_published','post',$2,$3)`,
+          [scheduled.created_by_user_id || scheduled.author_id, postId, String(scheduled.content || 'Post agendado publicado').slice(0, 120)],
+        );
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        await pool.query(
+          `UPDATE scheduled_posts SET status='failed', failure_reason=$2, updated_at=NOW() WHERE id=$1`,
+          [scheduled.id, String(e?.message || 'Falha ao publicar').slice(0, 500)],
+        ).catch(() => {});
+        console.error('[scheduled post publish]', e);
+      } finally {
+        client.release();
+      }
+    }
+  } catch (e) {
+    console.error('[scheduled post worker]', e);
+  } finally {
+    scheduledPostWorkerRunning = false;
+  }
+}
+
 app.get('/api/community/posts', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
   const filter = req.query.filter || 'all';
@@ -7319,6 +7783,8 @@ app.get('/api/me/social-notifications', auth, async (req, res) => {
     if (unreadOnly) conditions.push('sn.is_read = FALSE');
     if (type === 'mentions') {
       conditions.push("sn.type IN ('mention_post','mention_comment')");
+    } else if (type === 'interactions') {
+      conditions.push("sn.type IN ('post_like','comment','comment_reply','comment_like','message_reaction','repost')");
     } else if (SOCIAL_NOTIFICATION_TYPES.has(type)) {
       params.push(type);
       conditions.push(`sn.type = $${params.length}`);
@@ -8995,6 +9461,8 @@ const PORT = process.env.PORT || 3000;
 migrate()
 .then(seedAdmin)
 .then(() => {
+  publishDueScheduledPosts().catch(() => {});
+  setInterval(() => publishDueScheduledPosts().catch(() => {}), 30_000).unref?.();
   app.listen(PORT, () => console.log(`✅  API ${DEPLOY_SCHEMA_VERSION} rodando na porta ${PORT}`));
 })
 .catch(e => { console.error('[migrate]', e); process.exit(1); });

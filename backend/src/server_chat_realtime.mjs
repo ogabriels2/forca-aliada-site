@@ -134,6 +134,10 @@ export function emitNewMessage(convKey, message) {
   _sseBus.emit(convKey, { type: 'message', message });
 }
 
+export function emitMessageUpdate(convKey, message) {
+  _sseBus.emit(convKey, { type: 'update', message });
+}
+
 export function emitReadReceipt(convKey, userId, lastReadAt) {
   _sseBus.emit(convKey, { type: 'read', userId, lastReadAt });
 }
@@ -346,6 +350,11 @@ export function registerChatRealtime(app, pool, auth) {
 export function notifyNewMessage(kind, convId, message) {
   const convKey = `${kind}:${convId}`;
   emitNewMessage(convKey, message);
+}
+
+export function notifyMessageUpdate(kind, convId, message) {
+  const convKey = `${kind}:${convId}`;
+  emitMessageUpdate(convKey, message);
 }
 
 export function notifyRead(kind, convId, userId, lastReadAt) {
