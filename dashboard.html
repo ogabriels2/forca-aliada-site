@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Painel da Staff | Força Aliada</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
+<link rel="manifest" href="staff.webmanifest">
+<meta name="theme-color" content="#060c16">
+<meta name="application-name" content="FA Staff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FA Staff">
+<script defer src="assets/js/fa-pwa.js" data-fa-app="staff"></script><title>FA Staff | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
 <script>
@@ -216,6 +224,7 @@ header {
   cursor: pointer;
   transition: opacity var(--t1) !important;
   text-decoration: none;
+  transform: translateX(calc(-1 * var(--sb-w)));
 }
 .brand-link:hover { opacity: 0.88 !important; }
 
@@ -1065,6 +1074,8 @@ footer { display: none; }
 #server-overview.dashboard-card-active > * { min-width: 0; }
 #server-overview.dashboard-card-active > h3:first-child { grid-column: 1 / -1 !important; margin-bottom: -4px !important; }
 #server-overview.dashboard-card-active > #app-source-indicator { grid-column: 1 / -1 !important; margin: 0 !important; }
+#server-overview.dashboard-card-active > .context-shortcuts,
+#server-overview.dashboard-card-active > #server-period-panel { grid-column: 1 / -1 !important; }
 #server-overview.dashboard-card-active > .dashboard-grid,
 #server-overview.dashboard-card-active > .server-health-grid,
 #server-overview.dashboard-card-active > div:nth-of-type(3),
@@ -1272,6 +1283,7 @@ footer { display: none; }
   body::after { display: none; }
   header { left: 0 !important; position: sticky !important; top: 0 !important; justify-content: space-between !important; }
   header > .brand-link { position: static !important; width: auto !important; padding: 0 12px !important; border-right: 0 !important; color: var(--ink) !important; }
+  header > .brand-link { transform:none !important; }
   header > .brand-link .logo-text { color: var(--ink) !important; display: block !important; font-size: 15px !important; }
   header > .brand-link::after { display: none !important; }
   .main-content { height: auto; padding-top: 0 !important; overflow: visible; }
@@ -1294,6 +1306,87 @@ footer { display: none; }
   .dashboard-grid { grid-template-columns: 1fr 1fr !important; }
   .portal-page-head { padding: 14px 16px !important; }
   .dashboard-card-active { padding: 15px !important; }
+}
+
+/* Operational polish */
+.header-actions { display:flex; align-items:center; gap:6px; }
+.global-server-pill {
+  min-height:38px; display:inline-flex; align-items:center; gap:7px; padding:6px 10px;
+  border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--ink-2);
+  box-shadow:var(--sh-xs); font:700 11px var(--font); cursor:pointer; transition:all var(--t1) var(--ease);
+}
+.global-server-pill:hover { color:var(--blue); border-color:rgba(23,97,240,.28); transform:translateY(-1px); }
+.global-server-pill i { width:7px; height:7px; border-radius:50%; background:var(--warning); box-shadow:0 0 0 4px var(--warning-bg); }
+.global-server-pill.online i { background:var(--success); box-shadow:0 0 0 4px var(--success-bg); }
+.global-server-pill.offline i { background:var(--danger); box-shadow:0 0 0 4px var(--danger-bg); }
+.global-server-pill strong { color:var(--ink); font-size:12px; }
+.context-shortcuts { display:flex; flex-shrink:0; gap:7px; overflow-x:auto; padding:2px 1px 5px; scrollbar-width:none; }
+.context-shortcuts::-webkit-scrollbar { display:none; }
+.context-shortcut {
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; padding:8px 11px; border:1px solid var(--line);
+  border-radius:11px; background:var(--surface-soft, #f7fafe); color:var(--ink-2); font:700 10.5px var(--font); cursor:pointer;
+}
+.context-shortcut:hover { color:var(--blue); border-color:rgba(23,97,240,.25); background:var(--accent-soft, rgba(23,97,240,.07)); }
+[data-help] { position:relative; }
+[data-help]::after {
+  content:"?"; display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; margin-left:5px;
+  border:1px solid currentColor; border-radius:50%; opacity:.48; font:800 8px/1 var(--font); vertical-align:1px;
+}
+[data-help]::before {
+  content:attr(data-help); position:absolute; z-index:80; left:12px; bottom:calc(100% + 8px); width:min(280px,75vw);
+  padding:9px 10px; border:1px solid rgba(148,163,184,.16); border-radius:10px; background:#071426; color:#e8f1ff;
+  box-shadow:0 14px 36px rgba(0,0,0,.28); font:600 10px/1.45 var(--font); opacity:0; pointer-events:none;
+  transform:translateY(4px); transition:.16s ease; text-transform:none; letter-spacing:0;
+}
+[data-help]:hover::before, [data-help]:focus::before, [data-help]:focus-within::before { opacity:1; transform:none; }
+.ci-quality-strip { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+.ci-quality-metric { padding:12px; border:1px solid var(--line); border-radius:13px; background:var(--surface-soft,#f7fafe); }
+.ci-quality-metric span { display:block; min-height:26px; color:var(--ink-3); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.055em; }
+.ci-quality-metric strong { display:block; margin-top:5px; color:var(--ink); font-size:18px; }
+.ci-people-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.ci-people-stat { padding:11px; border:1px solid var(--line); border-radius:12px; background:var(--surface-soft,#f7fafe); }
+.ci-people-stat span { display:block; color:var(--ink-3); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+.ci-people-stat strong { display:block; margin-top:5px; color:var(--ink); font-size:16px; }
+.ci-provider-list, .ci-cohort-list, .ci-server-list { display:grid; gap:7px; }
+.ci-compact-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface-soft,#f7fafe); }
+.ci-compact-row span { min-width:0; color:var(--ink-2); font-size:10.5px; font-weight:700; }
+.ci-compact-row strong { color:var(--ink); font-size:11px; }
+.staff-insights { margin-bottom:18px; padding:14px; border:1px solid var(--line); border-radius:16px; background:var(--surface-soft,#f7fafe); }
+.staff-insights-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:11px; }
+.staff-insights-head h4 { margin:0; font-size:14px; }
+.staff-insights-head small { color:var(--ink-3); font-size:10px; }
+.staff-insights-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.staff-insight { padding:10px; border:1px solid var(--line); border-radius:11px; background:var(--card); }
+.staff-insight span { display:block; color:var(--ink-3); font-size:8.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+.staff-insight strong { display:block; margin-top:4px; color:var(--ink); font-size:14px; word-break:break-word; }
+.staff-insight-wide { grid-column:span 2; }
+.staff-insight-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
+.staff-insight-badges b { padding:4px 7px; border-radius:99px; background:var(--accent-soft,rgba(23,97,240,.08)); color:var(--blue); font-size:9px; }
+[data-theme="dark"] .global-server-pill, [data-theme="dark"] .context-shortcut, [data-theme="dark"] .ci-quality-metric,
+[data-theme="dark"] .ci-people-stat, [data-theme="dark"] .ci-compact-row, [data-theme="dark"] .staff-insights, [data-theme="dark"] .staff-insight {
+  background:rgba(12,20,38,.86) !important; border-color:rgba(148,163,184,.15) !important;
+}
+[data-theme="dark"] .global-server-pill strong, [data-theme="dark"] .ci-quality-metric strong,
+[data-theme="dark"] .ci-people-stat strong, [data-theme="dark"] .ci-compact-row strong, [data-theme="dark"] .staff-insight strong { color:#f2f6fd !important; }
+@media (min-width:901px) and (max-width:1100px) {
+  :root { --sb-w:72px; }
+  header > .brand-link { width:240px !important; justify-content:flex-start !important; padding:0 16px !important; }
+  header > .brand-link .logo-text { display:block !important; overflow:visible; text-overflow:clip; }
+  header > .brand-link::after { display:inline-flex !important; }
+}
+@media (max-width:900px) {
+  .global-server-pill span { display:none; }
+  .global-server-pill { padding:6px 9px; }
+  .ci-quality-strip { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .ci-people-grid, .staff-insights-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:520px) {
+  header { padding:0 8px !important; }
+  header > .brand-link { padding:0 4px !important; gap:7px !important; }
+  header > .brand-link .logo-text { font-size:13px !important; }
+  .header-actions { gap:4px; }
+  .user-btn span, .user-btn > svg { display:none; }
+  .ci-quality-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 
 /* Command center and Community Intelligence */
@@ -1711,7 +1804,10 @@ footer { display: none; }
     <div class="logo-text">Força Aliada</div>
   </a>
 
-  <div style="display:flex;align-items:center;gap:6px;">
+  <div class="header-actions">
+    <button class="global-server-pill" id="global-server-pill" type="button" onclick="scrollToSection('server-overview')" title="Abrir servidor e ver quem está online">
+      <i></i><span id="global-server-label">Servidor</span><strong id="global-server-count">--</strong>
+    </button>
     <div class="user-menu-wrapper">
       <button class="notif-btn" id="notif-btn-toggle" onclick="toggleNotifPanel(event)" title="Notificações">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -1857,6 +1953,14 @@ footer { display: none; }
       </div>
 
       <div class="card" id="command-center">
+        <nav class="context-shortcuts" aria-label="Atalhos operacionais">
+          <button class="context-shortcut" type="button" onclick="scrollToSection('server-overview')">● Servidor ao vivo</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('admin-users-card')">Pessoas & Staff</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('moderation-card')">Moderação</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('admin-notifications-card')">Publicar aviso</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('legacy-migration-card')">Contas legacy</button>
+          <a class="context-shortcut" href="community.html">Abrir FA Community</a>
+        </nav>
         <section class="cc-hero">
           <div class="cc-hero-copy">
             <span class="cc-kicker">Força Aliada Intelligence</span>
@@ -1892,12 +1996,12 @@ footer { display: none; }
         </div>
 
         <div class="cc-kpi-grid">
-          <article class="cc-kpi tone-blue"><span>Usuários ativos</span><strong id="cc-active-users">--</strong><small id="cc-active-trend">comparando período</small></article>
-          <article class="cc-kpi tone-teal"><span>Engajamento por impressão</span><strong id="cc-engagement-rate">--</strong><small id="cc-engagement-detail">interações de alta intenção</small></article>
-          <article class="cc-kpi tone-purple"><span>Retenção</span><strong id="cc-retention-rate">--</strong><small id="cc-retention-detail">usuários que retornaram</small></article>
-          <article class="cc-kpi tone-gold"><span>Horas no servidor</span><strong id="cc-play-hours">--</strong><small id="cc-play-detail">jogadores únicos</small></article>
-          <article class="cc-kpi tone-pink"><span>Conteúdo publicado</span><strong id="cc-posts">--</strong><small id="cc-posts-trend">posts originais</small></article>
-          <article class="cc-kpi tone-green"><span>Conversas</span><strong id="cc-messages">--</strong><small id="cc-messages-detail">mensagens privadas e grupos</small></article>
+          <article class="cc-kpi tone-blue" tabindex="0" data-help="Pessoas distintas que publicaram, interagiram, visualizaram ou conversaram no período."><span>Usuários ativos</span><strong id="cc-active-users">--</strong><small id="cc-active-trend">comparando período</small></article>
+          <article class="cc-kpi tone-teal" tabindex="0" data-help="Interações relevantes divididas pelas impressões registradas."><span>Engajamento por impressão</span><strong id="cc-engagement-rate">--</strong><small id="cc-engagement-detail">interações de alta intenção</small></article>
+          <article class="cc-kpi tone-purple" tabindex="0" data-help="Percentual da base ativa no período anterior que voltou no período atual."><span>Retenção</span><strong id="cc-retention-rate">--</strong><small id="cc-retention-detail">usuários que retornaram</small></article>
+          <article class="cc-kpi tone-gold" tabindex="0" data-help="Soma da duração das sessões iniciadas no período selecionado."><span>Horas no servidor</span><strong id="cc-play-hours">--</strong><small id="cc-play-detail">jogadores únicos</small></article>
+          <article class="cc-kpi tone-pink" tabindex="0" data-help="Publicações originais, sem contar reposts."><span>Conteúdo publicado</span><strong id="cc-posts">--</strong><small id="cc-posts-trend">posts originais</small></article>
+          <article class="cc-kpi tone-green" tabindex="0" data-help="Mensagens enviadas em conversas privadas e grupos."><span>Conversas</span><strong id="cc-messages">--</strong><small id="cc-messages-detail">mensagens privadas e grupos</small></article>
         </div>
 
         <div class="cc-layout">
@@ -1940,14 +2044,27 @@ footer { display: none; }
           </div>
         </div>
 
+        <nav class="context-shortcuts" aria-label="Atalhos da comunidade">
+          <a class="context-shortcut" href="community.html">Abrir feed</a>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('admin-users-card')">Perfis registrados</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('moderation-card')">Qualidade & segurança</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('merit-card')">Mérito & progressão</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('admin-notifications-card')">Comunicar comunidade</button>
+        </nav>
+
         <div class="ci-kpi-grid">
-          <article class="ci-kpi"><span>Alcance</span><strong id="ci-impressions">--</strong><small id="ci-viewers">-- visualizadores únicos</small></article>
-          <article class="ci-kpi"><span>Interações</span><strong id="ci-interactions">--</strong><small id="ci-interactions-mix">curtidas, respostas, reposts e saves</small></article>
-          <article class="ci-kpi"><span>Ativação em 7 dias</span><strong id="ci-activation">--</strong><small id="ci-activation-detail">novos membros que realizaram uma ação</small></article>
-          <article class="ci-kpi"><span>Resposta comunitária</span><strong id="ci-response-rate">--</strong><small id="ci-response-time">tempo até a primeira resposta</small></article>
-          <article class="ci-kpi"><span>Stickiness DAU/MAU</span><strong id="ci-stickiness">--</strong><small id="ci-stickiness-detail">frequência de retorno diário</small></article>
-          <article class="ci-kpi"><span>Tempo de atenção</span><strong id="ci-dwell">--</strong><small>média acumulada por conteúdo visto</small></article>
+          <article class="ci-kpi" tabindex="0" data-help="Total de exibições registradas nas publicações no período selecionado."><span>Alcance</span><strong id="ci-impressions">--</strong><small id="ci-viewers">-- visualizadores únicos</small></article>
+          <article class="ci-kpi" tabindex="0" data-help="Soma de curtidas, respostas, reposts, saves e votos."><span>Interações</span><strong id="ci-interactions">--</strong><small id="ci-interactions-mix">curtidas, respostas, reposts e saves</small></article>
+          <article class="ci-kpi" tabindex="0" data-help="Percentual de novos membros que fizeram ao menos uma ação relevante nos primeiros sete dias."><span>Ativação em 7 dias</span><strong id="ci-activation">--</strong><small id="ci-activation-detail">novos membros que realizaram uma ação</small></article>
+          <article class="ci-kpi" tabindex="0" data-help="Percentual de posts originais que receberam uma resposta de outra pessoa."><span>Resposta comunitária</span><strong id="ci-response-rate">--</strong><small id="ci-response-time">tempo até a primeira resposta</small></article>
+          <article class="ci-kpi" tabindex="0" data-help="DAU dividido por MAU: indica com que frequência a base mensal retorna diariamente."><span>Stickiness DAU/MAU</span><strong id="ci-stickiness">--</strong><small id="ci-stickiness-detail">frequência de retorno diário</small></article>
+          <article class="ci-kpi" tabindex="0" data-help="Tempo médio acumulado de permanência nas publicações visualizadas."><span>Tempo de atenção</span><strong id="ci-dwell">--</strong><small>média acumulada por conteúdo visto</small></article>
         </div>
+
+        <section class="cc-panel">
+          <div class="cc-panel-head"><div><span class="cc-kicker">Valor do conteúdo</span><h3>Qualidade além de curtidas</h3></div><span class="cc-meta-chip">taxas por alcance e base ativa</span></div>
+          <div class="ci-quality-strip" id="ci-quality-strip"></div>
+        </section>
 
         <div class="ci-grid ci-grid-main">
           <section class="cc-panel ci-funnel-panel">
@@ -2003,11 +2120,54 @@ footer { display: none; }
             <div class="ci-ops" id="ci-ops"></div>
           </section>
         </div>
+
+        <div class="ci-grid ci-grid-secondary">
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Identidade</span><h3>Saúde dos perfis</h3></div><button class="cc-text-link" type="button" onclick="scrollToSection('admin-users-card')">Gerenciar</button></div>
+            <div class="ci-people-grid" id="ci-people"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Aquisição</span><h3>Contas conectadas</h3></div></div>
+            <div class="ci-provider-list" id="ci-providers"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Onboarding</span><h3>Coortes recentes</h3></div></div>
+            <div class="ci-cohort-list" id="ci-cohorts"></div>
+          </section>
+        </div>
+
+        <div class="ci-grid ci-grid-secondary">
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Servidor</span><h3>Recorrência dos jogadores</h3></div><button class="cc-text-link" type="button" onclick="scrollToSection('server-overview')">Ver online</button></div>
+            <div class="ci-server-list" id="ci-server-intelligence"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Decisão</span><h3>Leitura rápida</h3></div></div>
+            <div class="ci-ops" id="ci-recommendations"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Navegação</span><h3>Próximas ações</h3></div></div>
+            <div class="ci-ops">
+              <button class="cc-action" type="button" onclick="scrollToSection('admin-users-card')"><span><strong>Encontrar um perfil</strong><small>Abra detalhes sociais, jogo e integrações.</small></span><b>Ir</b></button>
+              <button class="cc-action" type="button" onclick="scrollToSection('admin-notifications-card')"><span><strong>Ativar um segmento</strong><small>Comunique uma oportunidade ou evento.</small></span><b>Ir</b></button>
+            </div>
+          </section>
+        </div>
       </div>
 
       <div class="card" id="server-overview">
         <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
         <div style="margin-bottom:12px;" id="app-source-indicator"></div>
+        <nav class="context-shortcuts" aria-label="Atalhos do servidor">
+          <button class="context-shortcut" type="button" onclick="scrollToSection('stats-card')">Estatísticas históricas</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('admin-users-card')">Jogadores & Staff</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('merit-card')">Mérito & capital</button>
+          <button class="context-shortcut" type="button" onclick="scrollToSection('app-keys-card')">Integração Manager</button>
+        </nav>
+        <section class="cc-panel" id="server-period-panel">
+          <div class="cc-panel-head"><div><span class="cc-kicker">Inteligência do período</span><h3>Disponibilidade e recorrência</h3></div><span class="cc-meta-chip" id="server-period-label">30 dias</span></div>
+          <div class="ci-quality-strip" id="server-period-kpis"></div>
+        </section>
 
         <div class="dashboard-grid">
           <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
@@ -2716,6 +2876,14 @@ footer { display: none; }
         </div>
       </div>
 
+      <section class="staff-insights" id="staff-profile-insights" style="display:none;">
+        <div class="staff-insights-head">
+          <div><h4>Inteligência do perfil</h4><small>Comunidade, jogo, integrações e confiança em uma visão staff-safe.</small></div>
+          <a class="cc-text-link" id="staff-profile-public-link" href="profile.html">Abrir perfil</a>
+        </div>
+        <div class="staff-insights-grid" id="staff-profile-insights-grid"></div>
+      </section>
+
       <div class="modal-merit-section" id="modal-merit-section" style="display:none;">
         <h4>⭐ Mérito &amp; Capital</h4>
 
@@ -2893,6 +3061,7 @@ let communityTrendChart = null;
 let communityMixChart   = null;
 let executiveAnalytics  = null;
 let analyticsPeriodDays = 30;
+const requestedDashboardModule = new URLSearchParams(location.search).get('module');
 let liveInterval        = null;
 let auditLogs           = [];
 let auditFilterActive   = 'all';
@@ -2989,7 +3158,7 @@ function buildAnalyticsPreview() {
   });
   return {
     period:{ days:analyticsPeriodDays },
-    summary:{ registered_users:286,new_users:34,previous_new_users:26,active_users:142,previous_active_users:118,engaged_users:96,retained_users:73,dau:41,wau:104,mau:142,events_1d:358,posts:87,previous_posts:65,creators:39,comments:214,likes:742,reposts:91,saves:126,poll_votes:84,impressions:9650,viewers:132,avg_dwell_ms:18600,messages:1284,new_connections:96,play_hours:486,unique_players:71,pending_reports:3,pending_moderation:5,failed_scheduled_posts:1,unverified_users:7,total_merit:18420,total_capital:9640,activated_new_users:25,activation_base:34,responded_posts:69,response_base:87,avg_first_response_minutes:24,avg_moderation_hours:3.4,interactions:1257,engagement_rate:13,retention_rate:61.9,activation_rate:73.5,response_rate:79.3,dau_mau:28.9,wau_mau:73.2 },
+    summary:{ registered_users:286,new_users:34,previous_new_users:26,active_users:142,previous_active_users:118,engaged_users:96,retained_users:73,dau:41,wau:104,mau:142,events_1d:358,posts:87,previous_posts:65,creators:39,comments:214,likes:742,reposts:91,saves:126,poll_votes:84,impressions:9650,viewers:132,avg_dwell_ms:18600,messages:1284,new_connections:96,previous_new_connections:71,total_connections:1480,play_hours:486,unique_players:71,pending_reports:3,pending_moderation:5,failed_scheduled_posts:1,unverified_users:7,total_merit:18420,total_capital:9640,activated_new_users:25,activation_base:34,responded_posts:69,response_base:87,avg_first_response_minutes:24,avg_moderation_hours:3.4,interactions:1257,engagement_rate:13,retention_rate:61.9,activation_rate:73.5,response_rate:79.3,dau_mau:28.9,wau_mau:73.2,engaged_active_rate:67.6,creator_active_rate:27.5,save_rate:1.3,amplification_rate:.9,conversation_rate:2.2,interactions_per_post:14.4 },
     daily,
     segments:[{segment:'champions',total:18},{segment:'creators',total:31},{segment:'contributors',total:58},{segment:'viewers',total:35},{segment:'dormant',total:144}],
     topics:[{tag:'construcoes',posts:18,engagement:238},{tag:'eventos',posts:14,engagement:201},{tag:'economia',posts:11,engagement:166},{tag:'exploracao',posts:9,engagement:121},{tag:'ajuda',posts:8,engagement:104}],
@@ -2997,6 +3166,10 @@ function buildAnalyticsPreview() {
     top_content:Array.from({length:7},(_,i)=>({id:i+1,username:`membro${i+1}`,minecraft_name:['Steve','Alex','Gabriel','Caio','Luna','Rafa','Dani'][i],display_name:['Gabriel','Alex','ArquitetoFA','Caio','Luna','Rafa','Dani'][i],preview:['A nova praça central está pronta para receber a comunidade.','Ideias para o próximo evento de exploração em equipe.','Guia rápido para começar na economia da Força Aliada.','Resultados da votação da comunidade desta semana.','Registro da expedição ao Nether.','Precisamos de voluntários para o projeto ferroviário.','Resumo das melhorias e próximos objetivos.'][i],impressions:920-i*83,viewers:118-i*7,avg_dwell_ms:26000-i*1300,likes:86-i*6,comments:34-i*2,reposts:14-i,saves:22-i,quality_score:248-i*19})),
     contributors:Array.from({length:6},(_,i)=>({username:`membro${i+1}`,minecraft_name:['Steve','Alex','Gabriel','Caio','Luna','Rafa'][i],display_name:['Gabriel','Alex','ArquitetoFA','Caio','Luna','Rafa'][i],posts:12-i,comments:28-i*3,connections:8+i,merit:940-i*77,contribution_score:132-i*13})),
     ranks:[{rank:'ferro',total:122,merit:2400,capital:3100},{rank:'ouro',total:78,merit:5600,capital:2700},{rank:'diamante',total:39,merit:6100,capital:2200},{rank:'netherite',total:12,merit:4320,capital:1640}],
+    people:{registered:286,email_verified:279,platform_verified:18,minecraft_linked:231,complete_profiles:174,active_30d:142,dormant_30d:144,social_connected:196,microsoft_connected:231},
+    providers:[{provider:'microsoft',accounts:238,users:231},{provider:'google',accounts:104,users:104},{provider:'discord',accounts:72,users:72},{provider:'facebook',accounts:21,users:21}],
+    cohorts:Array.from({length:7},(_,i)=>({cohort_week:new Date(Date.now()-(6-i)*604800000).toISOString(),joined:18+i*2,activated_7d:12+i,retained_30d:Math.max(0,8+i)})),
+    server:{sessions:324,avg_session_hours:1.5,unique_players:71,returning_players:54,new_players:17,peak_online:28,avg_latency_ms:46,uptime_pct:98.7},
   };
 }
 
@@ -3012,6 +3185,7 @@ function changeAnalyticsPeriod(value) {
 function renderExecutiveAnalytics() {
   if (!executiveAnalytics) return;
   const s = executiveAnalytics.summary || {};
+  if (DASHBOARD_PREVIEW && !globalApiData) updateGlobalServerPill({ online:true, players:{ online:18, max:80 } });
   const periodLabel = `${executiveAnalytics.period?.days || analyticsPeriodDays} dias`;
   const username = session?.username || 'Staff';
 
@@ -3056,6 +3230,12 @@ function renderExecutiveAnalytics() {
   renderCommunityContributors(executiveAnalytics.contributors || []);
   renderCommunityRanks(executiveAnalytics.ranks || []);
   renderCommunityOps(s);
+  renderCommunityQuality(s);
+  renderPeopleHealth(executiveAnalytics.people || {});
+  renderProviders(executiveAnalytics.providers || []);
+  renderCohorts(executiveAnalytics.cohorts || []);
+  renderServerIntelligence(executiveAnalytics.server || {});
+  renderRecommendations(s, executiveAnalytics.people || {}, executiveAnalytics.server || {});
   renderAnalyticsCharts();
 }
 
@@ -3165,7 +3345,7 @@ function renderTopCommunityContent(rows) {
   if (!el) return;
   el.innerHTML = rows.map(row => {
     const name = row.display_name || row.minecraft_name || row.username || 'Membro';
-    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-light.png';
+    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-dark.png';
     const interactions = aNum(row.likes) + aNum(row.comments) + aNum(row.reposts) + aNum(row.saves);
     return `<tr>
       <td><div class="ci-content-title"><img src="${escapeHTML(avatar)}" alt=""><span><strong>${escapeHTML(name)}</strong><small>${escapeHTML(row.preview || 'Publicação sem texto')}</small></span></div></td>
@@ -3179,7 +3359,7 @@ function renderCommunityContributors(rows) {
   const el = document.getElementById('ci-contributors');
   if (el) el.innerHTML = rows.map(row => {
     const name = row.display_name || row.minecraft_name || row.username || 'Membro';
-    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-light.png';
+    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-dark.png';
     return `<div class="ci-contributor"><img src="${escapeHTML(avatar)}" alt=""><span><strong>${escapeHTML(name)}</strong><small>${aCompact(row.posts)} posts · ${aCompact(row.comments)} respostas · ${aCompact(row.merit)} mérito</small></span><b>${aCompact(row.contribution_score)}</b></div>`;
   }).join('') || '<div class="cc-empty">Sem contribuições no período.</div>';
 }
@@ -3200,6 +3380,86 @@ function renderCommunityOps(s) {
   ];
   const el = document.getElementById('ci-ops');
   if (el) el.innerHTML = rows.map(([label,value,tone]) => `<div class="ci-op" style="border-left:3px solid ${tone}"><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+function renderCommunityQuality(s) {
+  const rows = [
+    ['Engajados / ativos', aPct(s.engaged_active_rate), 'Pessoas ativas que fizeram algo além de visualizar.'],
+    ['Criadores / ativos', aPct(s.creator_active_rate), 'Pessoas ativas que publicaram conteúdo original.'],
+    ['Saves / alcance', aPct(s.save_rate), 'Sinal de utilidade: conteúdos guardados por impressão.'],
+    ['Reposts / alcance', aPct(s.amplification_rate), 'Sinal de distribuição: reposts por impressão.'],
+    ['Respostas / alcance', aPct(s.conversation_rate), 'Sinal de conversa: comentários por impressão.'],
+    ['Valor por post', analyticsFullNumber.format(s.interactions_per_post || 0), 'Média de interações relevantes por publicação original.'],
+  ];
+  const el = document.getElementById('ci-quality-strip');
+  if (el) el.innerHTML = rows.map(([label,value,help]) => `<div class="ci-quality-metric" tabindex="0" data-help="${escapeHTML(help)}"><span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong></div>`).join('');
+}
+
+function renderPeopleHealth(p) {
+  const pct = value => aPct(aNum(p.registered) ? (aNum(value) / aNum(p.registered)) * 100 : 0);
+  const rows = [
+    ['Perfis completos', `${aCompact(p.complete_profiles)} · ${pct(p.complete_profiles)}`],
+    ['Minecraft vinculado', `${aCompact(p.minecraft_linked)} · ${pct(p.minecraft_linked)}`],
+    ['Social conectado', `${aCompact(p.social_connected)} · ${pct(p.social_connected)}`],
+    ['Ativos em 30d', `${aCompact(p.active_30d)} · ${pct(p.active_30d)}`],
+    ['E-mail verificado', `${aCompact(p.email_verified)} · ${pct(p.email_verified)}`],
+    ['Selo da plataforma', aCompact(p.platform_verified)],
+    ['Microsoft conectado', aCompact(p.microsoft_connected)],
+    ['Inativos em 30d', aCompact(p.dormant_30d)],
+  ];
+  const el = document.getElementById('ci-people');
+  if (el) el.innerHTML = rows.map(([label,value]) => `<div class="ci-people-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+function renderProviders(rows) {
+  const labels = { microsoft:'Microsoft / Xbox', google:'Google', discord:'Discord', facebook:'Facebook' };
+  const el = document.getElementById('ci-providers');
+  if (el) el.innerHTML = rows.map(row => `<div class="ci-compact-row"><span>${escapeHTML(labels[row.provider] || row.provider)}</span><strong>${aCompact(row.users)} pessoas</strong></div>`).join('') || '<div class="cc-empty">Nenhuma conta externa conectada.</div>';
+}
+
+function renderCohorts(rows) {
+  const el = document.getElementById('ci-cohorts');
+  if (!el) return;
+  el.innerHTML = rows.slice(-6).reverse().map(row => {
+    const joined = Math.max(1, aNum(row.joined));
+    const date = new Date(row.cohort_week).toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+    return `<div class="ci-compact-row" tabindex="0" data-help="${aCompact(row.activated_7d)} ativados em até 7 dias e ${aCompact(row.retained_30d)} retornaram entre o 7º e o 30º dia."><span>Semana de ${date}</span><strong>${aPct((aNum(row.retained_30d)/joined)*100)} retidos</strong></div>`;
+  }).join('') || '<div class="cc-empty">Ainda não há coortes suficientes.</div>';
+}
+
+function renderServerIntelligence(s) {
+  const returningRate = aNum(s.unique_players) ? (aNum(s.returning_players) / aNum(s.unique_players)) * 100 : 0;
+  const rows = [
+    ['Jogadores únicos', aCompact(s.unique_players)],
+    ['Recorrentes', `${aCompact(s.returning_players)} · ${aPct(returningRate)}`],
+    ['Novos jogadores', aCompact(s.new_players)],
+    ['Sessão média', aTime(aNum(s.avg_session_hours) * 60)],
+    ['Pico simultâneo', aCompact(s.peak_online)],
+    ['Disponibilidade', aPct(s.uptime_pct)],
+  ];
+  const el = document.getElementById('ci-server-intelligence');
+  if (el) el.innerHTML = rows.map(([label,value]) => `<div class="ci-compact-row"><span>${label}</span><strong>${value}</strong></div>`).join('');
+  const period = document.getElementById('server-period-kpis');
+  if (period) period.innerHTML = [
+    ['Disponibilidade', aPct(s.uptime_pct), 'Percentual das checagens em que o servidor respondeu online.'],
+    ['Pico simultâneo', aCompact(s.peak_online), 'Maior número de jogadores online ao mesmo tempo.'],
+    ['Recorrência', aPct(returningRate), 'Jogadores do período que já haviam jogado antes.'],
+    ['Sessão média', aTime(aNum(s.avg_session_hours) * 60), 'Duração média das sessões encerradas.'],
+    ['Jogadores únicos', aCompact(s.unique_players), 'Pessoas distintas identificadas pelo nick no período.'],
+    ['Novos jogadores', aCompact(s.new_players), 'Primeira sessão registrada dentro do período.'],
+  ].map(([label,value,help]) => `<div class="ci-quality-metric" tabindex="0" data-help="${escapeHTML(help)}"><span>${label}</span><strong>${value}</strong></div>`).join('');
+  aSet('server-period-label', `${executiveAnalytics?.period?.days || analyticsPeriodDays} dias`);
+}
+
+function renderRecommendations(s, people, server) {
+  const recommendations = [];
+  if (aNum(s.creator_active_rate) < 25) recommendations.push(['Ative novos criadores', 'Poucas pessoas ativas estão publicando.', '#8b5cf6']);
+  if (aNum(people.complete_profiles) < aNum(people.registered) * .7) recommendations.push(['Complete identidades', 'Perfis completos melhoram confiança e descoberta.', '#1761f0']);
+  if (aNum(server.unique_players) && aNum(server.returning_players) / aNum(server.unique_players) < .55) recommendations.push(['Trabalhe a recorrência', 'Convide novos jogadores a retornarem ao servidor.', '#e08700']);
+  if (aNum(s.save_rate) > 1) recommendations.push(['Reaproveite conteúdo útil', 'Saves indicam temas bons para guias e avisos.', '#18a558']);
+  if (!recommendations.length) recommendations.push(['Operação equilibrada', 'Não há um gargalo evidente neste período.', '#18a558']);
+  const el = document.getElementById('ci-recommendations');
+  if (el) el.innerHTML = recommendations.slice(0,4).map(([title,body,tone]) => `<div class="ci-op" style="border-left:3px solid ${tone}"><span><b>${escapeHTML(title)}</b><small style="display:block;margin-top:3px">${escapeHTML(body)}</small></span></div>`).join('');
 }
 
 function baseChartOptions() {
@@ -3445,6 +3705,7 @@ function initDashboard() {
   // Segundo chamada com pequeno delay: garante que a visibilidade seja aplicada
   // mesmo que algum script externo ou race condition resete o display após o load
   setTimeout(applyRoleVisibility, 150);
+  setTimeout(() => setActiveDashboardModule(requestedDashboardModule || activeDashboardModule || 'command-center', { scroll: false }), 180);
 
   if (DASHBOARD_PREVIEW) {
     loadExecutiveAnalytics();
@@ -3614,6 +3875,10 @@ var DASHBOARD_MODULES = {
   'app-keys-card': {
     title: 'Integrações',
     desc: 'Chaves do Força Aliada Manager e conexão com ferramentas externas.'
+  },
+  'legacy-migration-card': {
+    title: 'Contas Legacy',
+    desc: 'Revisão, aprovação e auditoria das solicitações de vinculação de identidades anteriores.'
   }
 };
 var activeDashboardModule = 'command-center';
@@ -3675,6 +3940,11 @@ function setActiveDashboardModule(id, opts = {}) {
 
   if (opts.scroll !== false) {
     document.querySelector('.dashboard-content')?.scrollTo({ top: 0, behavior: opts.behavior || 'smooth' });
+  }
+  if (history.replaceState) {
+    const url = new URL(location.href);
+    url.searchParams.set('module', id);
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }
 }
 
@@ -4483,6 +4753,7 @@ function _buildCloudTooltip(statusSrc, mcState) {
 }
 
 function renderDashboard() {
+  updateGlobalServerPill(globalApiData);
   if (globalApiData?.online) {
     document.getElementById('server-status').textContent  = 'Online';
     document.getElementById('server-dot').className       = 'status-dot';
@@ -4534,6 +4805,20 @@ function renderDashboard() {
   }
 
   applyFilters();
+}
+
+function updateGlobalServerPill(serverData = null) {
+  const pill = document.getElementById('global-server-pill');
+  if (!pill) return;
+  const online = serverData?.online === true;
+  const known = serverData && typeof serverData.online === 'boolean';
+  const count = online ? aNum(serverData?.players?.online) : 0;
+  const max = online ? aNum(serverData?.players?.max) : 0;
+  pill.classList.toggle('online', online);
+  pill.classList.toggle('offline', known && !online);
+  aSet('global-server-label', known ? (online ? 'Servidor online' : 'Servidor offline') : 'Servidor');
+  aSet('global-server-count', known ? (online ? `${count}/${max || '∞'}` : '0 online') : '--');
+  pill.title = online ? `Servidor online com ${count} de ${max || 'capacidade desconhecida'} jogadores. Abrir lista.` : 'Abrir visão do servidor e jogadores.';
 }
 
 function emptyStateHTML(icon, title, sub) {
@@ -4764,6 +5049,8 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
   document.getElementById('modal-site-account').style.display  = 'none';
   document.getElementById('modal-create-account').style.display = 'none';
+  document.getElementById('staff-profile-insights').style.display = 'none';
+  document.getElementById('staff-profile-insights-grid').innerHTML = '';
   document.getElementById('stats-grid').innerHTML = `<div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div>`;
   document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div></div>`;
   document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
@@ -4802,6 +5089,7 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
     document.getElementById('ai-newpassword').value = '';
     document.getElementById('modal-site-account').style.display  = 'block';
     document.getElementById('modal-create-account').style.display = 'none';
+    loadStaffProfileInsights(siteAcc.id, siteAcc);
 
     if (session.role === 'full') {
       // Usuário full: exige confirmação de senha para ver dados sensíveis
@@ -4832,6 +5120,57 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
 
   await loadModalMeritData(displayMcName);
   renderModalStats(); renderModalTable();
+}
+
+async function loadStaffProfileInsights(userId, account = {}) {
+  const panel = document.getElementById('staff-profile-insights');
+  const grid = document.getElementById('staff-profile-insights-grid');
+  if (!panel || !grid) return;
+  panel.style.display = 'block';
+  grid.innerHTML = '<div class="staff-insight staff-insight-wide"><span>Inteligência do perfil</span><strong>Carregando...</strong></div>';
+
+  try {
+    const data = DASHBOARD_PREVIEW ? {
+      profile:{ username:account.username || 'membro', display_name:'Gabriel', bio:'Construindo e organizando a comunidade.', public_profile:true, show_online:true, profile_links:[{label:'Discord'}] },
+      social:{ posts:28,reposts:7,comments:93,likes_given:184,saves:31,followers:67,following:42,messages:438,reports_made:1,reports_received:0,last_social_activity:new Date().toISOString() },
+      game:{ sessions:86,total_hours:142.8,avg_session_hours:1.66,first_seen:new Date(Date.now()-210*86400000).toISOString(),last_seen:new Date().toISOString(),is_online:true,rank:'diamante',merit:740,capital:328 },
+      providers:[{provider:'microsoft',label:'GabrielFA'},{provider:'discord',label:'gabriel'}],
+      legacy:[{legacy_username:'GabrielAntigo',status:'completed',migration_mode:'partial'}],
+    } : await apiFetch(`/api/admin/users/${encodeURIComponent(userId)}/insights`, { headers:{ 'Authorization':`Bearer ${token}` } }).then(async res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    });
+    renderStaffProfileInsights(data);
+  } catch (err) {
+    console.error('[staff profile insights]', err);
+    grid.innerHTML = '<div class="staff-insight staff-insight-wide"><span>Inteligência do perfil</span><strong>Não disponível agora</strong></div>';
+  }
+}
+
+function renderStaffProfileInsights(data) {
+  const panel = document.getElementById('staff-profile-insights');
+  const grid = document.getElementById('staff-profile-insights-grid');
+  if (!panel || !grid) return;
+  const p = data.profile || {}, s = data.social || {}, g = data.game || {};
+  const profileLink = document.getElementById('staff-profile-public-link');
+  if (profileLink) profileLink.href = `profile.html?id=${encodeURIComponent(p.minecraft_name || p.username || p.id || '')}`;
+  const providers = (data.providers || []).map(row => row.provider).filter(Boolean);
+  const aliases = (data.legacy || []).map(row => row.legacy_username).filter(Boolean);
+  const lastActivity = s.last_social_activity && new Date(s.last_social_activity).getFullYear() > 1971
+    ? new Date(s.last_social_activity).toLocaleDateString('pt-BR') : 'Sem atividade';
+  const rows = [
+    ['Atividade social', `${aCompact(s.posts)} posts · ${aCompact(s.comments)} respostas`],
+    ['Rede', `${aCompact(s.followers)} seguidores · ${aCompact(s.following)} seguindo`],
+    ['Mensagens enviadas', aCompact(s.messages)],
+    ['Última atividade social', lastActivity],
+    ['Tempo no servidor', `${analyticsFullNumber.format(g.total_hours || 0)}h`],
+    ['Sessões / média', `${aCompact(g.sessions)} · ${aTime(aNum(g.avg_session_hours) * 60)}`],
+    ['Estado no servidor', g.is_online ? 'Online agora' : (g.last_seen ? `Visto ${new Date(g.last_seen).toLocaleDateString('pt-BR')}` : 'Sem registro')],
+    ['Confiança', `${aCompact(s.reports_received)} denúncias recebidas`],
+  ];
+  grid.innerHTML = rows.map(([label,value]) => `<div class="staff-insight"><span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong></div>`).join('')
+    + `<div class="staff-insight staff-insight-wide"><span>Integrações conectadas</span><div class="staff-insight-badges">${(providers.length ? providers : ['nenhuma']).map(v=>`<b>${escapeHTML(v)}</b>`).join('')}</div></div>`
+    + `<div class="staff-insight staff-insight-wide"><span>Identidades legacy</span><div class="staff-insight-badges">${(aliases.length ? aliases : ['nenhuma']).map(v=>`<b>${escapeHTML(v)}</b>`).join('')}</div></div>`;
 }
 
 function unlockAdminData() {

@@ -186,13 +186,31 @@ async function sendMigrationVerificationEmail(email, legacyNick, code) {
 // ─────────────────────────────────────────────
 // Rate limiters
 // ─────────────────────────────────────────────
-const migrationLimiter = rateLimit({
+const migrationDiscoveryLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000, // 24h
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas consultas de contas anteriores. Tente novamente amanhã.' },
+  keyGenerator: (req) => `migration_discovery:${req.user?.sub || req.ip}`,
+});
+
+const migrationRequestLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
   limit: 3,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Muitas tentativas de migração. Tente novamente amanhã.' },
-  keyGenerator: (req) => `migration:${req.user?.sub || req.ip}`,
+  message: { error: 'Muitas solicitações de migração. Tente novamente amanhã.' },
+  keyGenerator: (req) => `migration_request:${req.user?.sub || req.ip}`,
+});
+
+const migrationExecutionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas de execução. Aguarde uma hora.' },
+  keyGenerator: (req) => `migration_execution:${req.user?.sub || req.ip}`,
 });
 
 const migrationVerifyLimiter = rateLimit({
@@ -610,7 +628,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // POST /api/me/legacy/check
   // Verifica elegibilidade e retorna preview dos dados do nick
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/me/legacy/check', auth, migrationLimiter, async (req, res) => {
+  app.post('/api/me/legacy/check', auth, migrationDiscoveryLimiter, async (req, res) => {
     const legacyName = String(req.body?.legacy_username || '').trim();
     if (!legacyName || legacyName.length < 2 || legacyName.length > 64) {
       return res.status(400).json({ error: 'Nick inválido (entre 2 e 64 caracteres).' });
@@ -638,10 +656,14 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // POST /api/me/legacy/request
   // Cria solicitação de migração e dispara verificação
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/me/legacy/request', auth, migrationLimiter, async (req, res) => {
+  app.post('/api/me/legacy/request', auth, migrationRequestLimiter, async (req, res) => {
     const legacyName = String(req.body?.legacy_username || '').trim();
+    const mode = String(req.body?.mode || '').trim().toLowerCase();
     if (!legacyName || legacyName.length < 2 || legacyName.length > 64) {
       return res.status(400).json({ error: 'Nick inválido.' });
+    }
+    if (!['separate', 'partial', 'full'].includes(mode)) {
+      return res.status(400).json({ error: 'Escolha um modo de vinculação válido.' });
     }
 
     try {
@@ -673,8 +695,8 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
       const { rows: migRows } = await pool.query(
         `INSERT INTO account_migrations
            (user_id, legacy_username, legacy_user_id, legacy_offline_uuid,
-            verification_tier, status, request_ip, request_ua)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            verification_tier, status, migration_mode, request_ip, request_ua)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          RETURNING id`,
         [
           req.user.sub,
@@ -683,6 +705,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
           offlineUUID,
           tierInfo.tierName,
           initialStatus,
+          mode,
           getIp(req),
           req.headers['user-agent'] || null,
         ]
@@ -715,11 +738,12 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
         type: 'account_migration', severity: 'info',
         targetName: legacyName,
         message: `Solicitação de migração legacy criada: "${legacyName}" (tier ${tierInfo.tier} — ${tierInfo.tierName})`,
-        metadata: { migrationId, tier: tierInfo.tier, tierName: tierInfo.tierName, autoApprove: tierInfo.autoApprove, offlineUUID },
+        metadata: { migrationId, mode, tier: tierInfo.tier, tierName: tierInfo.tierName, autoApprove: tierInfo.autoApprove, offlineUUID },
       });
 
       res.json({
         migrationId,
+        mode,
         tier: tierInfo.tier,
         tierName: tierInfo.tierName,
         autoApproved: tierInfo.autoApprove,
@@ -866,7 +890,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // POST /api/me/legacy/execute
   // Executa migração (separate/partial) ou prepara token para full
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/me/legacy/execute', auth, migrationLimiter, async (req, res) => {
+  app.post('/api/me/legacy/execute', auth, migrationExecutionLimiter, async (req, res) => {
     const { migration_id, mode } = req.body || {};
     if (!migration_id || !['separate', 'partial', 'full'].includes(mode)) {
       return res.status(400).json({ error: 'Dados inválidos. mode deve ser separate, partial ou full.' });
@@ -885,6 +909,9 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
       const mig = rows[0];
       if (mig.status !== 'verified') {
         return res.status(400).json({ error: 'Esta solicitação ainda não foi verificada ou aprovada.' });
+      }
+      if (mig.migration_mode && mig.migration_mode !== mode) {
+        return res.status(409).json({ error: `Esta solicitação foi verificada para o modo "${mig.migration_mode}". Crie uma nova solicitação para alterar o modo.` });
       }
       if (!mig.current_mc_name && mode !== 'separate') {
         return res.status(400).json({ error: 'Seu perfil não tem um nick Minecraft vinculado. Vincule sua conta Microsoft primeiro.' });
@@ -936,7 +963,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // POST /api/me/legacy/confirm-full
   // Executa migração full após confirmação com token
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/me/legacy/confirm-full', auth, migrationLimiter, async (req, res) => {
+  app.post('/api/me/legacy/confirm-full', auth, migrationExecutionLimiter, async (req, res) => {
     const { migration_id, confirm_token } = req.body || {};
     if (!migration_id || !confirm_token) {
       return res.status(400).json({ error: 'migration_id e confirm_token são obrigatórios.' });

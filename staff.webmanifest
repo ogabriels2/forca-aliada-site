@@ -1,0 +1,23 @@
+{
+  "id": "/apps/fa-staff",
+  "name": "FA Staff",
+  "short_name": "FA Staff",
+  "description": "Centro de comando, analytics e operação da staff Força Aliada.",
+  "lang": "pt-BR",
+  "start_url": "/dashboard.html?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060c16",
+  "theme_color": "#060c16",
+  "categories": ["business", "productivity", "games"],
+  "icons": [
+    { "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/images/app-icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/images/app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Centro de Comando", "short_name": "Comando", "url": "/dashboard.html?module=command-center", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Servidor", "short_name": "Servidor", "url": "/dashboard.html?module=server-overview", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Community Intelligence", "short_name": "Community", "url": "/dashboard.html?module=community-analytics", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

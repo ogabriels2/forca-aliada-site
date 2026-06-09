@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#060c16">
 <title>Login | Força Aliada</title>
 
 <script>
@@ -596,7 +600,7 @@ header {
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/fa-icon-light.png"
+    <img src="assets/images/app-icons/icon-192.png"
          onerror="this.src='https://minotar.net/helm/Steve/100.png'"
          alt="FA Logo" class="logo-img" width="30" height="30">
     <span>Força Aliada</span>
@@ -610,7 +614,7 @@ header {
     <!-- ── View: já logado ─────────────────────────── -->
     <div id="view-loggedin">
       <img id="avatar-loggedin" class="loggedin-avatar"
-           src="assets/images/fa-icon-light.png"
+           src="assets/images/app-icons/icon-192.png"
            onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
       <div id="loggedin-username" class="loggedin-name"></div>
       <div class="loggedin-sub">Você já está conectado.</div>
@@ -627,7 +631,7 @@ header {
       <div class="card-head">
         <div class="avatar-wrap">
           <img id="avatar-login" class="avatar-img"
-               src="assets/images/fa-icon-light.png"
+               src="assets/images/app-icons/icon-192.png"
                onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Logo">
         </div>
         <h1 class="card-title">Bem-vindo de volta</h1>
@@ -1437,11 +1441,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     const skinUrl = me.minecraft_name
       ? `https://minotar.net/helm/${encodeURIComponent(me.minecraft_name)}/100.png`
-      : 'assets/images/fa-icon-light.png';
+      : 'assets/images/app-icons/icon-192.png';
 
     const img = document.getElementById('avatar-loggedin');
     img.src = skinUrl;
-    img.onerror = () => { img.src = 'assets/images/fa-icon-light.png'; };
+    img.onerror = () => { img.src = 'assets/images/app-icons/icon-192.png'; };
     document.getElementById('loggedin-username').textContent = me.username;
 
     const headerRight = document.getElementById('header-right');

@@ -685,7 +685,7 @@ id            SERIAL PRIMARY KEY,
 username      VARCHAR(255) UNIQUE NOT NULL,
 email         VARCHAR(255) UNIQUE NOT NULL,
 minecraft_name VARCHAR(255),
-photo_url     VARCHAR(255) DEFAULT 'assets/images/fa-icon-light.png',
+photo_url     VARCHAR(255) DEFAULT 'assets/images/fa-icon-dark.png',
 password_hash VARCHAR(255) NOT NULL,
 role          VARCHAR(50)  NOT NULL DEFAULT 'limited',
 is_verified   BOOLEAN      DEFAULT TRUE,
@@ -696,7 +696,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_verified BOOLEAN DEFAULT 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'));
 UPDATE users
-SET photo_url = 'assets/images/fa-icon-light.png'
+SET photo_url = 'assets/images/fa-icon-dark.png'
 WHERE photo_url IS NULL
    OR lower(photo_url) IN ('logo.jpg','logo.jpeg','assets/images/logo.jpg','assets/images/logo.jpeg','/assets/images/logo.jpg','/assets/images/logo.jpeg');
 
@@ -8651,6 +8651,105 @@ try {
   res.status(500).json({ error: 'Internal server error' });}
 });
 
+app.get('/api/admin/users/:id/insights', auth, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+
+  try {
+    const [
+      profileResult,
+      socialResult,
+      gameResult,
+      providersResult,
+      legacyResult,
+    ] = await Promise.all([
+      pool.query(`
+        SELECT u.id, u.username, u.email, u.minecraft_name, u.role, u.is_verified, u.is_platform_verified, u.created_at,
+          COALESCE(up.display_name,'') AS display_name,
+          COALESCE(up.bio,'') AS bio,
+          COALESCE(up.avatar_url,'') AS avatar_url,
+          COALESCE(up.cover_url,'') AS cover_url,
+          COALESCE(up.profile_links,'[]'::jsonb) AS profile_links,
+          COALESCE(up.public_profile,TRUE) AS public_profile,
+          COALESCE(up.show_online,TRUE) AS show_online,
+          COALESCE(up.public_history,FALSE) AS public_history
+        FROM users u
+        LEFT JOIN user_preferences up ON up.user_id=u.id
+        WHERE u.id=$1
+      `, [id]),
+      pool.query(`
+        SELECT
+          (SELECT COUNT(*)::int FROM user_posts WHERE author_id=$1 AND repost_of_id IS NULL) AS posts,
+          (SELECT COUNT(*)::int FROM user_posts WHERE author_id=$1 AND repost_of_id IS NOT NULL) AS reposts,
+          (SELECT COUNT(*)::int FROM post_comments WHERE author_id=$1 AND is_deleted=FALSE) AS comments,
+          (SELECT COUNT(*)::int FROM post_likes WHERE user_id=$1) AS likes_given,
+          (SELECT COUNT(*)::int FROM post_saves WHERE user_id=$1) AS saves,
+          (SELECT COUNT(*)::int FROM user_follows WHERE following_id=$1) AS followers,
+          (SELECT COUNT(*)::int FROM user_follows WHERE follower_id=$1) AS following,
+          (SELECT COUNT(*)::int FROM direct_messages WHERE sender_id=$1 AND is_deleted=FALSE)
+            + (SELECT COUNT(*)::int FROM chat_group_messages WHERE sender_id=$1 AND is_deleted=FALSE) AS messages,
+          (SELECT COUNT(*)::int FROM social_notifications WHERE recipient_id=$1 AND is_read=FALSE) AS unread_notifications,
+          (SELECT COUNT(*)::int FROM content_reports WHERE reporter_id=$1) AS reports_made,
+          (SELECT COUNT(*)::int FROM content_reports WHERE content_type='user' AND content_id=$1) AS reports_received,
+          GREATEST(
+            COALESCE((SELECT MAX(created_at) FROM user_posts WHERE author_id=$1), 'epoch'::timestamptz),
+            COALESCE((SELECT MAX(created_at) FROM post_comments WHERE author_id=$1), 'epoch'::timestamptz),
+            COALESCE((SELECT MAX(created_at) FROM direct_messages WHERE sender_id=$1), 'epoch'::timestamptz),
+            COALESCE((SELECT MAX(created_at) FROM chat_group_messages WHERE sender_id=$1), 'epoch'::timestamptz)
+          ) AS last_social_activity
+      `, [id]),
+      pool.query(`
+        WITH target AS (SELECT minecraft_name FROM users WHERE id=$1)
+        SELECT
+          COUNT(ps.id)::int AS sessions,
+          COALESCE(SUM(ps.duration_hours),0)::float AS total_hours,
+          COALESCE(AVG(ps.duration_hours) FILTER (WHERE ps.duration_hours IS NOT NULL),0)::float AS avg_session_hours,
+          MIN(ps.entered_at) AS first_seen,
+          MAX(COALESCE(ps.left_at,ps.entered_at)) AS last_seen,
+          COUNT(*) FILTER (WHERE ps.left_at IS NULL)::int > 0 AS is_online,
+          COALESCE(pb.merit_total,0)::int AS merit,
+          COALESCE(pb.capital_balance,0)::float AS capital,
+          COALESCE(pb.rank,'ferro') AS rank
+        FROM target
+        LEFT JOIN player_sessions ps ON LOWER(ps.player)=LOWER(target.minecraft_name)
+        LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name)=LOWER(target.minecraft_name)
+        GROUP BY pb.merit_total, pb.capital_balance, pb.rank
+      `, [id]),
+      pool.query(`
+        SELECT provider, label, connected_at FROM (
+          SELECT LOWER(provider) AS provider, COALESCE(provider_email, provider) AS label, created_at AS connected_at
+          FROM social_accounts WHERE user_id=$1
+          UNION ALL
+          SELECT 'microsoft' AS provider, COALESCE(xbox_gamertag, mc_name, 'Microsoft / Xbox') AS label, created_at AS connected_at
+          FROM user_integrations WHERE user_id=$1
+        ) providers
+        ORDER BY connected_at DESC
+      `, [id]),
+      pool.query(`
+        SELECT am.id, am.legacy_username, am.status, am.migration_mode, am.verification_tier,
+          am.executed_at, am.created_at, ua.alias_username, ua.is_active AS alias_active
+        FROM account_migrations am
+        LEFT JOIN username_aliases ua ON ua.migration_id=am.id
+        WHERE am.user_id=$1
+        ORDER BY am.created_at DESC
+        LIMIT 10
+      `, [id]),
+    ]);
+
+    if (!profileResult.rows.length) return res.status(404).json({ error: 'user not found' });
+    res.json({
+      profile: profileResult.rows[0],
+      social: socialResult.rows[0] || {},
+      game: gameResult.rows[0] || {},
+      providers: providersResult.rows,
+      legacy: legacyResult.rows,
+    });
+  } catch (err) {
+    console.error('[GET /api/admin/users/:id/insights]', err);
+    res.status(500).json({ error: 'Erro ao carregar inteligência do perfil.' });
+  }
+});
+
 app.post('/api/admin/users', auth, requireOwner, async (req, res) => {
 const username      = sanitize(req.body?.username).toLowerCase();
 const email         = sanitize(req.body?.email).toLowerCase();
@@ -8689,7 +8788,7 @@ if (!id) return res.status(400).json({ error: 'invalid id' });
 const username      = sanitize(req.body?.username).toLowerCase();
 const email         = sanitize(req.body?.email).toLowerCase();
 const minecraftName = sanitize(req.body?.minecraftName || username);
-const photoUrl      = sanitize(req.body?.photoUrl || 'assets/images/fa-icon-light.png');
+const photoUrl      = sanitize(req.body?.photoUrl || 'assets/images/fa-icon-dark.png');
 const ALLOWED_ROLES = ['owner','full','limited'];
 const role          = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : 'limited';
 

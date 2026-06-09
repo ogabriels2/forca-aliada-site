@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#060c16">
 <meta name="description" content="Força Aliada: O servidor Minecraft Survival Vanilla feito para durar. Sem resets, economia real e ativo desde 2021. Jogue no PC, Mobile e Console.">
 <title>Força Aliada | Construa para Sempre</title>
-<link rel="icon" type="image/png" href="assets/images/fa-icon-light.png">
-<link rel="apple-touch-icon" href="assets/images/fa-icon-light.png">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://forcaaliada.ogabriels.com/">
 <meta property="og:title" content="Força Aliada | Construa para Sempre">
 <meta property="og:description" content="Um mundo survival sem reset, sem pay-to-win e sem pressa. Ativo desde 2021.">
 <meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
-<meta name="theme-color" content="#0071e3">
 
 <script>
 (function(){
@@ -953,7 +954,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <header>
   <a href="#inicio" class="brand-link" aria-label="Início - Força Aliada">
-    <img src="assets/images/fa-icon-light.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
+    <img src="assets/images/app-icons/icon-192.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
     <span class="logo-text">Força Aliada</span>
   </a>
   
@@ -1021,15 +1022,15 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     </div>
     <div class="community-preview" aria-hidden="true">
       <div class="community-logo-stage">
-        <img src="assets/images/fa-icon-light.png" alt="">
+        <img src="assets/images/fa-icon-dark.png" alt="">
       </div>
       <div class="community-post-stack">
         <div class="community-post">
-          <img src="assets/images/fa-icon-light.png" alt="">
+          <img src="assets/images/fa-icon-dark.png" alt="">
           <div><strong>Quartel social aberto</strong><small>Novos posts, respostas e seguidores aparecem em tempo real.</small></div>
         </div>
         <div class="community-post">
-          <img src="assets/images/fa-icon-light.png" alt="">
+          <img src="assets/images/fa-icon-dark.png" alt="">
           <div><strong>Notificações da rede</strong><small>Curtidas, comentários, menções e reposts em uma área própria.</small></div>
         </div>
       </div>
@@ -1525,7 +1526,7 @@ function renderAuthMenu(session) {
   if (session) {
     const skinUrl = session.minecraftName
       ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
-      : 'assets/images/fa-icon-light.png';
+      : 'assets/images/app-icons/icon-192.png';
 
     const rankColor = session.rank ? getRankColor(session.rank.id) : '#8E8E93';
     const rankBadgeHtml = session.rank ? getRankDisplay(session.rank) : '';

@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Minha Conta | Força Aliada</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
+<link rel="manifest" href="community.webmanifest">
+<meta name="theme-color" content="#060c16">
+<meta name="application-name" content="FA Community">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FA Community">
+<script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script><title>Minha Conta | Força Aliada</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="assets/css/social-chat.css?v=chat12-20260608">
 
@@ -1636,7 +1644,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/fa-icon-light.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
+    <img src="assets/images/app-icons/icon-192.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
     <div class="logo-text">Força Aliada</div>
   </a>
   <div class="user-menu-wrapper">
@@ -5421,6 +5429,9 @@ async function checkLegacySuggestion() {
       if (mig.status === 'verified' && !mig.executedAt) {
         legacyState.migrationId = mig.id;
         legacyState.legacyName = mig.legacyUsername;
+        // Solicitações antigas não registravam o modo. Retomar como alias separado
+        // é a opção conservadora: não move dados e continua reversível.
+        legacyState.selectedMode = mig.mode || 'separate';
         legacyState.autoApproved = true;
         // Mostrar histórico
         legacyLoadHistory();
@@ -5587,7 +5598,7 @@ async function legacySubmitRequest() {
     const res = await fetch(`${API_BASE}/api/me/legacy/request`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ legacy_username: legacyState.legacyName }),
+      body: JSON.stringify({ legacy_username: legacyState.legacyName, mode: legacyState.selectedMode }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -5596,6 +5607,7 @@ async function legacySubmitRequest() {
     }
 
     legacyState.migrationId = data.migrationId;
+    legacyState.selectedMode = data.mode || legacyState.selectedMode;
     legacyState.tier = data.tier;
     legacyState.autoApproved = data.autoApproved;
     legacyState.pendingAdmin = data.pendingAdmin;

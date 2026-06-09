@@ -3,11 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
+<link rel="manifest" href="community.webmanifest">
+<meta name="theme-color" content="#060c16">
+<meta name="application-name" content="FA Community">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FA Community">
+<script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script>
 <!-- Cache-Control: HTML nunca deve ser cacheado para garantir que JS/CSS atualizados sejam carregados -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Comunidade | Força Aliada</title>
+<title>FA Community | Força Aliada</title>
 <meta name="description" content="Feed social gamificado da comunidade Força Aliada.">
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://api.mcheads.org" crossorigin>
@@ -4448,7 +4456,7 @@ function updateThemeIcon(t){
     ?'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
     :'<path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z"/>';
   const logo=$('#brand-logo-img');
-  if(logo) logo.src=t==='dark'?'assets/images/fa-icon-dark.png':'assets/images/fa-icon-light.png';
+  if(logo) logo.src='assets/images/fa-icon-dark.png';
 }
 
 /* ======================= AUTH ======================= */
@@ -7032,7 +7040,7 @@ function socialUserRowHTML(u,extraInfo){
   const mc=u.minecraft_name||u.username||'Jogador';
   const shown=u.display_name||mc;
   const handle=u.username||mc;
-  const av=u.avatar_url||(u.photo_url?''+u.photo_url:'')||'assets/images/fa-icon-light.png';
+  const av=u.avatar_url||(u.photo_url?''+u.photo_url:'')||'assets/images/app-icons/icon-192.png';
   const rk=rankInfo(u.rank||u.role,u.merit);
   return`<div class="social-user-row" data-uid="${esc(u.id)}" data-mc="${esc(mc)}">
     <img class="social-user-av" src="${esc(av)}" alt="${esc(shown)}" onerror="this.onerror=null;this.src='${fallbackAvatar(shown,40)}'">
@@ -8249,7 +8257,7 @@ function renderNotificationsRoute(){
     <section class="notif-center" aria-label="Central de notificações da rede">
       <div class="notif-center-hero">
         <div class="notif-center-main">
-          <div class="notif-center-mark"><img src="assets/images/fa-icon-light.png" alt=""></div>
+          <div class="notif-center-mark"><img src="assets/images/app-icons/icon-192.png" alt=""></div>
           <div>
             <p class="eyebrow">Radar social</p>
             <h1>O que aconteceu enquanto você estava fora.</h1>

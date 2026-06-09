@@ -37,6 +37,10 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
         formatsResult,
         contributorsResult,
         rankResult,
+        peopleResult,
+        providersResult,
+        cohortsResult,
+        serverResult,
       ] = await Promise.all([
         pool.query(`
           WITH events AS (${activityEventsSql}),
@@ -96,6 +100,8 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
             (SELECT COUNT(*)::int FROM direct_messages WHERE created_at >= $1 AND created_at < $2 AND is_deleted = FALSE)
               + (SELECT COUNT(*)::int FROM chat_group_messages WHERE created_at >= $1 AND created_at < $2 AND is_deleted = FALSE) AS messages,
             (SELECT COUNT(*)::int FROM user_follows WHERE created_at >= $1 AND created_at < $2) AS new_connections,
+            (SELECT COUNT(*)::int FROM user_follows WHERE created_at >= $3 AND created_at < $1) AS previous_new_connections,
+            (SELECT COUNT(*)::int FROM user_follows) AS total_connections,
             (SELECT COALESCE(SUM(duration_hours),0)::float FROM player_sessions WHERE entered_at >= $1 AND entered_at < $2) AS play_hours,
             (SELECT COUNT(DISTINCT LOWER(player))::int FROM player_sessions WHERE entered_at >= $1 AND entered_at < $2) AS unique_players,
             (SELECT COUNT(*)::int FROM content_reports WHERE status = 'pending') AS pending_reports,
@@ -242,6 +248,89 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
             COALESCE(SUM(merit_total),0)::int AS merit, COALESCE(SUM(capital_balance),0)::float AS capital
           FROM player_balances GROUP BY LOWER(COALESCE(NULLIF(rank,''),'ferro')) ORDER BY total DESC
         `),
+        pool.query(`
+          WITH events AS (${activityEventsSql}),
+          recent AS (
+            SELECT DISTINCT user_id FROM events WHERE created_at >= NOW() - INTERVAL '30 days'
+          )
+          SELECT
+            COUNT(*)::int AS registered,
+            COUNT(*) FILTER (WHERE u.is_verified = TRUE)::int AS email_verified,
+            COUNT(*) FILTER (WHERE u.is_platform_verified = TRUE)::int AS platform_verified,
+            COUNT(*) FILTER (WHERE NULLIF(TRIM(u.minecraft_name),'') IS NOT NULL)::int AS minecraft_linked,
+            COUNT(*) FILTER (
+              WHERE NULLIF(TRIM(COALESCE(up.display_name,'')),'') IS NOT NULL
+                AND NULLIF(TRIM(COALESCE(up.bio,'')),'') IS NOT NULL
+                AND NULLIF(TRIM(COALESCE(up.avatar_url,'')),'') IS NOT NULL
+            )::int AS complete_profiles,
+            COUNT(*) FILTER (WHERE recent.user_id IS NOT NULL)::int AS active_30d,
+            COUNT(*) FILTER (WHERE recent.user_id IS NULL)::int AS dormant_30d,
+            COUNT(*) FILTER (WHERE EXISTS(SELECT 1 FROM social_accounts sa WHERE sa.user_id=u.id))::int AS social_connected,
+            COUNT(*) FILTER (WHERE EXISTS(SELECT 1 FROM user_integrations ui WHERE ui.user_id=u.id))::int AS microsoft_connected
+          FROM users u
+          LEFT JOIN user_preferences up ON up.user_id=u.id
+          LEFT JOIN recent ON recent.user_id=u.id
+          WHERE u.merged_into_user_id IS NULL
+        `),
+        pool.query(`
+          SELECT provider, COUNT(*)::int AS accounts, COUNT(DISTINCT user_id)::int AS users
+          FROM (
+            SELECT LOWER(provider) AS provider, user_id FROM social_accounts
+            UNION ALL
+            SELECT 'microsoft' AS provider, user_id FROM user_integrations
+          ) connected
+          GROUP BY provider
+          ORDER BY users DESC, provider ASC
+        `),
+        pool.query(`
+          WITH events AS (${activityEventsSql}),
+          cohorts AS (
+            SELECT id, created_at, date_trunc('week', created_at)::date AS cohort_week
+            FROM users
+            WHERE created_at >= NOW() - INTERVAL '70 days'
+              AND merged_into_user_id IS NULL
+          )
+          SELECT
+            cohort_week,
+            COUNT(*)::int AS joined,
+            COUNT(*) FILTER (WHERE EXISTS(
+              SELECT 1 FROM events e WHERE e.user_id=cohorts.id
+                AND e.created_at >= cohorts.created_at
+                AND e.created_at < cohorts.created_at + INTERVAL '7 days'
+            ))::int AS activated_7d,
+            COUNT(*) FILTER (WHERE EXISTS(
+              SELECT 1 FROM events e WHERE e.user_id=cohorts.id
+                AND e.created_at >= cohorts.created_at + INTERVAL '7 days'
+                AND e.created_at < cohorts.created_at + INTERVAL '30 days'
+            ))::int AS retained_30d
+          FROM cohorts
+          GROUP BY cohort_week
+          ORDER BY cohort_week ASC
+        `),
+        pool.query(`
+          WITH current_players AS (
+            SELECT DISTINCT LOWER(player) AS player
+            FROM player_sessions WHERE entered_at >= $1 AND entered_at < $2
+          ),
+          previous_players AS (
+            SELECT DISTINCT LOWER(player) AS player
+            FROM player_sessions WHERE entered_at < $1
+          ),
+          first_seen AS (
+            SELECT LOWER(player) AS player, MIN(entered_at) AS first_seen_at
+            FROM player_sessions GROUP BY LOWER(player)
+          )
+          SELECT
+            (SELECT COUNT(*)::int FROM player_sessions WHERE entered_at >= $1 AND entered_at < $2) AS sessions,
+            (SELECT COALESCE(AVG(duration_hours),0)::float FROM player_sessions WHERE entered_at >= $1 AND entered_at < $2 AND duration_hours IS NOT NULL) AS avg_session_hours,
+            (SELECT COUNT(*)::int FROM current_players) AS unique_players,
+            (SELECT COUNT(*)::int FROM current_players cp JOIN previous_players pp USING(player)) AS returning_players,
+            (SELECT COUNT(*)::int FROM first_seen WHERE first_seen_at >= $1 AND first_seen_at < $2) AS new_players,
+            (SELECT COALESCE(MAX(players_online),0)::int FROM server_status_checks WHERE checked_at >= $1 AND checked_at < $2) AS peak_online,
+            (SELECT COALESCE(AVG(latency_ms),0)::float FROM server_status_checks WHERE checked_at >= $1 AND checked_at < $2 AND online=TRUE) AS avg_latency_ms,
+            (SELECT CASE WHEN COUNT(*)=0 THEN 0 ELSE COUNT(*) FILTER (WHERE online=TRUE)::float / COUNT(*) * 100 END
+               FROM server_status_checks WHERE checked_at >= $1 AND checked_at < $2) AS uptime_pct
+        `, [start.toISOString(), end.toISOString()]),
       ]);
 
       const summary = summaryResult.rows[0] || {};
@@ -261,6 +350,12 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
           response_rate: percentage(summary.responded_posts, summary.response_base),
           dau_mau: percentage(summary.dau, summary.mau),
           wau_mau: percentage(summary.wau, summary.mau),
+          engaged_active_rate: percentage(summary.engaged_users, summary.active_users),
+          creator_active_rate: percentage(summary.creators, summary.active_users),
+          save_rate: percentage(summary.saves, summary.impressions),
+          amplification_rate: percentage(summary.reposts, summary.impressions),
+          conversation_rate: percentage(summary.comments, summary.impressions),
+          interactions_per_post: Number(summary.posts || 0) > 0 ? interactions / Number(summary.posts) : 0,
         },
         daily: dailyResult.rows,
         top_content: topContentResult.rows,
@@ -269,6 +364,10 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
         formats: formatsResult.rows,
         contributors: contributorsResult.rows,
         ranks: rankResult.rows,
+        people: peopleResult.rows[0] || {},
+        providers: providersResult.rows,
+        cohorts: cohortsResult.rows,
+        server: serverResult.rows[0] || {},
       });
     } catch (error) {
       console.error('[GET /api/admin/analytics/command-center]', error);
