@@ -1429,6 +1429,7 @@ footer { display: none; }
         <button class="portal-tab" type="button" data-dashboard-target="moderation-card" id="portal-nav-moderation" onclick="scrollToSection('moderation-card')" style="display:none;">Moderação <span class="mod-badge" id="mod-nav-badge" style="display:none;">0</span></button>
         <button class="portal-tab" type="button" data-dashboard-target="audit-card" id="portal-nav-audit" onclick="scrollToSection('audit-card')" style="display:none;">Auditoria</button>
         <button class="portal-tab" type="button" data-dashboard-target="app-keys-card" id="portal-nav-appkeys" onclick="scrollToSection('app-keys-card')" style="display:none;">Integrações</button>
+        <button class="portal-tab" type="button" data-dashboard-target="legacy-migration-card" id="portal-nav-legacy" onclick="scrollToSection('legacy-migration-card')" style="display:none;">Contas Legacy <span class="mod-badge" id="legacy-nav-pending-badge" style="display:none;">0</span></button>
       </div>
 
       <div id="alerts-card" style="display:none;">
@@ -1972,6 +1973,95 @@ footer { display: none; }
         </div>
       </div>
 
+      <!-- ── Contas Legacy ──────────────────────────────────────────────── -->
+      <div class="card" id="legacy-migration-card" style="display:none; margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+          <h3 style="margin:0;">🔗 Contas Legacy <span>Gerencie a migração de contas piratas → originais</span></h3>
+          <button class="btn-export" onclick="legacyAdminRefresh()" title="Recarregar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Recarregar
+          </button>
+        </div>
+
+        <div class="mod-tabs-bar">
+          <button class="mod-tab active" id="legacy-admin-tab-presets"  onclick="legacyAdminSwitchTab('presets')">Presets <span class="mod-badge" id="legacy-presets-count" style="display:none;">0</span></button>
+          <button class="mod-tab"        id="legacy-admin-tab-pending"  onclick="legacyAdminSwitchTab('pending')">Revisão Manual <span class="mod-badge" id="legacy-pending-count" style="display:none;">0</span></button>
+          <button class="mod-tab"        id="legacy-admin-tab-all"      onclick="legacyAdminSwitchTab('all')">Todas</button>
+        </div>
+
+        <!-- ── Aba: Presets ───────────────────────────────────────────── -->
+        <div id="legacy-admin-panel-presets">
+
+          <!-- Formulário de novo preset -->
+          <div style="background:var(--bg-2,#f3f6fb);border:1px solid var(--line);border-radius:13px;padding:16px;margin:16px 0;">
+            <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:var(--text-primary);">+ Novo Preset</p>
+            <p style="margin:0 0 12px;font-size:12px;color:var(--text-secondary);line-height:1.5;">
+              Um preset pré-aprova automaticamente (Tier 0) a solicitação de migração quando o usuário enviar o nick legacy correspondente.
+              Use para casos que você já conhece, como a migração do servidor pirata → original.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">Nick Legacy (antigo, pirata)</label>
+                <input type="text" id="lp-legacy-input" class="form-input" placeholder="Ex: CaioLeal" maxlength="64" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">Usuário do Site (nick atual ou username)</label>
+                <div style="display:flex;gap:8px;">
+                  <input type="text" id="lp-user-search" class="form-input" placeholder="Ex: porralho ou #42" style="flex:1;" oninput="legacyAdminUserSearch()">
+                  <button class="btn-secondary" onclick="legacyAdminUserSearch()" style="height:44px;padding:0 14px;white-space:nowrap;">Buscar</button>
+                </div>
+              </div>
+            </div>
+            <div id="lp-user-results" style="display:none;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;max-height:180px;overflow-y:auto;"></div>
+            <div id="lp-selected-user" style="display:none;background:rgba(23,97,240,.07);border:1px solid rgba(23,97,240,.25);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+              <img id="lp-sel-avatar" src="" alt="" style="width:36px;height:36px;border-radius:9px;object-fit:cover;">
+              <div style="flex:1;min-width:0;">
+                <strong id="lp-sel-name" style="font-size:14px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></strong>
+                <span id="lp-sel-mc" style="font-size:12px;color:var(--text-secondary);"></span>
+              </div>
+              <button onclick="legacyAdminClearUser()" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:18px;line-height:1;" title="Remover seleção">×</button>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">Nota (opcional)</label>
+              <input type="text" id="lp-note-input" class="form-input" placeholder="Ex: Migração manual do servidor pirata de maio/2026" maxlength="300" style="width:100%;">
+            </div>
+            <div id="lp-form-error" style="display:none;margin-top:10px;font-size:13px;color:var(--danger);font-weight:600;"></div>
+            <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+              <button class="btn-primary" id="lp-save-btn" onclick="legacyAdminSavePreset()" style="padding:10px 20px;">Criar Preset</button>
+            </div>
+          </div>
+
+          <!-- Lista de presets existentes -->
+          <div id="legacy-presets-list">
+            <div class="empty-state"><div class="empty-icon">🔗</div><strong>Carregando presets...</strong></div>
+          </div>
+        </div>
+
+        <!-- ── Aba: Revisão Manual ──────────────────────────────────── -->
+        <div id="legacy-admin-panel-pending" style="display:none;">
+          <p style="font-size:13px;color:var(--text-secondary);margin:12px 0;">Solicitações de jogadores sem e-mail na conta legacy — requerem revisão manual.</p>
+          <div id="legacy-pending-list">
+            <div class="empty-state"><div class="empty-icon">⏳</div><strong>Carregando...</strong></div>
+          </div>
+        </div>
+
+        <!-- ── Aba: Todas as Migrações ──────────────────────────────── -->
+        <div id="legacy-admin-panel-all" style="display:none;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+            <button class="mod-chip active" data-legacy-status="all"       onclick="legacyAdminFilterAll(this,'all')">Todas</button>
+            <button class="mod-chip"        data-legacy-status="completed" onclick="legacyAdminFilterAll(this,'completed')">Concluídas</button>
+            <button class="mod-chip"        data-legacy-status="verified"  onclick="legacyAdminFilterAll(this,'verified')">Verificadas</button>
+            <button class="mod-chip"        data-legacy-status="pending_verification" onclick="legacyAdminFilterAll(this,'pending_verification')">Aguardando Código</button>
+            <button class="mod-chip"        data-legacy-status="rejected"  onclick="legacyAdminFilterAll(this,'rejected')">Rejeitadas</button>
+            <button class="mod-chip"        data-legacy-status="reversed"  onclick="legacyAdminFilterAll(this,'reversed')">Revertidas</button>
+          </div>
+          <div id="legacy-all-list">
+            <div class="empty-state"><div class="empty-icon">📋</div><strong>Carregando...</strong></div>
+          </div>
+        </div>
+      </div>
+      <!-- ── /Contas Legacy ──────────────────────────────────────────────── -->
+
     </div></div></main>
 
 <footer>
@@ -2303,6 +2393,7 @@ function applyRoleVisibility() {
   const conditionalCards = [
     'admin-users-card', 'admin-notifications-card', 'audit-card',
     'merit-card', 'manager-promo-card', 'app-keys-card', 'moderation-card',
+    'legacy-migration-card',
   ];
   conditionalCards.forEach(id => {
     const el = document.getElementById(id);
@@ -2352,6 +2443,7 @@ function applyRoleVisibility() {
     hide('manager-promo-card',  'block');
     hide('app-keys-card',       'block');
     hide('qa-appkeys',          'flex');
+    hide('legacy-migration-card', 'block');
   }
 
   updateDashboardModuleVisibility();
@@ -2454,6 +2546,7 @@ function initDashboard() {
   // Carregamento inicial de dados do owner
   if (session.role === 'owner') {
     fetchAppKeys();
+    legacyAdminInit();
   }
 
   // Audit logs — visível para full E owner (alinhado com a API requireAdmin)
@@ -2614,6 +2707,7 @@ function updateDashboardModuleVisibility() {
     ['portal-nav-notifications', 'admin-notifications-card'],
     ['portal-nav-audit', 'audit-card'],
     ['portal-nav-appkeys', 'app-keys-card'],
+    ['portal-nav-legacy', 'legacy-migration-card'],
   ].forEach(([navId, cardId]) => {
     const nav = document.getElementById(navId);
     if (nav) nav.style.display = _isModuleAvailable(cardId) ? 'inline-flex' : 'none';
@@ -5148,6 +5242,399 @@ async function togglePlatformVerified(userId, currentlyVerified) {
   } catch (e) {
     showToast('Erro: ' + e.message, 'error');
   }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LEGACY MIGRATION ADMIN — Presets, Revisão Manual, Histórico
+// ══════════════════════════════════════════════════════════════════
+
+const legacyAdmin = {
+  tab: 'presets',
+  presets: [],
+  pending: [],
+  all: [],
+  allFilter: 'all',
+  selectedUserId: null,
+  selectedUserRow: null,
+  searchTimer: null,
+};
+
+function legacyAdminInit() {
+  legacyAdminLoadPresets();
+  legacyAdminLoadPending();
+}
+
+function legacyAdminRefresh() {
+  legacyAdminLoadPresets();
+  legacyAdminLoadPending();
+  if (legacyAdmin.tab === 'all') legacyAdminLoadAll();
+}
+
+function legacyAdminSwitchTab(tab) {
+  legacyAdmin.tab = tab;
+  ['presets', 'pending', 'all'].forEach(t => {
+    document.getElementById(`legacy-admin-tab-${t}`)?.classList.toggle('active', t === tab);
+    const panel = document.getElementById(`legacy-admin-panel-${t}`);
+    if (panel) panel.style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'all' && !legacyAdmin.all.length) legacyAdminLoadAll();
+}
+
+// ── Presets ──────────────────────────────────────────────────────
+
+async function legacyAdminLoadPresets() {
+  const list = document.getElementById('legacy-presets-list');
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/presets`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao carregar presets');
+    legacyAdmin.presets = data.presets || [];
+    const badge = document.getElementById('legacy-presets-count');
+    if (badge) {
+      badge.textContent = legacyAdmin.presets.length;
+      badge.style.display = legacyAdmin.presets.length ? 'inline-flex' : 'none';
+    }
+    legacyAdminRenderPresets();
+  } catch (e) {
+    if (list) list.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px;">${e.message}</p>`;
+  }
+}
+
+function legacyAdminRenderPresets() {
+  const list = document.getElementById('legacy-presets-list');
+  if (!list) return;
+  const items = legacyAdmin.presets;
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🔗</div><strong>Nenhum preset cadastrado</strong><p>Crie o primeiro usando o formulário acima.</p></div>';
+    return;
+  }
+  list.innerHTML = items.map(p => `
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--bg,#fff);">
+      <img src="https://minotar.net/helm/${encodeURIComponent(p.target_mc || 'Steve')}/46.png"
+           onerror="this.src='https://minotar.net/helm/Steve/46.png'"
+           style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <strong style="font-size:14px;">${esc(p.legacy_username)}</strong>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="font-size:14px;color:var(--accent);">${esc(p.target_username)}</span>
+          ${p.target_mc ? `<span style="font-size:12px;color:var(--text-secondary);">(${esc(p.target_mc)})</span>` : ''}
+        </div>
+        ${p.note ? `<p style="margin:3px 0 0;font-size:12px;color:var(--text-secondary);">${esc(p.note)}</p>` : ''}
+        <p style="margin:2px 0 0;font-size:11px;color:var(--text-secondary);">Criado por ${esc(p.created_by_name || '—')} • ${new Date(p.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'short',year:'numeric'})}</p>
+      </div>
+      <button onclick="legacyAdminDeletePreset(${p.id}, '${esc(p.legacy_username)}')"
+              style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:18px;line-height:1;padding:4px 8px;border-radius:6px;flex-shrink:0;"
+              title="Remover preset">🗑</button>
+    </div>
+  `).join('');
+}
+
+function legacyAdminUserSearch() {
+  clearTimeout(legacyAdmin.searchTimer);
+  const q = document.getElementById('lp-user-search')?.value?.trim();
+  if (!q || q.length < 2) {
+    document.getElementById('lp-user-results').style.display = 'none';
+    return;
+  }
+  legacyAdmin.searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users?search=${encodeURIComponent(q)}&limit=8`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const users = data.users || data.staff || [];
+      const resultsEl = document.getElementById('lp-user-results');
+      if (!users.length) {
+        resultsEl.innerHTML = '<p style="padding:12px;font-size:13px;color:var(--text-secondary);margin:0;">Nenhum usuário encontrado.</p>';
+        resultsEl.style.display = 'block';
+        return;
+      }
+      resultsEl.innerHTML = users.map(u => `
+        <div onclick="legacyAdminSelectUser(${u.id}, '${esc(u.username)}', '${esc(u.minecraft_name || '')}', '${esc(u.minecraft_name || 'Steve')}')"
+             style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .15s;"
+             onmouseover="this.style.background='var(--accent-light,rgba(23,97,240,.07))'" onmouseout="this.style.background=''">
+          <img src="https://minotar.net/helm/${encodeURIComponent(u.minecraft_name || 'Steve')}/36.png"
+               onerror="this.src='https://minotar.net/helm/Steve/36.png'"
+               style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;min-width:0;">
+            <strong style="font-size:13px;">${esc(u.username)}</strong>
+            ${u.minecraft_name ? `<span style="font-size:12px;color:var(--text-secondary);margin-left:6px;">${esc(u.minecraft_name)}</span>` : ''}
+          </div>
+          <span style="font-size:11px;color:var(--text-secondary);">#${u.id}</span>
+        </div>
+      `).join('');
+      resultsEl.style.display = 'block';
+    } catch (e) {
+      console.error('[legacyAdminUserSearch]', e);
+    }
+  }, 320);
+}
+
+function legacyAdminSelectUser(id, username, mcName, avatarNick) {
+  legacyAdmin.selectedUserId = id;
+  legacyAdmin.selectedUserRow = { id, username, mcName };
+
+  document.getElementById('lp-user-search').value = username;
+  document.getElementById('lp-user-results').style.display = 'none';
+
+  const sel = document.getElementById('lp-selected-user');
+  const avatar = document.getElementById('lp-sel-avatar');
+  const name = document.getElementById('lp-sel-name');
+  const mc = document.getElementById('lp-sel-mc');
+
+  if (avatar) avatar.src = `https://minotar.net/helm/${encodeURIComponent(avatarNick || 'Steve')}/72.png`;
+  if (name) name.textContent = username;
+  if (mc) mc.textContent = mcName ? `MC: ${mcName}` : '(sem nick Minecraft vinculado)';
+  if (sel) sel.style.display = 'flex';
+}
+
+function legacyAdminClearUser() {
+  legacyAdmin.selectedUserId = null;
+  legacyAdmin.selectedUserRow = null;
+  document.getElementById('lp-user-search').value = '';
+  const sel = document.getElementById('lp-selected-user');
+  if (sel) sel.style.display = 'none';
+}
+
+async function legacyAdminSavePreset() {
+  const errEl = document.getElementById('lp-form-error');
+  const btn = document.getElementById('lp-save-btn');
+  errEl.style.display = 'none';
+
+  const legacyUsername = document.getElementById('lp-legacy-input')?.value?.trim();
+  const note = document.getElementById('lp-note-input')?.value?.trim();
+
+  if (!legacyUsername) { errEl.textContent = 'Informe o nick legacy.'; errEl.style.display = 'block'; return; }
+  if (!legacyAdmin.selectedUserId) { errEl.textContent = 'Selecione o usuário de destino usando a busca.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/preset`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_username: legacyUsername, target_user_id: legacyAdmin.selectedUserId, note: note || undefined }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao salvar');
+
+    showToast(`Preset criado: "${legacyUsername}" → ${legacyAdmin.selectedUserRow?.username || '?'}`, 'success');
+
+    // Limpar formulário
+    document.getElementById('lp-legacy-input').value = '';
+    document.getElementById('lp-note-input').value = '';
+    legacyAdminClearUser();
+
+    legacyAdminLoadPresets();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Criar Preset';
+  }
+}
+
+async function legacyAdminDeletePreset(id, legacyUsername) {
+  if (!confirm(`Remover o preset para "${legacyUsername}"? O usuário não será mais pré-aprovado automaticamente.`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/preset/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao remover');
+    showToast(`Preset "${legacyUsername}" removido.`, 'success');
+    legacyAdminLoadPresets();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ── Revisão Manual ───────────────────────────────────────────────
+
+async function legacyAdminLoadPending() {
+  const list = document.getElementById('legacy-pending-list');
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/pending`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro');
+    legacyAdmin.pending = data.migrations || [];
+
+    const badge = document.getElementById('legacy-pending-count');
+    const navBadge = document.getElementById('legacy-nav-pending-badge');
+    const count = legacyAdmin.pending.length;
+    [badge, navBadge].forEach(b => {
+      if (b) { b.textContent = count; b.style.display = count ? 'inline-flex' : 'none'; }
+    });
+    legacyAdminRenderPending();
+  } catch (e) {
+    if (list) list.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px;">${e.message}</p>`;
+  }
+}
+
+function legacyAdminRenderPending() {
+  const list = document.getElementById('legacy-pending-list');
+  if (!list) return;
+  if (!legacyAdmin.pending.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhuma solicitação pendente</strong></div>';
+    return;
+  }
+  list.innerHTML = legacyAdmin.pending.map(m => `
+    <div id="legacy-pending-item-${m.id}" style="border:1px solid var(--line);border-radius:13px;padding:16px;margin-bottom:10px;background:var(--bg,#fff);">
+      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+        <img src="https://minotar.net/helm/${encodeURIComponent(m.requester_mc || 'Steve')}/46.png"
+             onerror="this.src='https://minotar.net/helm/Steve/46.png'"
+             style="width:42px;height:42px;border-radius:10px;flex-shrink:0;">
+        <div style="flex:1;min-width:200px;">
+          <p style="margin:0 0 3px;font-size:14px;font-weight:800;">
+            <span style="color:var(--text-secondary);">${esc(m.legacy_username)}</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin:0 4px;"><polyline points="9 18 15 12 9 6"/></svg>
+            ${esc(m.requester_username)}
+            ${m.requester_mc ? `<span style="font-size:12px;font-weight:500;color:var(--text-secondary);">(${esc(m.requester_mc)})</span>` : ''}
+          </p>
+          <p style="margin:0 0 3px;font-size:12px;color:var(--text-secondary);">Solicitado em ${new Date(m.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
+          ${m.preview ? `
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+            <span style="font-size:12px;background:var(--accent-light,rgba(23,97,240,.08));color:var(--accent);padding:3px 9px;border-radius:20px;font-weight:700;">⚔️ ${m.preview.merit || 0} méritos</span>
+            <span style="font-size:12px;background:rgba(201,162,39,.1);color:#b8860b;padding:3px 9px;border-radius:20px;font-weight:700;">💰 C$ ${m.preview.capital || 0}</span>
+            <span style="font-size:12px;background:rgba(52,199,89,.08);color:var(--success);padding:3px 9px;border-radius:20px;font-weight:700;">🎮 ${m.preview.sessions || 0} sessões</span>
+          </div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <button onclick="legacyAdminApprove(${m.id})"
+                  style="background:rgba(52,199,89,.1);border:1px solid var(--success);color:var(--success);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">
+            ✓ Aprovar
+          </button>
+          <button onclick="legacyAdminReject(${m.id})"
+                  style="background:rgba(255,59,48,.07);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">
+            ✗ Rejeitar
+          </button>
+        </div>
+      </div>
+      <div id="legacy-pending-reject-form-${m.id}" style="display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
+        <input type="text" id="legacy-reject-reason-${m.id}" class="form-input" placeholder="Motivo da rejeição (obrigatório)" style="width:100%;margin-bottom:8px;">
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button onclick="document.getElementById('legacy-pending-reject-form-${m.id}').style.display='none'" class="btn-secondary" style="padding:8px 14px;font-size:13px;">Cancelar</button>
+          <button onclick="legacyAdminConfirmReject(${m.id})" class="btn-danger" style="padding:8px 16px;font-size:13px;font-weight:700;">Confirmar Rejeição</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function legacyAdminApprove(id) {
+  const notes = prompt('Notas internas (opcional):') ?? '';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/${id}/approve`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao aprovar');
+    showToast('Solicitação aprovada. O jogador pode agora escolher o modo de migração.', 'success');
+    legacyAdminLoadPending();
+    if (legacyAdmin.tab === 'all') legacyAdminLoadAll();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+function legacyAdminReject(id) {
+  const form = document.getElementById(`legacy-pending-reject-form-${id}`);
+  if (form) form.style.display = 'block';
+}
+
+async function legacyAdminConfirmReject(id) {
+  const reason = document.getElementById(`legacy-reject-reason-${id}`)?.value?.trim();
+  if (!reason) { showToast('Informe o motivo da rejeição.', 'error'); return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/${id}/reject`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao rejeitar');
+    showToast('Solicitação rejeitada.', 'success');
+    legacyAdminLoadPending();
+    if (legacyAdmin.tab === 'all') legacyAdminLoadAll();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ── Todas as migrações ───────────────────────────────────────────
+
+async function legacyAdminLoadAll() {
+  const list = document.getElementById('legacy-all-list');
+  if (list) list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><strong>Carregando...</strong></div>';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/all`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro');
+    legacyAdmin.all = data.migrations || [];
+    legacyAdminRenderAll();
+  } catch (e) {
+    if (list) list.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px;">${e.message}</p>`;
+  }
+}
+
+function legacyAdminFilterAll(btn, status) {
+  legacyAdmin.allFilter = status;
+  document.querySelectorAll('#legacy-admin-panel-all .mod-chip').forEach(b => b.classList.toggle('active', b === btn));
+  legacyAdminRenderAll();
+}
+
+const LEGACY_STATUS_LABELS = {
+  pending_verification: { label: 'Aguardando código', color: '#f59e0b' },
+  pending_admin:        { label: 'Revisão manual',    color: '#8b5cf6' },
+  verified:             { label: 'Verificado',         color: '#3b82f6' },
+  completed:            { label: 'Concluído',          color: 'var(--success)' },
+  rejected:             { label: 'Rejeitado',          color: 'var(--danger)' },
+  reversed:             { label: 'Revertido',          color: 'var(--text-secondary)' },
+};
+
+const LEGACY_MODE_LABELS = { separate: 'Separado', partial: 'Parcial', full: 'Total' };
+
+function legacyAdminRenderAll() {
+  const list = document.getElementById('legacy-all-list');
+  if (!list) return;
+  const filter = legacyAdmin.allFilter;
+  const items = filter === 'all' ? legacyAdmin.all : legacyAdmin.all.filter(m => m.status === filter);
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><strong>Nenhuma migração encontrada</strong></div>';
+    return;
+  }
+  list.innerHTML = items.map(m => {
+    const st = LEGACY_STATUS_LABELS[m.status] || { label: m.status, color: 'var(--text-secondary)' };
+    const mode = m.migration_mode ? LEGACY_MODE_LABELS[m.migration_mode] || m.migration_mode : '—';
+    return `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--line);border-radius:11px;margin-bottom:7px;background:var(--bg,#fff);flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <p style="margin:0 0 3px;font-size:13px;font-weight:800;">
+          <span style="color:var(--text-secondary);">${esc(m.legacy_username)}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin:0 4px;"><polyline points="9 18 15 12 9 6"/></svg>
+          ${esc(m.requester_username || '#' + m.user_id)}
+          ${m.requester_mc ? `<span style="font-size:11px;font-weight:500;color:var(--text-secondary);">(${esc(m.requester_mc)})</span>` : ''}
+        </p>
+        <p style="margin:0;font-size:11px;color:var(--text-secondary);">${new Date(m.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'short',year:'numeric'})}</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${st.color};color:${st.color};background:${st.color}18;">${st.label}</span>
+        ${m.migration_mode ? `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg-2);color:var(--text-secondary);">${mode}</span>` : ''}
+        <span style="font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 8px;border-radius:20px;background:var(--bg-2);">${esc(m.verification_tier || '—')}</span>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
 </body>
 </html>
