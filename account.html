@@ -338,6 +338,9 @@ header {
 .btn-outline:hover { border-color: var(--text-primary); }
 .btn-danger-outline { background: transparent; border: 1.5px solid rgba(255,59,48,0.3); color: var(--danger); padding: 9px 18px; border-radius: 980px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
 .btn-danger-outline:hover { background: rgba(255,59,48,0.08); }
+.btn-danger { background: var(--danger); color: #fff; border: none; padding: 9px 18px; border-radius: 980px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.btn-danger:hover { background: #e0352b; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-sm { padding: 7px 14px; font-size: 12px; }
 .btn-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 6px; border-radius: 8px; display: flex; align-items: center; transition: all 0.2s; }
 .btn-icon:hover { background: rgba(0,0,0,0.05); color: var(--text-primary); }
@@ -1504,6 +1507,124 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 [data-theme="dark"] .achievement-badge.orange { background: linear-gradient(135deg, rgba(251,146,60,0.20), rgba(124,45,18,0.28)) !important; color: #fed7aa !important; }
 [data-theme="dark"] .skeleton { background: linear-gradient(90deg, rgba(51,65,85,0.8) 25%, rgba(71,85,105,0.95) 50%, rgba(51,65,85,0.8) 75%) !important; background-size: 200% 100% !important; }
 
+/* ══════════════════════════════════════════
+   LEGACY ACCOUNT MIGRATION TAB
+══════════════════════════════════════════ */
+.legacy-mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0 24px; }
+@media (max-width: 900px) { .legacy-mode-grid { grid-template-columns: 1fr; } }
+.legacy-mode-card {
+  border: 2px solid var(--border); border-radius: var(--radius-md);
+  padding: 18px 16px; cursor: pointer; transition: var(--transicao);
+  position: relative;
+}
+.legacy-mode-card:hover { border-color: var(--accent); background: var(--accent-light); }
+.legacy-mode-card.selected { border-color: var(--accent); background: var(--accent-light); }
+.legacy-mode-card.selected::after {
+  content: '✓';
+  position: absolute; top: 12px; right: 14px;
+  background: var(--accent); color: #fff;
+  width: 20px; height: 20px; border-radius: 50%;
+  font-size: 11px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.legacy-mode-card.mode-partial { border-color: rgba(201,162,39,0.4); }
+.legacy-mode-card.mode-partial:hover, .legacy-mode-card.mode-partial.selected { border-color: #C9A227; background: rgba(201,162,39,0.08); }
+.legacy-mode-card.mode-partial.selected::after { background: #C9A227; }
+.legacy-mode-card.mode-danger { border-color: rgba(255,59,48,0.25); }
+.legacy-mode-card.mode-danger:hover, .legacy-mode-card.mode-danger.selected { border-color: var(--danger); background: rgba(255,59,48,0.08); }
+.legacy-mode-card.mode-danger.selected::after { background: var(--danger); }
+.legacy-mode-card .mode-icon { font-size: 26px; margin-bottom: 10px; }
+.legacy-mode-card h4 { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.legacy-mode-card p { margin: 0 0 10px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+.legacy-mode-card ul { margin: 0; padding-left: 16px; }
+.legacy-mode-card ul li { font-size: 12px; color: var(--text-secondary); margin-bottom: 3px; }
+.legacy-recommend-badge {
+  display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .04em;
+  background: rgba(201,162,39,0.15); color: #C9A227;
+  border: 1px solid rgba(201,162,39,0.35); border-radius: 99px;
+  padding: 2px 8px; margin-left: 6px; vertical-align: middle;
+}
+.legacy-preview-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0;
+}
+@media (max-width: 700px) { .legacy-preview-grid { grid-template-columns: repeat(2, 1fr); } }
+.legacy-preview-stat {
+  background: var(--bg-color); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px 12px; text-align: center;
+}
+.legacy-preview-stat .lps-val { font-size: 22px; font-weight: 900; color: var(--text-primary); display: block; }
+.legacy-preview-stat .lps-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; margin-top: 2px; display: block; }
+.legacy-suggestion-banner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px; border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(201,162,39,0.1), rgba(201,162,39,0.05));
+  border: 1.5px solid rgba(201,162,39,0.3); margin-bottom: 20px; cursor: pointer;
+  transition: var(--transicao);
+}
+.legacy-suggestion-banner:hover { border-color: #C9A227; background: rgba(201,162,39,0.12); }
+.legacy-suggestion-banner .lsb-icon { font-size: 28px; flex-shrink: 0; }
+.legacy-suggestion-banner .lsb-text { flex: 1; min-width: 0; }
+.legacy-suggestion-banner .lsb-text strong { display: block; font-size: 14px; color: var(--text-primary); }
+.legacy-suggestion-banner .lsb-text span { font-size: 13px; color: var(--text-secondary); }
+.legacy-input-row { display: flex; gap: 10px; margin: 16px 0; }
+.legacy-input-row input {
+  flex: 1; height: 42px; padding: 0 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg-color); color: var(--text-primary);
+  font-size: 14px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.legacy-input-row input:focus { border-color: var(--accent); }
+.legacy-input-row input::placeholder { color: var(--text-secondary); }
+.legacy-verify-code-row { display: flex; gap: 10px; margin: 16px 0; }
+.legacy-verify-code-row input {
+  width: 140px; height: 42px; padding: 0 14px; text-align: center;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg-color); color: var(--text-primary);
+  font-size: 22px; font-weight: 900; letter-spacing: 6px; font-family: monospace;
+  outline: none; transition: border-color 0.2s;
+}
+.legacy-verify-code-row input:focus { border-color: var(--accent); }
+.legacy-status-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.legacy-status-item:last-child { border-bottom: none; padding-bottom: 0; }
+.legacy-status-icon { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.legacy-status-icon.completed { background: rgba(52,199,89,0.12); }
+.legacy-status-icon.pending { background: rgba(255,149,0,0.12); }
+.legacy-status-icon.rejected { background: rgba(255,59,48,0.12); }
+.legacy-status-icon.reversed { background: var(--border); }
+.legacy-status-body { flex: 1; min-width: 0; }
+.legacy-status-body strong { display: block; font-size: 13px; color: var(--text-primary); margin-bottom: 2px; }
+.legacy-status-body span { font-size: 12px; color: var(--text-secondary); }
+.legacy-mode-pill {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  border-radius: 99px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;
+}
+.legacy-mode-pill.separate { background: rgba(0,113,227,0.1); color: var(--accent); }
+.legacy-mode-pill.partial  { background: rgba(201,162,39,0.12); color: #C9A227; }
+.legacy-mode-pill.full     { background: rgba(255,59,48,0.1); color: var(--danger); }
+.legacy-confirm-input {
+  width: 100%; height: 42px; padding: 0 14px;
+  border: 1.5px solid var(--danger); border-radius: var(--radius-md);
+  background: var(--bg-color); color: var(--text-primary);
+  font-size: 14px; font-family: inherit; outline: none; margin: 12px 0;
+}
+.legacy-warning-box {
+  background: rgba(255,59,48,0.06); border: 1.5px solid rgba(255,59,48,0.25);
+  border-radius: var(--radius-md); padding: 16px; margin: 16px 0;
+}
+.legacy-warning-box p { margin: 0; color: var(--text-primary); font-size: 13px; line-height: 1.6; }
+.legacy-warning-box strong { color: var(--danger); }
+.legacy-error { color: var(--danger); font-size: 13px; margin-top: 8px; display: none; }
+.legacy-nav-badge {
+  background: var(--warning); color: #fff;
+  font-size: 10px; font-weight: 900; border-radius: 99px;
+  padding: 1px 6px; margin-left: auto;
+}
+
 </style>
 <!-- Preconnect hints: reduz latência de primeira conexão -->
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
@@ -1595,6 +1716,11 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
         <button class="nav-item" onclick="switchTab('conexoes', this)">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
           Conexões & Redes
+        </button>
+        <button class="nav-item" id="nav-btn-legacy" onclick="switchTab('legacy', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l3 3"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.49-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+          Conta Anterior
+          <span class="legacy-nav-badge" id="legacy-nav-badge" style="display:none;">!</span>
         </button>
         <button class="nav-item" onclick="switchTab('seguranca', this)">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -2173,6 +2299,210 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
           </div>
 
         </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════
+           ABA: CONTA ANTERIOR (LEGACY MIGRATION)
+      ══════════════════════════════════════════ -->
+      <section id="tab-legacy" class="tab-pane">
+        <div class="page-header">
+          <h1>Conta Anterior</h1>
+          <p>Vincule seu nick pirata ao seu nome original e unifique seu histórico no servidor.</p>
+        </div>
+
+        <!-- Banner de sugestão automática -->
+        <div class="legacy-suggestion-banner" id="legacy-suggestion-banner" style="display:none;" onclick="legacyFillSuggestion()">
+          <div class="lsb-icon">⚡</div>
+          <div class="lsb-text">
+            <strong>Detectamos um nick anterior: <span id="legacy-suggestion-name"></span></strong>
+            <span>Encontramos dados desse nick no servidor. Clique para iniciar a vinculação.</span>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text-secondary)"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+
+        <!-- Wizard - Step 1: Buscar nick -->
+        <div id="legacy-step-search" class="card" style="display:block;">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l3 3"/></svg>
+              Buscar nick anterior
+            </div>
+          </div>
+          <p style="color:var(--text-secondary);font-size:13.5px;margin:0 0 16px;">Digite o nick que você usava no servidor antes de vincular sua conta Microsoft. Ele precisa ter sessões ou mérito registrado.</p>
+          <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+            <input type="text" id="legacy-search-input" class="form-input" placeholder="Ex: CaioLeal" maxlength="64"
+              style="flex:1;min-width:180px;"
+              onkeydown="if(event.key==='Enter')legacyCheckNick()">
+            <button class="btn-primary" onclick="legacyCheckNick()" id="legacy-search-btn" style="height:44px;padding:0 20px;white-space:nowrap;">
+              Buscar
+            </button>
+          </div>
+          <div id="legacy-search-error" style="display:none;margin-top:10px;font-size:13px;color:var(--danger);"></div>
+        </div>
+
+        <!-- Wizard - Step 2: Preview + escolha de modo -->
+        <div id="legacy-step-preview" class="card" style="display:none;">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Dados encontrados para <span id="legacy-preview-name" style="color:var(--accent);"></span>
+            </div>
+            <button class="btn-outline btn-sm" onclick="legacyReset()">← Voltar</button>
+          </div>
+
+          <div class="legacy-preview-grid" id="legacy-preview-grid">
+            <!-- preenchido via JS -->
+          </div>
+
+          <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 8px;font-weight:600;">Como você quer vincular esses dados?</p>
+
+          <div class="legacy-mode-grid">
+            <div class="legacy-mode-card" id="mode-card-separate" onclick="legacySelectMode('separate')">
+              <div class="mode-icon">🔗</div>
+              <h4>Separado</h4>
+              <p>Cria um alias do nick antigo. Seus dados continuam separados — apenas o vínculo é registrado.</p>
+              <ul>
+                <li>✔ Reversível a qualquer momento</li>
+                <li>✔ Sem alterações em dados</li>
+                <li>✔ Nick antigo aparece no seu perfil</li>
+              </ul>
+            </div>
+            <div class="legacy-mode-card mode-partial" id="mode-card-partial" onclick="legacySelectMode('partial')">
+              <div class="mode-icon">⚡</div>
+              <h4>Parcial</h4>
+              <p>Mérito e capital são somados. Histórico unificado com separador visual mostrando onde um nick termina e o outro começa.</p>
+              <ul>
+                <li>✔ Dados somados automaticamente</li>
+                <li>✔ Histórico com separador temporal</li>
+                <li>⟳ Reversível por 7 dias</li>
+              </ul>
+              <span class="legacy-recommend-badge">Recomendado</span>
+            </div>
+            <div class="legacy-mode-card mode-danger" id="mode-card-full" onclick="legacySelectMode('full')">
+              <div class="mode-icon">🔀</div>
+              <h4>Total</h4>
+              <p>Todos os registros do nick antigo são renomeados para o novo. Histórico completamente unificado.</p>
+              <ul>
+                <li>✔ Histórico 100% unificado</li>
+                <li>⚠ Irreversível</li>
+                <li>⚠ Exige dupla confirmação</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="legacy-mode-desc" style="display:none;padding:12px 16px;border-radius:var(--radius-md);background:var(--accent-light);font-size:13px;color:var(--text-secondary);margin-bottom:16px;border:1px solid var(--border);"></div>
+
+          <button class="btn-primary" id="legacy-request-btn" onclick="legacySubmitRequest()" disabled
+            style="width:100%;">Continuar com a vinculação</button>
+        </div>
+
+        <!-- Wizard - Step 3: Verificação -->
+        <div id="legacy-step-verify" class="card" style="display:none;">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.81 3.38 2 2 0 0 1 3.8 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Verificar titularidade
+            </div>
+          </div>
+          <!-- Tier 0/1: auto aprovado -->
+          <div id="legacy-verify-auto" style="display:none;">
+            <div style="text-align:center;padding:24px 0;">
+              <div style="font-size:42px;margin-bottom:12px;">✅</div>
+              <p style="font-size:15px;font-weight:700;color:var(--text-primary);margin:0 0 6px;">Titularidade confirmada!</p>
+              <p style="font-size:13px;color:var(--text-secondary);margin:0;">Seu nick anterior foi verificado automaticamente. Agora escolha como executar a migração abaixo.</p>
+            </div>
+          </div>
+          <!-- Tier 2: código por e-mail -->
+          <div id="legacy-verify-email" style="display:none;">
+            <p style="font-size:13.5px;color:var(--text-secondary);margin:0 0 16px;">
+              Enviamos um código de 6 dígitos para o e-mail associado à conta <strong id="legacy-verify-nick"></strong>.<br>
+              Endereço: <strong id="legacy-verify-email-mask" style="color:var(--accent);"></strong>
+            </p>
+            <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
+              <input type="text" id="legacy-code-input" class="form-input" placeholder="000000" maxlength="6"
+                inputmode="numeric" pattern="[0-9]*" style="flex:1;min-width:120px;letter-spacing:6px;font-size:20px;text-align:center;"
+                onkeydown="if(event.key==='Enter')legacySubmitCode()">
+              <button class="btn-primary" onclick="legacySubmitCode()" style="height:44px;padding:0 20px;">Confirmar</button>
+            </div>
+            <div id="legacy-code-error" style="display:none;font-size:13px;color:var(--danger);margin-bottom:8px;"></div>
+            <button class="btn-outline btn-sm" onclick="legacyResendCode()" id="legacy-resend-btn">Reenviar código</button>
+          </div>
+          <!-- Tier 3: revisão admin -->
+          <div id="legacy-verify-admin" style="display:none;">
+            <div style="text-align:center;padding:24px 0;">
+              <div style="font-size:42px;margin-bottom:12px;">⏳</div>
+              <p style="font-size:15px;font-weight:700;color:var(--text-primary);margin:0 0 6px;">Aguardando revisão</p>
+              <p style="font-size:13px;color:var(--text-secondary);margin:0 0 12px;">Sua solicitação foi enviada para revisão manual pela equipe da Força Aliada. Você será notificado quando for aprovada (prazo: até 90 dias).</p>
+              <button class="btn-outline btn-sm" onclick="switchTab('perfil', document.getElementById('nav-btn-perfil'))">Voltar ao perfil</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Wizard - Step 4: Executar migração -->
+        <div id="legacy-step-execute" class="card" style="display:none;">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Executar migração — <span id="legacy-execute-mode-label" style="color:var(--accent);"></span>
+            </div>
+          </div>
+          <!-- Confirmação normal (separate / partial) -->
+          <div id="legacy-execute-normal" style="display:none;">
+            <div id="legacy-execute-summary" style="padding:14px 16px;background:var(--bg-color);border-radius:var(--radius-md);font-size:13px;margin-bottom:16px;line-height:1.7;"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn-primary" id="legacy-execute-btn" onclick="legacyExecute()" style="flex:1;">
+                Confirmar e executar
+              </button>
+              <button class="btn-outline" onclick="legacyReset()" style="flex:1;">Cancelar</button>
+            </div>
+          </div>
+          <!-- Confirmação dupla (full — irreversível) -->
+          <div id="legacy-execute-full-confirm" style="display:none;">
+            <div style="padding:14px 16px;background:rgba(255,59,48,0.06);border:1px solid rgba(255,59,48,0.25);border-radius:var(--radius-md);margin-bottom:16px;">
+              <p style="margin:0 0 8px;font-size:14px;font-weight:800;color:var(--danger);">⚠️ Ação irreversível</p>
+              <p style="margin:0;font-size:13px;color:var(--text-secondary);line-height:1.6;">
+                Você está prestes a renomear <strong>todos</strong> os registros de <strong id="legacy-full-old-name" style="color:var(--danger);"></strong> para <strong id="legacy-full-new-name" style="color:var(--accent);"></strong> no banco de dados. Esta operação <strong>não pode ser desfeita</strong>. Um backup completo é feito para auditoria admin.
+              </p>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px;">Para confirmar, digite o nick antigo abaixo:</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+              <input type="text" id="legacy-full-confirm-input" class="form-input" placeholder="Digite o nick antigo" style="flex:1;">
+              <button class="btn-danger" id="legacy-full-confirm-btn" onclick="legacyConfirmFull()" style="height:44px;padding:0 20px;white-space:nowrap;">
+                Confirmar Migração Total
+              </button>
+            </div>
+            <div id="legacy-full-confirm-error" style="display:none;font-size:13px;color:var(--danger);"></div>
+            <button class="btn-outline btn-sm" onclick="legacyReset()" style="margin-top:8px;">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Wizard - Step 5: Sucesso -->
+        <div id="legacy-step-success" class="card" style="display:none;">
+          <div style="text-align:center;padding:32px 0;">
+            <div style="font-size:52px;margin-bottom:14px;">🎉</div>
+            <p style="font-size:17px;font-weight:800;color:var(--text-primary);margin:0 0 8px;">Migração concluída!</p>
+            <p id="legacy-success-text" style="font-size:13.5px;color:var(--text-secondary);margin:0 0 20px;"></p>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+              <button class="btn-primary" onclick="switchTab('atividade', null)" style="padding:0 22px;height:40px;">Ver atividade</button>
+              <button class="btn-outline" onclick="legacyReset()" style="padding:0 22px;height:40px;">Nova vinculação</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Migrações existentes -->
+        <div class="card" id="legacy-history-card" style="display:none;">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.24"/></svg>
+              Vinculações anteriores
+            </div>
+            <button class="btn-outline btn-sm" onclick="legacyLoadHistory()">Atualizar</button>
+          </div>
+          <div id="legacy-history-list">
+            <div class="notif-empty" style="padding:20px 0;"><p>Carregando...</p></div>
+          </div>
+        </div>
+
       </section>
 
       <!-- ══════════════════════════════════════════
@@ -3441,6 +3771,7 @@ function initAccount() {
   renderSessionInfo();
   // Render rank roadmap with 0 merit while real data loads
   renderRanksRoadmap(0);
+  checkLegacySuggestion();
   applyInitialTabFromUrl();
 }
 
@@ -3449,9 +3780,9 @@ function applyInitialTabFromUrl() {
   const tab = new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace(/^#/, '');
   if (!tab) return;
   const normalizedTab = tab === 'notificacoes-sociais' ? 'notificacoes' : tab;
-  const allowed = new Set(['perfil', 'notificacoes', 'notificacoes-sociais', 'atividade', 'merito', 'preferencias', 'conexoes', 'seguranca', 'amigos']);
+  const allowed = new Set(['perfil', 'notificacoes', 'notificacoes-sociais', 'atividade', 'merito', 'preferencias', 'conexoes', 'seguranca', 'amigos', 'legacy']);
   if (!allowed.has(tab) || !document.getElementById(`tab-${normalizedTab}`)) return;
-  const idMap = { perfil: 'nav-btn-perfil', notificacoes: 'nav-btn-notif', merito: 'nav-btn-merito', amigos: 'nav-btn-amigos' };
+  const idMap = { perfil: 'nav-btn-perfil', notificacoes: 'nav-btn-notif', merito: 'nav-btn-merito', amigos: 'nav-btn-amigos', legacy: 'nav-btn-legacy' };
   const btn = document.getElementById(idMap[normalizedTab]) || Array.from(document.querySelectorAll('.nav-item')).find(el => (el.getAttribute('onclick') || '').includes(`'${normalizedTab}'`));
   if (btn) {
     switchTab(normalizedTab, btn);
@@ -3610,6 +3941,11 @@ function switchTab(tabId, btnElement) {
     loadSocialNotifications();
   }
   if (tabId === 'seguranca') loadBlocks();
+  // Legacy migration tab: refresh suggestion badge and history
+  if (tabId === 'legacy') {
+    checkLegacySuggestion();
+    legacyLoadHistory();
+  }
 }
 
 function toggleMobileSidebar(e) {
@@ -5036,6 +5372,548 @@ async function syncSelectedXboxFriends() {
     }
   }
 }
+</script>
+
+<!-- ══════════════════════════════════════════
+     LEGACY ACCOUNT MIGRATION — JavaScript
+══════════════════════════════════════════ -->
+<script>
+// ─── Estado do wizard ───────────────────────
+const legacyState = {
+  legacyName: null,
+  preview: null,
+  selectedMode: null,
+  migrationId: null,
+  tier: null,
+  autoApproved: false,
+  pendingAdmin: false,
+  confirmToken: null,
+};
+
+// ─── Verificar sugestão automática no carregamento ───
+async function checkLegacySuggestion() {
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/suggestion`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // Badge na nav
+    const badge = document.getElementById('legacy-nav-badge');
+
+    if (data.suggestion) {
+      // Mostrar banner de sugestão
+      const banner = document.getElementById('legacy-suggestion-banner');
+      const nameEl = document.getElementById('legacy-suggestion-name');
+      if (banner && nameEl) {
+        nameEl.textContent = data.suggestion;
+        banner.style.display = 'flex';
+        if (badge) badge.style.display = 'inline-flex';
+      }
+    }
+
+    if (data.activeMigration) {
+      const mig = data.activeMigration;
+      if (badge) badge.style.display = 'inline-flex';
+
+      // Se há migração verificada mas não executada, restaurar estado do wizard
+      if (mig.status === 'verified' && !mig.executedAt) {
+        legacyState.migrationId = mig.id;
+        legacyState.legacyName = mig.legacyUsername;
+        legacyState.autoApproved = true;
+        // Mostrar histórico
+        legacyLoadHistory();
+        showToast('info', 'Migração pendente', `Você tem uma migração de "${mig.legacyUsername}" aguardando execução. Acesse "Conta Anterior".`);
+      } else if (mig.status === 'completed') {
+        legacyLoadHistory();
+      }
+    }
+  } catch (_) {}
+}
+
+// ─── Preencher input com sugestão ───
+function legacyFillSuggestion() {
+  const name = document.getElementById('legacy-suggestion-name')?.textContent;
+  if (!name) return;
+  const input = document.getElementById('legacy-search-input');
+  if (input) input.value = name;
+  switchTab('legacy', document.getElementById('nav-btn-legacy'));
+  // Esconder banner após usar
+  const banner = document.getElementById('legacy-suggestion-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+// ─── Reset completo do wizard ───
+function legacyReset() {
+  legacyState.legacyName = null;
+  legacyState.preview = null;
+  legacyState.selectedMode = null;
+  legacyState.migrationId = null;
+  legacyState.tier = null;
+  legacyState.autoApproved = false;
+  legacyState.pendingAdmin = false;
+  legacyState.confirmToken = null;
+
+  // Reset UI
+  const input = document.getElementById('legacy-search-input');
+  if (input) input.value = '';
+  const errEl = document.getElementById('legacy-search-error');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+
+  legacyShowStep('search');
+}
+
+// ─── Mostrar/ocultar steps ───
+function legacyShowStep(step) {
+  const steps = ['search', 'preview', 'verify', 'execute', 'success'];
+  steps.forEach(s => {
+    const el = document.getElementById(`legacy-step-${s}`);
+    if (el) el.style.display = s === step ? 'block' : 'none';
+  });
+}
+
+// ─── Step 1: Checar nick ───
+async function legacyCheckNick() {
+  const input = document.getElementById('legacy-search-input');
+  const errEl = document.getElementById('legacy-search-error');
+  const btn = document.getElementById('legacy-search-btn');
+  const name = input?.value?.trim();
+
+  if (!name || name.length < 3) {
+    errEl.textContent = 'Digite um nick com pelo menos 3 caracteres.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/check`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_username: name }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Erro desconhecido.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Guardar e mostrar preview
+    legacyState.legacyName = name;
+    legacyState.preview = data.preview;
+    legacyState.selectedMode = null;
+
+    legacyRenderPreview(name, data.preview);
+    legacyShowStep('preview');
+  } catch (e) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Buscar';
+  }
+}
+
+// ─── Renderizar grade de preview de dados ───
+function legacyRenderPreview(name, preview) {
+  document.getElementById('legacy-preview-name').textContent = name;
+
+  const items = [
+    { label: 'Mérito', value: (preview.merit || 0).toLocaleString('pt-BR'), icon: '⭐' },
+    { label: 'Capital', value: `$${Number(preview.capital || 0).toFixed(2)}`, icon: '💰' },
+    { label: 'Sessões', value: (preview.sessions || 0).toLocaleString('pt-BR'), icon: '🎮' },
+    { label: 'Horas', value: `${(preview.hours || 0).toLocaleString('pt-BR')}h`, icon: '⏱' },
+  ];
+
+  const grid = document.getElementById('legacy-preview-grid');
+  if (grid) {
+    grid.innerHTML = items.map(item => `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-color);">
+        <span style="font-size:22px;">${item.icon}</span>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);">${item.value}</div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">${item.label}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Reset seleção de modo
+  ['separate', 'partial', 'full'].forEach(m => {
+    const card = document.getElementById(`mode-card-${m}`);
+    if (card) card.classList.remove('selected');
+  });
+  document.getElementById('legacy-mode-desc').style.display = 'none';
+  document.getElementById('legacy-request-btn').disabled = true;
+}
+
+// ─── Step 2: Selecionar modo ───
+function legacySelectMode(mode) {
+  legacyState.selectedMode = mode;
+
+  ['separate', 'partial', 'full'].forEach(m => {
+    const card = document.getElementById(`mode-card-${m}`);
+    if (card) card.classList.toggle('selected', m === mode);
+  });
+
+  const descriptions = {
+    separate: '🔗 <strong>Separado:</strong> Apenas um alias é criado. Seus dados continuam separados no banco. O nick antigo aparece no seu perfil como "também conhecido como". Reversível a qualquer momento.',
+    partial: '⚡ <strong>Parcial (recomendado):</strong> Mérito e capital do nick antigo são somados ao seu saldo atual. Sessões antigas ficam marcadas visualmente no histórico com um separador de onde começa o novo nick. Reversível por 7 dias.',
+    full: '🔀 <strong>Total (irreversível):</strong> Todos os registros do nick antigo (sessões, mérito, capital) são renomeados para o seu nome atual. O histórico fica completamente unificado, como se sempre fosse o mesmo jogador. <strong>⚠️ Esta ação não pode ser desfeita.</strong>',
+  };
+
+  const descEl = document.getElementById('legacy-mode-desc');
+  if (descEl) {
+    descEl.innerHTML = descriptions[mode];
+    descEl.style.display = 'block';
+  }
+
+  document.getElementById('legacy-request-btn').disabled = false;
+}
+
+// ─── Step 2→3: Submeter solicitação ───
+async function legacySubmitRequest() {
+  if (!legacyState.legacyName || !legacyState.selectedMode) return;
+  const btn = document.getElementById('legacy-request-btn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/request`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_username: legacyState.legacyName }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast('error', 'Erro', data.error || 'Não foi possível criar a solicitação.');
+      return;
+    }
+
+    legacyState.migrationId = data.migrationId;
+    legacyState.tier = data.tier;
+    legacyState.autoApproved = data.autoApproved;
+    legacyState.pendingAdmin = data.pendingAdmin;
+
+    legacyShowStep('verify');
+
+    if (data.autoApproved) {
+      // Tier 0 ou 1: aprovação automática → mostrar estado de aprovado + ir para execute
+      legacyShowVerifyState('auto');
+      setTimeout(() => legacyShowExecuteStep(), 1500);
+    } else if (data.emailSent) {
+      // Tier 2: código por e-mail
+      document.getElementById('legacy-verify-nick').textContent = legacyState.legacyName;
+      document.getElementById('legacy-verify-email-mask').textContent = data.emailMask || '***';
+      legacyShowVerifyState('email');
+    } else {
+      // Tier 3: revisão admin
+      legacyShowVerifyState('admin');
+      legacyLoadHistory();
+    }
+  } catch (e) {
+    showToast('error', 'Erro', 'Erro de conexão. Tente novamente.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continuar com a vinculação';
+  }
+}
+
+// ─── Mostrar sub-estados da verificação ───
+function legacyShowVerifyState(state) {
+  ['auto', 'email', 'admin'].forEach(s => {
+    const el = document.getElementById(`legacy-verify-${s}`);
+    if (el) el.style.display = s === state ? 'block' : 'none';
+  });
+}
+
+// ─── Step 3: Confirmar código ───
+async function legacySubmitCode() {
+  const codeInput = document.getElementById('legacy-code-input');
+  const errEl = document.getElementById('legacy-code-error');
+  const code = codeInput?.value?.trim();
+
+  if (!code || code.length !== 6) {
+    errEl.textContent = 'Digite o código de 6 dígitos.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/verify`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ migration_id: legacyState.migrationId, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Código inválido.';
+      errEl.style.display = 'block';
+      return;
+    }
+    // Verificado — avançar para execução
+    legacyState.autoApproved = true;
+    legacyShowVerifyState('auto');
+    setTimeout(() => legacyShowExecuteStep(), 1200);
+  } catch (e) {
+    errEl.textContent = 'Erro de conexão.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ─── Reenviar código ───
+async function legacyResendCode() {
+  const btn = document.getElementById('legacy-resend-btn');
+  btn.disabled = true;
+  btn.textContent = 'Reenviando...';
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/resend-code`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ migration_id: legacyState.migrationId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast('error', 'Erro', data.error || 'Não foi possível reenviar.');
+    } else {
+      showToast('success', 'Código reenviado', `Verifique o e-mail ${data.emailMask}`);
+    }
+  } catch (_) {
+    showToast('error', 'Erro', 'Erro de conexão.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Reenviar código';
+  }
+}
+
+// ─── Montar e mostrar step de execução ───
+function legacyShowExecuteStep() {
+  const mode = legacyState.selectedMode;
+  legacyShowStep('execute');
+
+  const modeLabels = { separate: 'Separado', partial: 'Parcial', full: 'Total (Irreversível)' };
+  const modeLabel = document.getElementById('legacy-execute-mode-label');
+  if (modeLabel) modeLabel.textContent = modeLabels[mode] || mode;
+
+  if (mode === 'full') {
+    // Confirmação dupla para full
+    document.getElementById('legacy-execute-normal').style.display = 'none';
+    document.getElementById('legacy-execute-full-confirm').style.display = 'block';
+    const oldEl = document.getElementById('legacy-full-old-name');
+    const newEl = document.getElementById('legacy-full-new-name');
+    if (oldEl) oldEl.textContent = legacyState.legacyName;
+    if (newEl) newEl.textContent = session?.minecraftName || 'seu nick atual';
+    document.getElementById('legacy-full-confirm-input').value = '';
+    document.getElementById('legacy-full-confirm-error').style.display = 'none';
+  } else {
+    // Resumo para separate/partial
+    document.getElementById('legacy-execute-full-confirm').style.display = 'none';
+    document.getElementById('legacy-execute-normal').style.display = 'block';
+
+    const summaries = {
+      separate: `Será criado um alias de <strong>${legacyState.legacyName}</strong> na sua conta. Nenhum dado é movido. Você pode desfazer isso a qualquer momento.`,
+      partial: `Mérito e capital de <strong>${legacyState.legacyName}</strong> serão somados à sua conta atual. Sessões antigas ficam marcadas com separador visual no histórico. Reversível por 7 dias.`,
+    };
+    const sumEl = document.getElementById('legacy-execute-summary');
+    if (sumEl) sumEl.innerHTML = summaries[mode] || '';
+  }
+}
+
+// ─── Executar migração (separate / partial) ───
+async function legacyExecute() {
+  const btn = document.getElementById('legacy-execute-btn');
+  btn.disabled = true;
+  btn.textContent = 'Executando...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/execute`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ migration_id: legacyState.migrationId, mode: legacyState.selectedMode }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast('error', 'Erro', data.error || 'Falha na execução.');
+      return;
+    }
+
+    legacyShowSuccess(legacyState.selectedMode);
+    legacyLoadHistory();
+    // Esconder badge e sugestão
+    const badge = document.getElementById('legacy-nav-badge');
+    if (badge) badge.style.display = 'none';
+  } catch (e) {
+    showToast('error', 'Erro', 'Erro de conexão. Tente novamente.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar e executar';
+  }
+}
+
+// ─── Executar migração full (confirma token + verifica digitação do nick) ───
+async function legacyConfirmFull() {
+  const input = document.getElementById('legacy-full-confirm-input');
+  const errEl = document.getElementById('legacy-full-confirm-error');
+  const typed = input?.value?.trim();
+
+  if (!typed || typed.toLowerCase() !== legacyState.legacyName?.toLowerCase()) {
+    errEl.textContent = `Digite exatamente: ${legacyState.legacyName}`;
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const btn = document.getElementById('legacy-full-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Executando...';
+
+  try {
+    // Obter confirm_token (requisitar execute primeiro)
+    if (!legacyState.confirmToken) {
+      const execRes = await fetch(`${API_BASE}/api/me/legacy/execute`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ migration_id: legacyState.migrationId, mode: 'full' }),
+      });
+      const execData = await execRes.json();
+      if (!execRes.ok) {
+        errEl.textContent = execData.error || 'Erro ao gerar token.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!execData.confirmRequired) {
+        // Já executou (shouldn't happen, but handle gracefully)
+        legacyShowSuccess('full');
+        return;
+      }
+      legacyState.confirmToken = execData.confirmToken;
+    }
+
+    // Confirmar com token
+    const res = await fetch(`${API_BASE}/api/me/legacy/confirm-full`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ migration_id: legacyState.migrationId, confirm_token: legacyState.confirmToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      // Token expirado — forçar reinício
+      if (data.error?.includes('Token expirado')) {
+        legacyState.confirmToken = null;
+        errEl.textContent = 'Sessão expirada. Clique em Confirmar novamente.';
+      } else {
+        errEl.textContent = data.error || 'Erro na confirmação.';
+      }
+      errEl.style.display = 'block';
+      return;
+    }
+
+    legacyShowSuccess('full');
+    legacyLoadHistory();
+    const badge = document.getElementById('legacy-nav-badge');
+    if (badge) badge.style.display = 'none';
+  } catch (e) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Migração Total';
+  }
+}
+
+// ─── Mostrar tela de sucesso ───
+function legacyShowSuccess(mode) {
+  const texts = {
+    separate: `O nick <strong>${legacyState.legacyName}</strong> foi vinculado como alias à sua conta. Você pode desfazer em Vinculações anteriores.`,
+    partial: `Mérito e capital de <strong>${legacyState.legacyName}</strong> foram somados à sua conta. O histórico foi unificado com separador visual. Reversível por 7 dias.`,
+    full: `Todos os registros de <strong>${legacyState.legacyName}</strong> foram renomeados para <strong>${session?.minecraftName || 'seu nick atual'}</strong>. Seu histórico está totalmente unificado.`,
+  };
+  const el = document.getElementById('legacy-success-text');
+  if (el) el.innerHTML = texts[mode] || 'Migração concluída com sucesso.';
+  legacyShowStep('success');
+}
+
+// ─── Carregar histórico de migrações ───
+async function legacyLoadHistory() {
+  const historyCard = document.getElementById('legacy-history-card');
+  const listEl = document.getElementById('legacy-history-list');
+  if (!historyCard || !listEl) return;
+
+  historyCard.style.display = 'block';
+  listEl.innerHTML = '<div class="notif-empty" style="padding:16px 0;"><p>Carregando...</p></div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/status`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.migrations?.length) {
+      listEl.innerHTML = '<div class="notif-empty" style="padding:16px 0;"><p>Nenhuma vinculação encontrada.</p></div>';
+      return;
+    }
+
+    const statusLabels = {
+      pending_verification: '⏳ Aguardando verificação',
+      verified: '✅ Verificada',
+      pending_admin: '🔍 Em revisão',
+      completed: '✅ Concluída',
+      rejected: '❌ Rejeitada',
+      reversed: '↩️ Revertida',
+    };
+    const modeLabels = { separate: 'Separado', partial: 'Parcial', full: 'Total', null: '—' };
+
+    listEl.innerHTML = data.migrations.map(mig => {
+      const statusLabel = statusLabels[mig.status] || mig.status;
+      const modeLabel = modeLabels[mig.migration_mode] || '—';
+      const canReverse = mig.status === 'completed' && mig.migration_mode !== 'full' && mig.reversible_until && new Date(mig.reversible_until) > new Date();
+      const reversibleUntil = mig.reversible_until ? `Reversível até ${new Date(mig.reversible_until).toLocaleDateString('pt-BR')}` : '';
+
+      return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);">
+        <div style="min-width:0;">
+          <strong style="font-size:14px;color:var(--text-primary);">${mig.legacy_username}</strong>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+            ${statusLabel} ${mig.migration_mode ? `· ${modeLabel}` : ''} · ${new Date(mig.created_at).toLocaleDateString('pt-BR')}
+            ${reversibleUntil ? `<br><span style="color:var(--warning);">${reversibleUntil}</span>` : ''}
+            ${mig.rejection_reason ? `<br><span style="color:var(--danger);">Motivo: ${mig.rejection_reason}</span>` : ''}
+          </div>
+        </div>
+        ${canReverse
+          ? `<button class="btn-outline btn-sm" onclick="legacyReverse(${mig.id})" style="flex-shrink:0;color:var(--danger);border-color:var(--danger);">Reverter</button>`
+          : ''}
+      </div>`;
+    }).join('');
+  } catch (_) {
+    listEl.innerHTML = '<div class="notif-empty" style="padding:16px 0;"><p>Erro ao carregar vinculações.</p></div>';
+  }
+}
+
+// ─── Reverter migração ───
+async function legacyReverse(migrationId) {
+  if (!confirm('Tem certeza que deseja reverter esta vinculação? Os dados serão restaurados ao estado anterior.')) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/me/legacy/reverse/${migrationId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast('error', 'Erro', data.error || 'Não foi possível reverter.');
+    } else {
+      showToast('success', 'Revertida', 'A vinculação foi desfeita com sucesso.');
+      legacyLoadHistory();
+    }
+  } catch (_) {
+    showToast('error', 'Erro', 'Erro de conexão.');
+  }
+}
+
+
 </script>
 <script src="assets/js/social-chat.js?v=chat12-20260608" defer></script>
 </body>
