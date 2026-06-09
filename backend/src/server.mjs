@@ -48,6 +48,10 @@ import {
   notifyMessageUpdate,
   notifyRead,
 } from './server_chat_realtime.mjs';
+import {
+  registerLegacyMigration,
+  LEGACY_MIGRATION_SCHEMA_SQL,
+} from './server_legacy_migration.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -1375,6 +1379,9 @@ await pool.query(featureSchemaSql);
   for (const statement of AUDIT_SCHEMA_STATEMENTS) {
     await pool.query(statement);
   }
+
+  // Legacy migration schema — tabelas de migração de conta pirata→original
+  await pool.query(LEGACY_MIGRATION_SCHEMA_SQL);
 }
 
 // ─────────────────────────────────────────────
@@ -9453,6 +9460,11 @@ app.use((err, req, res, _next) => {
 // Chat Realtime (SSE + delivery status)
 // ─────────────────────────────────────────────
 registerChatRealtime(app, pool, auth);
+
+// ─────────────────────────────────────────────
+// Legacy Account Migration
+// ─────────────────────────────────────────────
+registerLegacyMigration(app, pool, auth, requireAdmin, auditFromReq);
 
 // ─────────────────────────────────────────────
 // Boot
