@@ -188,7 +188,7 @@ async function sendMigrationVerificationEmail(email, legacyNick, code) {
 // ─────────────────────────────────────────────
 const migrationLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000, // 24h
-  limit: 8,
+  limit: 3,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas tentativas de migração. Tente novamente amanhã.' },
@@ -196,11 +196,11 @@ const migrationLimiter = rateLimit({
 });
 
 const migrationVerifyLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1h
-  limit: 15,
+  windowMs: 30 * 60 * 1000, // 30 min (1 reenvio de e-mail por janela)
+  limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Muitas tentativas de verificação. Aguarde um momento.' },
+  message: { error: 'Muitas tentativas de verificação. Aguarde 30 minutos.' },
   keyGenerator: (req) => `migration_verify:${req.user?.sub || req.ip}`,
 });
 
@@ -768,7 +768,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
       if (new Date(mig.expires_at) < new Date()) {
         return res.status(400).json({ error: 'Código expirado. Solicite um novo.' });
       }
-      if (mig.attempts >= 5) {
+      if (mig.attempts >= 3) {
         return res.status(429).json({ error: 'Muitas tentativas. Solicite um novo código.' });
       }
 
@@ -1043,9 +1043,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
               `UPDATE player_balances
                SET merit_total     = GREATEST(0, merit_total - $1),
                    capital_balance = GREATEST(0, capital_balance - $2)
-               WHERE user_id IN (
-                 SELECT id FROM users WHERE id=$3
-               ) OR LOWER(minecraft_name) IN (
+               WHERE LOWER(minecraft_name) = (
                  SELECT LOWER(minecraft_name) FROM users WHERE id=$3
                )`,
               [snapBal.merit_total || 0, snapBal.capital_balance || 0, req.user.sub]

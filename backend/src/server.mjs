@@ -3746,6 +3746,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
 
     // ── FLUXO DE VINCULAÇÃO (link_token fornecido pela account.html) ─────────
     if (linkUserId) {
+      // Capturar nick anterior ANTES de sobrescrever (para detectar conta legacy)
+      const { rows: prevUserRows } = await pool.query('SELECT minecraft_name FROM users WHERE id=$1', [linkUserId]);
+      const previousMcNameLink = prevUserRows[0]?.minecraft_name || null;
+
       const linked = await linkMicrosoftIntegration({
         userId: linkUserId,
         msRefreshToken: msTokens.refresh_token,
@@ -3756,6 +3760,9 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         gamertag: edition === 'bedrock' ? nick : null,
       });
       userRow = linked.user;
+
+      // Detectar dados legacy do nick anterior (ex: CaioLeal → Porralho)
+      legacyMigrationService.detectLegacyOnOAuthCallback(linkUserId, previousMcNameLink, nick).catch(() => {});
 
       const editionLabelNew = microsoftEditionLabel(edition);
       await audit({
@@ -3782,6 +3789,7 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
     if (existingByXuid.length > 0) {
       const { rows: u } = await pool.query('SELECT * FROM users WHERE id = $1', [existingByXuid[0].user_id]);
       userRow = u[0];
+      const previousMcNameLogin = userRow.minecraft_name || null;
       // Atualiza refresh token e mc_uuid (pode ter mudado de Java→Bedrock ou vice-versa)
       await linkMicrosoftIntegration({
         userId: userRow.id,
@@ -3797,6 +3805,8 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         "UPDATE users SET minecraft_name = $1 WHERE id = $2 AND (minecraft_name IS NULL OR minecraft_name = '')",
         [nick, userRow.id]
       );
+      // Detectar dados legacy se o nick mudou (ex: CaioLeal → Porralho)
+      legacyMigrationService.detectLegacyOnOAuthCallback(userRow.id, previousMcNameLogin, nick).catch(() => {});
     } else {
       // 6b. Novo usuário — verifica se já existe conta com esse nick (cadastro manual)
       const { rows: matchNick } = await pool.query(
@@ -9464,7 +9474,7 @@ registerChatRealtime(app, pool, auth);
 // ─────────────────────────────────────────────
 // Legacy Account Migration
 // ─────────────────────────────────────────────
-registerLegacyMigration(app, pool, auth, requireAdmin, auditFromReq);
+const legacyMigrationService = registerLegacyMigration(app, pool, auth, requireAdmin, auditFromReq);
 
 // ─────────────────────────────────────────────
 // Boot
