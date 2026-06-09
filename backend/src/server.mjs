@@ -42,6 +42,7 @@ import {
   registerCommentUpgradeEndpoints,
 } from './server_comments_patch.mjs';
 import { registerCommentThreadFix } from './server_comment_thread_fix.mjs';
+import { registerAdminAnalytics } from './admin_analytics.mjs';
 import {
   registerChatRealtime,
   notifyNewMessage,
@@ -1370,6 +1371,17 @@ CREATE TABLE IF NOT EXISTS scheduled_posts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_scheduled_posts_due ON scheduled_posts(status, publish_at);
+
+-- Analytics indexes: keep command-center aggregations responsive as the community grows.
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_player_sessions_entered ON player_sessions(entered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_comments_created_author ON post_comments(created_at DESC, author_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_post_likes_created_user ON post_likes(created_at DESC, user_id);
+CREATE INDEX IF NOT EXISTS idx_user_follows_created_follower ON user_follows(created_at DESC, follower_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_created_sender ON direct_messages(created_at DESC, sender_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_group_messages_created_sender ON chat_group_messages(created_at DESC, sender_id) WHERE is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_reports_created_status ON content_reports(created_at DESC, status);
+CREATE INDEX IF NOT EXISTS idx_moderation_created_status ON moderation_queue(created_at DESC, status);
 `;
 await pool.query(featureSchemaSql);
   await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
@@ -8512,6 +8524,8 @@ res.json({ ok: true });
 // ─────────────────────────────────────────────
 // ANALYTICS & BIG DATA 
 // ─────────────────────────────────────────────
+
+registerAdminAnalytics(app, pool, auth, requireAdmin);
 
 app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
   try {

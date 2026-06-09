@@ -1096,34 +1096,43 @@ footer { display: none; }
    ══════════════════════════════════════════ */
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg:        #060c1a;
-  --card:      rgba(12,20,36,0.95);
-  --ink:       #f0f4fc;
-  --ink-2:     #94a3b8;
-  --ink-3:     #64748b;
-  --line:      rgba(148,163,184,0.16);
-  --blue:      #4e90f7;
-  --blue-h:    #6aa9ff;
-  --blue-glow: rgba(78,144,247,0.14);
-  --danger:    #f06276;
-  --danger-bg: rgba(240,98,118,0.10);
-  --danger-bd: rgba(240,98,118,0.22);
-  --success:   #36d174;
-  --success-bg:rgba(54,209,116,0.10);
-  --success-bd:rgba(54,209,116,0.22);
-  --warning:   #f5a820;
-  --warning-bg:rgba(245,168,32,0.10);
-  --warning-bd:rgba(245,168,32,0.22);
-  --purple:    #b87fff;
-  --gold:      #f5a820;
-  --sh-xs: 0 1px 3px rgba(0,0,0,0.28);
-  --sh-sm: 0 4px 14px rgba(0,0,0,0.28);
-  --sh-md: 0 10px 28px rgba(0,0,0,0.34);
-  --sh-lg: 0 20px 56px rgba(0,0,0,0.40);
+  --bg: #060c16;
+  --bg-2: #0b1421;
+  --card: #0d1422;
+  --surface: rgba(13,20,34,0.94);
+  --surface-solid: #0d1422;
+  --surface-hover: #14203a;
+  --surface-soft: #162038;
+  --ink: #eef3ff;
+  --ink-2: #a8bacc;
+  --ink-3: #7f91a6;
+  --line: rgba(255,255,255,0.09);
+  --line-strong: rgba(255,255,255,0.16);
+  --blue: #4e8fff;
+  --blue-h: #6ba4ff;
+  --blue-glow: rgba(78,143,255,0.13);
+  --danger: #fb7185;
+  --danger-bg: rgba(251,113,133,0.13);
+  --danger-bd: rgba(251,113,133,0.24);
+  --success: #34d399;
+  --success-bg: rgba(52,211,153,0.13);
+  --success-bd: rgba(52,211,153,0.24);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251,191,36,0.13);
+  --warning-bd: rgba(251,191,36,0.24);
+  --purple: #c4b5fd;
+  --gold: #fcd34d;
+  --portal-surface: var(--surface-solid);
+  --portal-surface-2: var(--surface-soft);
+  --portal-border: var(--line);
+  --sh-xs: 0 1px 3px rgba(0,0,0,0.35);
+  --sh-sm: 0 2px 8px rgba(0,0,0,0.32);
+  --sh-md: 0 6px 24px rgba(0,0,0,0.38);
+  --sh-lg: 0 22px 60px rgba(0,0,0,0.52);
 }
-[data-theme="dark"] body { background: radial-gradient(ellipse at 78% 0%, rgba(78,144,247,0.13), transparent 32rem), #050b16 !important; color: var(--ink); }
+[data-theme="dark"] body { background: linear-gradient(180deg, color-mix(in srgb,var(--bg) 86%,#000 14%) 0%, var(--bg) 42%, color-mix(in srgb,var(--bg-2) 74%,var(--bg)) 100%) !important; color: var(--ink); }
 [data-theme="dark"] body::after { background: #040a12; }
-[data-theme="dark"] header { background: rgba(5,10,22,0.92) !important; border-bottom-color: rgba(148,163,184,0.13) !important; }
+[data-theme="dark"] header { background: color-mix(in srgb,var(--bg) 82%,transparent) !important; border-bottom-color: var(--line) !important; backdrop-filter: blur(18px) saturate(150%); }
 [data-theme="dark"] header > .brand-link { background: transparent !important; }
 [data-theme="dark"] .notif-btn, [data-theme="dark"] .user-btn { background: rgba(12,20,36,0.90) !important; border-color: rgba(148,163,184,0.16) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.28) !important; }
 [data-theme="dark"] .notif-btn:hover, [data-theme="dark"] .user-btn:hover { background: rgba(16,26,48,0.96) !important; border-color: rgba(78,144,247,0.32) !important; }
@@ -1131,22 +1140,23 @@ footer { display: none; }
 [data-theme="dark"] .user-dropdown, [data-theme="dark"] .notif-panel { background: rgba(8,16,32,0.98) !important; box-shadow: 0 24px 60px rgba(0,0,0,0.36), 0 0 0 1px rgba(148,163,184,0.12) !important; }
 [data-theme="dark"] .dropdown-item:hover { background: rgba(255,255,255,0.06); }
 [data-theme="dark"] .dropdown-item.danger:hover { background: rgba(240,98,118,0.12); }
-[data-theme="dark"] .dashboard-content { background: radial-gradient(ellipse at 78% 0%, rgba(78,144,247,0.10), transparent 28rem), #050b16 !important; }
-[data-theme="dark"] .portal-page-head { background: linear-gradient(135deg, rgba(12,20,36,0.98), rgba(10,18,32,0.94)) !important; border-color: rgba(148,163,184,0.13) !important; }
+[data-theme="dark"] .dashboard-content { background: radial-gradient(ellipse at 78% 0%, rgba(78,143,255,0.10), transparent 28rem), var(--bg) !important; }
+[data-theme="dark"] .portal-page-head { background: linear-gradient(135deg, color-mix(in srgb,var(--surface-solid) 94%,transparent), color-mix(in srgb,var(--surface-soft) 78%,transparent)) !important; border-color: var(--line) !important; }
 [data-theme="dark"] .portal-page-head h1 { color: #f0f4fc !important; }
-[data-theme="dark"] .portal-page-head p  { color: #94a3b8 !important; }
-[data-theme="dark"] .portal-tabs { background: rgba(8,16,32,0.88) !important; border-color: rgba(148,163,184,0.13) !important; }
-[data-theme="dark"] .portal-tab { color: #64748b !important; }
-[data-theme="dark"] .portal-tab.dashboard-nav-active { background: linear-gradient(135deg, #3b7ff0, #1c56d0) !important; }
+[data-theme="dark"] .portal-page-head p  { color: var(--ink-2) !important; }
+[data-theme="dark"] .portal-tabs { background: color-mix(in srgb,var(--surface-solid) 88%,transparent) !important; border-color: var(--line) !important; }
+[data-theme="dark"] .portal-tab { color: var(--ink-2) !important; }
+[data-theme="dark"] .portal-tab:hover { background: var(--accent-soft) !important; color: var(--blue-h) !important; }
+[data-theme="dark"] .portal-tab.dashboard-nav-active { background: linear-gradient(135deg, var(--blue), #2d64d8) !important; color: #fff !important; }
 [data-theme="dark"] .portal-status-chip { background: rgba(12,20,36,0.88) !important; border-color: rgba(148,163,184,0.16) !important; }
-[data-theme="dark"] .dashboard-card-active { background: rgba(10,18,34,0.97) !important; border-color: rgba(148,163,184,0.12) !important; }
-[data-theme="dark"] .card { background: rgba(10,18,34,0.92) !important; border-color: rgba(148,163,184,0.14) !important; }
+[data-theme="dark"] .dashboard-card-active { background: color-mix(in srgb,var(--surface-solid) 97%,transparent) !important; border-color: var(--line) !important; }
+[data-theme="dark"] .card { background: var(--surface) !important; border-color: var(--line) !important; }
 [data-theme="dark"] .mini-card, [data-theme="dark"] .health-card, [data-theme="dark"] .msm-card, [data-theme="dark"] .top-player-item, [data-theme="dark"] .list-item, [data-theme="dark"] .app-key-item, [data-theme="dark"] .admin-notification-item, [data-theme="dark"] .audit-item, [data-theme="dark"] .stat-box, [data-theme="dark"] #server-overview.dashboard-card-active > #online, [data-theme="dark"] #server-overview.dashboard-card-active > #history { background: rgba(12,20,38,0.80) !important; border-color: rgba(148,163,184,0.12) !important; box-shadow: none !important; }
 [data-theme="dark"] .mini-card:hover, [data-theme="dark"] .health-card:hover, [data-theme="dark"] .top-player-item:hover, [data-theme="dark"] .list-item:hover, [data-theme="dark"] .app-key-item:hover { background: rgba(16,26,48,0.92) !important; border-color: rgba(78,144,247,0.24) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.24) !important; }
 [data-theme="dark"] .mini-card .value, [data-theme="dark"] .health-card .h-value, [data-theme="dark"] .msm-card .msm-val { color: #f0f4fc !important; }
-[data-theme="dark"] .mini-card h4, [data-theme="dark"] .health-card .h-label { color: #64748b !important; }
+[data-theme="dark"] .mini-card h4, [data-theme="dark"] .health-card .h-label { color: var(--ink-3) !important; }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: rgba(8,16,32,0.88) !important; color: var(--ink) !important; border-color: rgba(148,163,184,0.16) !important; box-shadow: none !important; }
-[data-theme="dark"] input::placeholder, [data-theme="dark"] textarea::placeholder { color: #64748b !important; }
+[data-theme="dark"] input::placeholder, [data-theme="dark"] textarea::placeholder { color: var(--ink-3) !important; }
 [data-theme="dark"] input:focus, [data-theme="dark"] select:focus, [data-theme="dark"] textarea:focus { background: rgba(10,20,38,0.96) !important; border-color: rgba(78,144,247,0.46) !important; box-shadow: 0 0 0 4px rgba(78,144,247,0.14) !important; }
 [data-theme="dark"] .lb-search { background: rgba(8,16,32,0.80) !important; }
 [data-theme="dark"] .merit-input-group input, [data-theme="dark"] .merit-input-group select, [data-theme="dark"] .merit-input-group textarea { background: rgba(8,16,32,0.80) !important; }
@@ -1174,7 +1184,7 @@ footer { display: none; }
 [data-theme="dark"] .pill.limited { background: rgba(100,116,139,0.18); color: #cbd5e1; border-color: rgba(100,116,139,0.26); }
 [data-theme="dark"] .pill.success { background: rgba(54,209,116,0.14);  color: #6ee7a0; border-color: rgba(54,209,116,0.22); }
 [data-theme="dark"] .leaderboard-table tr:hover td { background: rgba(78,144,247,0.05); }
-[data-theme="dark"] th { color: #64748b !important; }
+[data-theme="dark"] th { color: var(--ink-2) !important; }
 [data-theme="dark"] td { color: var(--ink); border-color: rgba(148,163,184,0.14) !important; }
 [data-theme="dark"] .create-account-panel { background: rgba(8,22,46,0.72); border-color: rgba(78,144,247,0.18); }
 [data-theme="dark"] .create-account-collapsed { background: rgba(12,20,38,0.72); border-color: rgba(148,163,184,0.16); }
@@ -1285,6 +1295,408 @@ footer { display: none; }
   .portal-page-head { padding: 14px 16px !important; }
   .dashboard-card-active { padding: 15px !important; }
 }
+
+/* Command center and Community Intelligence */
+#command-center.dashboard-card-active,
+#community-analytics.dashboard-card-active { gap: 18px; }
+#command-center.dashboard-card-active > *,
+#community-analytics.dashboard-card-active > * { min-width:0; max-width:100%; }
+.cc-kicker {
+  display: block; color: var(--blue); font-size: 9.5px; line-height: 1.2; font-weight: 800;
+  letter-spacing: .13em; text-transform: uppercase;
+}
+.cc-hero {
+  position: relative; isolation: isolate; overflow: hidden; min-height: 230px;
+  display: grid; grid-template-columns: minmax(0,1.4fr) minmax(280px,.6fr); gap: 24px; align-items: center;
+  padding: clamp(22px,3vw,38px); border-radius: 24px; color: #fff;
+  background:
+    radial-gradient(circle at 76% 20%, rgba(46,200,168,.28), transparent 28%),
+    radial-gradient(circle at 18% 110%, rgba(139,92,246,.35), transparent 34%),
+    linear-gradient(135deg,#07172f 0%,#0a2b58 55%,#064b62 100%);
+  box-shadow: 0 24px 64px rgba(3,18,42,.24);
+}
+.cc-hero::before {
+  content:""; position:absolute; inset:0; z-index:-1; opacity:.16; pointer-events:none;
+  background-image: linear-gradient(rgba(255,255,255,.17) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.17) 1px,transparent 1px);
+  background-size:32px 32px; mask-image:linear-gradient(90deg,#000,transparent 74%);
+}
+.cc-hero .cc-kicker { color: #67e8f9; }
+.cc-hero-copy h2,.cc-module-head h2 { margin: 7px 0 9px; font-size: clamp(27px,3.2vw,44px); line-height: 1.03; letter-spacing: -.055em; }
+.cc-hero-copy p { max-width: 650px; margin: 0; color: rgba(226,238,255,.74); font-size: 14px; line-height: 1.65; }
+.cc-hero-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:21px; }
+.cc-hero-actions .btn-primary { background: linear-gradient(135deg,#f8fafc,#dbeafe) !important; color:#08203d; box-shadow:0 12px 28px rgba(0,0,0,.2)!important; }
+.cc-hero-actions .btn-secondary { color:#fff; background:rgba(255,255,255,.1)!important; border-color:rgba(255,255,255,.18)!important; }
+.cc-health-panel { display:flex; align-items:center; gap:17px; padding:18px; border:1px solid rgba(255,255,255,.14); border-radius:20px; background:rgba(5,18,38,.38); backdrop-filter:blur(18px); }
+.cc-health-ring {
+  --score:0; width:112px; aspect-ratio:1; border-radius:50%; padding:9px; flex:0 0 auto;
+  display:grid; place-items:center; background:conic-gradient(#2ec8a8 calc(var(--score)*1%),rgba(255,255,255,.12) 0);
+  box-shadow:0 0 30px rgba(46,200,168,.18);
+}
+.cc-health-ring::before { content:""; grid-area:1/1; width:100%; height:100%; border-radius:50%; background:#0a2342; }
+.cc-health-ring div { grid-area:1/1; z-index:1; text-align:center; }
+.cc-health-ring strong { display:block; font-size:29px; letter-spacing:-.06em; }
+.cc-health-ring span { display:block; color:rgba(255,255,255,.58); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+.cc-health-copy { min-width:0; }
+.cc-health-copy strong,.cc-health-copy small { display:block; }
+.cc-health-copy strong { margin:9px 0 4px; font-size:14px; }
+.cc-health-copy small { color:rgba(255,255,255,.6); line-height:1.45; }
+.cc-live { display:inline-flex; align-items:center; gap:6px; font-size:10px; color:#9ff8df; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+.cc-live i { width:7px; height:7px; border-radius:50%; background:#34d399; box-shadow:0 0 0 5px rgba(52,211,153,.12); }
+.cc-section-head,.cc-module-head,.cc-panel-head { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.cc-section-head h3,.cc-panel-head h3 { justify-content:flex-start; margin-top:4px!important; }
+.cc-inline-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.cc-inline-controls select { width:auto; min-width:112px; padding:8px 30px 8px 11px!important; }
+.cc-kpi-grid,.ci-kpi-grid { display:grid; grid-template-columns:repeat(6,minmax(145px,1fr)); gap:10px; }
+.cc-kpi,.ci-kpi {
+  position:relative; overflow:hidden; min-width:0; padding:16px; border:1px solid var(--line); border-radius:15px;
+  background:#f7fafe; box-shadow:inset 0 1px rgba(255,255,255,.8);
+}
+.cc-kpi::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--tone,#1761f0); }
+.cc-kpi span,.ci-kpi span { display:block; color:var(--ink-3); font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+.cc-kpi strong,.ci-kpi strong { display:block; margin:8px 0 4px; color:var(--ink); font-size:clamp(21px,2vw,27px); letter-spacing:-.055em; line-height:1; }
+.cc-kpi small,.ci-kpi small { display:block; color:var(--ink-3); font-size:10.5px; line-height:1.4; }
+.tone-blue{--tone:#1761f0}.tone-teal{--tone:#0a9f83}.tone-purple{--tone:#8b5cf6}.tone-gold{--tone:#e69b13}.tone-pink{--tone:#e94f8b}.tone-green{--tone:#18a558}
+.cc-layout,.ci-grid { display:grid; gap:12px; }
+.cc-layout { grid-template-columns:minmax(0,1.7fr) minmax(280px,.7fr); }
+.cc-layout-bottom,.ci-grid-secondary { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.cc-panel {
+  min-width:0; padding:17px; border:1px solid var(--line); border-radius:17px; background:#f7fafe;
+  box-shadow:inset 0 1px rgba(255,255,255,.82);
+}
+.cc-panel-head { margin-bottom:14px; }
+.cc-panel-head h3 { font-size:14px!important; }
+.cc-meta-chip { display:inline-flex; padding:5px 9px; border:1px solid var(--line); border-radius:999px; color:var(--ink-3); font-size:10px; font-weight:750; background:var(--card); white-space:nowrap; }
+.cc-chart-wrap { position:relative; height:260px; }
+.cc-action-list,.cc-goals,.cc-signal-grid,.cc-economy,.ci-segments,.ci-topics,.ci-formats,.ci-contributors,.ci-ranks,.ci-ops { display:grid; gap:8px; }
+.cc-action {
+  display:grid; grid-template-columns:9px minmax(0,1fr) auto; gap:10px; align-items:center; padding:10px;
+  border:1px solid var(--line); border-radius:12px; background:var(--card); cursor:pointer; transition:all var(--t1) var(--ease);
+}
+.cc-action:hover { transform:translateY(-1px); border-color:rgba(23,97,240,.25); box-shadow:var(--sh-sm); }
+.cc-action-dot { width:8px; height:8px; border-radius:50%; background:var(--tone,var(--blue)); box-shadow:0 0 0 4px color-mix(in srgb,var(--tone,var(--blue)) 14%,transparent); }
+.cc-action strong,.cc-action small { display:block; }
+.cc-action strong { font-size:11.5px; }
+.cc-action small { margin-top:2px; color:var(--ink-3); font-size:9.5px; line-height:1.35; }
+.cc-action b { color:var(--ink-3); font-size:10px; }
+.cc-empty { padding:22px 10px; text-align:center; color:var(--ink-3); font-size:11px; }
+.cc-goal-row,.cc-signal,.cc-economy-row,.ci-segment,.ci-format,.ci-rank,.ci-op {
+  padding:10px; border:1px solid var(--line); border-radius:12px; background:var(--card);
+}
+.cc-goal-top,.cc-signal-top,.cc-economy-row,.ci-segment-top,.ci-format-top,.ci-rank-top,.ci-op { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.cc-goal-top span,.cc-signal-top span,.cc-economy-row span,.ci-segment span,.ci-format span,.ci-rank span,.ci-op span { color:var(--ink-2); font-size:10.5px; font-weight:650; }
+.cc-goal-top strong,.cc-signal-top strong,.cc-economy-row strong,.ci-segment strong,.ci-format strong,.ci-rank strong,.ci-op strong { font-size:12px; }
+.cc-progress { height:5px; margin-top:8px; overflow:hidden; border-radius:999px; background:var(--line); }
+.cc-progress i { display:block; width:var(--value,0%); height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--tone,var(--blue)),color-mix(in srgb,var(--tone,var(--blue)) 65%,white)); }
+.cc-module-head { align-items:flex-start; padding:4px 0 2px; }
+.cc-module-head h2 { color:var(--ink); font-size:clamp(25px,3vw,38px); }
+.cc-module-head p { max-width:700px; margin:0; color:var(--ink-2); font-size:12.5px; line-height:1.55; }
+.ci-kpi-grid { grid-template-columns:repeat(6,minmax(135px,1fr)); }
+.ci-kpi { background:linear-gradient(145deg,#f7fafe,#fff); }
+.ci-grid-main { grid-template-columns:minmax(250px,.72fr) minmax(0,1.35fr) minmax(210px,.58fr); }
+.ci-doughnut-wrap { position:relative; height:245px; }
+.ci-funnel { display:grid; gap:7px; }
+.ci-funnel-row { position:relative; overflow:hidden; min-height:42px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 11px; border:1px solid var(--line); border-radius:10px; background:var(--card); }
+.ci-funnel-row::before { content:""; position:absolute; inset:0 auto 0 0; width:var(--value,0%); background:color-mix(in srgb,var(--tone,var(--blue)) 12%,transparent); }
+.ci-funnel-row span,.ci-funnel-row strong { position:relative; z-index:1; font-size:10.5px; }
+.ci-funnel-row span { color:var(--ink-2); font-weight:700; }
+.ci-segment-top,.ci-format-top,.ci-rank-top { display:flex; justify-content:space-between; gap:9px; }
+.ci-segment-bar { height:4px; margin-top:7px; background:var(--line); border-radius:99px; overflow:hidden; }
+.ci-segment-bar i { display:block; width:var(--value,0%); height:100%; background:var(--tone,var(--blue)); border-radius:99px; }
+.ci-topic { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid var(--line); border-radius:11px; background:var(--card); }
+.ci-topic b { color:var(--blue); font-size:11px; }
+.ci-topic-bar { flex:1; height:4px; background:var(--line); border-radius:99px; overflow:hidden; }
+.ci-topic-bar i { display:block; height:100%; width:var(--value,0%); background:linear-gradient(90deg,var(--blue),#2ec8a8); }
+.ci-topic small { color:var(--ink-3); font-size:9px; }
+.ci-content-panel { padding:17px; }
+.cc-text-link { color:var(--blue); font-size:10.5px; font-weight:800; }
+.ci-table-wrap { width:100%; min-width:0; max-width:100%; overflow:auto; border:1px solid var(--line); border-radius:13px; }
+.ci-table { width:100%; min-width:720px; border-collapse:collapse; background:var(--card); }
+.ci-table th { padding:9px 11px; text-align:left; color:var(--ink-3)!important; font-size:9px; text-transform:uppercase; letter-spacing:.08em; background:color-mix(in srgb,var(--bg) 70%,var(--card)); }
+.ci-table td { padding:10px 11px; border-top:1px solid var(--line)!important; font-size:10.5px; vertical-align:middle; }
+.ci-content-title { max-width:340px; display:flex; align-items:center; gap:9px; }
+.ci-content-title img,.ci-contributor img { width:30px; height:30px; border-radius:8px; object-fit:cover; background:var(--bg); }
+.ci-content-title strong,.ci-content-title small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ci-content-title small { max-width:270px; margin-top:2px; color:var(--ink-3); font-size:9px; }
+.ci-quality { display:inline-flex; min-width:38px; justify-content:center; padding:4px 7px; border-radius:99px; color:#fff; background:linear-gradient(135deg,#1761f0,#8b5cf6); font-weight:800; }
+.ci-contributor { display:grid; grid-template-columns:30px minmax(0,1fr) auto; gap:9px; align-items:center; padding:8px 9px; border:1px solid var(--line); border-radius:11px; background:var(--card); }
+.ci-contributor strong,.ci-contributor small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ci-contributor strong { font-size:10.5px; }.ci-contributor small { margin-top:2px; color:var(--ink-3); font-size:9px; }
+.ci-contributor b { color:var(--blue); font-size:11px; }
+
+[data-theme="dark"] .cc-kpi,[data-theme="dark"] .ci-kpi,[data-theme="dark"] .cc-panel { background:rgba(12,20,38,.78); border-color:rgba(148,163,184,.13); box-shadow:none; }
+[data-theme="dark"] .cc-action,[data-theme="dark"] .cc-goal-row,[data-theme="dark"] .cc-signal,[data-theme="dark"] .cc-economy-row,[data-theme="dark"] .ci-segment,[data-theme="dark"] .ci-format,[data-theme="dark"] .ci-rank,[data-theme="dark"] .ci-op,[data-theme="dark"] .ci-topic,[data-theme="dark"] .ci-funnel-row,[data-theme="dark"] .ci-table,[data-theme="dark"] .ci-contributor { background:rgba(7,14,28,.76); border-color:rgba(148,163,184,.12); }
+[data-theme="dark"] .ci-table th { background:rgba(255,255,255,.025); }
+[data-theme="dark"] .ci-table td { border-color:rgba(148,163,184,.12)!important; }
+
+/* Community-grade dark theme: final contrast and consistency pass */
+[data-theme="dark"] {
+  --text-primary:var(--ink);
+  --text-secondary:var(--ink-2);
+  --accent:var(--blue);
+  --accent-hover:var(--blue-h);
+  --accent-light:var(--accent-soft);
+  --border:var(--line);
+}
+[data-theme="dark"] body::before { opacity:.035; }
+[data-theme="dark"] .sidebar-profile,
+[data-theme="dark"] .portal-status-chip,
+[data-theme="dark"] .cc-meta-chip {
+  background:var(--surface-soft)!important;
+  border-color:var(--line)!important;
+  color:var(--ink-2)!important;
+}
+[data-theme="dark"] .portal-status-chip strong,
+[data-theme="dark"] .portal-status-chip b { color:var(--ink)!important; }
+[data-theme="dark"] .card,
+[data-theme="dark"] .dashboard-card-active,
+[data-theme="dark"] .cc-kpi,
+[data-theme="dark"] .ci-kpi,
+[data-theme="dark"] .cc-panel,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .confirm-pw-sheet {
+  background:var(--surface)!important;
+  border-color:var(--line)!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.18)!important;
+}
+[data-theme="dark"] .cc-action,
+[data-theme="dark"] .cc-goal-row,
+[data-theme="dark"] .cc-signal,
+[data-theme="dark"] .cc-economy-row,
+[data-theme="dark"] .ci-segment,
+[data-theme="dark"] .ci-format,
+[data-theme="dark"] .ci-rank,
+[data-theme="dark"] .ci-op,
+[data-theme="dark"] .ci-topic,
+[data-theme="dark"] .ci-funnel-row,
+[data-theme="dark"] .ci-table,
+[data-theme="dark"] .ci-contributor,
+[data-theme="dark"] .mini-card,
+[data-theme="dark"] .health-card,
+[data-theme="dark"] .msm-card,
+[data-theme="dark"] .list-item,
+[data-theme="dark"] .top-player-item,
+[data-theme="dark"] .admin-notification-item,
+[data-theme="dark"] .app-key-item,
+[data-theme="dark"] .audit-item,
+[data-theme="dark"] .stat-box,
+[data-theme="dark"] .mod-item,
+[data-theme="dark"] .admin-account-card,
+[data-theme="dark"] .create-account-collapsed,
+[data-theme="dark"] .advanced-security-section {
+  background:var(--surface-solid)!important;
+  border-color:var(--line)!important;
+  box-shadow:none!important;
+}
+[data-theme="dark"] .cc-action:hover,
+[data-theme="dark"] .mini-card:hover,
+[data-theme="dark"] .health-card:hover,
+[data-theme="dark"] .list-item:hover,
+[data-theme="dark"] .top-player-item:hover,
+[data-theme="dark"] .app-key-item:hover,
+[data-theme="dark"] .admin-account-card:hover,
+[data-theme="dark"] .mod-item:hover {
+  background:var(--surface-hover)!important;
+  border-color:rgba(78,143,255,.32)!important;
+}
+[data-theme="dark"] .card h3,
+[data-theme="dark"] .cc-panel-head h3,
+[data-theme="dark"] .cc-section-head h3,
+[data-theme="dark"] .cc-module-head h2,
+[data-theme="dark"] .cc-kpi strong,
+[data-theme="dark"] .ci-kpi strong,
+[data-theme="dark"] .cc-action strong,
+[data-theme="dark"] .cc-goal-top strong,
+[data-theme="dark"] .cc-signal-top strong,
+[data-theme="dark"] .cc-economy-row strong,
+[data-theme="dark"] .ci-segment strong,
+[data-theme="dark"] .ci-format strong,
+[data-theme="dark"] .ci-rank strong,
+[data-theme="dark"] .ci-op strong,
+[data-theme="dark"] .ci-funnel-row strong,
+[data-theme="dark"] .ci-content-title strong,
+[data-theme="dark"] .ci-contributor strong,
+[data-theme="dark"] .top-player-name,
+[data-theme="dark"] .item-details strong,
+[data-theme="dark"] .admin-field label,
+[data-theme="dark"] .modal-title,
+[data-theme="dark"] .mod-item-title,
+[data-theme="dark"] .empty-state strong {
+  color:var(--ink)!important;
+}
+[data-theme="dark"] .card h3 span,
+[data-theme="dark"] .cc-kpi span,
+[data-theme="dark"] .ci-kpi span,
+[data-theme="dark"] .cc-kpi small,
+[data-theme="dark"] .ci-kpi small,
+[data-theme="dark"] .cc-action small,
+[data-theme="dark"] .cc-action b,
+[data-theme="dark"] .cc-empty,
+[data-theme="dark"] .cc-goal-top span,
+[data-theme="dark"] .cc-signal-top span,
+[data-theme="dark"] .cc-economy-row span,
+[data-theme="dark"] .ci-segment span,
+[data-theme="dark"] .ci-format span,
+[data-theme="dark"] .ci-rank span,
+[data-theme="dark"] .ci-op span,
+[data-theme="dark"] .ci-topic small,
+[data-theme="dark"] .ci-content-title small,
+[data-theme="dark"] .ci-contributor small,
+[data-theme="dark"] .health-card .h-label,
+[data-theme="dark"] .health-card .h-sub,
+[data-theme="dark"] .msm-lbl,
+[data-theme="dark"] .item-details span,
+[data-theme="dark"] .top-player-name .hours-label,
+[data-theme="dark"] .admin-notification-hint,
+[data-theme="dark"] .audit-meta,
+[data-theme="dark"] .mod-item-meta,
+[data-theme="dark"] .mod-item-meta small,
+[data-theme="dark"] .empty-state p,
+[data-theme="dark"] .modal-subtitle {
+  color:var(--ink-2)!important;
+}
+[data-theme="dark"] .cc-hero {
+  background:
+    radial-gradient(circle at 80% 8%,rgba(107,164,255,.25),transparent 27%),
+    linear-gradient(135deg,#101d35 0%,#0c2746 52%,#123a4b 100%);
+  border-color:rgba(107,164,255,.24);
+  box-shadow:0 24px 64px rgba(0,0,0,.28);
+}
+[data-theme="dark"] .cc-hero-copy p { color:#d5e4f5; }
+[data-theme="dark"] .cc-health-copy small,
+[data-theme="dark"] .cc-health-ring span { color:#c5d7e8; }
+[data-theme="dark"] .cc-health-panel {
+  background:rgba(6,12,22,.58);
+  border-color:rgba(255,255,255,.14);
+}
+[data-theme="dark"] .cc-progress,
+[data-theme="dark"] .ci-segment-bar,
+[data-theme="dark"] .ci-topic-bar { background:rgba(255,255,255,.11); }
+[data-theme="dark"] .ci-table-wrap { border-color:var(--line)!important; }
+[data-theme="dark"] .ci-table th {
+  background:var(--surface-soft)!important;
+  color:var(--ink-2)!important;
+}
+[data-theme="dark"] .ci-table td { color:var(--ink)!important; }
+[data-theme="dark"] .leaderboard-table thead,
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .admin-tabs-bar,
+[data-theme="dark"] .mod-tabs-bar {
+  background:var(--surface-soft)!important;
+  border-color:var(--line)!important;
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .lb-search,
+[data-theme="dark"] .merit-input-group input,
+[data-theme="dark"] .merit-input-group select,
+[data-theme="dark"] .merit-input-group textarea,
+[data-theme="dark"] .modal-ctrl-row input,
+[data-theme="dark"] .modal-ctrl-row select {
+  background:var(--surface-soft)!important;
+  color:var(--ink)!important;
+  border-color:var(--line-strong)!important;
+}
+[data-theme="dark"] input:hover,
+[data-theme="dark"] select:hover,
+[data-theme="dark"] textarea:hover { border-color:rgba(107,164,255,.36)!important; }
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  background:var(--surface-hover)!important;
+  border-color:var(--blue-h)!important;
+  box-shadow:0 0 0 4px rgba(78,143,255,.16)!important;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color:#91a4b9!important; }
+[data-theme="dark"] option { background:var(--surface-solid); color:var(--ink); }
+[data-theme="dark"] .sort-chip,
+[data-theme="dark"] .rank-chip,
+[data-theme="dark"] .audit-tab,
+[data-theme="dark"] .merit-tab,
+[data-theme="dark"] .admin-tab,
+[data-theme="dark"] .mod-tab,
+[data-theme="dark"] .mod-chip,
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .btn-export {
+  background:var(--surface-soft)!important;
+  border-color:var(--line-strong)!important;
+  color:var(--ink-2)!important;
+}
+[data-theme="dark"] .sort-chip:hover,
+[data-theme="dark"] .rank-chip:hover,
+[data-theme="dark"] .audit-tab:hover,
+[data-theme="dark"] .merit-tab:hover,
+[data-theme="dark"] .admin-tab:hover,
+[data-theme="dark"] .mod-tab:hover,
+[data-theme="dark"] .mod-chip:hover,
+[data-theme="dark"] .btn-secondary:hover,
+[data-theme="dark"] .btn-export:hover {
+  background:var(--surface-hover)!important;
+  color:var(--ink)!important;
+}
+[data-theme="dark"] .portal-tab.dashboard-nav-active,
+[data-theme="dark"] .sort-chip.active,
+[data-theme="dark"] .rank-chip.active,
+[data-theme="dark"] .audit-tab.active,
+[data-theme="dark"] .merit-tab.active,
+[data-theme="dark"] .admin-tab.active,
+[data-theme="dark"] .mod-tab.active,
+[data-theme="dark"] .mod-chip.active {
+  background:linear-gradient(135deg,var(--blue),#2d64d8)!important;
+  border-color:transparent!important;
+  color:#fff!important;
+  box-shadow:0 7px 20px rgba(78,143,255,.22)!important;
+}
+[data-theme="dark"] .portal-tab.dashboard-nav-active svg,
+[data-theme="dark"] .sort-chip.active svg,
+[data-theme="dark"] .rank-chip.active svg,
+[data-theme="dark"] .admin-tab.active svg,
+[data-theme="dark"] .mod-tab.active svg { color:#fff!important; stroke:#fff!important; }
+[data-theme="dark"] .create-account-panel {
+  background:color-mix(in srgb,var(--surface-solid) 84%,var(--blue) 16%)!important;
+  border-color:rgba(78,143,255,.28)!important;
+}
+[data-theme="dark"] .player-notes-panel,
+[data-theme="dark"] .note-item {
+  background:rgba(251,191,36,.08)!important;
+  border-color:rgba(251,191,36,.24)!important;
+}
+[data-theme="dark"] .mod-content-preview,
+[data-theme="dark"] .mod-reason-pill { background:var(--surface-soft)!important; }
+
+@media (max-width: 1450px) {
+  .cc-kpi-grid,.ci-kpi-grid { grid-template-columns:repeat(3,minmax(145px,1fr)); }
+}
+@media (max-width: 1180px) {
+  .cc-hero { grid-template-columns:1fr; }
+  .cc-health-panel { max-width:520px; }
+  .cc-layout,.ci-grid-main { grid-template-columns:1fr; }
+  .cc-layout-bottom,.ci-grid-secondary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 900px) {
+  body { padding-bottom:72px; }
+  .sidebar-profile { display:none!important; }
+  .dashboard-content,.portal-page-head,.dashboard-card-active { width:100%!important; min-width:0!important; max-width:100%!important; }
+  .portal-page-head { overflow:hidden; }
+  .portal-tabs { position:fixed; left:8px; right:8px; bottom:8px; z-index:1050; margin:0!important; height:56px; border-radius:18px!important; padding:7px!important; backdrop-filter:blur(22px); }
+  .portal-tab { height:40px; padding:0 13px!important; }
+  .cc-hero { padding:20px; min-height:unset; }
+  .cc-kpi-grid,.ci-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .cc-layout-bottom,.ci-grid-secondary { grid-template-columns:1fr; }
+  .cc-module-head { flex-direction:column; }
+}
+@media (max-width: 560px) {
+  .cc-hero-copy h2,.cc-module-head h2 { font-size:27px; }
+  .cc-health-panel { align-items:flex-start; flex-direction:column; }
+  .cc-health-ring { width:92px; }
+  .cc-section-head { align-items:flex-start; flex-direction:column; }
+  .cc-kpi-grid,.ci-kpi-grid { grid-template-columns:1fr 1fr; gap:7px; }
+  .cc-kpi,.ci-kpi,.cc-panel { padding:12px; }
+  .cc-kpi strong,.ci-kpi strong { font-size:20px; }
+  .cc-chart-wrap { height:220px; }
+  .ci-doughnut-wrap { height:210px; }
+}
 </style>
 <!-- Preconnect hints: reduz latência de primeira conexão -->
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
@@ -1295,7 +1707,7 @@ footer { display: none; }
 
 <header>
   <a href="index.html" class="brand-link">
-    <img src="assets/images/fa-icon-light.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
+    <img src="assets/images/fa-icon-dark.png" onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="FA Logo" class="logo-img" width="100" height="100">
     <div class="logo-text">Força Aliada</div>
   </a>
 
@@ -1368,6 +1780,12 @@ footer { display: none; }
 
         <div class="section-label"><span>Ações Rápidas</span></div>
         <div class="quick-actions" id="quick-actions-section">
+          <button class="quick-action-btn dashboard-nav-active" onclick="scrollToSection('command-center')">
+            <span class="qa-icon">⌁</span><span class="qa-label">Centro de Comando</span><span class="qa-arrow">›</span>
+          </button>
+          <button class="quick-action-btn" onclick="scrollToSection('community-analytics')">
+            <span class="qa-icon">◉</span><span class="qa-label">Community Intelligence</span><span class="qa-arrow">›</span>
+          </button>
           <button class="quick-action-btn" onclick="scrollToSection('server-overview')">
             <span class="qa-icon">🖥️</span><span class="qa-label">Visão do Servidor</span><span class="qa-arrow">›</span>
           </button>
@@ -1411,8 +1829,8 @@ footer { display: none; }
       <div class="portal-page-head" aria-label="Cabeçalho do portal administrativo">
         <div>
           <span class="portal-eyebrow">Centro de comando</span>
-          <h1 id="portal-active-title">Visão do Servidor</h1>
-          <p id="portal-active-desc">Saúde, atividade e decisões operacionais em uma área de trabalho modular.</p>
+          <h1 id="portal-active-title">Centro de Comando</h1>
+          <p id="portal-active-desc">Prioridades, saúde da operação e sinais que exigem uma decisão agora.</p>
         </div>
         <div class="portal-toolbar">
           <span class="portal-status-chip">IP: <strong>fa.ogabriels.com</strong></span>
@@ -1421,7 +1839,9 @@ footer { display: none; }
       </div>
 
       <div class="portal-tabs" id="portal-tabs" role="tablist" aria-label="Módulos do painel">
-        <button class="portal-tab dashboard-nav-active" type="button" data-dashboard-target="server-overview" onclick="scrollToSection('server-overview')">Servidor</button>
+        <button class="portal-tab dashboard-nav-active" type="button" data-dashboard-target="command-center" onclick="scrollToSection('command-center')">Comando</button>
+        <button class="portal-tab" type="button" data-dashboard-target="community-analytics" onclick="scrollToSection('community-analytics')">Community Intelligence</button>
+        <button class="portal-tab" type="button" data-dashboard-target="server-overview" onclick="scrollToSection('server-overview')">Servidor</button>
         <button class="portal-tab" type="button" data-dashboard-target="stats-card" onclick="scrollToSection('stats-card')">Estatísticas</button>
         <button class="portal-tab" type="button" data-dashboard-target="admin-users-card" id="portal-nav-staff" onclick="scrollToSection('admin-users-card')" style="display:none;">Jogadores & Staff</button>
         <button class="portal-tab" type="button" data-dashboard-target="merit-card" id="portal-nav-merit" onclick="scrollToSection('merit-card')" style="display:none;">Mérito & Capital</button>
@@ -1434,6 +1854,155 @@ footer { display: none; }
 
       <div id="alerts-card" style="display:none;">
         <div class="alerts-wrapper" id="alerts-wrapper"></div>
+      </div>
+
+      <div class="card" id="command-center">
+        <section class="cc-hero">
+          <div class="cc-hero-copy">
+            <span class="cc-kicker">Força Aliada Intelligence</span>
+            <h2 id="cc-greeting">Visão executiva da operação</h2>
+            <p id="cc-briefing">Consolidando os sinais da comunidade, do servidor e da gestão.</p>
+            <div class="cc-hero-actions">
+              <button class="btn-primary" type="button" onclick="scrollToSection('community-analytics')">Explorar Community Intelligence</button>
+              <a class="btn-secondary" href="community.html">Abrir comunidade</a>
+            </div>
+          </div>
+          <div class="cc-health-panel">
+            <div class="cc-health-ring" id="cc-health-ring" style="--score:0">
+              <div><strong id="cc-health-score">--</strong><span>saúde geral</span></div>
+            </div>
+            <div class="cc-health-copy">
+              <span class="cc-live"><i></i> Monitoramento ativo</span>
+              <strong id="cc-health-label">Calculando diagnóstico</strong>
+              <small id="cc-health-detail">Os indicadores serão atualizados em instantes.</small>
+            </div>
+          </div>
+        </section>
+
+        <div class="cc-section-head">
+          <div><span class="cc-kicker">Agora</span><h3>Pulso da operação</h3></div>
+          <div class="cc-inline-controls">
+            <select id="cc-period" onchange="changeAnalyticsPeriod(this.value)" aria-label="Período do analytics">
+              <option value="7">7 dias</option>
+              <option value="30" selected>30 dias</option>
+              <option value="90">90 dias</option>
+            </select>
+            <button class="btn-export" type="button" onclick="loadExecutiveAnalytics(true)">Atualizar</button>
+          </div>
+        </div>
+
+        <div class="cc-kpi-grid">
+          <article class="cc-kpi tone-blue"><span>Usuários ativos</span><strong id="cc-active-users">--</strong><small id="cc-active-trend">comparando período</small></article>
+          <article class="cc-kpi tone-teal"><span>Engajamento por impressão</span><strong id="cc-engagement-rate">--</strong><small id="cc-engagement-detail">interações de alta intenção</small></article>
+          <article class="cc-kpi tone-purple"><span>Retenção</span><strong id="cc-retention-rate">--</strong><small id="cc-retention-detail">usuários que retornaram</small></article>
+          <article class="cc-kpi tone-gold"><span>Horas no servidor</span><strong id="cc-play-hours">--</strong><small id="cc-play-detail">jogadores únicos</small></article>
+          <article class="cc-kpi tone-pink"><span>Conteúdo publicado</span><strong id="cc-posts">--</strong><small id="cc-posts-trend">posts originais</small></article>
+          <article class="cc-kpi tone-green"><span>Conversas</span><strong id="cc-messages">--</strong><small id="cc-messages-detail">mensagens privadas e grupos</small></article>
+        </div>
+
+        <div class="cc-layout">
+          <section class="cc-panel cc-panel-wide">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Tendência</span><h3>Atividade da força aliada</h3></div><span id="cc-chart-period" class="cc-meta-chip">30 dias</span></div>
+            <div class="cc-chart-wrap"><canvas id="cc-pulse-chart"></canvas></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Prioridades</span><h3>Fila de atenção</h3></div><span class="cc-meta-chip" id="cc-action-count">0 ações</span></div>
+            <div class="cc-action-list" id="cc-action-list"><div class="cc-empty">Analisando riscos e oportunidades...</div></div>
+          </section>
+        </div>
+
+        <div class="cc-layout cc-layout-bottom">
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Objetivos</span><h3>Metas de comunidade</h3></div></div>
+            <div class="cc-goals" id="cc-goals"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Sistema</span><h3>Capacidade operacional</h3></div></div>
+            <div class="cc-signal-grid" id="cc-signal-grid"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Economia</span><h3>Mérito e capital</h3></div></div>
+            <div class="cc-economy" id="cc-economy"></div>
+          </section>
+        </div>
+      </div>
+
+      <div class="card" id="community-analytics">
+        <div class="cc-module-head">
+          <div><span class="cc-kicker">Community Intelligence</span><h2>Analytics da comunidade</h2><p>Da descoberta à contribuição: alcance, qualidade, retenção, perfis e conteúdo em um único lugar.</p></div>
+          <div class="cc-inline-controls">
+            <select id="community-period" onchange="changeAnalyticsPeriod(this.value)" aria-label="Período da comunidade">
+              <option value="7">Últimos 7 dias</option>
+              <option value="30" selected>Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+            </select>
+            <button class="btn-export" type="button" onclick="exportCommunityAnalytics()">Exportar CSV</button>
+          </div>
+        </div>
+
+        <div class="ci-kpi-grid">
+          <article class="ci-kpi"><span>Alcance</span><strong id="ci-impressions">--</strong><small id="ci-viewers">-- visualizadores únicos</small></article>
+          <article class="ci-kpi"><span>Interações</span><strong id="ci-interactions">--</strong><small id="ci-interactions-mix">curtidas, respostas, reposts e saves</small></article>
+          <article class="ci-kpi"><span>Ativação em 7 dias</span><strong id="ci-activation">--</strong><small id="ci-activation-detail">novos membros que realizaram uma ação</small></article>
+          <article class="ci-kpi"><span>Resposta comunitária</span><strong id="ci-response-rate">--</strong><small id="ci-response-time">tempo até a primeira resposta</small></article>
+          <article class="ci-kpi"><span>Stickiness DAU/MAU</span><strong id="ci-stickiness">--</strong><small id="ci-stickiness-detail">frequência de retorno diário</small></article>
+          <article class="ci-kpi"><span>Tempo de atenção</span><strong id="ci-dwell">--</strong><small>média acumulada por conteúdo visto</small></article>
+        </div>
+
+        <div class="ci-grid ci-grid-main">
+          <section class="cc-panel ci-funnel-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Jornada</span><h3>Funil de participação</h3></div></div>
+            <div class="ci-funnel" id="ci-funnel"></div>
+          </section>
+          <section class="cc-panel ci-trend-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Comportamento</span><h3>Engajamento e conversas</h3></div></div>
+            <div class="cc-chart-wrap"><canvas id="ci-engagement-chart"></canvas></div>
+          </section>
+          <section class="cc-panel ci-mix-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Intenção</span><h3>Mix de interação</h3></div></div>
+            <div class="ci-doughnut-wrap"><canvas id="ci-mix-chart"></canvas></div>
+          </section>
+        </div>
+
+        <div class="ci-grid ci-grid-secondary">
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Audiência</span><h3>Segmentos comportamentais</h3></div></div>
+            <div class="ci-segments" id="ci-segments"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Assuntos</span><h3>Temas em movimento</h3></div></div>
+            <div class="ci-topics" id="ci-topics"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Formatos</span><h3>O que gera mais valor</h3></div></div>
+            <div class="ci-formats" id="ci-formats"></div>
+          </section>
+        </div>
+
+        <section class="cc-panel ci-content-panel">
+          <div class="cc-panel-head"><div><span class="cc-kicker">Conteúdo</span><h3>Publicações com maior impacto</h3></div><a href="community.html" class="cc-text-link">Abrir feed</a></div>
+          <div class="ci-table-wrap">
+            <table class="ci-table">
+              <thead><tr><th>Publicação</th><th>Alcance</th><th>Atenção</th><th>Interações</th><th>Qualidade</th></tr></thead>
+              <tbody id="ci-top-content"><tr><td colspan="5" class="cc-empty">Carregando conteúdo...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="ci-grid ci-grid-secondary">
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Pessoas</span><h3>Contribuidores em destaque</h3></div></div>
+            <div class="ci-contributors" id="ci-contributors"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Progressão</span><h3>Distribuição por rank</h3></div></div>
+            <div class="ci-ranks" id="ci-ranks"></div>
+          </section>
+          <section class="cc-panel">
+            <div class="cc-panel-head"><div><span class="cc-kicker">Operação</span><h3>Qualidade e segurança</h3></div></div>
+            <div class="ci-ops" id="ci-ops"></div>
+          </section>
+        </div>
       </div>
 
       <div class="card" id="server-overview">
@@ -2293,9 +2862,11 @@ async function apiFetch(path, options = {}) {
   throw lastError || new Error('Backend indisponível');
 }
 
+const DASHBOARD_PREVIEW = ['localhost','127.0.0.1'].includes(window.location.hostname) && new URLSearchParams(location.search).has('preview');
 let session = null;
-const token = localStorage.getItem(TOKEN_KEY);
+const token = localStorage.getItem(TOKEN_KEY) || (DASHBOARD_PREVIEW ? 'preview' : null);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
+if (DASHBOARD_PREVIEW) session = { username:'Direção', email:'preview@forcaaliada.local', minecraftName:'Steve', role:'owner' };
 
 function loginUrlForCurrentPage(){
   const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'');
@@ -2317,6 +2888,11 @@ let globalAdminUsers    = [];
 let globalUnregistered  = [];
 let currentAdminTab     = 'registered';
 let chartInstance       = null;
+let commandPulseChart   = null;
+let communityTrendChart = null;
+let communityMixChart   = null;
+let executiveAnalytics  = null;
+let analyticsPeriodDays = 30;
 let liveInterval        = null;
 let auditLogs           = [];
 let auditFilterActive   = 'all';
@@ -2344,6 +2920,336 @@ function showToast(message, type = 'success', duration = 3500) {
   container.appendChild(toast);
   requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add('show'); }); });
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, duration);
+}
+
+// Executive analytics and Community Intelligence
+const analyticsNumber = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
+const analyticsFullNumber = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+const aNum = value => Number(value || 0);
+const aPct = value => `${analyticsFullNumber.format(aNum(value))}%`;
+const aCompact = value => analyticsNumber.format(aNum(value));
+const aClamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, aNum(value)));
+const aDelta = (current, previous) => {
+  current = aNum(current); previous = aNum(previous);
+  if (!previous) return current ? '+100%' : 'estável';
+  const delta = ((current - previous) / previous) * 100;
+  return `${delta >= 0 ? '+' : ''}${analyticsFullNumber.format(delta)}% vs período anterior`;
+};
+const aTime = minutes => {
+  minutes = aNum(minutes);
+  if (minutes < 1) return '<1 min';
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  return `${analyticsFullNumber.format(minutes / 60)} h`;
+};
+const aDwell = ms => {
+  const seconds = aNum(ms) / 1000;
+  return seconds < 60 ? `${Math.round(seconds)}s` : `${analyticsFullNumber.format(seconds / 60)}min`;
+};
+const aSet = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+const analyticsColors = () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    ink: dark ? '#dbe7f8' : '#29405f',
+    grid: dark ? 'rgba(148,163,184,.12)' : 'rgba(15,23,42,.08)',
+    blue: dark ? '#4e8fff' : '#1761f0',
+    teal: dark ? '#2ec8a8' : '#0a9f83',
+    purple: '#8b5cf6',
+    gold: '#e69b13',
+    pink: '#e94f8b',
+    green: '#18a558',
+  };
+};
+
+async function loadExecutiveAnalytics(notify = false) {
+  const headers = { 'Authorization': `Bearer ${token}` };
+  try {
+    if (DASHBOARD_PREVIEW) {
+      executiveAnalytics = buildAnalyticsPreview();
+      renderExecutiveAnalytics();
+      return;
+    }
+    const res = await apiFetch(`/api/admin/analytics/command-center?days=${analyticsPeriodDays}`, { headers });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    executiveAnalytics = await res.json();
+    renderExecutiveAnalytics();
+    if (notify) showToast('Analytics atualizado com sucesso.');
+  } catch (err) {
+    console.error('[command center analytics]', err);
+    const actionList = document.getElementById('cc-action-list');
+    if (actionList) actionList.innerHTML = '<div class="cc-empty">Não foi possível carregar os indicadores agora. As ferramentas administrativas continuam disponíveis.</div>';
+    if (notify) showToast('Não foi possível atualizar o analytics.', 'warning');
+  }
+}
+
+function buildAnalyticsPreview() {
+  const daily = Array.from({ length:analyticsPeriodDays }, (_, index) => {
+    const day = new Date(Date.now() - (analyticsPeriodDays - index - 1) * 86400000);
+    const wave = Math.sin(index / 2.4);
+    return { day:day.toISOString(), active_users:Math.round(18 + index * .24 + wave * 5), posts:Math.max(1,Math.round(4 + wave * 2)), interactions:Math.round(38 + index * .8 + wave * 16), messages:Math.round(25 + index * .5 + wave * 10), play_hours:Math.round(14 + wave * 6) };
+  });
+  return {
+    period:{ days:analyticsPeriodDays },
+    summary:{ registered_users:286,new_users:34,previous_new_users:26,active_users:142,previous_active_users:118,engaged_users:96,retained_users:73,dau:41,wau:104,mau:142,events_1d:358,posts:87,previous_posts:65,creators:39,comments:214,likes:742,reposts:91,saves:126,poll_votes:84,impressions:9650,viewers:132,avg_dwell_ms:18600,messages:1284,new_connections:96,play_hours:486,unique_players:71,pending_reports:3,pending_moderation:5,failed_scheduled_posts:1,unverified_users:7,total_merit:18420,total_capital:9640,activated_new_users:25,activation_base:34,responded_posts:69,response_base:87,avg_first_response_minutes:24,avg_moderation_hours:3.4,interactions:1257,engagement_rate:13,retention_rate:61.9,activation_rate:73.5,response_rate:79.3,dau_mau:28.9,wau_mau:73.2 },
+    daily,
+    segments:[{segment:'champions',total:18},{segment:'creators',total:31},{segment:'contributors',total:58},{segment:'viewers',total:35},{segment:'dormant',total:144}],
+    topics:[{tag:'construcoes',posts:18,engagement:238},{tag:'eventos',posts:14,engagement:201},{tag:'economia',posts:11,engagement:166},{tag:'exploracao',posts:9,engagement:121},{tag:'ajuda',posts:8,engagement:104}],
+    formats:[{format:'media',posts:36,avg_quality:21.4,avg_impressions:178},{format:'poll',posts:12,avg_quality:17.8,avg_impressions:153},{format:'text',posts:39,avg_quality:11.2,avg_impressions:94}],
+    top_content:Array.from({length:7},(_,i)=>({id:i+1,username:`membro${i+1}`,minecraft_name:['Steve','Alex','Gabriel','Caio','Luna','Rafa','Dani'][i],display_name:['Gabriel','Alex','ArquitetoFA','Caio','Luna','Rafa','Dani'][i],preview:['A nova praça central está pronta para receber a comunidade.','Ideias para o próximo evento de exploração em equipe.','Guia rápido para começar na economia da Força Aliada.','Resultados da votação da comunidade desta semana.','Registro da expedição ao Nether.','Precisamos de voluntários para o projeto ferroviário.','Resumo das melhorias e próximos objetivos.'][i],impressions:920-i*83,viewers:118-i*7,avg_dwell_ms:26000-i*1300,likes:86-i*6,comments:34-i*2,reposts:14-i,saves:22-i,quality_score:248-i*19})),
+    contributors:Array.from({length:6},(_,i)=>({username:`membro${i+1}`,minecraft_name:['Steve','Alex','Gabriel','Caio','Luna','Rafa'][i],display_name:['Gabriel','Alex','ArquitetoFA','Caio','Luna','Rafa'][i],posts:12-i,comments:28-i*3,connections:8+i,merit:940-i*77,contribution_score:132-i*13})),
+    ranks:[{rank:'ferro',total:122,merit:2400,capital:3100},{rank:'ouro',total:78,merit:5600,capital:2700},{rank:'diamante',total:39,merit:6100,capital:2200},{rank:'netherite',total:12,merit:4320,capital:1640}],
+  };
+}
+
+function changeAnalyticsPeriod(value) {
+  analyticsPeriodDays = Number(value) || 30;
+  ['cc-period', 'community-period'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(analyticsPeriodDays);
+  });
+  loadExecutiveAnalytics();
+}
+
+function renderExecutiveAnalytics() {
+  if (!executiveAnalytics) return;
+  const s = executiveAnalytics.summary || {};
+  const periodLabel = `${executiveAnalytics.period?.days || analyticsPeriodDays} dias`;
+  const username = session?.username || 'Staff';
+
+  aSet('cc-greeting', `Olá, ${username}. Aqui está o que importa agora.`);
+  aSet('cc-briefing', `${aCompact(s.active_users)} pessoas ativas geraram ${aCompact(s.interactions)} interações e ${aCompact(s.messages)} mensagens no período.`);
+  aSet('cc-chart-period', periodLabel);
+  aSet('cc-active-users', aCompact(s.active_users));
+  aSet('cc-active-trend', aDelta(s.active_users, s.previous_active_users));
+  aSet('cc-engagement-rate', aPct(s.engagement_rate));
+  aSet('cc-engagement-detail', `${aCompact(s.interactions)} interações / ${aCompact(s.impressions)} impressões`);
+  aSet('cc-retention-rate', aPct(s.retention_rate));
+  aSet('cc-retention-detail', `${aCompact(s.retained_users)} retornaram`);
+  aSet('cc-play-hours', `${analyticsFullNumber.format(s.play_hours || 0)}h`);
+  aSet('cc-play-detail', `${aCompact(s.unique_players)} jogadores únicos`);
+  aSet('cc-posts', aCompact(s.posts));
+  aSet('cc-posts-trend', aDelta(s.posts, s.previous_posts));
+  aSet('cc-messages', aCompact(s.messages));
+  aSet('cc-messages-detail', `${aCompact(s.new_connections)} novas conexões`);
+
+  aSet('ci-impressions', aCompact(s.impressions));
+  aSet('ci-viewers', `${aCompact(s.viewers)} visualizadores únicos`);
+  aSet('ci-interactions', aCompact(s.interactions));
+  aSet('ci-interactions-mix', `${aCompact(s.comments)} respostas · ${aCompact(s.saves)} saves`);
+  aSet('ci-activation', aPct(s.activation_rate));
+  aSet('ci-activation-detail', `${aCompact(s.activated_new_users)} de ${aCompact(s.activation_base)} novos membros`);
+  aSet('ci-response-rate', aPct(s.response_rate));
+  aSet('ci-response-time', `primeira resposta em ${aTime(s.avg_first_response_minutes)}`);
+  aSet('ci-stickiness', aPct(s.dau_mau));
+  aSet('ci-stickiness-detail', `${aCompact(s.dau)} DAU · ${aCompact(s.mau)} MAU`);
+  aSet('ci-dwell', aDwell(s.avg_dwell_ms));
+
+  renderCommunityHealth(s);
+  renderCommandActions(s);
+  renderCommandGoals(s);
+  renderCommandSignals(s);
+  renderCommandEconomy(s, executiveAnalytics.ranks || []);
+  renderCommunityFunnel(s);
+  renderCommunitySegments(executiveAnalytics.segments || []);
+  renderCommunityTopics(executiveAnalytics.topics || []);
+  renderCommunityFormats(executiveAnalytics.formats || []);
+  renderTopCommunityContent(executiveAnalytics.top_content || []);
+  renderCommunityContributors(executiveAnalytics.contributors || []);
+  renderCommunityRanks(executiveAnalytics.ranks || []);
+  renderCommunityOps(s);
+  renderAnalyticsCharts();
+}
+
+function renderCommunityHealth(s) {
+  const engagementScore = aClamp(aNum(s.engagement_rate) * 12);
+  const retentionScore = aClamp(s.retention_rate);
+  const responseScore = aClamp(s.response_rate);
+  const activationScore = aClamp(s.activation_rate);
+  const safetyScore = aClamp(100 - (aNum(s.pending_reports) * 9 + aNum(s.pending_moderation) * 5 + aNum(s.failed_scheduled_posts) * 7));
+  const health = Math.round(engagementScore * .2 + retentionScore * .25 + responseScore * .2 + activationScore * .15 + safetyScore * .2);
+  const ring = document.getElementById('cc-health-ring');
+  if (ring) ring.style.setProperty('--score', health);
+  aSet('cc-health-score', health);
+  aSet('cc-health-label', health >= 80 ? 'Operação saudável' : health >= 60 ? 'Saúde moderada' : 'Atenção recomendada');
+  aSet('cc-health-detail', health >= 80 ? 'Os principais sistemas estão produzindo sinais consistentes.' : 'Existem oportunidades claras de retenção, resposta ou segurança.');
+}
+
+function renderCommandActions(s) {
+  const actions = [];
+  if (aNum(s.pending_reports)) actions.push({ tone:'#e5304c', title:`${s.pending_reports} denúncia(s) pendente(s)`, body:'Priorize a revisão para reduzir risco comunitário.', target:'moderation-card' });
+  if (aNum(s.pending_moderation)) actions.push({ tone:'#e08700', title:`${s.pending_moderation} item(ns) aguardando moderação`, body:'Conteúdo sinalizado pela análise automática.', target:'moderation-card' });
+  if (aNum(s.failed_scheduled_posts)) actions.push({ tone:'#8b5cf6', title:`${s.failed_scheduled_posts} publicação(ões) agendada(s) falhou(aram)`, body:'Revise a fila editorial e reagende o conteúdo.', target:'admin-notifications-card' });
+  if (aNum(s.unverified_users)) actions.push({ tone:'#1761f0', title:`${s.unverified_users} conta(s) não verificada(s)`, body:'Acompanhe o onboarding e a vinculação de contas.', target:'admin-users-card' });
+  if (aNum(s.response_rate) < 60) actions.push({ tone:'#0a9f83', title:'Oportunidade de acolhimento', body:`Apenas ${aPct(s.response_rate)} das publicações receberam resposta.`, target:'community-analytics' });
+  if (aNum(s.retention_rate) < 45) actions.push({ tone:'#e94f8b', title:'Retenção abaixo da meta', body:`${aPct(s.retention_rate)} dos usuários do período anterior retornaram.`, target:'community-analytics' });
+  if (!actions.length) actions.push({ tone:'#18a558', title:'Nenhuma pendência crítica', body:'A operação está em dia. Continue acompanhando as tendências.', target:'community-analytics' });
+  aSet('cc-action-count', `${actions.length} ${actions.length === 1 ? 'ação' : 'ações'}`);
+  const list = document.getElementById('cc-action-list');
+  if (list) list.innerHTML = actions.slice(0, 6).map(a => `<button class="cc-action" type="button" style="--tone:${a.tone}" onclick="scrollToSection('${a.target}')"><i class="cc-action-dot"></i><span><strong>${escapeHTML(a.title)}</strong><small>${escapeHTML(a.body)}</small></span><b>Ver</b></button>`).join('');
+}
+
+function renderCommandGoals(s) {
+  const goals = [
+    { label:'Retenção entre períodos', value:aNum(s.retention_rate), target:55, tone:'#8b5cf6' },
+    { label:'Posts com resposta', value:aNum(s.response_rate), target:75, tone:'#0a9f83' },
+    { label:'Ativação de novos membros', value:aNum(s.activation_rate), target:65, tone:'#1761f0' },
+    { label:'Stickiness semanal', value:aNum(s.wau_mau), target:70, tone:'#e69b13' },
+  ];
+  const el = document.getElementById('cc-goals');
+  if (el) el.innerHTML = goals.map(g => `<div class="cc-goal-row" style="--tone:${g.tone}"><div class="cc-goal-top"><span>${g.label}</span><strong>${aPct(g.value)} / ${g.target}%</strong></div><div class="cc-progress"><i style="--value:${aClamp((g.value/g.target)*100)}%"></i></div></div>`).join('');
+}
+
+function renderCommandSignals(s) {
+  const signals = [
+    ['Eventos nas últimas 24h', aCompact(s.events_1d), '#1761f0'],
+    ['Tempo médio de moderação', aTime(aNum(s.avg_moderation_hours) * 60), '#e08700'],
+    ['Usuários ativos semanais', aCompact(s.wau), '#0a9f83'],
+    ['Criadores ativos', aCompact(s.creators), '#8b5cf6'],
+  ];
+  const el = document.getElementById('cc-signal-grid');
+  if (el) el.innerHTML = signals.map(([label,value,tone]) => `<div class="cc-signal" style="--tone:${tone}"><div class="cc-signal-top"><span>${label}</span><strong>${value}</strong></div><div class="cc-progress"><i style="--value:${Math.max(8,Math.min(100,aNum(String(value).replace(/\\D/g,''))))}%"></i></div></div>`).join('');
+}
+
+function renderCommandEconomy(s, ranks) {
+  const highestRank = ranks[0]?.rank || 'ferro';
+  const el = document.getElementById('cc-economy');
+  if (el) el.innerHTML = [
+    ['Mérito distribuído', `${aCompact(s.total_merit)} pts`],
+    ['Capital em circulação', `${aCompact(s.total_capital)} esmeraldas`],
+    ['Jogadores com saldo', aCompact(ranks.reduce((sum, r) => sum + aNum(r.total), 0))],
+    ['Rank mais presente', highestRank],
+  ].map(([label,value]) => `<div class="cc-economy-row"><span>${label}</span><strong>${escapeHTML(String(value))}</strong></div>`).join('');
+}
+
+function renderCommunityFunnel(s) {
+  const steps = [
+    ['Cadastrados', s.registered_users, '#64748b'],
+    ['Ativos no período', s.active_users, '#1761f0'],
+    ['Visualizadores', s.viewers, '#0a9f83'],
+    ['Engajados', s.engaged_users, '#8b5cf6'],
+    ['Criadores', s.creators, '#e94f8b'],
+  ];
+  const base = Math.max(1, aNum(steps[0][1]));
+  const el = document.getElementById('ci-funnel');
+  if (el) el.innerHTML = steps.map(([label,value,tone]) => `<div class="ci-funnel-row" style="--tone:${tone};--value:${aClamp((aNum(value)/base)*100)}%"><span>${label}</span><strong>${aCompact(value)} · ${aPct((aNum(value)/base)*100)}</strong></div>`).join('');
+}
+
+function renderCommunitySegments(rows) {
+  const meta = {
+    champions:['Embaixadores','#8b5cf6'], creators:['Criadores','#e94f8b'], contributors:['Contribuidores','#0a9f83'],
+    viewers:['Observadores','#1761f0'], dormant:['Inativos','#64748b'],
+  };
+  const total = Math.max(1, rows.reduce((sum, row) => sum + aNum(row.total), 0));
+  const el = document.getElementById('ci-segments');
+  if (el) el.innerHTML = rows.sort((a,b)=>aNum(b.total)-aNum(a.total)).map(row => {
+    const [label,tone] = meta[row.segment] || [row.segment,'#64748b'];
+    return `<div class="ci-segment" style="--tone:${tone}"><div class="ci-segment-top"><span>${escapeHTML(label)}</span><strong>${aCompact(row.total)} · ${aPct((aNum(row.total)/total)*100)}</strong></div><div class="ci-segment-bar"><i style="--value:${(aNum(row.total)/total)*100}%"></i></div></div>`;
+  }).join('') || '<div class="cc-empty">Ainda não há dados suficientes para segmentar a audiência.</div>';
+}
+
+function renderCommunityTopics(rows) {
+  const max = Math.max(1, ...rows.map(r => aNum(r.engagement)));
+  const el = document.getElementById('ci-topics');
+  if (el) el.innerHTML = rows.map(row => `<div class="ci-topic"><b>#${escapeHTML(row.tag)}</b><div class="ci-topic-bar"><i style="--value:${(aNum(row.engagement)/max)*100}%"></i></div><small>${aCompact(row.posts)} posts · ${aCompact(row.engagement)} valor</small></div>`).join('') || '<div class="cc-empty">Use hashtags no feed para formar inteligência temática.</div>';
+}
+
+function renderCommunityFormats(rows) {
+  const labels = { text:'Texto', media:'Imagem', poll:'Enquete' };
+  const tones = { text:'#1761f0', media:'#e94f8b', poll:'#0a9f83' };
+  const max = Math.max(1, ...rows.map(r => aNum(r.avg_quality)));
+  const el = document.getElementById('ci-formats');
+  if (el) el.innerHTML = rows.map(row => `<div class="ci-format" style="--tone:${tones[row.format] || '#64748b'}"><div class="ci-format-top"><span>${labels[row.format] || row.format}</span><strong>${analyticsFullNumber.format(row.avg_quality)} valor/post</strong></div><div class="ci-segment-bar"><i style="--value:${(aNum(row.avg_quality)/max)*100}%"></i></div><small style="display:block;margin-top:6px;color:var(--ink-3);font-size:9px">${aCompact(row.posts)} publicações · ${analyticsFullNumber.format(row.avg_impressions)} impressões/post</small></div>`).join('') || '<div class="cc-empty">Sem formatos publicados no período.</div>';
+}
+
+function renderTopCommunityContent(rows) {
+  const el = document.getElementById('ci-top-content');
+  if (!el) return;
+  el.innerHTML = rows.map(row => {
+    const name = row.display_name || row.minecraft_name || row.username || 'Membro';
+    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-light.png';
+    const interactions = aNum(row.likes) + aNum(row.comments) + aNum(row.reposts) + aNum(row.saves);
+    return `<tr>
+      <td><div class="ci-content-title"><img src="${escapeHTML(avatar)}" alt=""><span><strong>${escapeHTML(name)}</strong><small>${escapeHTML(row.preview || 'Publicação sem texto')}</small></span></div></td>
+      <td>${aCompact(row.impressions)}<small style="display:block;color:var(--ink-3)">${aCompact(row.viewers)} pessoas</small></td>
+      <td>${aDwell(row.avg_dwell_ms)}</td><td>${aCompact(interactions)}</td><td><span class="ci-quality">${aCompact(row.quality_score)}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="cc-empty">Nenhuma publicação original no período.</td></tr>';
+}
+
+function renderCommunityContributors(rows) {
+  const el = document.getElementById('ci-contributors');
+  if (el) el.innerHTML = rows.map(row => {
+    const name = row.display_name || row.minecraft_name || row.username || 'Membro';
+    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-light.png';
+    return `<div class="ci-contributor"><img src="${escapeHTML(avatar)}" alt=""><span><strong>${escapeHTML(name)}</strong><small>${aCompact(row.posts)} posts · ${aCompact(row.comments)} respostas · ${aCompact(row.merit)} mérito</small></span><b>${aCompact(row.contribution_score)}</b></div>`;
+  }).join('') || '<div class="cc-empty">Sem contribuições no período.</div>';
+}
+
+function renderCommunityRanks(rows) {
+  const colors = { ferro:'#7a8899', ouro:'#e69b13', diamante:'#18a558', netherite:'#8b5cf6' };
+  const total = Math.max(1, rows.reduce((sum,row)=>sum+aNum(row.total),0));
+  const el = document.getElementById('ci-ranks');
+  if (el) el.innerHTML = rows.map(row => `<div class="ci-rank" style="--tone:${colors[row.rank] || '#1761f0'}"><div class="ci-rank-top"><span>${escapeHTML(row.rank)}</span><strong>${aCompact(row.total)} · ${aPct((aNum(row.total)/total)*100)}</strong></div><div class="ci-segment-bar"><i style="--value:${(aNum(row.total)/total)*100}%"></i></div><small style="display:block;margin-top:6px;color:var(--ink-3);font-size:9px">${aCompact(row.merit)} mérito · ${aCompact(row.capital)} capital</small></div>`).join('') || '<div class="cc-empty">Sem dados de progressão.</div>';
+}
+
+function renderCommunityOps(s) {
+  const rows = [
+    ['Denúncias pendentes', aCompact(s.pending_reports), s.pending_reports ? '#e5304c' : '#18a558'],
+    ['Fila da moderação', aCompact(s.pending_moderation), s.pending_moderation ? '#e08700' : '#18a558'],
+    ['Tempo de resolução', aTime(aNum(s.avg_moderation_hours) * 60), '#1761f0'],
+    ['Agendamentos com falha', aCompact(s.failed_scheduled_posts), s.failed_scheduled_posts ? '#8b5cf6' : '#18a558'],
+  ];
+  const el = document.getElementById('ci-ops');
+  if (el) el.innerHTML = rows.map(([label,value,tone]) => `<div class="ci-op" style="border-left:3px solid ${tone}"><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+function baseChartOptions() {
+  const c = analyticsColors();
+  return {
+    responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:c.ink,usePointStyle:true,boxWidth:7,font:{size:10,weight:'600'}}},tooltip:{backgroundColor:'#07172f',padding:10,titleFont:{size:11},bodyFont:{size:10}}},
+    scales:{x:{grid:{display:false},ticks:{color:c.ink,maxTicksLimit:9,font:{size:9}}},y:{beginAtZero:true,grid:{color:c.grid},ticks:{color:c.ink,font:{size:9}}}},
+  };
+}
+
+function renderAnalyticsCharts() {
+  if (!window.Chart || !executiveAnalytics) return;
+  const c = analyticsColors();
+  const daily = executiveAnalytics.daily || [];
+  const labels = daily.map(row => new Date(row.day).toLocaleDateString('pt-BR', { day:'2-digit', month:'short' }));
+  const pulse = document.getElementById('cc-pulse-chart');
+  if (pulse) {
+    commandPulseChart?.destroy();
+    commandPulseChart = new Chart(pulse, { type:'line', data:{ labels, datasets:[
+      { label:'Usuários ativos', data:daily.map(r=>aNum(r.active_users)), borderColor:c.blue, backgroundColor:'rgba(23,97,240,.12)', fill:true, tension:.35, pointRadius:0, borderWidth:2 },
+      { label:'Interações', data:daily.map(r=>aNum(r.interactions)), borderColor:c.teal, backgroundColor:'transparent', tension:.35, pointRadius:0, borderWidth:2 },
+    ]}, options:baseChartOptions() });
+  }
+  const trend = document.getElementById('ci-engagement-chart');
+  if (trend) {
+    communityTrendChart?.destroy();
+    communityTrendChart = new Chart(trend, { type:'bar', data:{ labels, datasets:[
+      { label:'Interações', data:daily.map(r=>aNum(r.interactions)), backgroundColor:'rgba(23,97,240,.7)', borderRadius:5 },
+      { label:'Mensagens', data:daily.map(r=>aNum(r.messages)), backgroundColor:'rgba(46,200,168,.72)', borderRadius:5 },
+      { label:'Posts', data:daily.map(r=>aNum(r.posts)), type:'line', borderColor:c.pink, pointRadius:0, tension:.35, borderWidth:2 },
+    ]}, options:baseChartOptions() });
+  }
+  const mix = document.getElementById('ci-mix-chart');
+  if (mix) {
+    communityMixChart?.destroy();
+    const s = executiveAnalytics.summary || {};
+    communityMixChart = new Chart(mix, { type:'doughnut', data:{ labels:['Curtidas','Respostas','Reposts','Saves','Votos'], datasets:[{ data:[s.likes,s.comments,s.reposts,s.saves,s.poll_votes].map(aNum), backgroundColor:[c.blue,c.teal,c.purple,c.gold,c.pink], borderWidth:0, hoverOffset:5 }]}, options:{ responsive:true, maintainAspectRatio:false, cutout:'68%', plugins:{legend:{position:'bottom',labels:{color:c.ink,usePointStyle:true,boxWidth:7,font:{size:9}}}} } });
+  }
+}
+
+function exportCommunityAnalytics() {
+  if (!executiveAnalytics) return showToast('Carregue o analytics antes de exportar.', 'warning');
+  const rows = [['Métrica','Valor'], ...Object.entries(executiveAnalytics.summary || {}).map(([key,value]) => [key,value])];
+  const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = Object.assign(document.createElement('a'), { href:url, download:`forca-aliada-community-${analyticsPeriodDays}d.csv` });
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function escapeHTML(value) {
@@ -2447,11 +3353,16 @@ function applyRoleVisibility() {
   }
 
   updateDashboardModuleVisibility();
-  setActiveDashboardModule(activeDashboardModule || 'server-overview', { scroll: false });
+  setActiveDashboardModule(activeDashboardModule || 'command-center', { scroll: false });
 }
 
 (async () => {
   if (!token) { logout(); return; }
+  if (DASHBOARD_PREVIEW) {
+    document.body.style.visibility = 'visible';
+    initDashboard();
+    return;
+  }
 
   // Se há sessão em cache, mostra a página imediatamente com role do cache
   // e revalida em background. Isso garante que usuários com sessões antigas (sem role)
@@ -2535,7 +3446,13 @@ function initDashboard() {
   // mesmo que algum script externo ou race condition resete o display após o load
   setTimeout(applyRoleVisibility, 150);
 
+  if (DASHBOARD_PREVIEW) {
+    loadExecutiveAnalytics();
+    return;
+  }
+
   loadData();
+  loadExecutiveAnalytics();
   _startStatusPolling();
   updateNotificationAudienceHint();
   loadNotifications();
@@ -2546,7 +3463,7 @@ function initDashboard() {
   // Carregamento inicial de dados do owner
   if (session.role === 'owner') {
     fetchAppKeys();
-    legacyAdminInit();
+    setTimeout(legacyAdminInit, 0);
   }
 
   // Audit logs — visível para full E owner (alinhado com a API requireAdmin)
@@ -2560,7 +3477,7 @@ function initDashboard() {
 
   // Moderação — carrega fila IA e denúncias para full e owner
   if (session.role === 'full' || session.role === 'owner') {
-    modInit();
+    setTimeout(modInit, 0);
   }
 
   // Merit & Capital — inicialização para full e owner
@@ -2658,6 +3575,14 @@ function renderProfile() {
 
 // ══ Scroll auxiliar ══
 var DASHBOARD_MODULES = {
+  'command-center': {
+    title: 'Centro de Comando',
+    desc: 'Prioridades, saúde da operação e sinais que exigem uma decisão agora.'
+  },
+  'community-analytics': {
+    title: 'Community Intelligence',
+    desc: 'Alcance, engajamento, retenção, perfis, conteúdo e qualidade da comunidade.'
+  },
   'server-overview': {
     title: 'Visão do Servidor',
     desc: 'Status, saúde, jogadores online e análise de atividade em tempo real.'
@@ -2691,7 +3616,7 @@ var DASHBOARD_MODULES = {
     desc: 'Chaves do Força Aliada Manager e conexão com ferramentas externas.'
   }
 };
-var activeDashboardModule = 'server-overview';
+var activeDashboardModule = 'command-center';
 
 function _isModuleAvailable(id) {
   const el = document.getElementById(id);
@@ -2714,7 +3639,7 @@ function updateDashboardModuleVisibility() {
   });
 
   if (!_isModuleAvailable(activeDashboardModule)) {
-    setActiveDashboardModule('server-overview', { scroll: false });
+    setActiveDashboardModule('command-center', { scroll: false });
   }
 }
 
@@ -2725,7 +3650,7 @@ function setActiveDashboardModule(id, opts = {}) {
     return;
   }
 
-  if (!_isModuleAvailable(id)) id = 'server-overview';
+  if (!_isModuleAvailable(id)) id = 'command-center';
   activeDashboardModule = id;
 
   const content = document.querySelector('.dashboard-content');
@@ -2756,7 +3681,7 @@ function setActiveDashboardModule(id, opts = {}) {
 function scrollToSection(id) { setActiveDashboardModule(id); }
 setTimeout(() => {
   updateDashboardModuleVisibility();
-  setActiveDashboardModule(activeDashboardModule || 'server-overview', { scroll: false });
+  setActiveDashboardModule(activeDashboardModule || 'command-center', { scroll: false });
 }, 0);
 
 // ══ Notificações ══

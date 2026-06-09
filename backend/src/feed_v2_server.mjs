@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS post_impressions (
 );
 CREATE INDEX IF NOT EXISTS idx_impressions_user ON post_impressions(user_id, last_seen_at DESC);
 CREATE INDEX IF NOT EXISTS idx_impressions_post ON post_impressions(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_impressions_seen_user ON post_impressions(last_seen_at DESC, user_id);
 
 -- ── Salvar posts (bookmarks) — sinal de maior qualidade de interesse ──────────
 CREATE TABLE IF NOT EXISTS post_saves (
