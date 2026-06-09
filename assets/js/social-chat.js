@@ -1,7 +1,7 @@
 /**
  * Força Aliada — Chat Direto  (social-chat.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION: chat12-20260608
+ * VERSION: chat13-20260608
  *
  * NOVIDADES vs chat7:
  *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 (function () {
-  window._faChatScriptVersion = 'chat12-20260608';
+  window._faChatScriptVersion = 'chat13-20260608';
   if (window.FAChat) return;
 
   // ── Storage seguro ────────────────────────────────────────────────────────────
@@ -78,6 +78,8 @@
     _peerIsOnline: false,
     _myLastReadAt: null,
     pendingAttachments: [],
+    replyTo: null,
+    editingMessage: null,
     _socialPreviewCache: new Map(),
     _socialPreviewPending: new Map(),
   };
@@ -125,6 +127,7 @@
       });
 
       es.addEventListener('message', handleSSEMessage);
+      es.addEventListener('update', handleSSEUpdate);
       es.addEventListener('read', handleSSERead);
       es.addEventListener('presence', handleSSEPresence);
 
@@ -185,6 +188,26 @@
         replacePendingWithReal(msg);
       }
     } catch { /* parse error silencioso */ }
+  }
+
+  function applyMessageUpdate(update = {}) {
+    const index = state.messages.findIndex(message => String(message.id) === String(update.id));
+    if (index < 0) return;
+    state.messages[index] = { ...state.messages[index], ...update };
+    const k = cacheKey();
+    if (k) state._msgCache[k] = state.messages.slice();
+    updateMessagesList({ scroll: false });
+  }
+
+  function handleSSEUpdate(evt) {
+    try {
+      const payload = JSON.parse(evt.data);
+      const message = payload.message || payload;
+      if (!message?.id || !state.current) return;
+      const containerId = message.conversation_id || message.group_id;
+      if (String(containerId || '') !== String(state.current.id)) return;
+      applyMessageUpdate(message);
+    } catch {}
   }
 
   function handleSSERead(evt) {
@@ -795,6 +818,11 @@
       if (renderedIds.has(msgId)) {
         const existingNode = list.querySelector(`[data-msg-id="${CSS.escape(msgId)}"]`);
         if (existingNode) {
+          const fingerprint = messageFingerprint(msg);
+          if (existingNode.dataset.messageFingerprint !== fingerprint) {
+            existingNode.replaceWith(buildMessageNode(msg, isMe, isGroupFirst, isGroupLast));
+            continue;
+          }
           existingNode.classList.toggle('is-pending', msg.client_status==='pending');
           existingNode.classList.toggle('is-failed',  msg.client_status==='failed');
           existingNode.classList.toggle('is-group-first', isGroupFirst);
@@ -928,8 +956,24 @@
     const wrapper = document.createElement('div');
     wrapper.innerHTML = renderMessage(msg, isGroupFirst, isGroupLast);
     const node = wrapper.firstElementChild;
-    if (node) initMessageEnhancements(node);
+    if (node) {
+      node.dataset.messageFingerprint = messageFingerprint(msg);
+      initMessageEnhancements(node);
+    }
     return node;
+  }
+
+  function messageFingerprint(message = {}) {
+    return JSON.stringify([
+      message.body || '',
+      message.edited_at || '',
+      Boolean(message.is_deleted),
+      message.reply_to_message_id || '',
+      message.reply_to?.body || '',
+      message.attachments || [],
+      message.reactions || [],
+      message.my_reactions || [],
+    ]);
   }
 
   function formatDatePill(iso) {
@@ -1092,6 +1136,7 @@
         <div class="fa-chat-messages" data-chat-messages>${renderMessagesContent()}</div>
         <div class="fa-chat-compose-wrap">
           <div class="fa-chat-compose-error" data-chat-compose-error>${state.composeError ? esc(state.composeError) : ''}</div>
+          <div class="fa-chat-compose-context" data-chat-compose-context>${renderComposeContext()}</div>
           <div class="fa-chat-attachments-preview" data-chat-attachments-preview>${renderPendingAttachments()}</div>
           <div class="fa-chat-recording-panel" data-chat-recording-panel>${renderRecordingPanel()}</div>
           <div data-chat-char-counter></div>
@@ -1153,6 +1198,32 @@
         <small>${esc(lockHint)}</small>
         <button type="button" data-chat-record-cancel aria-label="Cancelar gravacao">Cancelar</button>
       </div>`;
+  }
+
+  function messageAuthorName(message = {}) {
+    if (Number(message.sender_id) === Number(state.me?.id)) return 'Voce';
+    return message.minecraft_name || message.username || message.reply_to?.sender_name || 'Jogador';
+  }
+
+  function messageSummary(message = {}) {
+    return String(message.body || attachmentPreviewText(messageAttachments(message)) || 'Mensagem').replace(/\s+/g, ' ').slice(0, 110);
+  }
+
+  function renderComposeContext() {
+    const target = state.editingMessage || state.replyTo;
+    if (!target) return '';
+    const editing = Boolean(state.editingMessage);
+    return `<div class="fa-chat-context-card ${editing ? 'is-editing' : 'is-replying'}">
+      <span class="fa-chat-context-icon">${editing ? '✎' : '↩'}</span>
+      <span class="fa-chat-context-copy"><strong>${editing ? 'Editando mensagem' : `Respondendo a ${esc(messageAuthorName(target))}`}</strong><small>${esc(messageSummary(target))}</small></span>
+      <button type="button" data-chat-context-cancel aria-label="Cancelar">${icons.close}</button>
+    </div>`;
+  }
+
+  function updateComposeContext() {
+    const context = root.querySelector('[data-chat-compose-context]');
+    if (context) context.innerHTML = renderComposeContext();
+    root.querySelector('.fa-chat-compose-wrap')?.classList.toggle('has-context', Boolean(state.replyTo || state.editingMessage));
   }
 
   function renderPendingAttachments() {
@@ -1500,16 +1571,17 @@
 
     const post = payload || {};
     const author = socialPreviewAuthor(post);
-    const media = (Array.isArray(post.media_urls) ? post.media_urls : []).find(Boolean);
+    const media = (Array.isArray(post.media_urls) ? post.media_urls : []).filter(Boolean).slice(0, 4);
+    const mediaHTML = media.length ? `<span class="fa-chat-social-card-media media-count-${media.length}">${media.map((url, index) => `<img src="${esc(url)}" alt="Imagem ${index + 1} da postagem" loading="lazy">`).join('')}</span>` : '';
     return `
-      <button class="fa-chat-social-card ${media ? 'has-media' : 'no-media'}" type="button" data-chat-open-post="${esc(post.id || '')}">
-        ${media ? `<img class="fa-chat-social-card-cover" src="${esc(media)}" alt="" loading="lazy">` : ''}
+      <button class="fa-chat-social-card ${media.length ? 'has-media' : 'no-media'}" type="button" data-chat-open-post="${esc(post.id || '')}">
         <span class="fa-chat-social-card-main">
           <span class="fa-chat-social-card-brand">Forca Aliada · postagem</span>
           <span class="fa-chat-social-card-author"><img src="${skin(post.minecraft_name || post.username || 'Steve', 50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(post.username || post.minecraft_name || 'jogador')}</small></span>
-          <span class="fa-chat-social-card-text">${esc(post.content || 'Postagem da comunidade')}</span>
-          <span class="fa-chat-social-card-stats">${Number(post.likes_count || 0).toLocaleString('pt-BR')} curtidas · ${Number(post.comments_count || 0).toLocaleString('pt-BR')} comentarios</span>
+          ${post.content ? `<span class="fa-chat-social-card-text">${esc(post.content)}</span>` : ''}
         </span>
+        ${mediaHTML}
+        <span class="fa-chat-social-card-stats">${Number(post.likes_count || 0).toLocaleString('pt-BR')} curtidas · ${Number(post.comments_count || 0).toLocaleString('pt-BR')} comentarios</span>
       </button>`;
   }
 
@@ -1617,6 +1689,32 @@
       </div>`;
   }
 
+  function renderReplyPreview(message = {}) {
+    const reply = message.reply_to;
+    if (!reply) return '';
+    return `<button class="fa-chat-reply-preview" type="button" data-chat-jump-message="${esc(reply.id || '')}">
+      <strong>${esc(reply.sender_name || 'Mensagem')}</strong>
+      <span>${esc(String(reply.body || 'Mensagem removida').replace(/\s+/g, ' ').slice(0, 110))}</span>
+    </button>`;
+  }
+
+  function renderMessageReactions(message = {}) {
+    const mine = new Set(Array.isArray(message.my_reactions) ? message.my_reactions : []);
+    const reactions = Array.isArray(message.reactions) ? message.reactions : [];
+    if (!reactions.length) return '';
+    return `<div class="fa-chat-message-reactions">${reactions.map(reaction => `<button type="button" class="${mine.has(reaction.emoji) ? 'is-mine' : ''}" data-chat-message-react="${esc(reaction.emoji)}" data-msg-id="${esc(message.id)}"><span>${esc(reaction.emoji)}</span><b>${Number(reaction.count || 0)}</b></button>`).join('')}</div>`;
+  }
+
+  function renderMessageQuickActions(message = {}, isMe = false) {
+    if (message.is_deleted || String(message.id).startsWith('tmp-')) return '';
+    return `<div class="fa-chat-message-quick-actions" aria-label="Acoes da mensagem">
+      <button type="button" data-chat-message-reply="${esc(message.id)}" aria-label="Responder" title="Responder">↩</button>
+      <button type="button" data-chat-message-heart="${esc(message.id)}" aria-label="Curtir" title="Curtir">♡</button>
+      <button type="button" data-chat-message-menu="${esc(message.id)}" aria-label="Mais opcoes" title="Mais opcoes">${icons.more}</button>
+      ${isMe ? `<button type="button" data-chat-message-edit="${esc(message.id)}" aria-label="Editar" title="Editar">✎</button>` : ''}
+    </div>`;
+  }
+
   function renderMessage(message, isGroupFirst=true, isGroupLast=true) {
     const isMe = Number(message.sender_id) === Number(state.me?.id);
     const sender = message.minecraft_name || message.username || 'Steve';
@@ -1635,13 +1733,20 @@
     const previewHTML = message.body ? renderInternalSocialPreviews(message.body) : '';
     const socialOnly = Boolean(previewHTML && isInternalSocialLinkOnly(message.body));
     const bodyHTML = message.body ? `${socialOnly ? '' : `<span class="fa-chat-bubble-body">${renderMessageBody(message.body)}</span>`}${previewHTML}` : '';
+    const replyHTML = renderReplyPreview(message);
+    const editedHTML = message.edited_at && !message.is_deleted ? '<span class="fa-chat-edited">editada</span>' : '';
+    const reactionsHTML = renderMessageReactions(message);
+    const quickActionsHTML = renderMessageQuickActions(message, isMe);
 
     return `
       <div class="fa-chat-bubble-row ${isMe?'is-me':''} ${clientClass} ${groupClasses}" data-msg-id="${esc(String(message.id))}">
+        <span class="fa-chat-swipe-reply" aria-hidden="true">↩</span>
         ${!isMe ? avatarHTML : ''}
         <div class="fa-chat-bubble-wrap">
           ${failAlert}
-          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''} ${socialOnly?'is-social-only':''}">${nameHTML}${attachmentsHTML}${bodyHTML}<span class="fa-chat-meta-row"><time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
+          ${quickActionsHTML}
+          <div class="fa-chat-bubble ${isGroupFirst?'has-tail':''} ${socialOnly?'is-social-only':''}">${nameHTML}${replyHTML}${attachmentsHTML}${bodyHTML}<span class="fa-chat-meta-row">${editedHTML}<time>${esc(msgTimeText(message))}</time>${tickHTML}</span></div>
+          ${reactionsHTML}
         </div>
         ${isMe ? avatarHTML : ''}
       </div>`;
@@ -2241,6 +2346,9 @@
 
   function closePanel() {
     state.open = false;
+    state.replyTo = null;
+    state.editingMessage = null;
+    closeMessageMenu();
     closeSSE();
     stopPresenceBeacon();
     closeChatViewer();
@@ -2253,6 +2361,8 @@
     // Fecha SSE anterior se era outra conversa
     if (_sseKey && _sseKey !== `direct:${conv.id}`) closeSSE();
     clearPendingAttachments();
+    state.replyTo = null;
+    state.editingMessage = null;
 
     state.current = conv;
     state.currentKind = 'direct';
@@ -2309,6 +2419,8 @@
   async function openGroupConversation(group) {
     if (_sseKey && _sseKey !== `group:${group.id}`) closeSSE();
     clearPendingAttachments();
+    state.replyTo = null;
+    state.editingMessage = null;
 
     state.current = group;
     state.currentKind = 'group';
@@ -2368,8 +2480,8 @@
       if (!serverIds.has(String(pending.id)) && !serverClientRefs.has(String(pending.client_ref || pending.id))) merged.push(pending);
     }
 
-    const before = state.messages.filter(m=>!String(m.id).startsWith('tmp-')).map(m=>m.id).join(',');
-    const after  = nextMessages.map(m=>m.id).join(',');
+    const before = state.messages.filter(m=>!String(m.id).startsWith('tmp-')).map(m=>`${m.id}:${messageFingerprint(m)}`).join('|');
+    const after  = nextMessages.map(m=>`${m.id}:${messageFingerprint(m)}`).join('|');
 
     if (before !== after) {
       const list = root.querySelector('[data-chat-messages]');
@@ -2442,6 +2554,115 @@
     return group;
   }
 
+  function currentMessagePath(messageId) {
+    if (!state.current) return '';
+    return `/${state.currentKind === 'group' ? 'api/me/group-conversations' : 'api/me/conversations'}/${encodeURIComponent(state.current.id)}/messages/${encodeURIComponent(messageId)}`;
+  }
+
+  function findMessage(messageId) {
+    return state.messages.find(message => String(message.id) === String(messageId));
+  }
+
+  function beginReply(messageId) {
+    const message = findMessage(messageId);
+    if (!message || message.is_deleted) return;
+    state.editingMessage = null;
+    state.replyTo = message;
+    updateComposeContext();
+    root.querySelector('[data-chat-input]')?.focus();
+  }
+
+  function beginEdit(messageId) {
+    const message = findMessage(messageId);
+    if (!message || message.is_deleted || Number(message.sender_id) !== Number(state.me?.id)) return;
+    state.replyTo = null;
+    state.editingMessage = message;
+    const input = root.querySelector('[data-chat-input]');
+    if (input) {
+      input.value = message.body || '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+    updateComposeContext();
+  }
+
+  function cancelComposeContext() {
+    state.replyTo = null;
+    state.editingMessage = null;
+    const input = root.querySelector('[data-chat-input]');
+    if (input) {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    updateComposeContext();
+  }
+
+  async function editCurrentMessage(body) {
+    const target = state.editingMessage;
+    if (!target || !body) return;
+    const update = await api(currentMessagePath(target.id), { method: 'PATCH', body: JSON.stringify({ body }) });
+    applyMessageUpdate(update);
+    state.editingMessage = null;
+    updateComposeContext();
+  }
+
+  async function toggleMessageReaction(messageId, emoji = '❤️') {
+    const message = findMessage(messageId);
+    if (!message || message.is_deleted) return;
+    const mine = new Set(Array.isArray(message.my_reactions) ? message.my_reactions : []);
+    const removing = mine.has(emoji);
+    const path = `${currentMessagePath(messageId)}/reactions${removing ? `/${encodeURIComponent(emoji)}` : ''}`;
+    const update = await api(path, { method: removing ? 'DELETE' : 'POST', body: removing ? undefined : JSON.stringify({ emoji }) });
+    applyMessageUpdate(update);
+  }
+
+  async function deleteMessage(messageId) {
+    const message = findMessage(messageId);
+    if (!message || Number(message.sender_id) !== Number(state.me?.id)) return;
+    if (!window.confirm('Remover esta mensagem?')) return;
+    const update = await api(currentMessagePath(messageId), { method: 'DELETE' });
+    applyMessageUpdate(update);
+  }
+
+  function closeMessageMenu() {
+    root.querySelector('.fa-chat-message-menu')?.remove();
+  }
+
+  function openMessageMenu(messageId, anchor) {
+    const message = findMessage(messageId);
+    if (!message || message.is_deleted) return;
+    closeMessageMenu();
+    const isMe = Number(message.sender_id) === Number(state.me?.id);
+    const menu = document.createElement('div');
+    menu.className = 'fa-chat-message-menu';
+    messageMenuOpenedAt = Date.now();
+    menu.setAttribute('role', 'menu');
+    menu.dataset.messageMenuId = String(message.id);
+    menu.innerHTML = `
+      <div class="fa-chat-message-menu-head"><strong>${esc(messageAuthorName(message))}</strong><small>${esc(messageSummary(message))}</small></div>
+      <div class="fa-chat-message-menu-emojis">${['❤️','👍','😂','😮','😢','🔥','👏'].map(emoji => `<button type="button" data-chat-message-react="${esc(emoji)}" data-msg-id="${esc(message.id)}">${emoji}</button>`).join('')}</div>
+      <div class="fa-chat-message-menu-actions">
+        <button type="button" data-chat-message-reply="${esc(message.id)}">↩ <span>Responder</span></button>
+        ${isMe ? `<button type="button" data-chat-message-edit="${esc(message.id)}">✎ <span>Editar</span></button>` : ''}
+        <button type="button" data-chat-message-copy="${esc(message.id)}">▣ <span>Copiar texto</span></button>
+        ${isMe ? `<button type="button" class="is-danger" data-chat-message-delete="${esc(message.id)}">${icons.trash}<span>Remover</span></button>` : ''}
+      </div>`;
+    root.appendChild(menu);
+    const rect = anchor?.getBoundingClientRect?.() || { left: innerWidth / 2, top: innerHeight / 2, width: 0 };
+    const menuRect = menu.getBoundingClientRect();
+    menu.style.left = `${Math.max(10, Math.min(innerWidth - menuRect.width - 10, rect.left + rect.width / 2 - menuRect.width / 2))}px`;
+    menu.style.top = `${Math.max(10, Math.min(innerHeight - menuRect.height - 10, rect.top - menuRect.height - 8))}px`;
+  }
+
+  function jumpToMessage(messageId) {
+    const node = root.querySelector(`[data-msg-id="${CSS.escape(String(messageId))}"]`);
+    if (!node) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    node.classList.add('is-highlighted');
+    setTimeout(() => node.classList.remove('is-highlighted'), 1400);
+  }
+
   // ── Envio de mensagem (fila paralela) ─────────────────────────────────────────
   async function handleFormSubmit(textarea) {
     if (state.recording.active && state.recording.locked) {
@@ -2452,28 +2673,41 @@
     const attachments = state.pendingAttachments.slice();
     if ((!body && !attachments.length) || !state.current) return;
     if (body.length > 500) return;
+    if (state.editingMessage) {
+      try {
+        await editCurrentMessage(body);
+        textarea.value = '';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch (e) {
+        setComposeError(e.message || 'Nao foi possivel editar.');
+      }
+      return;
+    }
 
     // Captura contexto imediatamente (antes do await)
     const currentConv = state.current;
     const currentKind = state.currentKind;
     const currentMe   = state.me;
+    const replyTo = state.replyTo;
 
     textarea.value = '';
     textarea.style.height = 'auto';
     textarea.focus();
     state.pendingAttachments = [];
+    state.replyTo = null;
     setComposeError('');
     updateComposeAttachments();
+    updateComposeContext();
 
     // Atualiza counter
     const counter = root.querySelector('[data-chat-char-counter]');
     if (counter) { counter.textContent = ''; counter.style.opacity='0'; }
 
     // Enfileira o envio (garante ordem)
-    queueSend({ body, attachments, currentConv, currentKind, currentMe });
+    queueSend({ body, attachments, currentConv, currentKind, currentMe, replyTo });
   }
 
-  async function _doSendMessage({ body, attachments = [], currentConv, currentKind, currentMe }) {
+  async function _doSendMessage({ body, attachments = [], currentConv, currentKind, currentMe, replyTo = null }) {
     // Verifica se ainda estamos na mesma conversa
     const stillSameConv = state.current && Number(state.current.id)===Number(currentConv.id) && state.currentKind===currentKind;
 
@@ -2491,6 +2725,8 @@
       _localAttachments: attachments,
       client_ref: tempId,
       client_status: 'pending',
+      reply_to_message_id: replyTo?.id || null,
+      reply_to: replyTo ? { id: replyTo.id, sender_id: replyTo.sender_id, sender_name: messageAuthorName(replyTo), body: replyTo.body, is_deleted: replyTo.is_deleted } : null,
     };
 
     // Insere optimistic na conversa certa
@@ -2505,7 +2741,7 @@
         `/${isGroup?'api/me/group-conversations':'api/me/conversations'}/${encodeURIComponent(currentConv.id)}/messages`,
         {
           method:'POST',
-          body:JSON.stringify({ body, attachments: uploadedAttachments, client_ref: tempId }),
+          body:JSON.stringify({ body, attachments: uploadedAttachments, client_ref: tempId, reply_to_message_id: replyTo?.id || null }),
           timeoutMs: attachments.length ? 95000 : 20000,
         }
       );
@@ -2515,6 +2751,7 @@
         ...msg,
         username: currentMe?.username,
         minecraft_name: currentMe?.minecraft_name,
+        reply_to: optimistic.reply_to,
       };
 
       if (stillSameConv && state.current && Number(state.current.id)===Number(currentConv.id)) {
@@ -2594,6 +2831,10 @@
   // ── Event delegation ──────────────────────────────────────────────────────────
   let searchTimer = null;
   let attachmentLongPressTimer = null;
+  let messageLongPressTimer = null;
+  let messageGesture = null;
+  let lastMessageTap = { id: '', at: 0 };
+  let messageMenuOpenedAt = 0;
 
   root.addEventListener('click', async event => {
     const toggle      = event.target.closest('[data-chat-toggle]');
@@ -2621,12 +2862,75 @@
     const imageOpen   = event.target.closest('[data-chat-image-open]');
     const openPost    = event.target.closest('[data-chat-open-post]');
     const openComment = event.target.closest('[data-chat-open-comment]');
+    const contextCancel=event.target.closest('[data-chat-context-cancel]');
+    const messageReply= event.target.closest('[data-chat-message-reply]');
+    const messageEdit = event.target.closest('[data-chat-message-edit]');
+    const messageHeart= event.target.closest('[data-chat-message-heart]');
+    const messageReact= event.target.closest('[data-chat-message-react]');
+    const messageMenu = event.target.closest('[data-chat-message-menu]');
+    const messageCopy = event.target.closest('[data-chat-message-copy]');
+    const messageDelete=event.target.closest('[data-chat-message-delete]');
+    const jumpMessage = event.target.closest('[data-chat-jump-message]');
 
     if (!attachMenu && !downloadBtn && !event.target.closest('.fa-chat-attach-menu')) {
       closeAttachmentMenus();
     }
+    if (!event.target.closest('.fa-chat-message-menu') && !messageMenu && Date.now() - messageMenuOpenedAt > 380) closeMessageMenu();
 
     try {
+      if (contextCancel) {
+        event.preventDefault();
+        cancelComposeContext();
+        return;
+      }
+      if (jumpMessage) {
+        event.preventDefault();
+        jumpToMessage(jumpMessage.dataset.chatJumpMessage);
+        return;
+      }
+      if (messageReply) {
+        event.preventDefault();
+        closeMessageMenu();
+        beginReply(messageReply.dataset.chatMessageReply);
+        return;
+      }
+      if (messageEdit) {
+        event.preventDefault();
+        closeMessageMenu();
+        beginEdit(messageEdit.dataset.chatMessageEdit);
+        return;
+      }
+      if (messageHeart) {
+        event.preventDefault();
+        await toggleMessageReaction(messageHeart.dataset.chatMessageHeart, '❤️');
+        return;
+      }
+      if (messageReact) {
+        event.preventDefault();
+        const messageId = messageReact.dataset.msgId || messageReact.closest('[data-msg-id]')?.dataset.msgId || root.querySelector('.fa-chat-message-menu')?.dataset.messageMenuId;
+        closeMessageMenu();
+        await toggleMessageReaction(messageId, messageReact.dataset.chatMessageReact);
+        return;
+      }
+      if (messageMenu) {
+        event.preventDefault();
+        event.stopPropagation();
+        openMessageMenu(messageMenu.dataset.chatMessageMenu, messageMenu.closest('[data-msg-id]')?.querySelector('.fa-chat-bubble') || messageMenu);
+        return;
+      }
+      if (messageCopy) {
+        event.preventDefault();
+        const message = findMessage(messageCopy.dataset.chatMessageCopy);
+        closeMessageMenu();
+        if (message?.body) await navigator.clipboard.writeText(message.body);
+        return;
+      }
+      if (messageDelete) {
+        event.preventDefault();
+        closeMessageMenu();
+        await deleteMessage(messageDelete.dataset.chatMessageDelete);
+        return;
+      }
       if (imageOpen) {
         event.preventDefault();
         event.stopPropagation();
@@ -2765,6 +3069,9 @@
       } else if (back) {
         closeSSE();
         clearPendingAttachments();
+        state.replyTo = null;
+        state.editingMessage = null;
+        closeMessageMenu();
         state.current = null;
         state.currentKind = null;
         state.messages = [];
@@ -2821,6 +3128,26 @@
       return;
     }
 
+    const messageRow = event.target.closest('[data-msg-id]');
+    if (messageRow && !event.target.closest('button,audio,video,a,input,textarea')) {
+      messageGesture = {
+        pointerId: event.pointerId,
+        row: messageRow,
+        id: messageRow.dataset.msgId,
+        startX: event.clientX,
+        startY: event.clientY,
+        swiped: false,
+        longPressed: false,
+      };
+      clearTimeout(messageLongPressTimer);
+      messageLongPressTimer = setTimeout(() => {
+        if (!messageGesture || messageGesture.pointerId !== event.pointerId || messageGesture.swiped) return;
+        messageGesture.longPressed = true;
+        openMessageMenu(messageGesture.id, messageGesture.row.querySelector('.fa-chat-bubble') || messageGesture.row);
+        navigator.vibrate?.(18);
+      }, 520);
+    }
+
     const attachment = event.target.closest('[data-chat-attachment]');
     if (!attachment || event.target.closest('button,audio,video,iframe')) return;
     clearTimeout(attachmentLongPressTimer);
@@ -2835,10 +3162,43 @@
       if (state.recording.active && !state.recording.locked) lockAudioRecording();
       else recordingState.lockOnStart = true;
     }
+    if (messageGesture?.pointerId === event.pointerId && !messageGesture.longPressed) {
+      const dx = event.clientX - messageGesture.startX;
+      const dy = event.clientY - messageGesture.startY;
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) {
+        clearTimeout(messageLongPressTimer);
+        messageGesture.row.style.transform = '';
+      } else if (Math.abs(dx) > 8) {
+        clearTimeout(messageLongPressTimer);
+        const distance = Math.max(-76, Math.min(76, dx));
+        messageGesture.swiped = Math.abs(distance) > 52;
+        messageGesture.row.style.transform = `translateX(${distance * .72}px)`;
+        messageGesture.row.classList.toggle('is-swipe-ready', messageGesture.swiped);
+      }
+    }
   }, { passive: true });
 
   root.addEventListener('pointerup', async event => {
     clearTimeout(attachmentLongPressTimer);
+    clearTimeout(messageLongPressTimer);
+    if (messageGesture?.pointerId === event.pointerId) {
+      const gesture = messageGesture;
+      messageGesture = null;
+      gesture.row.style.transform = '';
+      gesture.row.classList.remove('is-swipe-ready');
+      if (gesture.swiped) {
+        beginReply(gesture.id);
+        navigator.vibrate?.(12);
+      } else if (!gesture.longPressed && event.pointerType === 'touch') {
+        const now = Date.now();
+        if (lastMessageTap.id === gesture.id && now - lastMessageTap.at < 330) {
+          lastMessageTap = { id: '', at: 0 };
+          await toggleMessageReaction(gesture.id, '❤️').catch(() => {});
+        } else {
+          lastMessageTap = { id: gesture.id, at: now };
+        }
+      }
+    }
     if (recordingState.pointerId !== event.pointerId) return;
     if (!state.recording.active) {
       recordingState.pointerReleased = true;
@@ -2851,6 +3211,12 @@
 
   root.addEventListener('pointercancel', async event => {
     clearTimeout(attachmentLongPressTimer);
+    clearTimeout(messageLongPressTimer);
+    if (messageGesture?.pointerId === event.pointerId) {
+      messageGesture.row.style.transform = '';
+      messageGesture.row.classList.remove('is-swipe-ready');
+      messageGesture = null;
+    }
     if (recordingState.pointerId !== event.pointerId) return;
     if (!state.recording.active) {
       recordingState.cancelOnStart = true;
@@ -2858,6 +3224,19 @@
     }
     recordingState.pointerId = null;
     if (state.recording.active && !state.recording.locked) await finishAudioRecording({ send: false });
+  });
+
+  root.addEventListener('dblclick', event => {
+    const row = event.target.closest('[data-msg-id]');
+    if (!row || event.target.closest('button,a,input,textarea,audio,video')) return;
+    toggleMessageReaction(row.dataset.msgId, '❤️').catch(() => {});
+  });
+
+  root.addEventListener('contextmenu', event => {
+    const row = event.target.closest('[data-msg-id]');
+    if (!row || event.target.closest('input,textarea')) return;
+    event.preventDefault();
+    openMessageMenu(row.dataset.msgId, row.querySelector('.fa-chat-bubble') || row);
   });
 
   root.addEventListener('input', event => {
