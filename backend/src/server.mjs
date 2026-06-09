@@ -44,6 +44,10 @@ import {
 import { registerCommentThreadFix } from './server_comment_thread_fix.mjs';
 import { registerAdminAnalytics } from './admin_analytics.mjs';
 import {
+  DASHBOARD_V2_SCHEMA_SQL,
+  registerAdminDashboardV2,
+} from './admin_dashboard_v2.mjs';
+import {
   registerChatRealtime,
   notifyNewMessage,
   notifyMessageUpdate,
@@ -1386,6 +1390,7 @@ CREATE INDEX IF NOT EXISTS idx_moderation_created_status ON moderation_queue(cre
 await pool.query(featureSchemaSql);
   await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
   await pool.query(commentUpgradeSchemaSql); // Comment upgrade: parent_comment_id, comment_likes, likes_count, reply_count, triggers
+  await pool.query(DASHBOARD_V2_SCHEMA_SQL); // Staff dashboard v2: settings, templates and scheduled broadcasts
 
   // Audit schema — executado no boot, não lazily
   for (const statement of AUDIT_SCHEMA_STATEMENTS) {
@@ -8233,7 +8238,7 @@ app.get('/api/notifications', auth, async (req, res) => {
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
   try {
-    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY n.created_at DESC LIMIT 100`, [userId, role, String(userId), mc]);
+    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, (nr.user_id IS NOT NULL) AS is_read FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nd.user_id IS NULL AND COALESCE(n.scheduled_for, n.created_at) <= NOW() AND (n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4)) ORDER BY COALESCE(n.scheduled_for, n.created_at) DESC LIMIT 100`, [userId, role, String(userId), mc]);
     res.json(rows);
   } catch (err) { console.error('[GET /api/notifications]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
@@ -8243,7 +8248,7 @@ app.get('/api/notifications/unread-count', auth, async (req, res) => {
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
   try {
-    const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND COALESCE(n.scheduled_for, n.created_at) <= NOW() AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) )`, [userId, role, String(userId), mc]);
     res.json({ count: rows[0].count });
   } catch (err) { console.error('[GET /api/notifications/unread-count]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
@@ -8255,7 +8260,7 @@ app.post('/api/notifications/:id/read', auth, async (req, res) => {
   const mc = (req.user.minecraft_name || '').toLowerCase();
   try {
     const visible = await pool.query(
-      `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
+      `SELECT id FROM notifications WHERE id=$1 AND COALESCE(scheduled_for, created_at) <= NOW() AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
       [id, role, String(req.user.sub), mc],
     );
     if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
@@ -8271,7 +8276,7 @@ app.delete('/api/notifications/:id', auth, async (req, res) => {
   const mc = (req.user.minecraft_name || '').toLowerCase();
   try {
     const visible = await pool.query(
-      `SELECT id FROM notifications WHERE id=$1 AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
+      `SELECT id FROM notifications WHERE id=$1 AND COALESCE(scheduled_for, created_at) <= NOW() AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
       [id, role, String(req.user.sub), mc],
     );
     if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
@@ -8285,7 +8290,7 @@ app.post('/api/notifications/read-all', auth, async (req, res) => {
   const role   = req.user.role;
   const mc     = (req.user.minecraft_name || '').toLowerCase();
   try {
-    await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
+    await pool.query(`INSERT INTO notification_reads(notification_id, user_id) SELECT n.id, $1 FROM notifications n LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1 LEFT JOIN notification_deletes nd ON nd.notification_id = n.id AND nd.user_id = $1 WHERE nr.user_id IS NULL AND nd.user_id IS NULL AND COALESCE(n.scheduled_for, n.created_at) <= NOW() AND ( n.audience = 'all' OR (n.audience = 'role'      AND n.audience_val = $2) OR (n.audience = 'user'      AND n.audience_val = $3::text) OR (n.audience = 'minecraft' AND LOWER(n.audience_val) = $4) ) ON CONFLICT DO NOTHING`, [userId, role, String(userId), mc]);
     res.json({ ok: true });
   } catch (err) { console.error('[POST /api/notifications/read-all]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
@@ -8298,8 +8303,11 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
     const icon        = sanitize(req.body?.icon || '🔔').slice(0, 10);
     const audience    = ['all','role','user','minecraft'].includes(req.body?.audience) ? req.body.audience : 'all';
     const audienceVal = req.body?.audience_val ? sanitize(String(req.body.audience_val)) : null;
+    const scheduledFor = req.body?.scheduled_for ? new Date(req.body.scheduled_for) : null;
+    const linkUrl = req.body?.link_url ? sanitize(String(req.body.link_url)).slice(0, 1000) : null;
 
     if (!title || !body) return res.status(400).json({ error: 'title and body are required' });
+    if (scheduledFor && Number.isNaN(scheduledFor.getTime())) return res.status(400).json({ error: 'invalid scheduled_for' });
 
     if (audience === 'role' && !['owner','full','limited'].includes(audienceVal)) return res.status(400).json({ error: 'invalid role' });
     if (audience === 'user') {
@@ -8310,13 +8318,13 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [title, body, type, icon, audience, audienceVal, req.user.sub],
+      `INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by,scheduled_for,link_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [title, body, type, icon, audience, audienceVal, req.user.sub, scheduledFor?.toISOString() || null, linkUrl],
     );
 
     await audit({
       actorId: req.user.sub, actorName: req.user.username, type: 'notify',
-      message: `Notificação criada: "${title}"`, metadata: { notificationId: rows[0].id },
+      message: `${scheduledFor && scheduledFor > new Date() ? 'Notificação agendada' : 'Notificação criada'}: "${title}"`, metadata: { notificationId: rows[0].id, scheduledFor },
     });
 
     res.status(201).json(rows[0]);
@@ -8328,10 +8336,37 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
 
 app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   try {
-    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY n.created_at DESC  `);
+    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count, CASE WHEN n.scheduled_for > NOW() THEN 'scheduled' ELSE 'published' END AS delivery_status FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY COALESCE(n.scheduled_for,n.created_at) DESC`);
     res.json(rows);
   } catch (err) {
     console.error('[GET /api/admin/notifications]', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+  try {
+    const { rows } = await pool.query(`
+      INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by,scheduled_for,link_url)
+      SELECT title,body,type,icon,audience,audience_val,$2,NULL,link_url
+      FROM notifications WHERE id=$1
+      RETURNING *
+    `, [id, req.user.sub]);
+    if (!rows.length) return res.status(404).json({ error: 'not found' });
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'notify',
+      severity: 'info',
+      targetId: rows[0].id,
+      message: `NotificaÃ§Ã£o #${id} reenviada por ${req.user.username}`,
+      metadata: { originalNotificationId: id, notificationId: rows[0].id },
+    });
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('[POST /api/admin/notifications/:id/resend]', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -8374,7 +8409,7 @@ app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
 
     if (type)     { conditions.push(`type=$${p++}`);              params.push(type); }
     if (severity) { conditions.push(`severity=$${p++}`);          params.push(severity); }
-    if (actor)    { conditions.push(`actor_name ILIKE $${p++}`);  params.push(`%${actor}%`); }
+    if (actor)    { conditions.push(`(actor_name ILIKE $${p} OR message ILIKE $${p} OR target_name ILIKE $${p})`); params.push(`%${actor}%`); p++; }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -8410,11 +8445,18 @@ app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
 
 app.get('/api/admin/audit/export', auth, requireOwner, async (req, res) => {
   try {
+    const conditions = [];
+    const params = [];
+    if (req.query.type && req.query.type !== 'all') { params.push(req.query.type); conditions.push(`type=$${params.length}`); }
+    if (req.query.severity && req.query.severity !== 'all') { params.push(req.query.severity); conditions.push(`severity=$${params.length}`); }
+    if (req.query.actor) { params.push(`%${sanitize(req.query.actor)}%`); conditions.push(`(actor_name ILIKE $${params.length} OR message ILIKE $${params.length} OR target_name ILIKE $${params.length})`); }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const { rows } = await pool.query(
       `SELECT id, actor_name, type, severity, target_name, message, ip, created_at
-       FROM audit_logs
+       FROM audit_logs ${where}
        ORDER BY created_at DESC
        LIMIT 10000`,
+      params,
     );
 
     const header = 'id,actor,tipo,severidade,alvo,mensagem,ip,data_hora\n';
@@ -8526,6 +8568,7 @@ res.json({ ok: true });
 // ─────────────────────────────────────────────
 
 registerAdminAnalytics(app, pool, auth, requireAdmin);
+registerAdminDashboardV2(app, pool, auth, requireAdmin, requireOwner, auditFromReq);
 
 app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
   try {
@@ -9428,6 +9471,7 @@ app.get('/api/admin/moderation-queue', auth, requireAdmin, async (req, res) => {
         mq.content_type,
         mq.content_id,
         mq.reason,
+        mq.ai_confidence,
         mq.report_count,
         mq.status,
         mq.created_at,

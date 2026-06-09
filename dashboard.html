@@ -1795,6 +1795,7 @@ footer { display: none; }
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
+<link rel="stylesheet" href="assets/css/dashboard-v2.css">
 </head>
 <body>
 
@@ -4129,12 +4130,29 @@ async function loadAdminNotifications() {
         <div style="flex:1;">
           <strong>${escapeHTML(n.title)}</strong>
           <div>${escapeHTML(n.body)}</div>
-          <div class="meta">${escapeHTML(n.audience || 'all')}${n.audience_val ? ' → '+escapeHTML(n.audience_val) : ''} • ${formatNotifTime(new Date(n.created_at || Date.now()))}</div>
+          <div class="meta">${escapeHTML(n.audience || 'all')}${n.audience_val ? ' → '+escapeHTML(n.audience_val) : ''} • ${formatNotifTime(new Date(n.scheduled_for || n.created_at || Date.now()))} • ${Number(n.read_count || 0)} visualização(ões) • ${escapeHTML(n.delivery_status || 'published')}</div>
         </div>
+        <button class="v2-btn" type="button" onclick="resendAdminNotification(${Number(n.id)})">Reenviar</button>
       </div>`).join('') || '<div class="admin-notification-hint">Nenhuma publicação criada ainda.</div>';
   } catch (err) {
     console.error('[admin notifications]', err);
     list.innerHTML = '<div class="admin-notification-hint">Não foi possível carregar publicações.</div>';
+  }
+}
+
+async function resendAdminNotification(id) {
+  try {
+    const res = await apiFetch(`/api/admin/notifications/${encodeURIComponent(id)}/resend`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Falha ao reenviar');
+    showToast('Aviso reenviado.', 'success');
+    await Promise.all([loadAdminNotifications(), loadNotifications()]);
+  } catch (err) {
+    console.error('[admin notification resend]', err);
+    showToast('Não foi possível reenviar o aviso.', 'error');
   }
 }
 
@@ -4467,7 +4485,11 @@ function filterAuditLogs(type) {
 
 async function exportAuditCSV() {
   try {
-    const res = await apiFetch('/api/admin/audit/export', { headers: { 'Authorization': `Bearer ${token}` } });
+    const params = new URLSearchParams();
+    if (auditFilterActive !== 'all') params.set('type', auditFilterActive);
+    if (auditSeverityFilter !== 'all') params.set('severity', auditSeverityFilter);
+    if (auditActorFilter) params.set('actor', auditActorFilter);
+    const res = await apiFetch(`/api/admin/audit/export?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha na exportação');
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
@@ -4534,6 +4556,7 @@ function renderAuditLogs() {
 
 // ══ Notas de jogador no modal (compartilhadas via backend) ══
 async function fetchPlayerNotes(playerName) {
+  if (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW) return [];
   const res = await fetch(`${API_BASE}/api/admin/notes/${encodeURIComponent(playerName)}`, { headers: { 'Authorization': `Bearer ${token}` } });
   if (!res.ok) throw new Error('Falha ao carregar notas');
   return res.json();
@@ -5449,6 +5472,7 @@ function renderRegisteredList() {
   const term   = document.getElementById('admin-search')?.value.toLowerCase().trim() || '';
   const list   = document.getElementById('admin-users-list');
   let filtered = globalAdminUsers.filter(u =>
+    String(u.id || '').includes(term) ||
     u.username.toLowerCase().includes(term) ||
     u.email.toLowerCase().includes(term) ||
     (u.minecraft_name||'').toLowerCase().includes(term)
@@ -6900,5 +6924,7 @@ function legacyAdminRenderAll() {
 function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+<script src="assets/js/dashboard-v2.js"></script>
 </body>
 </html>

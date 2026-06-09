@@ -16,8 +16,10 @@
     { "src": "assets/images/app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Centro de Comando", "short_name": "Comando", "url": "/dashboard.html?module=command-center", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Servidor", "short_name": "Servidor", "url": "/dashboard.html?module=server-overview", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Community Intelligence", "short_name": "Community", "url": "/dashboard.html?module=community-analytics", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Centro de Comando", "short_name": "Comando", "url": "/dashboard.html?v=command", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Servidor", "short_name": "Servidor", "url": "/dashboard.html?v=server", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Community Intelligence", "short_name": "Community", "url": "/dashboard.html?v=analytics", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Jogadores", "short_name": "Jogadores", "url": "/dashboard.html?v=players", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Moderação", "short_name": "Moderação", "url": "/dashboard.html?v=moderation", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

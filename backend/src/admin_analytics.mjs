@@ -140,7 +140,7 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
           SELECT
             p.id, u.username, u.minecraft_name, COALESCE(up.display_name, '') AS display_name,
             LEFT(REGEXP_REPLACE(p.content, E'[\\n\\r]+', ' ', 'g'), 110) AS preview,
-            p.created_at, (array_length(p.media_urls, 1) > 0) AS has_media,
+            p.created_at, (array_length(p.media_urls, 1) > 0) AS has_media, p.media_urls[1] AS thumbnail_url,
             COALESCE(i.impressions, 0)::int AS impressions,
             COALESCE(i.viewers, 0)::int AS viewers,
             COALESCE(i.avg_dwell_ms, 0)::float AS avg_dwell_ms,
