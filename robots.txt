@@ -4,13 +4,21 @@ Allow: /share/
 Allow: /assets/
 Disallow: /api/
 Disallow: /account.html
+Disallow: /account
 Disallow: /dashboard.html
+Disallow: /dashboard
 Disallow: /login.html
+Disallow: /login
 Disallow: /signup.html
+Disallow: /signup
 Disallow: /recuperar.html
+Disallow: /recuperar
 Disallow: /community.html?*
+Disallow: /community?*
 Disallow: /post.html?*
+Disallow: /post?*
 Disallow: /profile.html?*
+Disallow: /profile?*
 
 User-agent: Googlebot-Image
 Allow: /assets/images/

@@ -21,7 +21,7 @@ Ative Brotli, HTTP/3 e cache de borda. Para as rotas `/share/*` e `/sitemap*.xml
 
 1. Criar/verificar uma propriedade de dominio no Google Search Console.
 2. Enviar `https://forcaaliada.ogabriels.com/sitemap.xml`.
-3. Inspecionar a home, `guia.html`, uma share page de perfil e uma share page de post.
+3. Inspecionar a home, `/guia`, uma share page de perfil e uma share page de post.
 4. Repetir o envio no Bing Webmaster Tools.
 5. Monitorar cobertura, Core Web Vitals, consultas de marca e paginas descobertas.
 

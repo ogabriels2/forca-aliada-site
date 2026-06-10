@@ -1884,7 +1884,7 @@ function renderShareHtml({
 </style>
 </head>
 <body>
-<header class="top"><a class="brand" href="${htmlEscape(publicPageUrl('/'))}">FORCA ALIADA</a><nav><a href="${htmlEscape(publicPageUrl('/guia.html'))}">Guia</a><a href="${htmlEscape(publicPageUrl('/community.html'))}">Comunidade</a></nav></header>
+<header class="top"><a class="brand" href="${htmlEscape(publicPageUrl('/'))}">FORCA ALIADA</a><nav><a href="${htmlEscape(publicPageUrl('/guia'))}">Guia</a><a href="${htmlEscape(publicPageUrl('/community'))}">Comunidade</a></nav></header>
 <main>
 ${breadcrumbHtml}
 <article class="card">
@@ -1895,7 +1895,7 @@ ${extraContent}
 </article>
 </main>
 ${linksHtml}
-<footer><span>Forca Aliada, ativa desde 2021.</span><span><a href="${htmlEscape(publicPageUrl('/termos.html'))}">Termos</a> · <a href="${htmlEscape(publicPageUrl('/privacidade.html'))}">Privacidade</a></span></footer>
+<footer><span>Forca Aliada, ativa desde 2021.</span><span><a href="${htmlEscape(publicPageUrl('/termos'))}">Termos</a> · <a href="${htmlEscape(publicPageUrl('/privacidade'))}">Privacidade</a></span></footer>
 </body>
 </html>`;
 }
@@ -1904,8 +1904,8 @@ function renderShareNotFound(title, description) {
   return renderShareHtml({
     title,
     description,
-    canonical: publicPageUrl('/community.html'),
-    redirectUrl: publicPageUrl('/community.html'),
+    canonical: publicPageUrl('/community'),
+    redirectUrl: publicPageUrl('/community'),
     noindex: true,
     primaryActionLabel: 'Voltar para a comunidade',
     jsonLd: { '@type': 'WebPage', name: title, description },
@@ -2130,7 +2130,7 @@ app.get('/share/post/:id', async (req, res) => {
     const description = plainText(post.content, 260) || `${author} compartilhou uma publicacao com a comunidade Minecraft Forca Aliada.`;
     const image = firstMediaUrl(post.media_urls) || absolutePublicUrl(post.avatar_url) || absolutePublicUrl(post.photo_url) || publicAssetUrl('/assets/images/og-image.jpg');
     const canonical = publicSharePageUrl(req, `/share/post/${encodeURIComponent(post.id)}`);
-    const redirectUrl = publicPageUrl(`/post.html?id=${encodeURIComponent(post.id)}`);
+    const redirectUrl = publicPageUrl(`/post?id=${encodeURIComponent(post.id)}`);
     const authorIdentifier = post.minecraft_name || post.username || `id:${post.author_id}`;
     const authorUrl = publicSharePageUrl(req, `/share/profile/${encodeURIComponent(authorIdentifier)}`);
     const related = await pool.query(`
@@ -2161,13 +2161,13 @@ app.get('/share/post/:id', async (req, res) => {
       type: 'article',
       breadcrumbs: [
         { name: 'Inicio', url: publicPageUrl('/') },
-        { name: 'Comunidade', url: publicPageUrl('/community.html') },
+        { name: 'Comunidade', url: publicPageUrl('/community') },
         { name: `Post de ${author}`, url: canonical },
       ],
       extraContent: `${stats}${renderPostMedia(post.media_urls, `Post de ${author}`)}${renderPublicPostList(related.rows, 'Mais posts da comunidade')}`,
       additionalLinks: [
         { label: 'Conheca o servidor', url: publicPageUrl('/') },
-        { label: 'Leia o guia', url: publicPageUrl('/guia.html') },
+        { label: 'Leia o guia', url: publicPageUrl('/guia') },
         { label: `Veja o perfil de ${author}`, url: authorUrl },
       ],
       jsonLd: {
@@ -2193,7 +2193,7 @@ app.get('/share/post/:id', async (req, res) => {
         },
         mainEntityOfPage: canonical,
         image: postImages.length ? postImages : [image],
-        isPartOf: { '@type': 'WebApplication', name: 'FA Community', url: publicPageUrl('/community.html') },
+        isPartOf: { '@type': 'WebApplication', name: 'FA Community', url: publicPageUrl('/community') },
         interactionStatistic: [
           { '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: Number(post.likes_count || 0) },
           { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: Number(post.comments_count || 0) },
@@ -2222,7 +2222,7 @@ app.get('/share/profile/:identifier', async (req, res) => {
     const image = absolutePublicUrl(profile.avatar_url) || absolutePublicUrl(profile.photo_url) || skinImage || publicAssetUrl('/assets/images/og-image.jpg');
     const identifier = profile.minecraft_name || profile.username || `id:${profile.id}`;
     const canonical = publicSharePageUrl(req, `/share/profile/${encodeURIComponent(identifier)}`);
-    const redirectUrl = publicPageUrl(`/profile.html?id=${encodeURIComponent(identifier)}`);
+    const redirectUrl = publicPageUrl(`/profile?id=${encodeURIComponent(identifier)}`);
     const profileLinks = Array.isArray(profile.profile_links)
       ? profile.profile_links.map(link => absolutePublicUrl(link?.url || link)).filter(Boolean).slice(0, 8)
       : [];
@@ -2237,15 +2237,15 @@ app.get('/share/profile/:identifier', async (req, res) => {
       type: 'profile',
       breadcrumbs: [
         { name: 'Inicio', url: publicPageUrl('/') },
-        { name: 'Comunidade', url: publicPageUrl('/community.html') },
+        { name: 'Comunidade', url: publicPageUrl('/community') },
         { name, url: canonical },
       ],
       extraContent: `${stats}${renderPublicPostList(payload.posts, `Posts recentes de ${name}`)}`,
       primaryActionLabel: `Ver perfil completo de ${name}`,
       additionalLinks: [
         { label: 'Conheca o servidor', url: publicPageUrl('/') },
-        { label: 'Leia o guia', url: publicPageUrl('/guia.html') },
-        { label: 'Explore a comunidade', url: publicPageUrl('/community.html') },
+        { label: 'Leia o guia', url: publicPageUrl('/guia') },
+        { label: 'Explore a comunidade', url: publicPageUrl('/community') },
       ],
       jsonLd: {
         '@type': 'ProfilePage',
@@ -2343,10 +2343,10 @@ app.get('/sitemap-pages.xml', (req, res) => {
   const today = isoDate();
   const pages = [
     { loc: publicPageUrl('/'), lastmod: today, changefreq: 'daily', priority: '1.0', images: [publicAssetUrl('/assets/images/hero.webp')] },
-    { loc: publicPageUrl('/guia.html'), lastmod: today, changefreq: 'weekly', priority: '0.9', images: [publicAssetUrl('/assets/images/og-image.jpg')] },
-    { loc: publicPageUrl('/community.html'), lastmod: today, changefreq: 'daily', priority: '0.8' },
-    { loc: publicPageUrl('/termos.html'), lastmod: today, changefreq: 'yearly', priority: '0.3' },
-    { loc: publicPageUrl('/privacidade.html'), lastmod: today, changefreq: 'yearly', priority: '0.3' },
+    { loc: publicPageUrl('/guia'), lastmod: today, changefreq: 'weekly', priority: '0.9', images: [publicAssetUrl('/assets/images/og-image.jpg')] },
+    { loc: publicPageUrl('/community'), lastmod: today, changefreq: 'daily', priority: '0.8' },
+    { loc: publicPageUrl('/termos'), lastmod: today, changefreq: 'yearly', priority: '0.3' },
+    { loc: publicPageUrl('/privacidade'), lastmod: today, changefreq: 'yearly', priority: '0.3' },
   ];
   res.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
   res.type('application/xml').send(sitemapDocument(pages));

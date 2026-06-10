@@ -20,15 +20,15 @@
 <meta name="description" content="A rede social da comunidade Minecraft Força Aliada: encontre jogadores, publique construções, participe de threads e acompanhe conquistas.">
 <meta name="author" content="Força Aliada">
 <meta name="robots" content="index,follow,noarchive,max-image-preview:large,max-snippet:-1">
-<link rel="canonical" href="https://forcaaliada.ogabriels.com/community.html">
-<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/community.html">
-<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/community.html">
+<link rel="canonical" href="https://forcaaliada.ogabriels.com/community">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/community">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/community">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Força Aliada">
 <meta property="og:title" content="FA Community | Rede Social Minecraft">
 <meta property="og:description" content="Posts, perfis e conquistas da comunidade Minecraft Força Aliada.">
-<meta property="og:url" content="https://forcaaliada.ogabriels.com/community.html">
+<meta property="og:url" content="https://forcaaliada.ogabriels.com/community">
 <meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -37,7 +37,7 @@
 <meta name="twitter:description" content="Conheça jogadores, construções e histórias da Força Aliada.">
 <meta name="twitter:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"FA Community","url":"https://forcaaliada.ogabriels.com/community.html","applicationCategory":"SocialNetworkingApplication","operatingSystem":"Web","inLanguage":"pt-BR","description":"Rede social da comunidade Minecraft Força Aliada.","publisher":{"@type":"Organization","name":"Força Aliada","url":"https://forcaaliada.ogabriels.com/"}}
+{"@context":"https://schema.org","@type":"WebApplication","name":"FA Community","url":"https://forcaaliada.ogabriels.com/community","applicationCategory":"SocialNetworkingApplication","operatingSystem":"Web","inLanguage":"pt-BR","description":"Rede social da comunidade Minecraft Força Aliada.","publisher":{"@type":"Organization","name":"Força Aliada","url":"https://forcaaliada.ogabriels.com/"}}
 </script>
 <style>
 body.guest-mode #fab-post,
@@ -4391,12 +4391,12 @@ function verifiedBadgeHTML(p){
   return `<span class="verified-badge" title="Verificado pela Força Aliada" aria-label="Verificado"><svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.5 2.5L10 3.5"/></svg></span>`;
 }function rankSuffix(rank,merit){const rk=rankInfo(rank,merit);return rk.label?` · ${esc(rk.label)}`:''}
 function communityUrl(params={}){
-  const url = new URL('/community.html', location.origin);
+  const url = new URL('/community', location.origin);
   Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
   return url.pathname + url.search;
 }
 function communityShareUrl(params={}){
-  const url = new URL('/community.html', location.origin);
+  const url = new URL('/community', location.origin);
   Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
   return url.href;
 }

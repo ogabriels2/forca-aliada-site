@@ -33,7 +33,7 @@
   "@context":"https://schema.org",
   "@graph":[
     {"@type":"Organization","@id":"https://forcaaliada.ogabriels.com/#organization","name":"Força Aliada","url":"https://forcaaliada.ogabriels.com/","logo":{"@type":"ImageObject","url":"https://forcaaliada.ogabriels.com/assets/images/logo.JPG"},"foundingDate":"2021","sameAs":["https://instagram.com/forcaaliada","https://discord.gg/xZmRkB7PWd","https://whatsapp.com/channel/0029VbC3kNoAzNc1wXb0130e"]},
-    {"@type":"WebSite","@id":"https://forcaaliada.ogabriels.com/#website","url":"https://forcaaliada.ogabriels.com/","name":"Força Aliada","inLanguage":"pt-BR","publisher":{"@id":"https://forcaaliada.ogabriels.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://forcaaliada.ogabriels.com/community.html?q={search_term_string}","query-input":"required name=search_term_string"}},
+    {"@type":"WebSite","@id":"https://forcaaliada.ogabriels.com/#website","url":"https://forcaaliada.ogabriels.com/","name":"Força Aliada","inLanguage":"pt-BR","publisher":{"@id":"https://forcaaliada.ogabriels.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://forcaaliada.ogabriels.com/community?q={search_term_string}","query-input":"required name=search_term_string"}},
     {"@type":"VideoGame","name":"Força Aliada","description":"Servidor brasileiro de Minecraft Survival Vanilla sem reset e sem pay-to-win.","url":"https://forcaaliada.ogabriels.com/","gamePlatform":["Minecraft Java Edition","Minecraft Bedrock Edition","PC","Mobile","Console"],"genre":["Survival","Sandbox","Multiplayer"],"inLanguage":"pt-BR","publisher":{"@id":"https://forcaaliada.ogabriels.com/#organization"}},
     {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Força Aliada","item":"https://forcaaliada.ogabriels.com/"},{"@type":"ListItem","position":2,"name":"Sistema de Mérito e Capital","item":"https://forcaaliada.ogabriels.com/#sistema"},{"@type":"ListItem","position":3,"name":"Perguntas frequentes","item":"https://forcaaliada.ogabriels.com/#faq"}]},
     {"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"O servidor tem reset de mapa?","acceptedAnswer":{"@type":"Answer","text":"Não. O mundo da Força Aliada é persistente e existe desde 2021."}},{"@type":"Question","name":"Como funciona a economia?","acceptedAnswer":{"@type":"Answer","text":"A economia usa esmeraldas, comércio e serviços entre jogadores."}},{"@type":"Question","name":"A Força Aliada é pay-to-win?","acceptedAnswer":{"@type":"Answer","text":"Não. Vantagens injustas não são vendidas."}},{"@type":"Question","name":"Qual é o endereço do servidor?","acceptedAnswer":{"@type":"Answer","text":"Use fa.ogabriels.com no Minecraft Java ou Bedrock."}}]}
@@ -48,7 +48,7 @@
   const postMatch=path.match(/\/community\/post\/([^/]+)$/);
   const profileMatch=path.match(/\/profile\/([^/]+)$/);
   if(postMatch||profileMatch){
-    const url=new URL('/community.html',location.origin);
+    const url=new URL('/community',location.origin);
     if(postMatch) url.searchParams.set('post',decodeURIComponent(postMatch[1]));
     if(profileMatch) url.searchParams.set('profile',decodeURIComponent(profileMatch[1]));
     location.replace(url.pathname+url.search);
@@ -961,11 +961,11 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <li><a href="#sobre" onclick="toggleMenu()">Legado</a></li>
     <li><a href="#cidades" onclick="toggleMenu()">Tríade</a></li>
     <li><a href="#sistema" onclick="toggleMenu()">Sistema</a></li>
-    <li><a href="community.html" onclick="toggleMenu()">Rede</a></li>
+    <li><a href="/community" onclick="toggleMenu()">Rede</a></li>
     <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
-    <li><a href="guia.html" onclick="toggleMenu()">Guia</a></li>
+    <li><a href="/guia" onclick="toggleMenu()">Guia</a></li>
     <li><a href="https://manager.forcaaliada.ogabriels.com" style="color: var(--accent);" onclick="toggleMenu()">⚡ Manager</a></li>
     <li><a href="#status" onclick="toggleMenu()" style="color: var(--accent);">Jogar Agora</a></li>
   </ul>
@@ -992,7 +992,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <li><a href="#sobre">Legado</a></li>
       <li><a href="#cidades">Tríade</a></li>
       <li><a href="#sistema">Sistema</a></li>
-      <li><a href="community.html">Rede</a></li>
+      <li><a href="/community">Rede</a></li>
       <li><a href="#plataformas">Crossplay</a></li>
       <li><a href="#galeria">Galeria</a></li>
       <li><a href="#faq">Dúvidas</a></li>
@@ -1028,7 +1028,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <h1>Construa para sempre.</h1>
     <p>Servidor Minecraft Survival Vanilla sem reset, com Java e Bedrock, onde sua obra dura anos, não temporadas.<br>Ativo e estável desde 2021.</p>
     <div class="hero-actions">
-      <a class="btn btn-primary" href="community.html">Entrar na Rede</a>
+      <a class="btn btn-primary" href="/community">Entrar na Rede</a>
       <button class="btn btn-secondary" onclick="document.getElementById('status').scrollIntoView({behavior:'smooth'});">Começar a Jogar</button>
     </div>
   </div>
@@ -1041,7 +1041,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <h2>A Rede Social da Comunidade Minecraft</h2>
       <p>Publique conquistas, siga jogadores, responda threads, receba notificações sociais e acompanhe reputação sem sair do site. A rede foi pensada para transformar cada interação em continuidade: menos grupo perdido, mais memória coletiva.</p>
       <div class="community-actions">
-        <a class="btn btn-primary" href="community.html" aria-label="Abrir rede social da Força Aliada">
+        <a class="btn btn-primary" href="/community" aria-label="Abrir rede social da Força Aliada">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
           Abrir a rede
         </a>
@@ -1466,7 +1466,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 <footer>
   <h2 style="font-size: 28px; margin-bottom: 16px; font-weight: 600;">Faça parte da história</h2>
   <p style="color: var(--text-secondary); max-width: 500px; margin: 0 auto;">Uma comunidade madura, estável e acolhedora espera por você.</p>
-  <p style="margin-top:16px"><a href="guia.html">Leia o guia completo do servidor</a> · <a href="community.html">Explore a comunidade</a> · <a href="termos.html">Termos</a> · <a href="privacidade.html">Privacidade</a></p>
+  <p style="margin-top:16px"><a href="/guia">Leia o guia completo do servidor</a> · <a href="/community">Explore a comunidade</a> · <a href="/termos">Termos</a> · <a href="/privacidade">Privacidade</a></p>
   <button class="btn btn-primary" style="margin-top: 24px;" onclick="window.open('https://discord.gg/xZmRkB7PWd', '_blank')">Entrar no Discord</button>
   <div class="social-icons">
     <a href="https://whatsapp.com/channel/0029VbC3kNoAzNc1wXb0130e" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="WhatsApp">
@@ -1594,7 +1594,7 @@ function renderAuthMenu(session) {
           <a href="account.html" class="dropdown-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
           </a>
-          <a href="community.html" class="dropdown-item">
+          <a href="/community" class="dropdown-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg> Abrir Rede
           </a>
           ${adminLink}
