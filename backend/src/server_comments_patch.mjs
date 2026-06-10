@@ -73,6 +73,8 @@ export const commentUpgradeSchemaSql = `
 ALTER TABLE post_comments
   ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER
     REFERENCES post_comments(id) ON DELETE SET NULL;
+ALTER TABLE post_comments
+  ADD COLUMN IF NOT EXISTS media_urls TEXT[] NOT NULL DEFAULT '{}'::text[];
 
 CREATE INDEX IF NOT EXISTS idx_comments_parent
   ON post_comments(parent_comment_id, created_at ASC)
@@ -231,6 +233,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
     createSocialNotification,
     auditFromReq,
     extractMentions,   // opcional — pode não existir em versões antigas
+    normalizePostMediaUrls,
   } = helpers;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -242,6 +245,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       c.post_id,
       c.parent_comment_id,
       CASE WHEN c.is_deleted THEN '[comentário removido]' ELSE c.content END AS content,
+      CASE WHEN c.is_deleted THEN '{}'::text[] ELSE c.media_urls END AS media_urls,
       c.is_deleted,
       c.created_at,
       c.likes_count,
@@ -428,10 +432,13 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
   app.post('/api/community/posts/:id/comments/reply', auth, async (req, res) => {
     const postId          = parseInt(req.params.id, 10);
     const content         = sanitizeText(req.body?.content || '');
+    const mediaUrls       = typeof normalizePostMediaUrls === 'function'
+      ? normalizePostMediaUrls(req.body?.media_urls)
+      : [];
     const rawParentId     = parseInt(req.body?.parent_comment_id, 10) || null;
 
     if (!postId)                              return res.status(400).json({ error: 'ID inválido' });
-    if (!content || content.length > 280)    return res.status(400).json({ error: 'Comentário inválido (1–280 caracteres)' });
+    if ((!content && !mediaUrls.length) || content.length > 280) return res.status(400).json({ error: 'Comentário inválido (texto ou imagem obrigatório)' });
 
     const client = await pool.connect();
     try {
@@ -471,10 +478,10 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       }
 
       const { rows } = await client.query(
-        `INSERT INTO post_comments(post_id, author_id, content, parent_comment_id)
-         VALUES($1, $2, $3, $4)
-         RETURNING id, created_at, parent_comment_id`,
-        [postId, req.user.sub, content, parentCommentId],
+        `INSERT INTO post_comments(post_id, author_id, content, parent_comment_id, media_urls)
+         VALUES($1, $2, $3, $4, $5)
+         RETURNING id, created_at, parent_comment_id, media_urls`,
+        [postId, req.user.sub, content, parentCommentId, mediaUrls],
       );
       const newComment = rows[0];
 
@@ -681,7 +688,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       // 1. Busca o comentário raiz (aplana se ele mesmo for resposta)
       const { rows: cRootRows } = await pool.query(`
         SELECT
-          c.id, c.post_id, c.parent_comment_id, c.content, c.is_deleted,
+          c.id, c.post_id, c.parent_comment_id, c.content, c.media_urls, c.is_deleted,
           c.created_at, c.likes_count, c.reply_count,
           EXISTS(SELECT 1 FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = $2) AS liked_by_me,
           u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,
@@ -704,7 +711,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       if (rootComment.parent_comment_id) {
         const { rows: parentRows } = await pool.query(`
           SELECT
-            c.id, c.post_id, c.parent_comment_id, c.content, c.is_deleted,
+            c.id, c.post_id, c.parent_comment_id, c.content, c.media_urls, c.is_deleted,
             c.created_at, c.likes_count, c.reply_count,
             EXISTS(SELECT 1 FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = $2) AS liked_by_me,
             u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.is_platform_verified,

@@ -1105,6 +1105,19 @@ img{display:block}
 .comment-author .handle{font-size:11px;color:var(--ink-3);font-weight:500}
 .comment-author .ts{font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
 .comment-row p{margin-top:4px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.comment-media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:5px;margin-top:8px;max-width:448px}
+.comment-media-grid[data-count="1"]{grid-template-columns:minmax(0,320px)}
+.comment-media-btn{display:block;overflow:hidden;min-height:92px;max-height:260px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft);cursor:zoom-in}
+.comment-media-btn img{display:block;width:100%;height:100%;min-height:92px;max-height:260px;border-radius:0;object-fit:cover}
+.comment-reply-editor{display:grid;min-width:0;gap:6px}
+.comment-media-tools{display:flex;align-items:center;gap:7px;min-height:24px}
+.comment-media-pick{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);color:var(--ink-2);font:700 10px var(--ff);cursor:pointer}
+.comment-media-pick:hover{border-color:var(--accent-mid);color:var(--accent)}
+.comment-media-pick svg{width:13px;height:13px}
+.comment-media-preview{display:grid;grid-template-columns:repeat(4,minmax(0,70px));gap:5px}
+.comment-media-preview .media-preview-item{min-height:54px}
+.comment-media-preview .media-preview-item img{height:54px}
+.lb-reply-media{margin-top:5px}
 .deleted{color:var(--ink-3);font-style:italic}
 
 /* ─── Sort bar (barra de classificação dos comentários) ─── */
@@ -4052,6 +4065,12 @@ body::after{
         <button class="lb-reply-send" id="lb-reply-send-desk" aria-label="Enviar resposta">
           <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
+        <div class="lb-reply-media">
+          <div class="comment-media-preview" id="lbDesk-media-preview"></div>
+          <button class="comment-media-pick" type="button" data-media-pick="lbDesk" aria-label="Anexar fotos"><span id="lbDesk-media-count">0/4</span> fotos</button>
+          <input id="lbDesk-media-input" data-comment-media-input="lbDesk" type="file" multiple accept="image/*" hidden>
+          <span class="media-status" id="lbDesk-media-status"></span>
+        </div>
       </div>
     </div>
     <!-- Lista de comentários desktop -->
@@ -4130,6 +4149,12 @@ body::after{
         <button class="lb-reply-send" id="lb-reply-send-mob" aria-label="Enviar">
           <svg viewBox="0 0 24 24" width="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
+        <div class="lb-reply-media">
+          <div class="comment-media-preview" id="lbMob-media-preview"></div>
+          <button class="comment-media-pick" type="button" data-media-pick="lbMob" aria-label="Anexar fotos"><span id="lbMob-media-count">0/4</span> fotos</button>
+          <input id="lbMob-media-input" data-comment-media-input="lbMob" type="file" multiple accept="image/*" hidden>
+          <span class="media-status" id="lbMob-media-status"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -4165,7 +4190,8 @@ const state = {
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, activeThreadPost:null, mentionSuggestions:[], routeActive:false,
   searchQuery:'', hashtag:'',
-  composerMedia:{inline:[],modal:[]},
+  composerMedia:{inline:[],modal:[],thread:[],subthread:[],lbDesk:[],lbMob:[]},
+  lightboxPost:null,
   scheduledPosts:[],
   affiliations:{publishing_identities:[],granted_delegates:[]}, publishAsId:null,
   cropQueue:[], cropper:null, cropObjectUrl:null, cropComposer:'inline', nsfwModelPromise:null
@@ -4563,6 +4589,7 @@ function openPostMenu(btn) {
   // Read post data directly from the current card in the DOM
   // The wrap itself may have data-post-id (e.g. thread view), or it lives inside a .post-card
   const postId = wrap.dataset.postId || wrap.closest('[data-post-id]')?.dataset.postId || wrap.closest('.post-card')?.dataset.postId || null;
+  const recordId = wrap.dataset.recordId || wrap.closest('[data-record-id]')?.dataset.recordId || postId;
 
   // Build menu HTML fresh from the card's existing menu template
   const srcMenu = wrap.querySelector('.post-menu');
@@ -4578,6 +4605,7 @@ function openPostMenu(btn) {
   // Copy menu contents into the singleton portal
   portal.innerHTML = srcMenu.innerHTML;
   portal._postId = postId;
+  portal._recordId = recordId;
   portal.classList.add('show');
   _openMenu = btn;
 
@@ -4610,6 +4638,7 @@ function closeAllPostMenus() {
     portal.classList.remove('show');
     portal.innerHTML = '';
     portal._postId = null;
+    portal._recordId = null;
   }
   _openMenu = null;
 }
@@ -4890,6 +4919,25 @@ function postCollageHTML(urls=[]){
   if(!safe.length)return'';
   return`<div class="post-collage" data-count="${safe.length}">${safe.map((url,i)=>`<button class="post-media" type="button" data-lb-open data-lb-url="${esc(url)}" data-lb-index="${i}" aria-label="Ver imagem ${i+1} em tela cheia"><img src="${esc(url)}" alt="Imagem do post ${i+1}" loading="lazy" decoding="async"></button>`).join('')}</div>`;
 }
+function commentMediaUrls(comment){
+  return [...new Set((Array.isArray(comment?.media_urls)?comment.media_urls:[])
+    .map(url=>String(url||'').trim())
+    .filter(url=>/^https:\/\/res\.cloudinary\.com\/.+\/image\/upload\//i.test(url)))].slice(0,4);
+}
+function commentMediaHTML(comment){
+  const urls=commentMediaUrls(comment);
+  if(!urls.length)return'';
+  return`<div class="comment-media-grid" data-count="${urls.length}">${urls.map((url,index)=>`<button class="comment-media-btn" type="button" data-comment-media-open data-comment-media-index="${index}" aria-label="Ver foto ${index+1} do comentário"><img src="${esc(url)}" alt="Foto anexada ao comentário" loading="lazy" decoding="async"></button>`).join('')}</div>`;
+}
+function commentMediaToolsHTML(type){
+  state.composerMedia[type] ||= [];
+  return`<div class="comment-media-preview" id="${type}-media-preview" aria-live="polite"></div>
+    <div class="comment-media-tools">
+      <button class="comment-media-pick" type="button" data-media-pick="${type}" aria-label="Anexar fotos ao comentário">${IC.image||IC.media||'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>'}<span id="${type}-media-count">0/4</span></button>
+      <input id="${type}-media-input" data-comment-media-input="${type}" type="file" multiple accept="image/*" hidden>
+      <span class="media-status" id="${type}-media-status"></span>
+    </div>`;
+}
 function postCardHTML(p){
   const isRepost=Boolean(p.repost_of_id);
   const reposter=p.minecraft_name||p.username||'Jogador';
@@ -4908,10 +4956,11 @@ function postCardHTML(p){
   const mediaHTML=postCollageHTML(mediaUrlsFromPost(p));
   const isMe=state.me&&Number(authorId)===Number(state.me.id);
   const isCreator=state.me&&Number(p.created_by_user_id||p.author_id)===Number(state.me.id);
-  const canManage=!isRepost&&(isMe||isCreator);
+  const ownsRecord=state.me&&(Number(p.author_id)===Number(state.me.id)||Number(p.created_by_user_id||p.author_id)===Number(state.me.id));
+  const canManage=isRepost?ownsRecord:(isMe||isCreator);
   const staff=canModerate();
   const edited=p.updated_at&&new Date(p.updated_at)>new Date(p.created_at);
-  const canEdit=canManage&&((Date.now()-new Date(p.created_at))/60000)<=15;
+  const canEdit=!isRepost&&canManage&&((Date.now()-new Date(p.created_at))/60000)<=15;
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
   const postUrl=communityUrl({post:targetPostId});
   return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" data-record-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
@@ -4940,7 +4989,7 @@ function postCardHTML(p){
               <div class="post-menu" role="menu">
                 ${staff&&!isRepost?`<button class="pm-item" data-action="${p.is_pinned?'unpin':'pin'}">${IC.pin} ${p.is_pinned?'Desfixar':'Fixar'}</button>`:''}
                 ${canEdit?`<button class="pm-item" data-action="edit">${IC.edit} Editar</button>`:''}
-                ${canManage?`<button class="pm-item danger" data-action="delete">${IC.trash} Excluir</button>`:staff?`<button class="pm-item danger" data-action="admin-delete">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`}
+                ${canManage?`<button class="pm-item danger" data-action="${isRepost?'delete-repost':'delete'}">${IC.trash} ${isRepost?'Excluir repost':'Excluir'}</button>`:staff&&!isRepost?`<button class="pm-item danger" data-action="admin-delete">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`}
                 <button class="pm-item" data-action="copy">${IC.link} Copiar link</button>
                 <button class="pm-item" data-action="open-thread">${IC.comment} Abrir thread</button>
                 ${!isMe?`<button class="pm-item" data-action="not-interested">${IC.eyeOff} Não tenho interesse</button>`:''}
@@ -5292,6 +5341,7 @@ async function openNextCrop(){
   if(confirm){confirm.disabled=false;confirm.innerHTML=confirm.dataset.orig||'Confirmar Corte'}
 }
 function queueMediaFiles(type,files){
+  state.composerMedia[type] ||= [];
   const current=(state.composerMedia[type]||[]).length;
   const selected=[...files].filter(f=>f&&f.type?.startsWith('image/'));
   const slots=Math.max(0,4-current);
@@ -6161,7 +6211,10 @@ async function navigateCommentThread(commentId, fromPostId) {
 
       <div class="reply-bar" id="subreply-bar">
         <img class="av42" src="${esc(state.me ? avatar(state.me, 50) : fallbackAvatar('Jogador', 50))}" alt="Seu avatar" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(state.me), 50)}'">
-        <textarea class="reply-ta" id="subreply-ta" maxlength="280" placeholder="Responder a @${esc(displayName(rootComment))}…" aria-label="Responder ao comentário"></textarea>
+        <div class="comment-reply-editor">
+          <textarea class="reply-ta" id="subreply-ta" maxlength="280" placeholder="Responder a @${esc(displayName(rootComment))}…" aria-label="Responder ao comentário"></textarea>
+          ${commentMediaToolsHTML('subthread')}
+        </div>
         <button class="btn btn-primary btn-sm" id="subreply-btn">Responder</button>
       </div>
 
@@ -6309,15 +6362,19 @@ function bindSubthreadEvents(container, rootComment, postId, initialSort) {
   replyBtn?.addEventListener('click', async () => {
     if (replyInProgress) return;
     const content = replyTA.value.trim();
-    if (!content || content.length > 280) return;
+    const mediaCount = state.composerMedia.subthread?.length || 0;
+    if ((!content && !mediaCount) || content.length > 280) return;
     replyInProgress = true;
     setBtnLoad(replyBtn, true, 'Enviando');
     try {
+      setMediaStatus('subthread', mediaCount ? 'Enviando fotos...' : '');
+      const { urls: media_urls } = await uploadComposerMedia('subthread');
       await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/reply`, {
         method: 'POST',
-        body: JSON.stringify({ content, parent_comment_id: rootComment.id }),
+        body: JSON.stringify({ content, media_urls, parent_comment_id: rootComment.id }),
       });
       replyTA.value = '';
+      clearComposerMedia('subthread');
       const resp = await api(`/api/community/comments/${encodeURIComponent(rootComment.id)}/thread?sort=${currentSort}`);
       const newReplies = Array.isArray(resp.replies) ? resp.replies : [];
       const repliesWrap = $('#subthread-replies');
@@ -6371,6 +6428,16 @@ async function handleCommentLike(btn) {
     });
     toast('error', 'Like não salvo', err.message);
   }
+}
+
+async function deleteRepostRecord(id){
+  const ok=await confirmDialog({title:'Excluir repost',msg:'Somente o seu repost será removido. A publicação original continuará intacta.',confirmText:'Excluir repost',danger:true});
+  if(!ok)return;
+  try{
+    await api(`/api/community/reposts/${encodeURIComponent(id)}`,{method:'DELETE'});
+    state.posts=state.posts.filter(p=>Number(p.id)!==Number(id));
+    renderFeed();toast('success','Repost excluído','A publicação original não foi alterada.');
+  }catch(e){toast('error','Não foi possível excluir o repost',e.message)}
 }
 
 /* ── Repost de comentário (quote) ── */
@@ -6868,7 +6935,10 @@ async function renderPostRoute(id){
       </div>
       <div class="reply-bar" id="reply-bar">
         <img class="av42" src="${esc(state.me?avatar(state.me,50):fallbackAvatar('Jogador',50))}" alt="Seu avatar" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(state.me),50)}'">
-        <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
+        <div class="comment-reply-editor">
+          <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
+          ${commentMediaToolsHTML('thread')}
+        </div>
         <button class="btn btn-primary btn-sm" id="reply-btn">Responder</button>
       </div>
       <div id="thread-comments"></div>
@@ -6893,7 +6963,8 @@ function addThreadLikersRepostersBtns(post,id){
   if(repostBtn){
     repostBtn.addEventListener('click',e=>{
       e.stopPropagation();
-      openRepostPopover(targetId,repostBtn);
+      if(repostBtn.classList.contains('is-on'))toggleRepost(targetId,repostBtn);
+      else openRepostPopover(targetId,repostBtn);
     });
   }
 }
@@ -6972,12 +7043,16 @@ function bindThreadEvents(post,id){
   $('#reply-btn')?.addEventListener('click',async()=>{
     if(replyInProgress)return;
     const ta=$('#reply-ta');const content=ta.value.trim();
-    if(!content||content.length>280)return;
+    const mediaCount=state.composerMedia.thread?.length||0;
+    if((!content&&!mediaCount)||content.length>280)return;
     replyInProgress=true;
     const btn=$('#reply-btn');setBtnLoad(btn,true,'Enviando');
     try{
-      await api(`/api/community/posts/${encodeURIComponent(id)}/comments`,{method:'POST',body:JSON.stringify({content})});
+      setMediaStatus('thread',mediaCount?'Enviando fotos...':'');
+      const {urls:media_urls}=await uploadComposerMedia('thread');
+      await api(`/api/community/posts/${encodeURIComponent(id)}/comments`,{method:'POST',body:JSON.stringify({content,media_urls})});
       ta.value='';
+      clearComposerMedia('thread');
       const commentsResp3=await api(`/api/community/posts/${encodeURIComponent(id)}/comments`);
       const commentsList3=Array.isArray(commentsResp3)?commentsResp3:(Array.isArray(commentsResp3?.comments)?commentsResp3.comments:[]);
       renderThreadComments(commentsList3,id,post,commentsResp3?.next_cursor||null,commentsResp3?.has_more||false,commentsResp3?.sort||'relevance');
@@ -7283,7 +7358,8 @@ function commentsHTML(comments, opts = {}) {
           <span class="handle">@${esc(handle)}</span>
           <span class="ts">· ${esc(time(c.created_at))}</span>
         </div>
-        <p class="${del ? 'deleted' : ''}">${del ? esc(c.content) : mentionHTML(c.content)}</p>
+        ${c.content ? `<p class="${del ? 'deleted' : ''}">${del ? esc(c.content) : mentionHTML(c.content)}</p>` : ''}
+        ${del ? '' : commentMediaHTML(c)}
         ${interactionBar}
       </div>
     </article>`;
@@ -8418,6 +8494,13 @@ function showSearchRoute(query){
 
 /* ======================= EVENT DELEGATION ======================= */
 function bindEvents(){
+  document.addEventListener('change',e=>{
+    const input=e.target.closest('[data-comment-media-input]');
+    if(!input)return;
+    const type=input.dataset.commentMediaInput;
+    queueMediaFiles(type,input.files||[]);
+    input.value='';
+  });
   // Fecha share popover de comentário ao clicar fora
   document.addEventListener('click', e => {
     if (_commentSharePopover && !_commentSharePopover.contains(e.target)) closeCommentSharePopover();
@@ -8686,6 +8769,15 @@ function bindEvents(){
     if(openSearch){e.preventDefault();openSearchPage();return}
     const hash=e.target.closest('[data-hashtag]');
     if(hash){e.preventDefault();e.stopPropagation();navigateHashtag(hash.dataset.hashtag);return}
+    const commentMedia=e.target.closest('[data-comment-media-open]');
+    if(commentMedia){
+      e.preventDefault();e.stopPropagation();
+      const grid=commentMedia.closest('.comment-media-grid');
+      const urls=[...(grid?.querySelectorAll('.comment-media-btn img')||[])].map(img=>img.src).filter(Boolean);
+      const post=state.lightboxPost||state.activeThreadPost||findPost(state.activePostId);
+      if(post&&urls.length)window.openLightbox?.(post,urls,Number(commentMedia.dataset.commentMediaIndex||0));
+      return;
+    }
     const mediaPick=e.target.closest('[data-media-pick]');
     if(mediaPick){e.preventDefault();$(`#${mediaPick.dataset.mediaPick}-media-input`)?.click();return}
     const removeMedia=e.target.closest('[data-remove-media]');
@@ -8736,11 +8828,13 @@ function bindEvents(){
       if(act){
         e.stopPropagation();
         const id=menuEl._postId;
+        const recordId=menuEl._recordId||id;
         const a=act.dataset.action;
         closeAllPostMenus();
-        const card=document.querySelector(`.post-card[data-post-id="${id}"]`);
+        const card=document.querySelector(`.post-card[data-record-id="${recordId}"]`)||document.querySelector(`.post-card[data-post-id="${id}"]`);
         // Feed card actions
         if(a==='delete'||a==='delete-thread'){deletePost(id);return}
+        if(a==='delete-repost'){deleteRepostRecord(recordId);return}
         if(a==='admin-delete'||a==='admin-delete-thread'){moderateDeletePost(id);return}
         if(a==='edit'){if(card)editPostInline(id,card);return}
         if(a==='edit-thread'){editThreadPost(findPost(id)||state.activeThreadPost,id);return}
@@ -8768,11 +8862,17 @@ function bindEvents(){
         if(a==='show-likers'){e.stopPropagation();showSocialSheet(id,'likes');return}
         if(a==='show-reposters'){e.stopPropagation();showSocialSheet(id,'reposts');return}
         if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
-        if(a==='repost'){openRepostPopover(id,act.closest('.pa-repost'));return}
+        if(a==='repost'){
+          const repostBtn=act.closest('.pa-repost');
+          if(repostBtn?.classList.contains('is-on'))toggleRepost(id,repostBtn);
+          else openRepostPopover(id,repostBtn);
+          return
+        }
         if(a==='pin'){setPostPinned(id,true);return}
         if(a==='unpin'){setPostPinned(id,false);return}
         if(a==='edit'){editPostInline(id,postCard);return}
         if(a==='delete'){deletePost(id);return}
+        if(a==='delete-repost'){deleteRepostRecord(postCard.dataset.recordId||id);return}
         if(a==='admin-delete'){moderateDeletePost(id);return}
         if(a==='report'){reportContent('post',id);return}
         if(a==='copy'){copyLink(id);return}
@@ -8934,6 +9034,7 @@ function bindEvents(){
   /* ── abrir lightbox ── */
   async function openLightbox(post, urls, startIdx){
     lbPost  = post;
+    state.lightboxPost = post;
     lbUrls  = urls;
     lbIdx   = startIdx||0;
     lbScale = 1; lbPanX = 0; lbPanY = 0;
@@ -8982,7 +9083,9 @@ function bindEvents(){
     lb.setAttribute('aria-hidden','true');
     document.body.classList.remove('modal-open');
     lbPost=null;lbUrls=[];
+    state.lightboxPost=null;
     lbTaDesk.value='';lbTaMob.value='';
+    clearComposerMedia('lbDesk');clearComposerMedia('lbMob');
     lbImg.classList.remove('is-loading');
     lbMobMenu.hidden=true;
     resetLbTransform();
@@ -9048,28 +9151,35 @@ function bindEvents(){
         lbComments.innerHTML='<div class="lb-comments-empty">Nenhuma resposta ainda.</div>';
         return;
       }
-      lbComments.innerHTML=data.map(c=>{
-        const mc=c.minecraft_name||c.username||'Jogador';
-        const shown=displayName(c);
-        return`<div class="lb-comment">
-          <img class="lb-comment-av" src="${esc(avatar(c,40))}" alt="${esc(shown)}" onerror="this.onerror=null;this.src='${fallbackAvatar(shown,40)}'">
-          <div class="lb-comment-body">
-            <span class="lb-comment-author">${esc(shown)}</span><span class="lb-comment-handle">@${esc(handleName(c))}</span>
-            <p class="lb-comment-text">${mentionHTML(c.content||'')}</p>
-          </div>
-        </div>`;
-      }).join('');
+      lbComments.innerHTML=commentsHTML(data);
     }catch(e){
       lbComments.innerHTML='<div class="lb-comments-empty">Comentários indisponíveis.</div>';
     }
   }
 
+  lbComments.addEventListener('click',async e=>{
+    const like=e.target.closest('[data-comment-like]');
+    if(like){e.stopPropagation();await handleCommentLike(like);return}
+    const save=e.target.closest('[data-comment-save]');
+    if(save){e.stopPropagation();await handleCommentSave(save);return}
+    const repost=e.target.closest('[data-comment-repost]');
+    if(repost){e.stopPropagation();await repostComment(repost.dataset.commentRepost,repost.dataset.commentContent,repost.dataset.commentAuthor,lbPost?.repost_of_id||lbPost?.id);return}
+    const share=e.target.closest('[data-comment-share]');
+    if(share){e.stopPropagation();openCommentSharePopover(share.dataset.commentShare,share.dataset.commentContent,share);return}
+    const thread=e.target.closest('[data-open-comment-thread]');
+    if(thread){e.stopPropagation();const postId=lbPost?.repost_of_id||lbPost?.id;closeLightbox();navigateCommentThread(thread.dataset.openCommentThread,postId)}
+  });
+
   /* ── reply ── */
-  async function sendLbReply(content){
-    if(!lbPost||!content.trim())return;
+  async function sendLbReply(content,type){
+    const mediaCount=state.composerMedia[type]?.length||0;
+    if(!lbPost||(!content.trim()&&!mediaCount))return;
     const postId=lbPost.repost_of_id||lbPost.id;
     try{
-      await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`,{method:'POST',body:JSON.stringify({content:content.trim()})});
+      setMediaStatus(type,mediaCount?'Enviando fotos...':'');
+      const {urls:media_urls}=await uploadComposerMedia(type);
+      await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`,{method:'POST',body:JSON.stringify({content:content.trim(),media_urls})});
+      clearComposerMedia(type);
       delete lbCommentCache[postId]; // invalidar cache
       lbPost.comments_count=(Number(lbPost.comments_count)||0)+1;
       syncLbSocial();
@@ -9215,7 +9325,8 @@ function bindEvents(){
     if(!lbPost)return;
     const postId=lbPost.repost_of_id||lbPost.id;
     const btn=$$('#lb-repost-desk,#lb-repost-mob')[0];
-    openRepostPopover(postId,btn);
+    if(btn?.classList.contains('is-on'))toggleRepost(postId,btn);
+    else openRepostPopover(postId,btn);
   }
 
   /* ── share ── */
@@ -9258,9 +9369,10 @@ function bindEvents(){
 
   /* ── reply ── */
   async function doReply(ta){
-    const c=ta.value.trim();if(!c)return;
+    const type=ta===lbTaDesk?'lbDesk':'lbMob';
+    const c=ta.value.trim();if(!c&&!(state.composerMedia[type]?.length))return;
     ta.disabled=true;
-    await sendLbReply(c);
+    await sendLbReply(c,type);
     ta.value='';ta.disabled=false;
   }
   lbSendDesk.addEventListener('click',()=>doReply(lbTaDesk));

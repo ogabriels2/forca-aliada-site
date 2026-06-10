@@ -518,6 +518,18 @@ const pool = new Pool({
   ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
+let runtimeDashboardSettingsCache = { value: {}, expiresAt: 0 };
+async function getRuntimeDashboardSettings(force = false) {
+  if (!force && Date.now() < runtimeDashboardSettingsCache.expiresAt) return runtimeDashboardSettingsCache.value;
+  try {
+    const { rows } = await pool.query('SELECT settings FROM admin_dashboard_settings WHERE id=1');
+    runtimeDashboardSettingsCache = { value: rows[0]?.settings || {}, expiresAt: Date.now() + 30000 };
+  } catch {
+    runtimeDashboardSettingsCache = { value: {}, expiresAt: Date.now() + 5000 };
+  }
+  return runtimeDashboardSettingsCache.value;
+}
+
 const DEPLOY_SCHEMA_VERSION = 'oauth-microsoft-multi-account-v5';
 const AUDIT_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS audit_logs (
@@ -1054,6 +1066,10 @@ CREATE TABLE IF NOT EXISTS post_comments (
 );
 ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
 ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS media_urls TEXT[] DEFAULT '{}'::text[];
+UPDATE post_comments SET media_urls = '{}'::text[] WHERE media_urls IS NULL;
+ALTER TABLE post_comments ALTER COLUMN media_urls SET DEFAULT '{}'::text[];
+ALTER TABLE post_comments ALTER COLUMN media_urls SET NOT NULL;
 DROP INDEX IF EXISTS idx_comments_post;
 CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id, created_at ASC);
 
@@ -2330,8 +2346,9 @@ app.get('/ping', (_req, res) => {
 //     → Se tudo falha → offline
 
 async function fetchMinecraftStatus() {
-  const host          = process.env.MC_HOST           || 'fa.ogabriels.com';
-  const queryPort     = parseInt(process.env.MC_QUERY_PORT || '25565');
+  const dashboardSettings = await getRuntimeDashboardSettings();
+  const host          = dashboardSettings.server_ip || process.env.MC_HOST || 'fa.ogabriels.com';
+  const queryPort     = parseInt(dashboardSettings.server_port || process.env.MC_QUERY_PORT || '25565');
   const queryDisabled = process.env.MC_QUERY_DISABLED === 'true';
   const offlineMotd   = (process.env.MC_OFFLINE_MOTD || '').trim().toLowerCase();
 
@@ -2380,12 +2397,12 @@ async function fetchMinecraftStatus() {
   let pingFailed = false;
 
   try {
-    result = await util.status(host, 25565, { timeout: 3000, enableSRV: false });
+    result = await util.status(host, queryPort, { timeout: 3000, enableSRV: false });
     latencyMs = Math.max(0, Date.now() - started);
   } catch (_err1) {
     try {
       const srvStart = Date.now();
-      result = await util.status(host, 25565, { timeout: 3000, enableSRV: true });
+      result = await util.status(host, queryPort, { timeout: 3000, enableSRV: true });
       latencyMs = Math.max(0, Date.now() - srvStart);
     } catch (_err2) {
       pingFailed = true;
@@ -2580,6 +2597,8 @@ async function fetchMinecraftStatusCached() {
     return _mcStatusCache.data;
   }
   const fresh = await fetchMinecraftStatus();
+  const dashboardSettings = await getRuntimeDashboardSettings();
+  if (dashboardSettings.max_players) fresh.players.max = Number(dashboardSettings.max_players);
   _mcStatusCache.data      = fresh;
   _mcStatusCache.expiresAt = now + MC_STATUS_TTL_MS;
   return fresh;
@@ -2620,7 +2639,8 @@ async function getServerStatusStats(host, currentOnline) {
 }
 
 app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
-  const host = process.env.MC_HOST || 'fa.ogabriels.com';
+  const runtimeSettings = await getRuntimeDashboardSettings();
+  const host = runtimeSettings.server_ip || process.env.MC_HOST || 'fa.ogabriels.com';
   try {
     const status = await fetchMinecraftStatusCached();
     await recordServerStatus(status);
@@ -2688,6 +2708,8 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
       },
       // cloud_mode: true quando o site opera sem o app (ping autônomo a cada 1 min)
       cloud_mode: !appConnected,
+      maintenance_message: runtimeSettings.maintenance_message || '',
+      whitelist_enabled: runtimeSettings.whitelist_enabled !== false,
       minecraft: {
         host: status.host, online: status.online, version: status.version,
         players: { online: status.players.online, max: status.players.max, list: status.players.list },
@@ -2727,6 +2749,8 @@ app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
         set_at: _mcState.setAt ? new Date(_mcState.setAt).toISOString() : null,
       },
       cloud_mode: !appConnected,
+      maintenance_message: runtimeSettings.maintenance_message || '',
+      whitelist_enabled: runtimeSettings.whitelist_enabled !== false,
       minecraft: { ...fallback, checkedAt: undefined, onlineSince: null, uptime24hPct: stats.uptime24hPct, samples24h: stats.samples24h, status_source: 'failed', error: 'status unavailable' },
     });
   }
@@ -6699,7 +6723,8 @@ app.get('/api/community/posts', auth, async (req, res) => {
              COALESCE((
                SELECT json_agg(row_to_json(rc))
                FROM (
-                 SELECT pc.id, pc.content, pc.created_at, cu.username, cu.minecraft_name
+                 SELECT pc.id, pc.content, pc.media_urls, pc.created_at, pc.author_id,
+                   pc.likes_count, pc.reply_count, cu.username, cu.minecraft_name
                  FROM post_comments pc
                  JOIN users cu ON cu.id = pc.author_id
                  WHERE pc.post_id = COALESCE(p.repost_of_id, p.id)
@@ -6909,11 +6934,52 @@ app.delete('/api/community/posts/:id/repost', auth, async (req, res) => {
 
 
 // Criar um comentário com suporte a Menções (@)
+app.delete('/api/community/reposts/:id', auth, async (req, res) => {
+  const repostId = parseInt(req.params.id, 10);
+  if (!repostId) return res.status(400).json({ error: 'ID invalido' });
+  try {
+    const { rows } = await pool.query(
+      `DELETE FROM user_posts rp
+       WHERE rp.id=$1
+         AND rp.repost_of_id IS NOT NULL
+         AND (
+           rp.author_id=$2
+           OR (
+             rp.created_by_user_id=$2
+             AND EXISTS (
+               SELECT 1 FROM account_affiliations af
+               WHERE af.owner_user_id=rp.author_id
+                 AND af.delegate_user_id=$2
+                 AND af.status='active'
+                 AND 'post'=ANY(af.scopes)
+             )
+           )
+         )
+       RETURNING id, repost_of_id`,
+      [repostId, req.user.sub],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Repost nao encontrado ou nao autorizado' });
+    await auditFromReq(req, {
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'delete',
+      targetId: repostId,
+      message: `Repost #${repostId} removido sem alterar a publicacao original`,
+      metadata: { original_post_id: rows[0].repost_of_id },
+    });
+    res.json({ ok: true, removed_repost_id: rows[0].id, original_post_id: rows[0].repost_of_id });
+  } catch (e) {
+    console.error('[DELETE /api/community/reposts/:id]', e);
+    res.status(500).json({ error: 'Erro ao excluir repost' });
+  }
+});
+
 app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   const content = sanitizeText(req.body?.content || '');
+  const mediaUrls = normalizePostMediaUrls(req.body?.media_urls);
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
-  if (!content || content.length > 280) return res.status(400).json({ error: 'Comentario invalido' });
+  if ((!content && !mediaUrls.length) || content.length > 280) return res.status(400).json({ error: 'Comentario invalido' });
 
   const client = await pool.connect();
   try {
@@ -6945,8 +7011,8 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
     }
 
     const { rows } = await client.query(
-      'INSERT INTO post_comments(post_id, author_id, content) VALUES($1, $2, $3) RETURNING id, created_at',
-      [postId, req.user.sub, content],
+      'INSERT INTO post_comments(post_id, author_id, content, media_urls) VALUES($1, $2, $3, $4) RETURNING id, created_at, media_urls',
+      [postId, req.user.sub, content, mediaUrls],
     );
     const newComment = rows[0];
 
@@ -6992,7 +7058,7 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
       }
     }
     await client.query('COMMIT');
-    res.status(201).json({ ok: true, id: newComment.id, created_at: newComment.created_at });
+    res.status(201).json({ ok: true, id: newComment.id, created_at: newComment.created_at, media_urls: newComment.media_urls });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts/:id/comments]', e);
@@ -7323,6 +7389,7 @@ registerCommentUpgradeEndpoints(app, pool, auth, {
   createSocialNotification,
   auditFromReq,
   extractMentions,
+  normalizePostMediaUrls,
 });
 
 // Apagar o próprio post
@@ -8269,6 +8336,30 @@ app.post('/api/notifications/:id/read', auth, async (req, res) => {
   } catch (err) { console.error('[POST /api/notifications/:id/read]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+app.post('/api/notifications/:id/click', auth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'invalid id' });
+  const role = req.user.role;
+  const mc = (req.user.minecraft_name || '').toLowerCase();
+  try {
+    const visible = await pool.query(
+      `SELECT id FROM notifications WHERE id=$1 AND COALESCE(scheduled_for, created_at) <= NOW() AND ( audience='all' OR (audience='role' AND audience_val=$2) OR (audience='user' AND audience_val=$3::text) OR (audience='minecraft' AND LOWER(audience_val)=$4) )`,
+      [id, role, String(req.user.sub), mc],
+    );
+    if (!visible.rowCount) return res.status(404).json({ error: 'notification not found' });
+    await pool.query(
+      `INSERT INTO notification_clicks(notification_id,user_id,clicked_at)
+       SELECT id,$2,NOW() FROM notifications WHERE id=$1
+       ON CONFLICT(notification_id,user_id) DO UPDATE SET clicked_at=NOW()`,
+      [id, req.user.sub],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /api/notifications/:id/click]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
@@ -8295,8 +8386,30 @@ app.post('/api/notifications/read-all', auth, async (req, res) => {
   } catch (err) { console.error('[POST /api/notifications/read-all]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+async function enforceDashboardBroadcastLimit() {
+  const settings = await getRuntimeDashboardSettings();
+  if (settings.broadcast_channels?.dashboard === false) {
+    const error = new Error('O canal Dashboard esta desativado nas configuracoes.');
+    error.status = 409;
+    throw error;
+  }
+  const limit = Number(settings.broadcast_max_per_day ?? 8);
+  if (limit <= 0) {
+    const error = new Error('Broadcasts estao desativados nas configuracoes.');
+    error.status = 409;
+    throw error;
+  }
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS total FROM notifications WHERE created_at >= CURRENT_DATE');
+  if (Number(rows[0]?.total || 0) >= limit) {
+    const error = new Error(`Limite diario de ${limit} broadcasts atingido.`);
+    error.status = 429;
+    throw error;
+  }
+}
+
 app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   try {
+    await enforceDashboardBroadcastLimit();
     const title       = sanitize(req.body?.title);
     const body        = sanitize(req.body?.body);
     const type        = ['info','event','system','social','warning'].includes(req.body?.type) ? req.body.type : 'info';
@@ -8330,13 +8443,13 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[notification post error]', err);
-    res.status(500).json({ error: 'Erro ao criar notificação' });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Erro ao criar notificação' });
   }
 });
 
 app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
   try {
-    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(nr.user_id)::int AS read_count, CASE WHEN n.scheduled_for > NOW() THEN 'scheduled' ELSE 'published' END AS delivery_status FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id GROUP BY n.id, u.username ORDER BY COALESCE(n.scheduled_for,n.created_at) DESC`);
+    const { rows } = await pool.query(`SELECT n.*, u.username AS created_by_name, COUNT(DISTINCT nr.user_id)::int AS read_count, COUNT(DISTINCT nc.user_id)::int AS click_count, CASE WHEN n.scheduled_for > NOW() THEN 'scheduled' ELSE 'published' END AS delivery_status FROM notifications n LEFT JOIN users u ON u.id = n.created_by LEFT JOIN notification_reads nr ON nr.notification_id = n.id LEFT JOIN notification_clicks nc ON nc.notification_id=n.id GROUP BY n.id, u.username ORDER BY COALESCE(n.scheduled_for,n.created_at) DESC`);
     res.json(rows);
   } catch (err) {
     console.error('[GET /api/admin/notifications]', err);
@@ -8348,6 +8461,7 @@ app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, 
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
   try {
+    await enforceDashboardBroadcastLimit();
     const { rows } = await pool.query(`
       INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by,scheduled_for,link_url)
       SELECT title,body,type,icon,audience,audience_val,$2,NULL,link_url
@@ -8367,7 +8481,7 @@ app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, 
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[POST /api/admin/notifications/:id/resend]', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Internal server error' });
   }
 });
 
@@ -8400,6 +8514,7 @@ app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
     const type     = req.query.type && req.query.type !== 'all' ? req.query.type : null;
     const severity = req.query.severity && req.query.severity !== 'all' ? req.query.severity : null;
     const actor    = req.query.actor || null;
+    const days     = Math.min(3650, Math.max(1, parseInt(req.query.days || 30, 10)));
     const page     = Math.max(0, parseInt(req.query.page  || 0));
     const limit    = Math.min(100, Math.max(1, parseInt(req.query.limit || 50)));
 
@@ -8410,6 +8525,7 @@ app.get('/api/admin/audit', auth, requireAdmin, async (req, res) => {
     if (type)     { conditions.push(`type=$${p++}`);              params.push(type); }
     if (severity) { conditions.push(`severity=$${p++}`);          params.push(severity); }
     if (actor)    { conditions.push(`(actor_name ILIKE $${p} OR message ILIKE $${p} OR target_name ILIKE $${p})`); params.push(`%${actor}%`); p++; }
+    conditions.push(`created_at >= NOW() - ($${p++}::int * INTERVAL '1 day')`); params.push(days);
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -8450,6 +8566,7 @@ app.get('/api/admin/audit/export', auth, requireOwner, async (req, res) => {
     if (req.query.type && req.query.type !== 'all') { params.push(req.query.type); conditions.push(`type=$${params.length}`); }
     if (req.query.severity && req.query.severity !== 'all') { params.push(req.query.severity); conditions.push(`severity=$${params.length}`); }
     if (req.query.actor) { params.push(`%${sanitize(req.query.actor)}%`); conditions.push(`(actor_name ILIKE $${params.length} OR message ILIKE $${params.length} OR target_name ILIKE $${params.length})`); }
+    params.push(Math.min(3650, Math.max(1, parseInt(req.query.days || 30, 10)))); conditions.push(`created_at >= NOW() - ($${params.length}::int * INTERVAL '1 day')`);
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const { rows } = await pool.query(
       `SELECT id, actor_name, type, severity, target_name, message, ip, created_at
@@ -8986,7 +9103,13 @@ const RANK_BENEFITS = {
 };
 
 async function recalcRank(mcName, meritTotal) {
-  const rank = getRankByMerit(meritTotal);
+  const settings = await getRuntimeDashboardSettings();
+  const thresholds = settings.rank_thresholds || {};
+  const rankId = meritTotal >= Number(thresholds.netherite ?? 1000) ? 'netherite'
+    : meritTotal >= Number(thresholds.diamante ?? 500) ? 'diamante'
+    : meritTotal >= Number(thresholds.ouro ?? 150) ? 'ouro'
+    : 'ferro';
+  const rank = getRankById(rankId);
   await pool.query(`
     INSERT INTO player_balances(minecraft_name, merit_total, rank, updated_at)
     VALUES($1, $2, $3, NOW())
@@ -9298,7 +9421,8 @@ app.get('/api/admin/capital-records', auth, requireAdmin, async (req, res) => {
 app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT pb.*, 
-      (SELECT COUNT(*) FROM merit_records mr WHERE LOWER(mr.minecraft_name) = pb.minecraft_name) AS total_transactions
+      (SELECT COUNT(*) FROM merit_records mr WHERE LOWER(mr.minecraft_name) = pb.minecraft_name) AS total_transactions,
+      COALESCE((SELECT SUM(mr.amount) FROM merit_records mr WHERE LOWER(mr.minecraft_name) = pb.minecraft_name AND mr.created_at >= NOW() - INTERVAL '7 days'),0)::int AS weekly_delta
     FROM player_balances pb
     ORDER BY pb.merit_total DESC
     LIMIT 100
@@ -9311,6 +9435,7 @@ app.get('/api/admin/leaderboard', auth, requireAdmin, async (req, res) => {
     capital: r.capital_balance,
     rank: getRankById(r.rank),
     total_transactions: r.total_transactions,
+    weekly_delta: r.weekly_delta,
     updated_at: r.updated_at,
   })));
 });

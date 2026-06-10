@@ -2581,6 +2581,7 @@ footer { display: none; }
         <div id="mpanel-leaderboard" style="display:none;">
           <div class="lb-toolbar">
             <input class="lb-search" id="lb-search" type="text" placeholder="🔍 Buscar jogador…" oninput="filterLeaderboard()">
+            <select class="lb-search" id="lb-rank-filter" onchange="filterLeaderboard()"><option value="all">Todos os ranks</option><option value="ferro">Ferro</option><option value="ouro">Ouro</option><option value="diamante">Diamante</option><option value="netherite">Netherite</option></select>
             <button class="btn-secondary" style="font-size:13px;padding:7px 16px;border-radius:8px;border:none;" onclick="exportLeaderboardCSV()">⬇ Exportar CSV</button>
           </div>
           <div style="overflow-x:auto;">
@@ -3071,6 +3072,7 @@ let auditTotalPages     = 1;
 let auditTotalCount     = 0;
 let auditSeverityFilter = 'all';
 let auditActorFilter    = '';
+let auditDaysFilter     = 30;
 const AUDIT_PAGE_SIZE   = 50;
 
 let modalHistoryData    = [];
@@ -3695,7 +3697,7 @@ function _startStatusPolling() {
   _statusPollInterval = setInterval(async () => {
     if (document.visibilityState !== 'visible') return; // não polui com requests em background
     await loadData();
-  }, 60_000);
+  }, 30_000);
 }
 
 function initDashboard() {
@@ -4130,7 +4132,7 @@ async function loadAdminNotifications() {
         <div style="flex:1;">
           <strong>${escapeHTML(n.title)}</strong>
           <div>${escapeHTML(n.body)}</div>
-          <div class="meta">${escapeHTML(n.audience || 'all')}${n.audience_val ? ' → '+escapeHTML(n.audience_val) : ''} • ${formatNotifTime(new Date(n.scheduled_for || n.created_at || Date.now()))} • ${Number(n.read_count || 0)} visualização(ões) • ${escapeHTML(n.delivery_status || 'published')}</div>
+          <div class="meta">${escapeHTML(n.audience || 'all')}${n.audience_val ? ' → '+escapeHTML(n.audience_val) : ''} • ${formatNotifTime(new Date(n.scheduled_for || n.created_at || Date.now()))} • ${Number(n.read_count || 0)} visualização(ões) • ${Number(n.click_count || 0)} clique(s) • ${escapeHTML(n.delivery_status || 'published')}</div>
         </div>
         <button class="v2-btn" type="button" onclick="resendAdminNotification(${Number(n.id)})">Reenviar</button>
       </div>`).join('') || '<div class="admin-notification-hint">Nenhuma publicação criada ainda.</div>';
@@ -4454,6 +4456,7 @@ async function fetchAuditLogs(pageOverride = null) {
     if (auditFilterActive !== 'all')   params.set('type',     auditFilterActive);
     if (auditSeverityFilter !== 'all') params.set('severity', auditSeverityFilter);
     if (auditActorFilter)              params.set('actor',    auditActorFilter);
+    params.set('days', String(auditDaysFilter));
 
     const res = await apiFetch(`/api/admin/audit?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -4489,6 +4492,7 @@ async function exportAuditCSV() {
     if (auditFilterActive !== 'all') params.set('type', auditFilterActive);
     if (auditSeverityFilter !== 'all') params.set('severity', auditSeverityFilter);
     if (auditActorFilter) params.set('actor', auditActorFilter);
+    params.set('days', String(auditDaysFilter));
     const res = await apiFetch(`/api/admin/audit/export?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Falha na exportação');
     const blob = await res.blob();
@@ -5732,6 +5736,7 @@ function getRank(merit){ return RANKS.find(r=>merit>=r.min&&merit<=r.max)||RANKS
 /* ── player cache from admin users list ── */
 let meritPlayerCache   = [];   // [{minecraft_name, merit_total, capital_balance}]
 let leaderboardData    = [];
+let leaderboardRankFilter = 'all';
 let meritHistoryData   = [];
 let meritHistoryPage   = 0;
 const HISTORY_PAGE_SIZE = 20;
@@ -5807,7 +5812,12 @@ async function loadLeaderboard() {
 function renderLeaderboard(filter='') {
   const tbody = document.getElementById('lb-tbody');
   const fl = filter.toLowerCase();
-  const rows = leaderboardData.filter(p=> !fl || (p.minecraft_name||'').toLowerCase().includes(fl));
+  leaderboardRankFilter = document.getElementById('lb-rank-filter')?.value || leaderboardRankFilter;
+  const rows = leaderboardData.filter(p=> {
+    const merit = p.merit_total ?? p.merit ?? 0;
+    const rank = p.rank?.id || p.rank || getRank(merit).key;
+    return (!fl || (p.minecraft_name||'').toLowerCase().includes(fl)) && (leaderboardRankFilter === 'all' || rank === leaderboardRankFilter);
+  });
 
   if(!rows.length) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-secondary);">${filter?'Nenhum resultado para "'+filter+'"':'Nenhum jogador cadastrado ainda.'}</td></tr>`;
@@ -5828,7 +5838,7 @@ function renderLeaderboard(filter='') {
         <span class="lbname">${p.minecraft_name||'—'}</span>
       </div></td>
       <td><span class="lb-rank-badge ${rank.key}">${rank.label}</span></td>
-      <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐</td>
+      <td class="lb-merit">${merit.toLocaleString('pt-BR')} ⭐ <small style="display:block;color:${Number(p.weekly_delta || 0) >= 0 ? 'var(--green)' : 'var(--red)'}">${Number(p.weekly_delta || 0) >= 0 ? '+' : ''}${Number(p.weekly_delta || 0)} na semana</small></td>
       <td class="lb-capital">${capStr}</td>
     </tr>`;
   }).join('');

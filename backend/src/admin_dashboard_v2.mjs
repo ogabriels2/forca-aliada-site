@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS notification_templates (
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url TEXT;
 CREATE INDEX IF NOT EXISTS idx_notifications_scheduled ON notifications(scheduled_for);
+CREATE TABLE IF NOT EXISTS notification_clicks (
+  notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY(notification_id,user_id)
+);
 ALTER TABLE moderation_queue ADD COLUMN IF NOT EXISTS ai_confidence FLOAT;
 `;
 
@@ -91,13 +97,14 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
   app.get('/api/admin/server/activity-heatmap', auth, requireAdmin, activityHeatmap);
 
   app.get('/api/admin/analytics/comparison', auth, requireAdmin, async (req, res) => {
-    const days = clamp(req.query.days, 30, 7, 180);
+    const primaryDays = clamp(req.query.primary_days || req.query.days, 30, 7, 180);
+    const compareDays = clamp(req.query.compare_days || req.query.days, primaryDays, 7, 180);
     try {
       const { rows } = await pool.query(`
         WITH periods AS (
           SELECT 'current'::text AS period, NOW() - ($1::int * INTERVAL '1 day') AS starts_at, NOW() AS ends_at
           UNION ALL
-          SELECT 'previous', NOW() - ($1::int * INTERVAL '2 days'), NOW() - ($1::int * INTERVAL '1 day')
+          SELECT 'previous', NOW() - (($1::int + $2::int) * INTERVAL '1 day'), NOW() - ($1::int * INTERVAL '1 day')
         ),
         events AS (${activityEventsSql})
         SELECT p.period,
@@ -109,8 +116,8 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
         FROM periods p
         LEFT JOIN events e ON e.created_at >= p.starts_at AND e.created_at < p.ends_at
         GROUP BY p.period, p.starts_at, p.ends_at ORDER BY p.period
-      `, [days]);
-      jsonData(res, rows, { days });
+      `, [primaryDays, compareDays]);
+      jsonData(res, rows, { primary_days: primaryDays, compare_days: compareDays });
     } catch (error) {
       registerRouteError('comparison', res, error);
     }
@@ -284,18 +291,59 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
     const days = clamp(req.query.days, 30, 7, 180);
     try {
       const { rows } = await pool.query(`
-        SELECT COALESCE(a.actor_id, u.id) AS actor_id, COALESCE(a.actor_name, u.username, 'Sistema') AS actor_name,
-          COUNT(*)::int AS total_actions,
-          COUNT(*) FILTER (WHERE a.type IN ('moderation','delete') OR a.action IN ('moderation_review','delete'))::int AS moderation_actions,
-          COUNT(*) FILTER (WHERE a.type IN ('notify','notification_create'))::int AS broadcasts,
-          COUNT(*) FILTER (WHERE a.type IN ('merit','capital') OR a.action IN ('merit_grant','capital_adjust'))::int AS economy_actions,
-          COUNT(*) FILTER (WHERE a.severity = 'critical')::int AS critical_actions,
-          MAX(a.created_at) AS last_action_at
-        FROM audit_logs a
-        LEFT JOIN users u ON u.id = a.actor_id
-        WHERE a.created_at >= NOW() - ($1::int * INTERVAL '1 day')
-        GROUP BY COALESCE(a.actor_id, u.id), COALESCE(a.actor_name, u.username, 'Sistema')
-        ORDER BY total_actions DESC LIMIT 30
+        WITH staff AS (
+          SELECT id AS actor_id, username AS actor_name FROM users WHERE role IN ('owner','full')
+        ), audit_stats AS (
+          SELECT actor_id,
+            COALESCE(SUM(action_count),0)::int AS total_actions,
+            COALESCE(SUM(action_count) FILTER (WHERE type IN ('moderation','delete') OR action IN ('moderation_review','delete')),0)::int AS moderation_actions,
+            COALESCE(SUM(action_count) FILTER (WHERE type IN ('notify','notification_create')),0)::int AS broadcasts,
+            COALESCE(SUM(action_count) FILTER (WHERE type IN ('merit','capital') OR action IN ('merit_grant','capital_adjust')),0)::int AS economy_actions,
+            COALESCE(SUM(action_count) FILTER (WHERE severity='critical'),0)::int AS critical_actions,
+            JSONB_OBJECT_AGG(COALESCE(action,type,'system'), action_count) AS actions_by_category,
+            MAX(last_action_at) AS last_action_at
+          FROM (
+            SELECT actor_id, type, action, severity, COUNT(*)::int AS action_count, MAX(created_at) AS last_action_at
+            FROM audit_logs WHERE created_at >= NOW() - ($1::int * INTERVAL '1 day') GROUP BY actor_id,type,action,severity
+          ) grouped GROUP BY actor_id
+        ), report_stats AS (
+          SELECT reviewed_by AS actor_id,
+            COUNT(*)::int AS reports_reviewed,
+            COALESCE(AVG(EXTRACT(EPOCH FROM (reviewed_at-created_at))/3600),0)::float AS avg_report_response_hours
+          FROM content_reports WHERE reviewed_at >= NOW() - ($1::int * INTERVAL '1 day') GROUP BY reviewed_by
+        ), moderation_stats AS (
+          SELECT reviewed_by AS actor_id,
+            COUNT(*)::int AS posts_moderated,
+            COUNT(*) FILTER (WHERE status IN ('reviewed','approved','kept'))::int AS posts_approved,
+            COUNT(*) FILTER (WHERE status IN ('removed','reviewed_removed'))::int AS posts_removed
+          FROM moderation_queue WHERE reviewed_at >= NOW() - ($1::int * INTERVAL '1 day') GROUP BY reviewed_by
+        ), merit_stats AS (
+          SELECT awarded_by_id AS actor_id,
+            COALESCE(SUM(amount) FILTER (WHERE amount > 0),0)::int AS merit_granted,
+            ABS(COALESCE(SUM(amount) FILTER (WHERE amount < 0),0))::int AS merit_removed
+          FROM merit_records WHERE created_at >= NOW() - ($1::int * INTERVAL '1 day') GROUP BY awarded_by_id
+        )
+        SELECT s.actor_id,s.actor_name,
+          COALESCE(a.total_actions,0)::int AS total_actions,
+          COALESCE(a.moderation_actions,0)::int AS moderation_actions,
+          COALESCE(a.broadcasts,0)::int AS broadcasts,
+          COALESCE(a.economy_actions,0)::int AS economy_actions,
+          COALESCE(a.critical_actions,0)::int AS critical_actions,
+          COALESCE(a.actions_by_category,'{}'::jsonb) AS actions_by_category,
+          COALESCE(r.reports_reviewed,0)::int AS reports_reviewed,
+          COALESCE(r.avg_report_response_hours,0)::float AS avg_report_response_hours,
+          COALESCE(m.posts_moderated,0)::int AS posts_moderated,
+          COALESCE(m.posts_approved,0)::int AS posts_approved,
+          COALESCE(m.posts_removed,0)::int AS posts_removed,
+          COALESCE(me.merit_granted,0)::int AS merit_granted,
+          COALESCE(me.merit_removed,0)::int AS merit_removed,
+          a.last_action_at
+        FROM staff s
+        LEFT JOIN audit_stats a ON a.actor_id=s.actor_id
+        LEFT JOIN report_stats r ON r.actor_id=s.actor_id
+        LEFT JOIN moderation_stats m ON m.actor_id=s.actor_id
+        LEFT JOIN merit_stats me ON me.actor_id=s.actor_id
+        ORDER BY total_actions DESC, s.actor_name LIMIT 30
       `, [days]);
       jsonData(res, rows, { days });
     } catch (error) {
@@ -349,6 +397,44 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
       jsonData(res, rows, { days });
     } catch (error) {
       registerRouteError('uptime-timeline', res, error);
+    }
+  });
+
+  app.get('/api/admin/server/presence', auth, requireAdmin, async (req, res) => {
+    const days = clamp(req.query.days, 28, 7, 90);
+    try {
+      const { rows } = await pool.query(`
+        WITH days AS (
+          SELECT GENERATE_SERIES((CURRENT_DATE - ($1::int - 1))::date, CURRENT_DATE, INTERVAL '1 day')::date AS day
+        ), unique_players AS (
+          SELECT entered_at::date AS day, COUNT(DISTINCT LOWER(player))::int AS unique_players
+          FROM player_sessions
+          WHERE entered_at >= CURRENT_DATE - ($1::int - 1)
+          GROUP BY entered_at::date
+        ), samples AS (
+          SELECT d.day, point
+          FROM days d
+          CROSS JOIN LATERAL GENERATE_SERIES(d.day::timestamptz, d.day::timestamptz + INTERVAL '23 hours 45 minutes', INTERVAL '15 minutes') point
+        ), concurrency AS (
+          SELECT s.day, s.point, COUNT(ps.player)::int AS players_online
+          FROM samples s
+          LEFT JOIN player_sessions ps
+            ON ps.entered_at <= s.point
+           AND COALESCE(ps.left_at, NOW()) > s.point
+          GROUP BY s.day, s.point
+        )
+        SELECT d.day,
+          COALESCE(u.unique_players,0)::int AS unique_players,
+          COALESCE(MAX(c.players_online),0)::int AS peak_players
+        FROM days d
+        LEFT JOIN unique_players u ON u.day=d.day
+        LEFT JOIN concurrency c ON c.day=d.day
+        GROUP BY d.day,u.unique_players
+        ORDER BY d.day
+      `, [days]);
+      jsonData(res, rows, { days, sample_minutes: 15 });
+    } catch (error) {
+      registerRouteError('server-presence', res, error);
     }
   });
 
@@ -543,12 +629,45 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
   app.put('/api/admin/settings', auth, requireOwner, async (req, res) => {
     try {
       const current = await pool.query('SELECT settings FROM admin_dashboard_settings WHERE id=1');
-      const settings = { ...DASHBOARD_DEFAULTS, ...(current.rows[0]?.settings || {}), ...(req.body || {}) };
+      const raw = { ...DASHBOARD_DEFAULTS, ...(current.rows[0]?.settings || {}), ...(req.body || {}) };
+      const thresholdInput = raw.rank_thresholds || {};
+      const thresholds = {
+        ferro: 0,
+        ouro: clamp(thresholdInput.ouro, 150, 1, 1000000),
+        diamante: clamp(thresholdInput.diamante, 500, 2, 1000000),
+        netherite: clamp(thresholdInput.netherite, 1000, 3, 1000000),
+      };
+      if (!(thresholds.ouro < thresholds.diamante && thresholds.diamante < thresholds.netherite)) {
+        return res.status(400).json({ error: 'Os limites de rank devem ser crescentes.', code: 'INVALID_RANK_THRESHOLDS' });
+      }
+      const settings = {
+        ...raw,
+        server_ip: String(raw.server_ip || DASHBOARD_DEFAULTS.server_ip).trim().slice(0,255),
+        server_port: clamp(raw.server_port, DASHBOARD_DEFAULTS.server_port, 1, 65535),
+        max_players: clamp(raw.max_players, DASHBOARD_DEFAULTS.max_players, 1, 10000),
+        whitelist_enabled: raw.whitelist_enabled !== false,
+        maintenance_message: String(raw.maintenance_message || '').trim().slice(0,500),
+        moderation_mode: ['manual','ai','auto-remove'].includes(raw.moderation_mode) ? raw.moderation_mode : 'ai',
+        broadcast_max_per_day: clamp(raw.broadcast_max_per_day, DASHBOARD_DEFAULTS.broadcast_max_per_day, 0, 1000),
+        broadcast_channels: {
+          dashboard: raw.broadcast_channels?.dashboard !== false,
+          push: raw.broadcast_channels?.push !== false,
+          email: raw.broadcast_channels?.email === true,
+        },
+        rank_thresholds: thresholds,
+      };
       const { rows } = await pool.query(`
         INSERT INTO admin_dashboard_settings(id,settings,updated_by,updated_at) VALUES(1,$1::jsonb,$2,NOW())
         ON CONFLICT(id) DO UPDATE SET settings=EXCLUDED.settings,updated_by=EXCLUDED.updated_by,updated_at=NOW()
         RETURNING settings,updated_at
       `, [JSON.stringify(settings), req.user.sub]);
+      await pool.query(`
+        UPDATE player_balances SET rank=CASE
+          WHEN merit_total >= $3 THEN 'netherite'
+          WHEN merit_total >= $2 THEN 'diamante'
+          WHEN merit_total >= $1 THEN 'ouro'
+          ELSE 'ferro' END, updated_at=NOW()
+      `, [thresholds.ouro, thresholds.diamante, thresholds.netherite]);
       await auditFromReq?.(req, { type: 'update', severity: 'warning', message: 'Configuracoes globais do dashboard atualizadas' });
       jsonData(res, { ...rows[0].settings, updated_at: rows[0].updated_at });
     } catch (error) {

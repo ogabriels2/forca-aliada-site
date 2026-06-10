@@ -11,10 +11,13 @@
     playerDirectory: [],
     playerSegment: 'staff',
     playerView: localStorage.getItem('fa_dashboard_player_view') || 'list',
-    playerFilters: { role: 'all', verified: 'all', linked: 'all', access: 'all' },
+    playerFilters: { role: 'all', rank: 'all', verified: 'all', linked: 'all', access: 'all' },
     selectedPlayers: new Set(),
     selectedModeration: new Set(),
     comparisonOpen: false,
+    comparisonDays: { primary: 30, compare: 30 },
+    auditTimeline: false,
+    lazyRuntime: null,
   };
 
   const VIEWS = [
@@ -46,6 +49,10 @@
   const unwrap = (payload) => payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload;
   const authHeaders = (extra = {}) => ({ Authorization: `Bearer ${token}`, ...extra });
   const refreshIcons = () => requestAnimationFrame(() => window.lucide?.createIcons?.());
+  const ensureLazyRuntime = () => {
+    if (!state.lazyRuntime) state.lazyRuntime = import('./dashboard-v2-lazy.js');
+    return state.lazyRuntime;
+  };
 
   async function api(path, options = {}) {
     if (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW) return previewApi(path);
@@ -87,7 +94,7 @@
       promotions: Array.from({ length: 8 }, (_, index) => ({ minecraft_name: ['Steve', 'Alex', 'Gabriel', 'Luna', 'Caio', 'Rafa', 'Dani', 'Nina'][index], merit_total: 120 + index * 38, next_threshold: index < 1 ? 150 : 500, rank: index < 1 ? 'ferro' : 'ouro' })),
     };
     if (path.includes('churn-risk')) return Array.from({ length: 14 }, (_, index) => ({ id: index + 1, username: `membro${index + 1}`, minecraft_name: ['Steve', 'Alex', 'Gabriel', 'Luna', 'Caio', 'Rafa', 'Dani'][index % 7], last_server_at: new Date(now.getTime() - (15 + index) * 86400000).toISOString(), last_social_at: new Date(now.getTime() - (12 + index * 2) * 86400000).toISOString(), sessions_4w: index % 4, risk_score: Math.min(98, 92 - index * 4) }));
-    if (path.includes('staff-performance')) return ['Direção', 'Gabriel', 'Caio', 'Luna'].map((name, index) => ({ actor_name: name, total_actions: 84 - index * 15, moderation_actions: 30 - index * 4, economy_actions: 21 - index * 3, broadcasts: 8 - index, last_action_at: now.toISOString() }));
+    if (path.includes('staff-performance')) return ['Direção', 'Gabriel', 'Caio', 'Luna'].map((name, index) => ({ actor_name: name, total_actions: 84 - index * 15, moderation_actions: 30 - index * 4, economy_actions: 21 - index * 3, broadcasts: 8 - index, reports_reviewed: 18 - index * 3, avg_report_response_hours: 1.4 + index * .8, posts_moderated: 24 - index * 3, posts_approved: 17 - index * 2, posts_removed: 7 - index, merit_granted: 120 - index * 18, merit_removed: 25 - index * 4, last_action_at: now.toISOString() }));
     if (path.includes('social-graph')) {
       const nodes = Array.from({ length: 28 }, (_, index) => ({ id: index + 1, username: `membro${index + 1}`, minecraft_name: ['Steve', 'Alex', 'Gabriel', 'Luna'][index % 4], display_name: `Membro ${index + 1}`, rank: ['ferro', 'ouro', 'diamante', 'netherite'][index % 4], followers: 28 - index }));
       return { nodes, edges: Array.from({ length: 70 }, (_, index) => ({ source: index % 28 + 1, target: (index * 5 + 3) % 28 + 1 })) };
@@ -98,6 +105,7 @@
     if (path.includes('audit-overview')) return { heatmap, actors: ['Direção', 'Gabriel', 'Caio', 'Luna', 'Rafa'].map((name, index) => ({ actor_name: name, actions: 72 - index * 11 })) };
     if (path.includes('/timeline')) return Array.from({ length: 12 }, (_, index) => ({ type: ['signup', 'first_session', 'first_post', 'merit', 'audit'][index % 5], timestamp: new Date(now.getTime() - index * 12 * 86400000).toISOString(), label: ['Cadastro criado', 'Primeira sessão no servidor', 'Primeira publicação', 'Mérito +50', 'Perfil verificado'][index % 5], detail: 'Evento de demonstração' }));
     if (path.includes('notification-templates')) return [{ id: 1, title: 'Evento acontecendo!', body: 'Entre no servidor e participe com a comunidade.', type: 'event' }, { id: 2, title: 'Servidor em manutenção', body: 'Voltaremos em breve com melhorias.', type: 'warning' }];
+    if (path.includes('server/presence')) return Array.from({ length: 28 }, (_, index) => ({ day: new Date(now.getTime() - (27 - index) * 86400000).toISOString(), unique_players: 8 + index % 9, peak_players: 13 + index % 12 }));
     if (path.includes('/settings')) return { server_ip: 'fa.ogabriels.com', server_port: 25565, max_players: 80, whitelist_enabled: true, maintenance_message: '', moderation_mode: 'ai', broadcast_max_per_day: 8, broadcast_channels: { dashboard: true, push: true, email: false }, rank_thresholds: { ferro: 0, ouro: 150, diamante: 500, netherite: 1000 } };
     return { ok: true, affected: 0 };
   }
@@ -710,6 +718,10 @@
     const max = Math.max(1, ...data.map((row) => num(row.total_actions)));
     body.innerHTML = `${toolHeader('Desempenho da Staff', 'Atividade administrativa interna dos últimos 30 dias.', `<button class="v2-btn" data-v2-export-tool="staff">${icon('download')} CSV</button>`)}
       <section class="v2-panel"><div class="v2-performance-list">${data.map((row) => `<article class="v2-performance-row"><span class="v2-score" style="--tone:var(--accent)">${compact(row.total_actions)}</span><div><strong>${esc(row.actor_name)}</strong><small>${row.moderation_actions} moderação · ${row.economy_actions} economia · ${row.broadcasts} broadcasts</small><div class="v2-progress"><i style="--value:${num(row.total_actions)/max*100}%"></i></div></div><small>${dateOnly(row.last_action_at)}</small></article>`).join('') || '<div class="v2-empty">Nenhuma ação no período.</div>'}</div></section>`;
+    body.querySelectorAll('.v2-performance-row').forEach((item, index) => {
+      const row = data[index];
+      item.querySelector('.v2-progress')?.insertAdjacentHTML('beforebegin', `<small class="v2-staff-detail">${num(row.reports_reviewed)} denúncias · ${num(row.avg_report_response_hours).toFixed(1)}h resposta · ${num(row.posts_moderated)} posts moderados (${num(row.posts_approved)} aprovados / ${num(row.posts_removed)} removidos) · mérito +${num(row.merit_granted)} / -${num(row.merit_removed)}</small>`);
+    });
   }
 
   async function renderSocialTool(body) {
@@ -852,7 +864,7 @@
     }
     if (kind === 'staff') {
       const rows = state.toolData.staff || [];
-      return downloadCSV(`staff-performance-${date}.csv`, ['staff','acoes','moderacao','economia','broadcasts','ultima_acao'], rows.map((row) => [row.actor_name,row.total_actions,row.moderation_actions,row.economy_actions,row.broadcasts,row.last_action_at]));
+      return downloadCSV(`staff-performance-${date}.csv`, ['staff','acoes','moderacao','economia','broadcasts','denuncias','resposta_media_h','posts_moderados','aprovados','removidos','merito_concedido','merito_removido','ultima_acao'], rows.map((row) => [row.actor_name,row.total_actions,row.moderation_actions,row.economy_actions,row.broadcasts,row.reports_reviewed,row.avg_report_response_hours,row.posts_moderated,row.posts_approved,row.posts_removed,row.merit_granted,row.merit_removed,row.last_action_at]));
     }
   }
 
@@ -885,6 +897,8 @@
       <select data-v2-player-filter="linked"><option value="all">Minecraft: todos</option><option value="yes">Com Minecraft</option><option value="no">Sem Minecraft</option></select>
       <select data-v2-player-filter="role"><option value="all">Role: todas</option><option value="limited">Limited</option><option value="full">Full</option><option value="owner">Owner</option></select>
       <button class="v2-btn" data-v2-player-view="list">${icon('list')}</button><button class="v2-btn" data-v2-player-view="cards">${icon('layout-grid')}</button>`;
+    toolbar.querySelector('.v2-player-tabs')?.insertAdjacentHTML('afterend', `<button class="v2-btn v2-filter-toggle" data-v2-filter-toggle>${icon('sliders-horizontal')} Filtros</button>`);
+    toolbar.querySelector('[data-v2-player-filter="role"]')?.insertAdjacentHTML('afterend', '<select data-v2-player-filter="rank"><option value="all">Rank: todos</option><option value="ferro">Ferro</option><option value="ouro">Ouro</option><option value="diamante">Diamante</option><option value="netherite">Netherite</option></select>');
     tabs.parentNode.insertBefore(toolbar, tabs);
     const bulk = document.createElement('div');
     bulk.id = 'v2-bulk-bar';
@@ -928,6 +942,7 @@
     if (segment === 'inactive' && daysAgo(user.last_activity) < 30) return false;
     if (segment === 'new' && daysAgo(user.created_at) > 7) return false;
     if (state.playerFilters.role !== 'all' && user.role !== state.playerFilters.role) return false;
+    if (state.playerFilters.rank !== 'all' && String(user.rank || 'ferro').toLowerCase() !== state.playerFilters.rank) return false;
     if (state.playerFilters.verified === 'yes' && !user.is_platform_verified) return false;
     if (state.playerFilters.verified === 'no' && user.is_platform_verified) return false;
     if (state.playerFilters.linked === 'yes' && !user.minecraft_name) return false;
@@ -943,6 +958,7 @@
   function postProcessPlayerList() {
     const list = document.getElementById('admin-users-list');
     if (!list) return;
+    list._v2Virtual?.destroy?.();
     appendUnregisteredPlayers(list);
     list.classList.toggle('v2-card-view', state.playerView === 'cards' || innerWidth <= 900);
     list.querySelectorAll('li.list-item').forEach((item) => {
@@ -955,7 +971,9 @@
       }
       const user = state.playerDirectory.find((entry) => num(entry.id) === id) || globalAdminUsers.find((entry) => num(entry.id) === id);
       item.dataset.v2UserId = id;
-      item.style.display = user && playerMatches(user) ? '' : 'none';
+      const visible = Boolean(user && playerMatches(user));
+      item.dataset.v2FilterVisible = visible ? '1' : '0';
+      item.style.display = visible ? '' : 'none';
       if (!item.querySelector('.v2-select-box')) {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -974,6 +992,11 @@
       installLongPress(item, user);
     });
     updateBulkBar();
+    if (state.playerView === 'list' && innerWidth > 900) {
+      ensureLazyRuntime()
+        .then(({ installVirtualWindow }) => installVirtualWindow(list, { selector: ':scope > li.list-item', rowHeight: 78 }))
+        .catch((error) => console.warn('[dashboard-v2 virtual list]', error));
+    }
   }
 
   function appendUnregisteredPlayers(list) {
@@ -1176,12 +1199,13 @@
   async function loadServerIntelligence() {
     injectServerIntelligence();
     try {
-      const [heatmap, uptime] = await Promise.all([api('/api/admin/server/activity-heatmap?days=30'), api('/api/admin/server/uptime-timeline?days=60')]);
+      const [heatmap, uptime, presence] = await Promise.all([api('/api/admin/server/activity-heatmap?days=30'), api('/api/admin/server/uptime-timeline?days=60'), api('/api/admin/server/presence?days=28')]);
       state.toolData.serverUptime = uptime;
+      state.toolData.serverPresence = presence;
       renderActivityHeatmap('v2-server-heatmap', heatmap);
       renderUptimeTimeline(uptime);
       renderServerFeed();
-      renderServerPresence();
+      renderServerPresence(presence);
     } catch (error) {
       console.warn('[dashboard-v2 server]', error);
     }
@@ -1198,16 +1222,9 @@
     target.innerHTML = rows.length ? `<small class="v2-label">Período atual</small>${strip(current)}${compare && previous.length ? `<small class="v2-label" style="display:block;margin-top:12px">Período anterior</small>${strip(previous)}` : ''}` : '<div class="v2-empty">Sem checks de uptime no período.</div>';
   }
 
-  function renderServerPresence() {
+  function renderServerPresence(rows = state.toolData.serverPresence || []) {
     if (!window.Chart || !document.getElementById('v2-server-presence-chart')) return;
-    const history = typeof globalHistData !== 'undefined' ? globalHistData?.history || [] : [];
-    const days = Array.from({ length: 28 }, (_, index) => new Date(Date.now() - (27 - index) * 86400000));
-    const buckets = days.map((day) => {
-      const key = day.toISOString().slice(0,10);
-      const rows = history.filter((row) => String(row.enteredAt || row.entered_at || '').slice(0,10) === key);
-      return { key, unique: new Set(rows.map((row) => String(row.player || '').toLowerCase())).size, peak: rows.length };
-    });
-    if (!history.length && typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW) buckets.forEach((row,index) => { row.unique = 8 + index % 9; row.peak = 13 + index % 12; });
+    const buckets = rows.map((row) => ({ key: row.day, unique: num(row.unique_players), peak: num(row.peak_players) }));
     const previous = buckets.slice(0,14);
     const current = buckets.slice(14);
     const compare = document.getElementById('v2-server-compare')?.checked;
@@ -1316,6 +1333,27 @@
     overview.className = 'v2-grid two';
     overview.innerHTML = `<article class="v2-panel"><div class="v2-section-head"><div><h3>Heatmap administrativo</h3><p>Ações por dia e hora.</p></div></div><div id="v2-audit-heatmap" class="v2-loading">Carregando...</div></article><article class="v2-panel"><div class="v2-section-head"><div><h3>Admins mais ativos</h3><p>Volume de ações nos últimos 30 dias.</p></div></div><div id="v2-audit-actors" class="v2-performance-list"></div></article>`;
     card.insertBefore(overview, card.querySelector('.audit-tabs'));
+    overview.insertAdjacentHTML('afterend', `<div class="v2-audit-controls"><select class="v2-btn" data-v2-audit-days><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="365">1 ano</option></select><button class="v2-btn" data-v2-audit-view>${icon('git-commit-horizontal')} Alternar lista/timeline</button></div>`);
+    refreshIcons();
+  }
+
+  async function applyAuditTimeline() {
+    if (!state.auditTimeline || typeof auditLogs === 'undefined') return;
+    const list = document.getElementById('audit-log-list');
+    if (!list || !auditLogs.length) return;
+    const items = [...list.querySelectorAll(':scope > .audit-item')];
+    const { groupTimelineByHour } = await ensureLazyRuntime();
+    const groups = groupTimelineByHour(auditLogs);
+    let offset = 0;
+    const nodes = [];
+    groups.forEach((group) => {
+      const heading = document.createElement('div');
+      heading.className = 'v2-audit-hour';
+      heading.textContent = `${group.label} · ${group.logs.length} evento(s)`;
+      nodes.push(heading, ...items.slice(offset, offset + group.logs.length));
+      offset += group.logs.length;
+    });
+    list.replaceChildren(...nodes);
   }
 
   async function loadAuditOverview() {
@@ -1371,10 +1409,15 @@
     }
     panel.innerHTML = '<div class="v2-loading">Comparando períodos...</div>';
     try {
-      const rows = await api('/api/admin/analytics/comparison?days=30');
+      const rows = await api(`/api/admin/analytics/comparison?primary_days=${state.comparisonDays.primary}&compare_days=${state.comparisonDays.compare}`);
       const current = rows.find((row) => row.period === 'current') || {};
       const previous = rows.find((row) => row.period === 'previous') || {};
       panel.innerHTML = `<div class="v2-section-head"><div><h3>Período atual vs. 30 dias anteriores</h3><p>Comparação automática de métricas operacionais.</p></div><button class="v2-btn" data-v2-compare>${icon('x')} Fechar</button></div><div class="v2-kpi-strip" style="margin-top:13px">${[['Usuários ativos','active_users'],['Eventos sociais','social_events'],['Posts','posts'],['Horas de jogo','play_hours'],['Players únicos','unique_players']].map(([label,key]) => `<article class="v2-kpi-card"><div class="v2-kpi-label">${label}</div><div class="v2-kpi-value">${compact(current[key])}</div>${deltaHtml(current[key],previous[key])}<div class="v2-kpi-context">Anterior: ${compact(previous[key])}</div></article>`).join('')}</div>`;
+      const comparisonOptions = [7,14,30,60,90].map((days) => `<option value="${days}">${days} dias</option>`).join('');
+      panel.querySelector('.v2-section-head > div')?.insertAdjacentHTML('beforeend', `<div class="v2-comparison-selects"><label>Período A <select data-v2-comparison-period="primary">${comparisonOptions}</select></label><label>Período B anterior <select data-v2-comparison-period="compare">${comparisonOptions}</select></label></div>`);
+      panel.querySelector('[data-v2-comparison-period="primary"]').value = String(state.comparisonDays.primary);
+      panel.querySelector('[data-v2-comparison-period="compare"]').value = String(state.comparisonDays.compare);
+      panel.querySelector('.v2-section-head h3').textContent = `${state.comparisonDays.primary} dias atuais vs. ${state.comparisonDays.compare} dias anteriores`;
       refreshIcons();
     } catch (error) {
       panel.innerHTML = `<div class="v2-empty">${esc(error.message)}</div>`;
@@ -1472,6 +1515,12 @@
       if (tool) return activateTool(tool.dataset.v2Tool);
       if (event.target.closest('[data-v2-refresh]')) return refreshActiveView();
       if (event.target.closest('[data-v2-compare]')) return showComparison();
+      if (event.target.closest('[data-v2-filter-toggle]')) return document.getElementById('v2-player-toolbar')?.classList.toggle('filters-open');
+      if (event.target.closest('[data-v2-audit-view]')) {
+        state.auditTimeline = !state.auditTimeline;
+        event.target.closest('[data-v2-audit-view]').classList.toggle('active', state.auditTimeline);
+        return renderAuditLogs?.();
+      }
       const step = event.target.closest('[data-v2-calendar-step]');
       if (step) { state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + num(step.dataset.v2CalendarStep), 1); return renderCalendar(); }
       const day = event.target.closest('[data-v2-calendar-day]');
@@ -1510,6 +1559,17 @@
     document.addEventListener('change', (event) => {
       const filter = event.target.closest('[data-v2-player-filter]');
       if (filter) { state.playerFilters[filter.dataset.v2PlayerFilter] = filter.value; postProcessPlayerList(); }
+      const comparison = event.target.closest('[data-v2-comparison-period]');
+      if (comparison) {
+        state.comparisonDays[comparison.dataset.v2ComparisonPeriod] = num(comparison.value);
+        state.comparisonOpen = false;
+        showComparison();
+      }
+      if (event.target.matches('[data-v2-audit-days]')) {
+        auditDaysFilter = num(event.target.value);
+        auditPage = 0;
+        fetchAuditLogs?.();
+      }
       if (event.target.id === 'v2-confidence') {
         const threshold = num(event.target.value);
         document.getElementById('v2-confidence-label').textContent = `${threshold}%`;
@@ -1550,6 +1610,14 @@
       window.renderAdminTab = function patchedAdminTab(...args) {
         const result = original.apply(this, args);
         setTimeout(postProcessPlayerList, 0);
+        return result;
+      };
+    }
+    if (typeof window.renderAuditLogs === 'function') {
+      const original = window.renderAuditLogs;
+      window.renderAuditLogs = function patchedAuditLogs(...args) {
+        const result = original.apply(this, args);
+        if (state.auditTimeline) applyAuditTimeline().catch((error) => console.warn('[dashboard-v2 audit timeline]', error));
         return result;
       };
     }
@@ -1605,6 +1673,11 @@
     const initial = new URL(location.href).searchParams.get('v') || VIEW_BY_ID[new URL(location.href).searchParams.get('module')] || 'command';
     navigate(initial, { replace: true });
     setInterval(() => { updateBadges(); lazyImages(); if (state.view === 'command') renderCommandOverview(); if (state.view === 'server') renderServerFeed(); }, 3000);
+    setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (state.view === 'server') { loadData?.(); loadServerIntelligence(); }
+      if (state.view === 'command' || state.view === 'analytics') loadExecutiveAnalytics?.(true);
+    }, 30000);
     new MutationObserver(() => setupChartDefaults()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
