@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+Allow: /share/
+Allow: /assets/
+Disallow: /api/
+Disallow: /account.html
+Disallow: /dashboard.html
+Disallow: /login.html
+Disallow: /signup.html
+Disallow: /recuperar.html
+Disallow: /community.html?*
+Disallow: /post.html?*
+Disallow: /profile.html?*
+
+User-agent: Googlebot-Image
+Allow: /assets/images/
+Allow: /share/
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+Sitemap: https://forcaaliada.ogabriels.com/sitemap.xml

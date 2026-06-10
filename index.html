@@ -7,13 +7,40 @@
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#060c16">
-<meta name="description" content="Força Aliada: O servidor Minecraft Survival Vanilla feito para durar. Sem resets, economia real e ativo desde 2021. Jogue no PC, Mobile e Console.">
-<title>Força Aliada | Construa para Sempre</title>
+<title>Servidor Minecraft Survival sem Reset | Força Aliada</title>
+<meta name="description" content="Força Aliada é um servidor Minecraft Survival brasileiro sem reset e sem pay-to-win, ativo desde 2021. Jogue no Java ou Bedrock.">
+<meta name="author" content="Força Aliada">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+<link rel="canonical" href="https://forcaaliada.ogabriels.com/">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/">
+<meta property="og:locale" content="pt_BR">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Força Aliada">
 <meta property="og:url" content="https://forcaaliada.ogabriels.com/">
-<meta property="og:title" content="Força Aliada | Construa para Sempre">
-<meta property="og:description" content="Um mundo survival sem reset, sem pay-to-win e sem pressa. Ativo desde 2021.">
+<meta property="og:title" content="Servidor Minecraft Survival sem Reset | Força Aliada">
+<meta property="og:description" content="Um mundo survival persistente, sem pay-to-win e com crossplay Java e Bedrock. Ativo desde 2021.">
 <meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Servidor Minecraft Força Aliada">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Servidor Minecraft Survival sem Reset | Força Aliada">
+<meta name="twitter:description" content="Construa em um mundo persistente com comunidade própria, sem reset e sem pay-to-win.">
+<meta name="twitter:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@graph":[
+    {"@type":"Organization","@id":"https://forcaaliada.ogabriels.com/#organization","name":"Força Aliada","url":"https://forcaaliada.ogabriels.com/","logo":{"@type":"ImageObject","url":"https://forcaaliada.ogabriels.com/assets/images/logo.JPG"},"foundingDate":"2021","sameAs":["https://instagram.com/forcaaliada","https://discord.gg/xZmRkB7PWd","https://whatsapp.com/channel/0029VbC3kNoAzNc1wXb0130e"]},
+    {"@type":"WebSite","@id":"https://forcaaliada.ogabriels.com/#website","url":"https://forcaaliada.ogabriels.com/","name":"Força Aliada","inLanguage":"pt-BR","publisher":{"@id":"https://forcaaliada.ogabriels.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://forcaaliada.ogabriels.com/community.html?q={search_term_string}","query-input":"required name=search_term_string"}},
+    {"@type":"VideoGame","name":"Força Aliada","description":"Servidor brasileiro de Minecraft Survival Vanilla sem reset e sem pay-to-win.","url":"https://forcaaliada.ogabriels.com/","gamePlatform":["Minecraft Java Edition","Minecraft Bedrock Edition","PC","Mobile","Console"],"genre":["Survival","Sandbox","Multiplayer"],"inLanguage":"pt-BR","publisher":{"@id":"https://forcaaliada.ogabriels.com/#organization"}},
+    {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Força Aliada","item":"https://forcaaliada.ogabriels.com/"},{"@type":"ListItem","position":2,"name":"Sistema de Mérito e Capital","item":"https://forcaaliada.ogabriels.com/#sistema"},{"@type":"ListItem","position":3,"name":"Perguntas frequentes","item":"https://forcaaliada.ogabriels.com/#faq"}]},
+    {"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"O servidor tem reset de mapa?","acceptedAnswer":{"@type":"Answer","text":"Não. O mundo da Força Aliada é persistente e existe desde 2021."}},{"@type":"Question","name":"Como funciona a economia?","acceptedAnswer":{"@type":"Answer","text":"A economia usa esmeraldas, comércio e serviços entre jogadores."}},{"@type":"Question","name":"A Força Aliada é pay-to-win?","acceptedAnswer":{"@type":"Answer","text":"Não. Vantagens injustas não são vendidas."}},{"@type":"Question","name":"Qual é o endereço do servidor?","acceptedAnswer":{"@type":"Answer","text":"Use fa.ogabriels.com no Minecraft Java ou Bedrock."}}]}
+  ]
+}
+</script>
+<script defer src="assets/js/fa-seo.js"></script>
 
 <script>
 (function(){
@@ -224,10 +251,11 @@ header {
 /* --- HERO --- */
 .hero {
   height: 95vh;
-  background-image: url('assets/images/hero.png');
-  background-size: cover; background-position: center;
   display: flex; align-items: center; justify-content: center; text-align: center; position: relative;
+  overflow: hidden;
 }
+.hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
 .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6)); }
 .hero-content { position: relative; z-index: 10; color: #fff; max-width: 800px; padding: 20px; }
 .hero h1 { font-size: 5.5rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 16px; line-height: 1; text-shadow: 0 10px 30px rgba(0,0,0,0.2); }
@@ -924,7 +952,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
-<link rel="preload" as="image" href="assets/images/hero.png" fetchpriority="high">
+<link rel="preload" as="image" href="assets/images/hero.webp" type="image/webp" fetchpriority="high">
 </head>
 <body>
 
@@ -937,6 +965,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     <li><a href="#plataformas" onclick="toggleMenu()">Crossplay</a></li>
     <li><a href="#galeria" onclick="toggleMenu()">Galeria</a></li>
     <li><a href="#faq" onclick="toggleMenu()">Dúvidas</a></li>
+    <li><a href="guia.html" onclick="toggleMenu()">Guia</a></li>
     <li><a href="https://manager.forcaaliada.ogabriels.com" style="color: var(--accent);" onclick="toggleMenu()">⚡ Manager</a></li>
     <li><a href="#status" onclick="toggleMenu()" style="color: var(--accent);">Jogar Agora</a></li>
   </ul>
@@ -991,9 +1020,13 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 </header>
 
 <section class="hero reveal" id="inicio" aria-label="Início">
+  <picture class="hero-bg" aria-hidden="true">
+    <source srcset="assets/images/hero.webp" type="image/webp">
+    <img src="assets/images/hero.png" alt="" width="1920" height="1080" fetchpriority="high" decoding="async">
+  </picture>
   <div class="hero-content">
     <h1>Construa para sempre.</h1>
-    <p>O único servidor Survival Vanilla onde sua obra dura anos, não temporadas.<br>Ativo e estável desde 2021.</p>
+    <p>Servidor Minecraft Survival Vanilla sem reset, com Java e Bedrock, onde sua obra dura anos, não temporadas.<br>Ativo e estável desde 2021.</p>
     <div class="hero-actions">
       <a class="btn btn-primary" href="community.html">Entrar na Rede</a>
       <button class="btn btn-secondary" onclick="document.getElementById('status').scrollIntoView({behavior:'smooth'});">Começar a Jogar</button>
@@ -1005,7 +1038,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   <div class="community-entry-wrap">
     <div class="community-entry-copy">
       <span class="community-kicker">Nova rede da comunidade</span>
-      <h2>A vida do servidor agora tem uma praça própria.</h2>
+      <h2>A Rede Social da Comunidade Minecraft</h2>
       <p>Publique conquistas, siga jogadores, responda threads, receba notificações sociais e acompanhe reputação sem sair do site. A rede foi pensada para transformar cada interação em continuidade: menos grupo perdido, mais memória coletiva.</p>
       <div class="community-actions">
         <a class="btn btn-primary" href="community.html" aria-label="Abrir rede social da Força Aliada">
@@ -1022,15 +1055,15 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
     </div>
     <div class="community-preview" aria-hidden="true">
       <div class="community-logo-stage">
-        <img src="assets/images/fa-icon-dark.png" alt="">
+        <img src="assets/images/fa-icon-dark.png" alt="" width="768" height="768" loading="lazy" decoding="async">
       </div>
       <div class="community-post-stack">
         <div class="community-post">
-          <img src="assets/images/fa-icon-dark.png" alt="">
+          <img src="assets/images/fa-icon-dark.png" alt="" width="768" height="768" loading="lazy" decoding="async">
           <div><strong>Quartel social aberto</strong><small>Novos posts, respostas e seguidores aparecem em tempo real.</small></div>
         </div>
         <div class="community-post">
-          <img src="assets/images/fa-icon-dark.png" alt="">
+          <img src="assets/images/fa-icon-dark.png" alt="" width="768" height="768" loading="lazy" decoding="async">
           <div><strong>Notificações da rede</strong><small>Curtidas, comentários, menções e reposts em uma área própria.</small></div>
         </div>
       </div>
@@ -1062,14 +1095,14 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
       <div class="highlight-box">"Servidor mantido pelos fundadores originais desde 2021."</div>
     </div>
     <div class="img-card" onclick="openLightbox(0)" role="button" tabindex="0" aria-label="Ver imagem do servidor">
-      <img src="assets/images/sobre.png" onerror="this.src='https://placehold.co/800x600/e2e8f0/64748b?text=Força+Aliada'" alt="Centro da cidade do servidor">
+      <img src="assets/images/sobre.png" onerror="this.src='https://placehold.co/800x600/e2e8f0/64748b?text=Força+Aliada'" alt="Centro da cidade do servidor" width="1920" height="1080" loading="lazy" decoding="async">
     </div>
   </div>
 </section>
 
 <section class="features reveal" id="cidades">
   <div class="section-header">
-    <h2>A Tríade Urbana</h2>
+    <h2>As Três Cidades do Servidor</h2>
     <p>Três polos distintos. Uma economia integrada.</p>
   </div>
   <div class="features-grid">
@@ -1093,7 +1126,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <section class="sistema-section reveal" id="sistema">
   <div class="sistema-intro">
-    <h2>Dois Pilares.<br>Uma Civilização.</h2>
+    <h2>Sistema de Mérito e Capital: Como Funciona</h2>
     <p>A Força Aliada é governada por um sistema único que separa riqueza de reputação — tornando o servidor justo, profundo e genuinamente meritocrático.</p>
   </div>
 
@@ -1338,18 +1371,18 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 </div>
 <div class="mgr-divider"></div>
 <section class="cross-platform reveal" id="plataformas">
-    <h2>Jogue Onde Quiser</h2>
+    <h2>Jogue Minecraft no PC, Mobile e Console</h2>
     <p>Compatibilidade total. Seu progresso sincronizado em qualquer tela.</p>
   </div>
   <div class="devices-container">
     <div class="switch-console">
-      <img src="assets/images/print_mobile.PNG" onerror="this.src='https://placehold.co/600x400/222/fff?text=Console'" alt="Minecraft no Console">
+      <img src="assets/images/print_mobile.PNG" onerror="this.src='https://placehold.co/600x400/222/fff?text=Console'" alt="Minecraft no Console" width="2622" height="1206" loading="lazy" decoding="async">
     </div>
     <div class="device monitor">
-      <img src="assets/images/print_pc.png" onerror="this.src='https://placehold.co/800x450/222/fff?text=PC'" alt="Minecraft no PC">
+      <img src="assets/images/print_pc.png" onerror="this.src='https://placehold.co/800x450/222/fff?text=PC'" alt="Minecraft no PC" width="856" height="512" loading="lazy" decoding="async">
     </div>
     <div class="device phone">
-      <img src="assets/images/print_mobile.PNG" onerror="this.src='https://placehold.co/400x800/222/fff?text=Mobile'" alt="Minecraft no Celular">
+      <img src="assets/images/print_mobile.PNG" onerror="this.src='https://placehold.co/400x800/222/fff?text=Mobile'" alt="Minecraft no Celular" width="2622" height="1206" loading="lazy" decoding="async">
     </div>
   </div>
   <div class="platform-list" aria-label="Plataformas compatíveis">
@@ -1366,7 +1399,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <section class="status-section reveal" id="status">
   <div class="glass-card">
-    <h2 style="font-size: 24px; margin-bottom: 12px; font-weight: 600;">Status do Servidor</h2>
+    <h2 style="font-size: 24px; margin-bottom: 12px; font-weight: 600;">Status Ao Vivo: fa.ogabriels.com</h2>
     <div style="font-size: 72px; font-weight: 800; letter-spacing: -2px; line-height: 1;" id="player-count" aria-live="polite">--</div>
     <div id="status-label" style="color: var(--success); font-weight: 600; font-size: 14px; letter-spacing: 1px; margin-top: 8px;" aria-live="polite">CONECTANDO...</div>
     <div class="connection-info">
@@ -1387,26 +1420,26 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 
 <section class="gallery reveal" id="galeria">
   <div class="section-header">
-    <h2>Maravilhas da Comunidade</h2>
+    <h2>Galeria: Construções da Comunidade</h2>
     <p>Um pouco do que nossos jogadores construíram.</p>
   </div>
   <div class="bento-grid">
     <div class="bento-item item-big" onclick="openLightbox(1)" role="button" tabindex="0" aria-label="Abrir galeria">
-      <img src="assets/images/galeria1.jpeg" onerror="this.src='https://placehold.co/600x800/e2e8f0/64748b?text=Galeria'" alt="Construção em destaque">
+      <img src="assets/images/galeria1.jpeg" onerror="this.src='https://placehold.co/600x800/e2e8f0/64748b?text=Galeria'" alt="Construção em destaque" width="1366" height="768" loading="lazy" decoding="async">
     </div>
     <div class="bento-item" onclick="openLightbox(2)" role="button" tabindex="0">
-      <img src="assets/images/galeria2.jpeg" onerror="this.src='https://placehold.co/400x400/e2e8f0/64748b?text=Galeria'" alt="Construção secundária">
+      <img src="assets/images/galeria2.jpeg" onerror="this.src='https://placehold.co/400x400/e2e8f0/64748b?text=Galeria'" alt="Construção secundária" width="1366" height="768" loading="lazy" decoding="async">
     </div>
     <div class="bento-item" onclick="openLightbox(3)" role="button" tabindex="0">
       <div class="more-overlay" aria-hidden="true"><span>+24</span></div>
-      <img src="assets/images/galeria3.jpeg" onerror="this.src='https://placehold.co/400x400/e2e8f0/64748b?text=Galeria'" alt="Ver mais fotos">
+      <img src="assets/images/galeria3.jpeg" onerror="this.src='https://placehold.co/400x400/e2e8f0/64748b?text=Galeria'" alt="Ver mais fotos" width="1366" height="768" loading="lazy" decoding="async">
     </div>
   </div>
 </section>
 
 <section class="faq-section reveal" id="faq">
   <div class="section-header" style="margin-top: 80px;">
-    <h2>Dúvidas Comuns</h2>
+    <h2>Perguntas Frequentes sobre o Servidor</h2>
     <p>Tudo o que você precisa saber antes de entrar.</p>
   </div>
   <details>
@@ -1433,6 +1466,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 <footer>
   <h2 style="font-size: 28px; margin-bottom: 16px; font-weight: 600;">Faça parte da história</h2>
   <p style="color: var(--text-secondary); max-width: 500px; margin: 0 auto;">Uma comunidade madura, estável e acolhedora espera por você.</p>
+  <p style="margin-top:16px"><a href="guia.html">Leia o guia completo do servidor</a> · <a href="community.html">Explore a comunidade</a> · <a href="termos.html">Termos</a> · <a href="privacidade.html">Privacidade</a></p>
   <button class="btn btn-primary" style="margin-top: 24px;" onclick="window.open('https://discord.gg/xZmRkB7PWd', '_blank')">Entrar no Discord</button>
   <div class="social-icons">
     <a href="https://whatsapp.com/channel/0029VbC3kNoAzNc1wXb0130e" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="WhatsApp">
@@ -1448,7 +1482,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Visualizador de imagens">
   <button class="close-btn" onclick="closeLightbox()" aria-label="Fechar">&times;</button>
   <button class="lightbox-btn prev-btn" onclick="changeSlide(-1)" aria-label="Imagem anterior">&#10094;</button>
-  <img id="lightbox-img" src="" alt="Imagem ampliada">
+  <img id="lightbox-img" alt="Imagem ampliada" width="1920" height="1080">
   <button class="lightbox-btn next-btn" onclick="changeSlide(1)" aria-label="Próxima imagem">&#10095;</button>
 </div>
 

@@ -11,12 +11,41 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Community">
 <script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script>
+<script defer src="assets/js/fa-seo.js"></script>
 <!-- Cache-Control: HTML nunca deve ser cacheado para garantir que JS/CSS atualizados sejam carregados -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>FA Community | Força Aliada</title>
-<meta name="description" content="Feed social gamificado da comunidade Força Aliada.">
+<title>FA Community | Rede Social Minecraft da Força Aliada</title>
+<meta name="description" content="A rede social da comunidade Minecraft Força Aliada: encontre jogadores, publique construções, participe de threads e acompanhe conquistas.">
+<meta name="author" content="Força Aliada">
+<meta name="robots" content="index,follow,noarchive,max-image-preview:large,max-snippet:-1">
+<link rel="canonical" href="https://forcaaliada.ogabriels.com/community.html">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/community.html">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/community.html">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Força Aliada">
+<meta property="og:title" content="FA Community | Rede Social Minecraft">
+<meta property="og:description" content="Posts, perfis e conquistas da comunidade Minecraft Força Aliada.">
+<meta property="og:url" content="https://forcaaliada.ogabriels.com/community.html">
+<meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FA Community | Rede Social Minecraft">
+<meta name="twitter:description" content="Conheça jogadores, construções e histórias da Força Aliada.">
+<meta name="twitter:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"FA Community","url":"https://forcaaliada.ogabriels.com/community.html","applicationCategory":"SocialNetworkingApplication","operatingSystem":"Web","inLanguage":"pt-BR","description":"Rede social da comunidade Minecraft Força Aliada.","publisher":{"@type":"Organization","name":"Força Aliada","url":"https://forcaaliada.ogabriels.com/"}}
+</script>
+<style>
+body.guest-mode #fab-post,
+body.guest-mode #desktop-chat-btn,
+body.guest-mode #notif-btn,
+body.guest-mode #inline-composer,
+body.guest-mode #friends-bar { display:none!important; }
+</style>
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://api.mcheads.org" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3689,7 +3718,7 @@ body::after{
         </button>
       </div>
       <div class="publish-as-row" id="inline-publish-as-row" hidden>
-        <img id="inline-publish-as-av" src="assets/images/fa-icon-dark.png" alt="">
+        <img id="inline-publish-as-av" src="assets/images/fa-icon-dark.png" alt="" width="32" height="32">
         <label for="inline-publish-as">Publicar como</label>
         <select id="inline-publish-as" data-publish-as="inline"></select>
       </div>
@@ -3812,7 +3841,7 @@ body::after{
       </button>
     </div>
     <button class="mobile-drawer-profile" type="button" id="drawer-profile-btn">
-      <img id="drawer-av" src="assets/images/fa-icon-dark.png" alt="Seu avatar">
+      <img id="drawer-av" src="assets/images/fa-icon-dark.png" alt="Seu avatar" width="50" height="50">
       <span><strong id="drawer-name">...</strong><small id="drawer-handle">@...</small></span>
     </button>
     <nav class="mobile-drawer-nav" aria-label="Atalhos da comunidade">
@@ -3940,7 +3969,7 @@ body::after{
         </div>
       </div>
       <div class="publish-as-row modal-publish-as-row" id="modal-publish-as-row" hidden>
-        <img id="modal-publish-as-av" src="assets/images/fa-icon-dark.png" alt="">
+        <img id="modal-publish-as-av" src="assets/images/fa-icon-dark.png" alt="" width="32" height="32">
         <label for="modal-publish-as">Publicar como</label>
         <select id="modal-publish-as" data-publish-as="modal"></select>
       </div>
@@ -3984,7 +4013,7 @@ body::after{
       <button class="close-btn" type="button" data-crop-cancel aria-label="Cancelar corte"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
     <div class="crop-stage">
-      <img id="crop-image" alt="Imagem selecionada">
+      <img id="crop-image" alt="Imagem selecionada" width="1200" height="675">
     </div>
     <div class="crop-toolbar">
       <div class="crop-ratios" role="group" aria-label="Proporção do corte">
@@ -4027,7 +4056,7 @@ body::after{
   <!-- ── DESKTOP: painel lateral direito ── -->
   <aside class="lb-panel" id="lb-panel" aria-label="Detalhes do post">
     <div class="lb-panel-head">
-      <img class="lb-av" id="lb-av" src="" alt="">
+      <img class="lb-av" id="lb-av" alt="" width="50" height="50">
       <div class="lb-author-wrap">
         <strong id="lb-author" class="lb-author"></strong>
         <span id="lb-handle" class="lb-handle"></span>
@@ -4059,7 +4088,7 @@ body::after{
     <div class="lb-panel-divider"></div>
     <!-- Reply compacto desktop -->
     <div class="lb-reply-wrap" id="lb-reply-wrap-desk">
-      <img class="lb-reply-av" id="lb-reply-av-desk" src="" alt="Seu avatar">
+      <img class="lb-reply-av" id="lb-reply-av-desk" alt="Seu avatar" width="42" height="42">
       <div class="lb-reply-field">
         <textarea class="lb-reply-ta" id="lb-reply-ta-desk" maxlength="280" placeholder="Responder…" rows="2" aria-label="Responder ao post"></textarea>
         <button class="lb-reply-send" id="lb-reply-send-desk" aria-label="Enviar resposta">
@@ -4097,7 +4126,7 @@ body::after{
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <div class="lb-img-wrap" id="lb-img-wrap">
-      <img id="lb-img" class="lb-img" src="" alt="Imagem em tela cheia" draggable="false">
+      <img id="lb-img" class="lb-img" alt="Imagem em tela cheia" width="1200" height="675" draggable="false">
     </div>
     <button class="lb-nav lb-nav-next" id="lb-next" aria-label="Próxima imagem">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
@@ -4143,7 +4172,7 @@ body::after{
     </div>
     <!-- Reply compacto mobile -->
     <div class="lb-mob-reply">
-      <img class="lb-reply-av lb-reply-av-mob" id="lb-reply-av-mob" src="" alt="Seu avatar">
+      <img class="lb-reply-av lb-reply-av-mob" id="lb-reply-av-mob" alt="Seu avatar" width="42" height="42">
       <div class="lb-reply-field">
         <textarea class="lb-reply-ta" id="lb-reply-ta-mob" maxlength="280" placeholder="Adicionar resposta…" rows="1" aria-label="Responder ao post"></textarea>
         <button class="lb-reply-send" id="lb-reply-send-mob" aria-label="Enviar">
@@ -4180,8 +4209,6 @@ function loginUrlForCurrentPage(){
   url.searchParams.set('next', here);
   return `${url.pathname.replace(/^\//,'')}${url.search}`;
 }
-if (!token) location.replace(loginUrlForCurrentPage());
-
 /* ======================= STATE ======================= */
 const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
@@ -4377,7 +4404,7 @@ function communityShareUrl(params={}){
 /* ======================= API ======================= */
 async function api(path, opts={}){
   const h=new Headers(opts.headers||{});
-  h.set('Authorization',`Bearer ${token}`);
+  if(token) h.set('Authorization',`Bearer ${token}`);
   if(opts.body&&!(opts.body instanceof FormData)&&!h.has('Content-Type')) h.set('Content-Type','application/json');
   const timeoutMs=opts.timeoutMs||25000;
   const fetchOpts={...opts};delete fetchOpts.timeoutMs;
@@ -4387,7 +4414,7 @@ async function api(path, opts={}){
     const timeout=setTimeout(()=>controller.abort(),timeoutMs);
     try{
       const r=await fetch(`${base}${path}`,{...fetchOpts,headers:h,signal:controller.signal});
-      if(r.status===401){logout();throw new Error('Sessão inválida');}
+      if(r.status===401){if(token)logout();throw new Error(token?'Sessão inválida':'Entre para continuar');}
       if(r.status===403){const txt403=await r.text();const d403=txt403?JSON.parse(txt403):{};throw new Error(d403.error||'Ação não permitida');}
       const txt=await r.text();
       const data=txt?JSON.parse(txt):{};
@@ -4989,11 +5016,11 @@ function postCardHTML(p){
               <div class="post-menu" role="menu">
                 ${staff&&!isRepost?`<button class="pm-item" data-action="${p.is_pinned?'unpin':'pin'}">${IC.pin} ${p.is_pinned?'Desfixar':'Fixar'}</button>`:''}
                 ${canEdit?`<button class="pm-item" data-action="edit">${IC.edit} Editar</button>`:''}
-                ${canManage?`<button class="pm-item danger" data-action="${isRepost?'delete-repost':'delete'}">${IC.trash} ${isRepost?'Excluir repost':'Excluir'}</button>`:staff&&!isRepost?`<button class="pm-item danger" data-action="admin-delete">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`}
+                ${canManage?`<button class="pm-item danger" data-action="${isRepost?'delete-repost':'delete'}">${IC.trash} ${isRepost?'Excluir repost':'Excluir'}</button>`:staff&&!isRepost?`<button class="pm-item danger" data-action="admin-delete">${IC.trash} Remover como staff</button>`:token?`<button class="pm-item" data-action="report">${IC.flag} Denunciar</button>`:''}
                 <button class="pm-item" data-action="copy">${IC.link} Copiar link</button>
                 <button class="pm-item" data-action="open-thread">${IC.comment} Abrir thread</button>
-                ${!isMe?`<button class="pm-item" data-action="not-interested">${IC.eyeOff} Não tenho interesse</button>`:''}
-                ${!isMe?`<button class="pm-item" data-action="not-interested-author">${IC.userMinus} Menos de @${esc(username)}</button>`:''}
+                ${token&&!isMe?`<button class="pm-item" data-action="not-interested">${IC.eyeOff} Não tenho interesse</button>`:''}
+                ${token&&!isMe?`<button class="pm-item" data-action="not-interested-author">${IC.userMinus} Menos de @${esc(username)}</button>`:''}
               </div>
             </div>
           </div>
@@ -5127,7 +5154,7 @@ async function loadFeed({reset=false}={}){
       p.set('cursor_score', safeScore);
       p.set('cursor_id',String(state.cursor.id));
     }
-    const data=await api(`/api/community/feed?${p}`);
+    const data=await api(`${token?'/api/community/feed':'/api/public/community/feed'}?${p}`);
     const inc=Array.isArray(data.posts)?data.posts:[];
     state.posts=reset?inc:[...state.posts,...inc];
     state.feedEvaluationTimestamp=data.evaluation_timestamp||state.feedEvaluationTimestamp;
@@ -8517,6 +8544,7 @@ function bindEvents(){
   $('#theme-btn').addEventListener('click',toggleTheme);
   $('#user-btn').addEventListener('click',e=>{
     e.stopPropagation();
+    if(!token){location.href=loginUrlForCurrentPage();return}
     const menu=$('#account-menu');
     const open=!menu?.classList.contains('show');
     menu?.classList.toggle('show',open);
@@ -8858,10 +8886,11 @@ function bindEvents(){
         e.stopPropagation();
         const a=act.dataset.action;
         if(a==='menu'){e.stopPropagation();openPostMenu(act.closest('.more-btn'));return}
+        if(!token&&!['share','copy','open-thread'].includes(a)){location.href=loginUrlForCurrentPage();return}
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='show-likers'){e.stopPropagation();showSocialSheet(id,'likes');return}
         if(a==='show-reposters'){e.stopPropagation();showSocialSheet(id,'reposts');return}
-        if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
+        if(a==='open-thread'){e.preventDefault();if(!token){location.href=`share/post/${encodeURIComponent(id)}`;return}navigatePost(id);return}
         if(a==='repost'){
           const repostBtn=act.closest('.pa-repost');
           if(repostBtn?.classList.contains('is-on'))toggleRepost(id,repostBtn);
@@ -8886,6 +8915,7 @@ function bindEvents(){
         // Don't navigate if the user was selecting text (click+drag to highlight)
         const sel=window.getSelection();
         if(sel&&sel.toString().length>0) return;
+        if(!token){location.href=`share/post/${encodeURIComponent(id)}`;return}
         navigatePost(id);
       }
     }
@@ -8957,7 +8987,7 @@ function bindEvents(){
       if(state.routeActive||state.loading||document.hidden) return;
       try{
         const p=new URLSearchParams({limit:'5',filter:state.filter,evaluation_timestamp:new Date().toISOString(),session_seed:ImpressionTracker.sessionSeed});
-        const data=await api(`/api/community/feed?${p}`);
+        const data=await api(`${token?'/api/community/feed':'/api/public/community/feed'}?${p}`);
         const incoming=Array.isArray(data.posts)?data.posts:[];
         const existingIds=new Set(state.posts.map(p=>String(p.repost_of_id||p.id)));
         const truly_new=incoming.filter(p=>!existingIds.has(String(p.repost_of_id||p.id)));
@@ -9476,16 +9506,30 @@ async function boot(){
     scheduleInput.min=new Date(min.getTime()-min.getTimezoneOffset()*60000).toISOString().slice(0,16);
   }
   ensureBrowserNotificationRegistration().catch(()=>{});
-  try{await loadMe();}
-  catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
-  await loadAffiliations();
+  if(token){
+    try{await loadMe();}
+    catch(e){toast('error','Sessão inválida',e.message||'Faça login novamente.');setTimeout(logout,1000);return}
+    await loadAffiliations();
+  }else{
+    document.body.classList.add('guest-mode');
+    $('#top-name').textContent='Entrar';
+    $('#top-av').src='assets/images/fa-icon-dark.png';
+    $('#mini-name').textContent='Visitante';
+    $('#mini-handle').textContent='Explore a comunidade';
+    ['#fab-post','#inline-composer','#desktop-chat-btn','#notif-btn','#my-profile-btn'].forEach(sel=>{const el=$(sel);if(el)el.hidden=true;});
+    $$('.tab[data-tab="following"],[data-filter="following"],#social-notif-nav').forEach(el=>el.hidden=true);
+  }
   // Marca que o feed já foi carregado pelo boot para o showFeedRoute não duplicar
   state._bootFeedLoaded = true;
-  await Promise.allSettled([loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]);
+  await Promise.allSettled(token
+    ? [loadFeed({reset:true}),loadPlayers(),loadTrending(),loadFriendsBar(),loadNotifs()]
+    : [loadFeed({reset:true})]);
   state._bootFeedLoaded = false;
   Router.init();
-  startPollSync();
-  setInterval(()=>{if(!document.hidden)loadNotifs()},45000);
+  if(token){
+    startPollSync();
+    setInterval(()=>{if(!document.hidden)loadNotifs()},45000);
+  }
 }
 boot();
 </script>

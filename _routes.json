@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "include": [
+    "/share/*",
+    "/sitemap.xml",
+    "/sitemap-pages.xml",
+    "/sitemap-profiles.xml",
+    "/sitemap-posts.xml",
+    "/sitemap-posts-page-*.xml"
+  ],
+  "exclude": []
+}

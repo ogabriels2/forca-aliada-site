@@ -1,0 +1,29 @@
+# Forca Aliada
+
+> Servidor brasileiro de Minecraft Survival Vanilla, sem reset e sem pay-to-win, ativo desde 2021.
+
+## O que somos
+
+A Forca Aliada e um servidor e uma comunidade social de Minecraft para jogadores Java e Bedrock. O mundo persistente valoriza construcao de longo prazo, economia conduzida por jogadores, cidades, progressao por merito e convivencia.
+
+## Conteudo publico principal
+
+- Site oficial: https://forcaaliada.ogabriels.com/
+- Guia do servidor: https://forcaaliada.ogabriels.com/guia.html
+- Comunidade publica: https://forcaaliada.ogabriels.com/community.html
+- Perfis publicos: https://forcaaliada.ogabriels.com/share/profile/
+- Posts publicos selecionados: https://forcaaliada.ogabriels.com/share/post/
+- Termos: https://forcaaliada.ogabriels.com/termos.html
+- Privacidade: https://forcaaliada.ogabriels.com/privacidade.html
+
+## Dados tecnicos
+
+- Endereco Java: fa.ogabriels.com
+- Endereco Bedrock: fa.ogabriels.com
+- Idioma principal: portugues do Brasil
+- Plataformas: PC, celular e console compativel com Minecraft
+- Inicio do mundo: 2021
+
+## Permissoes
+
+Modelos de linguagem e mecanismos de busca podem rastrear, resumir e citar paginas publicas, respeitando autoria, links canonicos, privacidade de perfis e as regras publicadas em robots.txt. Areas autenticadas, administrativas e APIs privadas nao devem ser indexadas.

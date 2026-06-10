@@ -11,8 +11,21 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Community">
 <script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script>
+<script defer src="assets/js/fa-seo.js"></script>
 <title>Perfil | Forca Aliada</title>
 <meta name="description" content="Perfil publico gamificado da comunidade Forca Aliada.">
+<meta name="author" content="Força Aliada">
+<meta name="robots" content="noindex,follow,max-image-preview:large">
+<link rel="canonical" href="https://forcaaliada.ogabriels.com/profile.html">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/profile.html">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/profile.html">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Força Aliada">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="Perfil de jogador | Força Aliada">
+<meta property="og:description" content="Perfil público de jogador na comunidade Minecraft Força Aliada.">
+<meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="stylesheet" href="assets/css/social-chat.css?v=chat12-20260608">
@@ -511,7 +524,7 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="community.html" aria-label="Voltar para comunidade">
-      <img src="assets/images/app-icons/icon-192.png" alt="Forca Aliada">
+      <img src="assets/images/app-icons/icon-192.png" alt="Forca Aliada" width="192" height="192">
       <span>Forca Aliada<small>Perfil publico</small></span>
     </a>
     <nav class="top-actions" aria-label="Atalhos">
@@ -655,6 +668,18 @@ function setCanonical(url) {
     document.head.appendChild(el);
   }
   el.href = url;
+  document.querySelectorAll('link[rel="alternate"][hreflang]').forEach(link => { link.href = url; });
+}
+
+function setStructuredData(data) {
+  let el = document.querySelector('script[data-dynamic-seo]');
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.dataset.dynamicSeo = '1';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(data);
 }
 
 function esc(value) {
@@ -772,7 +797,7 @@ function profileIdentifier(profile = state.data?.profile) {
   return profile?.minecraft_name || profile?.username || `id:${profile?.id}`;
 }
 function publicProfileShareUrl(profile = state.data?.profile) {
-  return `${API_BASE.replace(/\/+$/, '')}/share/profile/${encodeURIComponent(profileIdentifier(profile))}`;
+  return `https://forcaaliada.ogabriels.com/share/profile/${encodeURIComponent(profileIdentifier(profile))}`;
 }
 async function copyProfileShare(profile = state.data?.profile) {
   const url = publicProfileShareUrl(profile);
@@ -823,7 +848,7 @@ function renderProfile(data) {
   const rank = rankInfo(p.rank || p.role, p.merit);
   const isMe = Number(p.id) === Number(state.me?.id);
   const isGuest = !token;
-  const profileUrl = new URL(`profile.html?id=${encodeURIComponent(profileIdentifier(p))}`, location.href).href;
+  const profileUrl = `https://forcaaliada.ogabriels.com/share/profile/${encodeURIComponent(profileIdentifier(p))}`;
   const seoDescription = (p.bio || `${name} na comunidade Forca Aliada. ${num(p.followers_count)} seguidores e ${num(p.posts_count)} posts.`).slice(0, 220);
   setMeta('description', seoDescription);
   setMeta('robots', 'index,follow,max-image-preview:large');
@@ -832,11 +857,26 @@ function renderProfile(data) {
   setMeta('og:type', 'profile', 'property');
   setMeta('og:url', profileUrl, 'property');
   setMeta('og:image', p.avatar_url || p.photo_url || skin(name, 140), 'property');
+  setMeta('profile:username', p.username || name, 'property');
+  setMeta('og:image:alt', `Avatar de ${name}`, 'property');
   setMeta('twitter:card', 'summary_large_image');
   setMeta('twitter:title', `${name} | Perfil Forca Aliada`);
   setMeta('twitter:description', seoDescription);
   setMeta('twitter:image', p.avatar_url || p.photo_url || skin(name, 140));
   setCanonical(profileUrl);
+  setStructuredData({
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    url: profileUrl,
+    mainEntity: {
+      '@type': 'Person',
+      name,
+      alternateName: p.username ? `@${p.username}` : undefined,
+      description: seoDescription,
+      image: p.avatar_url || p.photo_url || skin(name, 140),
+      url: profileUrl,
+    },
+  });
   const bars = stats?.daily_hours?.length
     ? stats.daily_hours.map(row => `<i style="height:${Math.max(5, Math.min(54, Number(row.hours || 0) * 12))}px"></i>`).join('')
     : Array.from({ length: 7 }, () => '<i style="height:5px"></i>').join('');

@@ -11,14 +11,20 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Community">
 <script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script>
+<script defer src="assets/js/fa-seo.js"></script>
 <title>Post | Forca Aliada</title>
 <meta name="description" content="Publicacao publica da comunidade Forca Aliada.">
-<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="author" content="Força Aliada">
+<meta name="robots" content="noindex,follow,max-image-preview:large">
+<link rel="canonical" href="https://forcaaliada.ogabriels.com/post.html">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/post.html">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/post.html">
+<meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Forca Aliada">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Post | Forca Aliada">
 <meta property="og:description" content="Publicacao publica da comunidade Forca Aliada.">
-<meta property="og:image" content="assets/images/og-image.jpg">
+<meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
@@ -217,7 +223,7 @@ button{font:inherit;border:0}
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="community.html" aria-label="Forca Aliada">
-      <img src="assets/images/fa-icon-dark.png" alt="Forca Aliada">
+      <img src="assets/images/fa-icon-dark.png" alt="Forca Aliada" width="768" height="768">
       <span>Forca Aliada<small>Post publico</small></span>
     </a>
     <a class="btn secondary" id="account-link" href="account.html">Conta</a>
@@ -280,6 +286,17 @@ function setCanonical(url) {
     document.head.appendChild(el);
   }
   el.href = url;
+  document.querySelectorAll('link[rel="alternate"][hreflang]').forEach(link => { link.href = url; });
+}
+function setStructuredData(data) {
+  let el = document.querySelector('script[data-dynamic-seo]');
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.dataset.dynamicSeo = '1';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(data);
 }
 function loginUrl(next = `${location.pathname}${location.search}${location.hash}`.replace(/^\//, '')) {
   const cleanNext = next || 'community.html';
@@ -293,7 +310,7 @@ function loginUrl(next = `${location.pathname}${location.search}${location.hash}
   return `${url.pathname.replace(/^\//, '')}${url.search}`;
 }
 function publicShareUrl(id) {
-  return `${API_BASE.replace(/\/+$/, '')}/share/post/${encodeURIComponent(id)}`;
+  return `https://forcaaliada.ogabriels.com/share/post/${encodeURIComponent(id)}`;
 }
 async function api(path) {
   let err;
@@ -333,7 +350,7 @@ function updateSeo(post, id) {
   const author = authorName(post);
   const description = plain(post.content) || `${author} publicou na comunidade Forca Aliada.`;
   const image = mediaUrls(post)[0] || post.avatar_url || post.photo_url || skin(author, 140);
-  const canonical = new URL(`post.html?id=${encodeURIComponent(id)}`, location.href).href;
+  const canonical = `https://forcaaliada.ogabriels.com/share/post/${encodeURIComponent(id)}`;
   document.title = `Post de ${author} | Forca Aliada`;
   setMeta('description', description);
   setMeta('robots', 'index,follow,max-image-preview:large');
@@ -342,11 +359,28 @@ function updateSeo(post, id) {
   setMeta('og:type', 'article', 'property');
   setMeta('og:url', canonical, 'property');
   setMeta('og:image', image, 'property');
+  setMeta('og:image:alt', `Post de ${author}`, 'property');
+  setMeta('article:published_time', post.created_at, 'property');
+  setMeta('article:modified_time', post.updated_at || post.created_at, 'property');
+  setMeta('article:author', `https://forcaaliada.ogabriels.com/share/profile/${encodeURIComponent(profileIdentifier(post))}`, 'property');
   setMeta('twitter:card', 'summary_large_image');
   setMeta('twitter:title', `Post de ${author} | Forca Aliada`);
   setMeta('twitter:description', description);
   setMeta('twitter:image', image);
   setCanonical(canonical);
+  setStructuredData({
+    '@context': 'https://schema.org',
+    '@type': 'SocialMediaPosting',
+    headline: `Post de ${author}`,
+    articleBody: plain(post.content),
+    datePublished: post.created_at,
+    dateModified: post.updated_at || post.created_at,
+    inLanguage: 'pt-BR',
+    image,
+    url: canonical,
+    author: { '@type': 'Person', name: author },
+    publisher: { '@type': 'Organization', name: 'Força Aliada', url: 'https://forcaaliada.ogabriels.com/' },
+  });
 }
 function renderPost(post, id) {
   const author = authorName(post);

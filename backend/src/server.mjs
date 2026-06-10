@@ -23,6 +23,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import multer from 'multer';
@@ -232,6 +233,7 @@ function isMcStateTrustworthy() {
 const app = express();
 app.set('trust proxy', 1);
 app.use(helmet());
+app.use(compression());
 
 // CORS
 const defaultCorsOrigins = [
@@ -1781,7 +1783,7 @@ function publicPageUrl(path = '/') {
   return new URL(path, `${FRONTEND_BASE_URL}/`).href;
 }
 
-const PUBLIC_SHARE_BASE_URL = (process.env.PUBLIC_SHARE_BASE_URL || '').replace(/\/+$/, '');
+const PUBLIC_SHARE_BASE_URL = (process.env.PUBLIC_SHARE_BASE_URL || FRONTEND_BASE_URL).replace(/\/+$/, '');
 
 function absolutePublicUrl(value = '') {
   if (!value) return '';
@@ -1794,9 +1796,7 @@ function absolutePublicUrl(value = '') {
 }
 
 function publicShareBaseUrl(req) {
-  if (PUBLIC_SHARE_BASE_URL) return PUBLIC_SHARE_BASE_URL;
-  if (req) return `${req.protocol}://${req.get('host')}`;
-  return FRONTEND_BASE_URL;
+  return PUBLIC_SHARE_BASE_URL || FRONTEND_BASE_URL;
 }
 
 function publicSharePageUrl(req, path = '/') {
@@ -1809,20 +1809,49 @@ function firstMediaUrl(mediaUrls) {
   return absolutePublicUrl(raw);
 }
 
-function renderShareHtml({ title, description, image, canonical, redirectUrl, type = 'website', jsonLd = {} }) {
+function isoDate(value = Date.now()) {
+  const date = new Date(value || Date.now());
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+}
+
+function renderShareHtml({
+  title,
+  description,
+  image,
+  canonical,
+  redirectUrl,
+  type = 'website',
+  jsonLd = {},
+  breadcrumbs = [],
+  extraContent = '',
+  noindex = false,
+  primaryActionLabel = 'Abrir na FA Community',
+  additionalLinks = [],
+}) {
   const safeTitle = title || 'Forca Aliada';
   const safeDescription = description || 'Comunidade Forca Aliada.';
   const safeImage = image || publicAssetUrl('/assets/images/og-image.jpg');
   const safeCanonical = canonical || publicPageUrl('/');
   const safeRedirect = redirectUrl || safeCanonical;
-  const ld = {
-    '@context': 'https://schema.org',
-    ...jsonLd,
-    name: safeTitle,
-    description: safeDescription,
-    url: safeCanonical,
-    image: safeImage,
-  };
+  const graph = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+  if (breadcrumbs.length) {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: breadcrumbs.map((item, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: item.name,
+        item: item.url,
+      })),
+    });
+  }
+  const ld = { '@context': 'https://schema.org', '@graph': graph };
+  const breadcrumbHtml = breadcrumbs.length ? `<nav class="breadcrumbs" aria-label="Breadcrumb">${breadcrumbs.map((item, index) => (
+    index === breadcrumbs.length - 1
+      ? `<span aria-current="page">${htmlEscape(item.name)}</span>`
+      : `<a href="${htmlEscape(item.url)}">${htmlEscape(item.name)}</a><span aria-hidden="true">/</span>`
+  )).join('')}</nav>` : '';
+  const linksHtml = additionalLinks.length ? `<aside class="more"><h2>Explore a Forca Aliada</h2><div>${additionalLinks.map(link => `<a href="${htmlEscape(link.url)}">${htmlEscape(link.label)}</a>`).join('')}</div></aside>` : '';
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -1830,28 +1859,79 @@ function renderShareHtml({ title, description, image, canonical, redirectUrl, ty
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${htmlEscape(safeTitle)}</title>
 <meta name="description" content="${htmlEscape(safeDescription)}">
+<meta name="author" content="Forca Aliada">
+<meta name="robots" content="${noindex ? 'noindex,nofollow,noarchive' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'}">
 <link rel="canonical" href="${htmlEscape(safeCanonical)}">
+<link rel="alternate" hreflang="pt-BR" href="${htmlEscape(safeCanonical)}">
+<link rel="alternate" hreflang="x-default" href="${htmlEscape(safeCanonical)}">
 <meta property="og:type" content="${htmlEscape(type)}">
 <meta property="og:site_name" content="Forca Aliada">
+<meta property="og:locale" content="pt_BR">
 <meta property="og:title" content="${htmlEscape(safeTitle)}">
 <meta property="og:description" content="${htmlEscape(safeDescription)}">
 <meta property="og:url" content="${htmlEscape(safeCanonical)}">
 <meta property="og:image" content="${htmlEscape(safeImage)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${htmlEscape(safeTitle)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${htmlEscape(safeTitle)}">
 <meta name="twitter:description" content="${htmlEscape(safeDescription)}">
 <meta name="twitter:image" content="${htmlEscape(safeImage)}">
 <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
-<meta http-equiv="refresh" content="0;url=${htmlEscape(safeRedirect)}">
+<style>
+:root{color-scheme:dark;--bg:#07111e;--surface:#0f1d2d;--surface2:#14263b;--text:#f4f8ff;--muted:#a9b8cc;--line:#29415d;--accent:#68dca8;--blue:#82afff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 75% -10%,#17365a 0,transparent 38%),var(--bg);color:var(--text);font:17px/1.65 system-ui,-apple-system,Segoe UI,sans-serif}a{color:var(--blue)}.top,main,.more,footer{width:min(900px,calc(100% - 36px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;padding:22px 0}.brand{color:var(--text);font-weight:900;text-decoration:none;letter-spacing:.05em}.top nav{display:flex;gap:18px}.breadcrumbs{display:flex;gap:9px;flex-wrap:wrap;color:var(--muted);font-size:.9rem;margin-bottom:20px}.breadcrumbs a{color:var(--muted)}main{padding:52px 0}.card,.more{background:linear-gradient(145deg,var(--surface),var(--surface2));border:1px solid var(--line);border-radius:25px;padding:clamp(22px,5vw,44px);box-shadow:0 24px 90px rgba(0,0,0,.22)}h1{font-size:clamp(2rem,6vw,4rem);line-height:1.06;letter-spacing:-.04em;margin:0 0 18px}.description{font-size:1.15rem;color:var(--muted);white-space:pre-wrap}.cta{display:inline-block;margin-top:22px;background:var(--accent);color:#052216;padding:12px 18px;border-radius:999px;font-weight:900;text-decoration:none}.stats{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0}.stat{background:#081521;border:1px solid var(--line);border-radius:14px;padding:9px 13px;color:var(--muted)}.media{display:grid;gap:12px;margin-top:24px}.media img{display:block;width:100%;height:auto;max-height:660px;object-fit:cover;border-radius:18px;background:#07111e}.post-list{display:grid;gap:12px;margin-top:24px}.post-card{display:block;background:#081521;border:1px solid var(--line);border-radius:16px;padding:16px;color:var(--text);text-decoration:none}.post-card small{color:var(--muted)}.more{margin-top:22px;padding:26px}.more h2{margin-top:0;font-size:1.1rem}.more div{display:flex;gap:14px;flex-wrap:wrap}footer{padding:38px 0 60px;color:var(--muted);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}@media(max-width:620px){.top nav{display:none}main{padding-top:28px}}
+</style>
 </head>
 <body>
-<main style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:680px;margin:48px auto;padding:0 20px">
+<header class="top"><a class="brand" href="${htmlEscape(publicPageUrl('/'))}">FORCA ALIADA</a><nav><a href="${htmlEscape(publicPageUrl('/guia.html'))}">Guia</a><a href="${htmlEscape(publicPageUrl('/community.html'))}">Comunidade</a></nav></header>
+<main>
+${breadcrumbHtml}
+<article class="card">
 <h1>${htmlEscape(safeTitle)}</h1>
-<p>${htmlEscape(safeDescription)}</p>
-<p><a href="${htmlEscape(safeRedirect)}">Abrir na Forca Aliada</a></p>
+<p class="description">${htmlEscape(safeDescription)}</p>
+${extraContent}
+<a class="cta" href="${htmlEscape(safeRedirect)}">${htmlEscape(primaryActionLabel)}</a>
+</article>
 </main>
+${linksHtml}
+<footer><span>Forca Aliada, ativa desde 2021.</span><span><a href="${htmlEscape(publicPageUrl('/termos.html'))}">Termos</a> · <a href="${htmlEscape(publicPageUrl('/privacidade.html'))}">Privacidade</a></span></footer>
 </body>
 </html>`;
+}
+
+function renderShareNotFound(title, description) {
+  return renderShareHtml({
+    title,
+    description,
+    canonical: publicPageUrl('/community.html'),
+    redirectUrl: publicPageUrl('/community.html'),
+    noindex: true,
+    primaryActionLabel: 'Voltar para a comunidade',
+    jsonLd: { '@type': 'WebPage', name: title, description },
+  });
+}
+
+function setShareResponseHeaders(res, cacheControl) {
+  res.set({
+    'Cache-Control': cacheControl,
+    'Content-Security-Policy': "default-src 'self'; img-src 'self' https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    'X-Content-Type-Options': 'nosniff',
+  });
+}
+
+function renderPostMedia(mediaUrls = [], alt = '') {
+  const media = mediaUrls.map(absolutePublicUrl).filter(Boolean).slice(0, 4);
+  if (!media.length) return '';
+  return `<div class="media">${media.map((url, index) => `<img src="${htmlEscape(url)}" alt="${htmlEscape(`${alt} - imagem ${index + 1}`)}" title="${htmlEscape(alt)}" width="1200" height="675" loading="${index ? 'lazy' : 'eager'}" decoding="async">`).join('')}</div>`;
+}
+
+function renderPublicPostList(posts = [], heading = 'Posts recentes') {
+  if (!posts.length) return '';
+  return `<section class="post-list"><h2>${htmlEscape(heading)}</h2>${posts.slice(0, 6).map(post => {
+    const excerpt = plainText(post.content, 150) || 'Publicacao com imagem na comunidade.';
+    return `<a class="post-card" href="${htmlEscape(publicPageUrl(`/share/post/${encodeURIComponent(post.id)}`))}">${htmlEscape(excerpt)}<br><small>${Number(post.likes_count || 0)} curtidas · ${Number(post.comments_count || 0)} comentarios</small></a>`;
+  }).join('')}</section>`;
 }
 
 async function loadPublicPost(postId) {
@@ -1967,6 +2047,67 @@ app.get('/api/public/community/posts/:id', async (req, res) => {
   }
 });
 
+app.get('/api/public/community/feed', async (req, res) => {
+  const limit = clampInt(req.query.limit, 20, 1, 30);
+  const cursor = parseInt(req.query.cursor_id || req.query.cursor, 10) || null;
+  const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
+  const hashtag = req.query.hashtag ? `%#${sanitize(req.query.hashtag).replace(/^#/, '').toLowerCase()}%` : null;
+  const params = [limit];
+  const conditions = [
+    'p.repost_of_id IS NULL',
+    'COALESCE(up.public_profile, TRUE) = TRUE',
+  ];
+  if (cursor) {
+    params.push(cursor);
+    conditions.push(`p.id < $${params.length}`);
+  }
+  if (search) {
+    params.push(search);
+    conditions.push(`(LOWER(COALESCE(p.content, '')) LIKE $${params.length} OR LOWER(COALESCE(u.minecraft_name, u.username, '')) LIKE $${params.length})`);
+  }
+  if (hashtag) {
+    params.push(hashtag);
+    conditions.push(`LOWER(COALESCE(p.content, '')) LIKE $${params.length}`);
+  }
+  try {
+    const { rows } = await pool.query(`
+      SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned, p.pinned_at,
+             p.created_by_user_id, NULL::integer AS repost_of_id,
+             u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role, u.is_platform_verified,
+             COALESCE(up.display_name, '') AS display_name,
+             COALESCE(up.avatar_url, '') AS avatar_url,
+             COALESCE(up.cover_url, '') AS cover_url,
+             ${primaryIntegrationFieldsSql('u')} AS integration,
+             ${socialRankSql('u', 'pb')} AS rank,
+             ${socialMeritSql('u', 'pb')} AS merit,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
+             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+             (SELECT COUNT(*) FROM post_saves ps WHERE ps.post_id = p.id)::int AS saves_count,
+             FALSE AS liked_by_me, FALSE AS reposted_by_me, FALSE AS saved_by_me,
+             '[]'::json AS recent_comments, NULL::json AS poll
+      FROM user_posts p
+      JOIN users u ON p.author_id = u.id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
+      LIMIT $1
+    `, params);
+    const lastId = rows.at(-1)?.id || null;
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=1800');
+    res.json({
+      posts: rows,
+      next_cursor: rows.length === limit && lastId ? { score: 0, id: lastId } : null,
+      has_more: rows.length === limit,
+      public_preview: true,
+    });
+  } catch (e) {
+    console.error('[GET /api/public/community/feed]', e);
+    res.status(500).json({ error: 'Erro ao buscar o feed publico.' });
+  }
+});
+
 app.get('/api/public/community/player/:identifier/full-profile', async (req, res) => {
   try {
     const payload = await loadPublicProfile(req.params.identifier);
@@ -1981,12 +2122,36 @@ app.get('/api/public/community/player/:identifier/full-profile', async (req, res
 app.get('/share/post/:id', async (req, res) => {
   try {
     const post = await loadPublicPost(req.params.id);
-    if (!post) return res.redirect(publicPageUrl('/community.html'));
+    if (!post) {
+      setShareResponseHeaders(res, 'public, max-age=60, s-maxage=300');
+      return res.status(404).type('html').send(renderShareNotFound('Post indisponivel | Forca Aliada', 'Este post nao existe, foi removido ou nao pertence a um perfil publico.'));
+    }
     const author = post.display_name || post.minecraft_name || post.username || 'Jogador';
-    const description = plainText(post.content, 220) || `${author} publicou na comunidade Forca Aliada.`;
+    const description = plainText(post.content, 260) || `${author} compartilhou uma publicacao com a comunidade Minecraft Forca Aliada.`;
     const image = firstMediaUrl(post.media_urls) || absolutePublicUrl(post.avatar_url) || absolutePublicUrl(post.photo_url) || publicAssetUrl('/assets/images/og-image.jpg');
     const canonical = publicSharePageUrl(req, `/share/post/${encodeURIComponent(post.id)}`);
     const redirectUrl = publicPageUrl(`/post.html?id=${encodeURIComponent(post.id)}`);
+    const authorIdentifier = post.minecraft_name || post.username || `id:${post.author_id}`;
+    const authorUrl = publicSharePageUrl(req, `/share/profile/${encodeURIComponent(authorIdentifier)}`);
+    const related = await pool.query(`
+      SELECT p.id, p.content, p.media_urls, p.created_at,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count
+      FROM user_posts p
+      JOIN users u ON u.id = p.author_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      WHERE p.id <> $1
+        AND p.repost_of_id IS NULL
+        AND COALESCE(up.public_profile, TRUE) = TRUE
+        AND (array_length(p.media_urls, 1) > 0 OR length(trim(COALESCE(p.content, ''))) >= 40)
+      ORDER BY ((SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) +
+                (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE) * 2) DESC,
+               p.created_at DESC
+      LIMIT 4
+    `, [post.id]);
+    const stats = `<div class="stats"><span class="stat">${Number(post.likes_count || 0)} curtidas</span><span class="stat">${Number(post.comments_count || 0)} comentarios</span><span class="stat">${Number(post.reposts_count || 0)} reposts</span><a class="stat" href="${htmlEscape(authorUrl)}">Perfil de ${htmlEscape(author)}</a></div>`;
+    const postImages = (post.media_urls || []).map(absolutePublicUrl).filter(Boolean);
+    setShareResponseHeaders(res, 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800');
     res.type('html').send(renderShareHtml({
       title: `Post de ${author} | Forca Aliada`,
       description,
@@ -1994,21 +2159,52 @@ app.get('/share/post/:id', async (req, res) => {
       canonical,
       redirectUrl,
       type: 'article',
+      breadcrumbs: [
+        { name: 'Inicio', url: publicPageUrl('/') },
+        { name: 'Comunidade', url: publicPageUrl('/community.html') },
+        { name: `Post de ${author}`, url: canonical },
+      ],
+      extraContent: `${stats}${renderPostMedia(post.media_urls, `Post de ${author}`)}${renderPublicPostList(related.rows, 'Mais posts da comunidade')}`,
+      additionalLinks: [
+        { label: 'Conheca o servidor', url: publicPageUrl('/') },
+        { label: 'Leia o guia', url: publicPageUrl('/guia.html') },
+        { label: `Veja o perfil de ${author}`, url: authorUrl },
+      ],
       jsonLd: {
         '@type': 'SocialMediaPosting',
+        '@id': canonical,
         headline: `Post de ${author}`,
+        articleBody: plainText(post.content, 5000),
         datePublished: post.created_at,
         dateModified: post.updated_at || post.created_at,
-        author: { '@type': 'Person', name: author },
+        inLanguage: 'pt-BR',
+        url: canonical,
+        author: {
+          '@type': 'Person',
+          name: author,
+          url: authorUrl,
+          image: absolutePublicUrl(post.avatar_url) || absolutePublicUrl(post.photo_url) || (post.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(post.minecraft_name)}/80.png` : undefined),
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: 'Forca Aliada',
+          url: publicPageUrl('/'),
+          logo: { '@type': 'ImageObject', url: publicAssetUrl('/assets/images/logo.JPG') },
+        },
+        mainEntityOfPage: canonical,
+        image: postImages.length ? postImages : [image],
+        isPartOf: { '@type': 'WebApplication', name: 'FA Community', url: publicPageUrl('/community.html') },
         interactionStatistic: [
           { '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: Number(post.likes_count || 0) },
           { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: Number(post.comments_count || 0) },
+          { '@type': 'InteractionCounter', interactionType: 'https://schema.org/ShareAction', userInteractionCount: Number(post.reposts_count || 0) },
         ],
       },
     }));
   } catch (e) {
     console.error('[GET /share/post/:id]', e);
-    res.redirect(publicPageUrl('/community.html'));
+    setShareResponseHeaders(res, 'public, max-age=60, s-maxage=300');
+    res.status(500).type('html').send(renderShareNotFound('Post temporariamente indisponivel | Forca Aliada', 'Nao foi possivel carregar este post agora.'));
   }
 });
 
@@ -2016,13 +2212,22 @@ app.get('/share/profile/:identifier', async (req, res) => {
   try {
     const payload = await loadPublicProfile(req.params.identifier);
     const profile = payload?.profile;
-    if (!profile) return res.redirect(publicPageUrl('/community.html'));
+    if (!profile) {
+      setShareResponseHeaders(res, 'public, max-age=60, s-maxage=300');
+      return res.status(404).type('html').send(renderShareNotFound('Perfil indisponivel | Forca Aliada', 'Este perfil nao existe ou foi definido como privado.'));
+    }
     const name = profile.display_name || profile.minecraft_name || profile.username || 'Jogador';
-    const description = plainText(profile.bio, 200) || `${name} na comunidade Forca Aliada. ${Number(profile.followers_count || 0)} seguidores e ${Number(profile.posts_count || 0)} posts.`;
-    const image = absolutePublicUrl(profile.avatar_url) || absolutePublicUrl(profile.photo_url) || publicAssetUrl('/assets/images/og-image.jpg');
+    const description = plainText(profile.bio, 240) || `${name} e jogador da comunidade Minecraft Forca Aliada, com ${Number(profile.followers_count || 0)} seguidores e ${Number(profile.posts_count || 0)} posts publicos.`;
+    const skinImage = profile.minecraft_name ? `https://minotar.net/avatar/${encodeURIComponent(profile.minecraft_name)}/300` : '';
+    const image = absolutePublicUrl(profile.avatar_url) || absolutePublicUrl(profile.photo_url) || skinImage || publicAssetUrl('/assets/images/og-image.jpg');
     const identifier = profile.minecraft_name || profile.username || `id:${profile.id}`;
     const canonical = publicSharePageUrl(req, `/share/profile/${encodeURIComponent(identifier)}`);
     const redirectUrl = publicPageUrl(`/profile.html?id=${encodeURIComponent(identifier)}`);
+    const profileLinks = Array.isArray(profile.profile_links)
+      ? profile.profile_links.map(link => absolutePublicUrl(link?.url || link)).filter(Boolean).slice(0, 8)
+      : [];
+    const stats = `<div class="stats"><span class="stat">Rank ${htmlEscape(profile.rank || 'Ferro')}</span><span class="stat">${Number(profile.merit || 0)} de merito</span><span class="stat">${Number(profile.followers_count || 0)} seguidores</span><span class="stat">${Number(profile.posts_count || 0)} posts</span></div>`;
+    setShareResponseHeaders(res, 'public, max-age=1800, s-maxage=43200, stale-while-revalidate=604800');
     res.type('html').send(renderShareHtml({
       title: `${name} | Perfil Forca Aliada`,
       description,
@@ -2030,74 +2235,186 @@ app.get('/share/profile/:identifier', async (req, res) => {
       canonical,
       redirectUrl,
       type: 'profile',
+      breadcrumbs: [
+        { name: 'Inicio', url: publicPageUrl('/') },
+        { name: 'Comunidade', url: publicPageUrl('/community.html') },
+        { name, url: canonical },
+      ],
+      extraContent: `${stats}${renderPublicPostList(payload.posts, `Posts recentes de ${name}`)}`,
+      primaryActionLabel: `Ver perfil completo de ${name}`,
+      additionalLinks: [
+        { label: 'Conheca o servidor', url: publicPageUrl('/') },
+        { label: 'Leia o guia', url: publicPageUrl('/guia.html') },
+        { label: 'Explore a comunidade', url: publicPageUrl('/community.html') },
+      ],
       jsonLd: {
         '@type': 'ProfilePage',
+        '@id': canonical,
+        url: canonical,
+        inLanguage: 'pt-BR',
+        dateCreated: profile.created_at,
+        mainEntityOfPage: canonical,
         mainEntity: {
           '@type': 'Person',
           name,
           alternateName: profile.username ? `@${profile.username}` : undefined,
           description,
           image,
+          url: canonical,
+          sameAs: profileLinks,
+          interactionStatistic: [
+            { '@type': 'InteractionCounter', interactionType: 'https://schema.org/FollowAction', userInteractionCount: Number(profile.followers_count || 0) },
+            { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CreateAction', userInteractionCount: Number(profile.posts_count || 0) },
+          ],
         },
       },
     }));
   } catch (e) {
     console.error('[GET /share/profile/:identifier]', e);
-    res.redirect(publicPageUrl('/community.html'));
+    setShareResponseHeaders(res, 'public, max-age=60, s-maxage=300');
+    res.status(500).type('html').send(renderShareNotFound('Perfil temporariamente indisponivel | Forca Aliada', 'Nao foi possivel carregar este perfil agora.'));
   }
 });
 
 app.get('/robots.txt', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600');
   res.type('text/plain').send([
     'User-agent: *',
     'Allow: /share/post/',
     'Allow: /share/profile/',
-    'Allow: /api/public/community/',
-    `Sitemap: ${publicSharePageUrl(req, '/sitemap.xml')}`,
+    'Disallow: /api/',
+    'Disallow: /admin/',
+    'Disallow: /oauth/',
+    'Disallow: /sitemap',
     '',
   ].join('\n'));
 });
 
+const SITEMAP_POST_PAGE_SIZE = 5000;
+const PUBLIC_POST_QUALITY_SQL = `
+  p.repost_of_id IS NULL
+  AND COALESCE(up.public_profile, TRUE) = TRUE
+  AND (
+    array_length(p.media_urls, 1) > 0
+    OR length(trim(COALESCE(p.content, ''))) >= 40
+    OR (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) +
+       (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE) >= 5
+  )
+`;
+
+function sitemapDocument(items = []) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${items.map(item => `<url><loc>${htmlEscape(item.loc)}</loc><lastmod>${isoDate(item.lastmod)}</lastmod><changefreq>${item.changefreq || 'weekly'}</changefreq><priority>${item.priority || '0.6'}</priority>${(item.images || []).map(imageUrl => `<image:image><image:loc>${htmlEscape(imageUrl)}</image:loc></image:image>`).join('')}</url>`).join('\n')}
+</urlset>`;
+}
+
+function sendSitemapError(res, label, error) {
+  console.error(`[GET ${label}]`, error);
+  res.status(500).type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+}
+
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const [posts, profiles] = await Promise.all([
-      pool.query(`
-        SELECT p.id, COALESCE(p.updated_at, p.created_at) AS updated_at
-        FROM user_posts p
-        JOIN users u ON u.id = p.author_id
-        LEFT JOIN user_preferences up ON up.user_id = u.id
-        WHERE p.repost_of_id IS NULL
-          AND COALESCE(up.public_profile, TRUE) = TRUE
-        ORDER BY p.created_at DESC
-        LIMIT 500
-      `),
-      pool.query(`
-        SELECT u.id, u.username, u.minecraft_name, COALESCE(up.updated_at, u.created_at) AS updated_at
-        FROM users u
-        LEFT JOIN user_preferences up ON up.user_id = u.id
-        WHERE COALESCE(up.public_profile, TRUE) = TRUE
-        ORDER BY updated_at DESC
-        LIMIT 500
-      `),
-    ]);
-    const urls = [
-      { loc: publicPageUrl('/'), lastmod: new Date().toISOString() },
-      { loc: publicPageUrl('/community.html'), lastmod: new Date().toISOString() },
-      ...posts.rows.map(row => ({ loc: publicSharePageUrl(req, `/share/post/${encodeURIComponent(row.id)}`), lastmod: row.updated_at })),
-      ...profiles.rows.map(row => {
-        const ident = row.minecraft_name || row.username || `id:${row.id}`;
-        return { loc: publicSharePageUrl(req, `/share/profile/${encodeURIComponent(ident)}`), lastmod: row.updated_at };
-      }),
+    const { rows } = await pool.query(`
+      SELECT COUNT(*)::int AS count
+      FROM user_posts p
+      JOIN users u ON u.id = p.author_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      WHERE ${PUBLIC_POST_QUALITY_SQL}
+    `);
+    const postPages = Math.max(1, Math.ceil(Number(rows[0]?.count || 0) / SITEMAP_POST_PAGE_SIZE));
+    const sitemaps = [
+      publicSharePageUrl(req, '/sitemap-pages.xml'),
+      publicSharePageUrl(req, '/sitemap-profiles.xml'),
+      ...Array.from({ length: postPages }, (_, index) => publicSharePageUrl(req, `/sitemap-posts-page-${index + 1}.xml`)),
     ];
+    res.set('Cache-Control', 'public, max-age=900, s-maxage=3600, stale-while-revalidate=86400');
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(item => `<url><loc>${htmlEscape(item.loc)}</loc><lastmod>${new Date(item.lastmod || Date.now()).toISOString()}</lastmod></url>`).join('\n')}
-</urlset>`);
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemaps.map(loc => `<sitemap><loc>${htmlEscape(loc)}</loc><lastmod>${isoDate()}</lastmod></sitemap>`).join('\n')}
+</sitemapindex>`);
   } catch (e) {
-    console.error('[GET /sitemap.xml]', e);
-    res.status(500).type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    sendSitemapError(res, '/sitemap.xml', e);
   }
 });
+
+app.get('/sitemap-pages.xml', (req, res) => {
+  const today = isoDate();
+  const pages = [
+    { loc: publicPageUrl('/'), lastmod: today, changefreq: 'daily', priority: '1.0', images: [publicAssetUrl('/assets/images/hero.webp')] },
+    { loc: publicPageUrl('/guia.html'), lastmod: today, changefreq: 'weekly', priority: '0.9', images: [publicAssetUrl('/assets/images/og-image.jpg')] },
+    { loc: publicPageUrl('/community.html'), lastmod: today, changefreq: 'daily', priority: '0.8' },
+    { loc: publicPageUrl('/termos.html'), lastmod: today, changefreq: 'yearly', priority: '0.3' },
+    { loc: publicPageUrl('/privacidade.html'), lastmod: today, changefreq: 'yearly', priority: '0.3' },
+  ];
+  res.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+  res.type('application/xml').send(sitemapDocument(pages));
+});
+
+app.get('/sitemap-profiles.xml', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.username, u.minecraft_name, u.photo_url, COALESCE(up.avatar_url, '') AS avatar_url,
+             COALESCE(up.updated_at, u.created_at) AS updated_at
+      FROM users u
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      WHERE COALESCE(up.public_profile, TRUE) = TRUE
+      ORDER BY updated_at DESC
+      LIMIT 50000
+    `);
+    const items = rows.map(row => {
+      const identifier = row.minecraft_name || row.username || `id:${row.id}`;
+      const avatar = absolutePublicUrl(row.avatar_url) || absolutePublicUrl(row.photo_url);
+      return {
+        loc: publicSharePageUrl(req, `/share/profile/${encodeURIComponent(identifier)}`),
+        lastmod: row.updated_at,
+        changefreq: 'weekly',
+        priority: '0.7',
+        images: avatar ? [avatar] : [],
+      };
+    });
+    res.set('Cache-Control', 'public, max-age=1800, s-maxage=43200, stale-while-revalidate=86400');
+    res.type('application/xml').send(sitemapDocument(items));
+  } catch (e) {
+    sendSitemapError(res, '/sitemap-profiles.xml', e);
+  }
+});
+
+async function postsSitemapHandler(req, res) {
+  const page = Math.max(1, Number(req.params.page || 1));
+  const offset = (page - 1) * SITEMAP_POST_PAGE_SIZE;
+  try {
+    const { rows } = await pool.query(`
+      SELECT p.id, p.media_urls, COALESCE(p.updated_at, p.created_at) AS updated_at,
+             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
+             (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count
+      FROM user_posts p
+      JOIN users u ON u.id = p.author_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
+      WHERE ${PUBLIC_POST_QUALITY_SQL}
+      ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2
+    `, [SITEMAP_POST_PAGE_SIZE, offset]);
+    const items = rows.map(row => {
+      const engagement = Number(row.likes_count || 0) + Number(row.comments_count || 0);
+      return {
+        loc: publicSharePageUrl(req, `/share/post/${encodeURIComponent(row.id)}`),
+        lastmod: row.updated_at,
+        changefreq: engagement >= 10 ? 'daily' : 'weekly',
+        priority: engagement >= 10 ? '0.8' : '0.6',
+        images: (row.media_urls || []).map(absolutePublicUrl).filter(Boolean).slice(0, 10),
+      };
+    });
+    res.set('Cache-Control', 'public, max-age=900, s-maxage=21600, stale-while-revalidate=86400');
+    res.type('application/xml').send(sitemapDocument(items));
+  } catch (e) {
+    sendSitemapError(res, '/sitemap-posts.xml', e);
+  }
+}
+
+app.get('/sitemap-posts.xml', postsSitemapHandler);
+app.get('/sitemap-posts-page-:page.xml', postsSitemapHandler);
 
 async function createSocialNotification({ recipientId, actorId, type, entityType = null, entityId = null, previewText = '' }, db = pool) {
   const recipient = Number(recipientId);
