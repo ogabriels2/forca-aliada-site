@@ -3428,7 +3428,8 @@ body::after{
   }
 }
 </style>
-<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614b">
+<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614c">
+<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614">
 </head>
 <body>
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -8306,7 +8307,7 @@ async function maybeShowBrowserNotifications(rows=[]){
 }
 function notifText(n){
   const a=n.actor_minecraft_name||n.actor_username||'Alguém';
-  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,comment_reply:`${a} respondeu seu comentário`,comment_like:`${a} curtiu seu comentário`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,message_reaction:`${a} reagiu à sua mensagem`,repost:`${a} repostou seu post`,friend_joined:`${a} entrou na comunidade`,moderation_warn:'Você recebeu um aviso da moderação',scheduled_post_published:'Seu post agendado foi publicado'};
+  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,comment_reply:`${a} respondeu seu comentário`,comment_like:`${a} curtiu seu comentário`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,message_reaction:`${a} reagiu à sua mensagem`,story_reaction:`${a} reagiu ao seu story`,repost:`${a} repostou seu post`,friend_joined:`${a} entrou na comunidade`,moderation_warn:'Você recebeu um aviso da moderação',scheduled_post_published:'Seu post agendado foi publicado'};
   return map[n.type]||'Nova notificação';
 }
 function notifActor(n){
@@ -8372,24 +8373,16 @@ function renderNotificationsRoute(){
       <span class="crumb-path">Rede / Notificações</span>
     </div>
     <section class="notif-center" aria-label="Central de notificações da rede">
-      <div class="notif-center-hero">
-        <div class="notif-center-main">
-          <div class="notif-center-mark"><img src="assets/images/app-icons/icon-192.png" alt=""></div>
-          <div>
-            <p class="eyebrow">Radar social</p>
-            <h1>O que aconteceu enquanto você estava fora.</h1>
-            <p>Curtidas, respostas, menções, seguidores, reposts e mensagens ficam aqui, separados das notificações gerais do site para você voltar rápido para a conversa certa.</p>
-          </div>
+      <div class="notif-center-head-v2">
+        <div>
+          <p class="eyebrow">Radar social</p>
+          <h1>Notificações</h1>
+          <p>Interações agrupadas pelo momento em que aconteceram.</p>
         </div>
         <div class="notif-center-actions">
           <button class="btn btn-secondary btn-sm" type="button" data-notif-refresh>Atualizar</button>
           <button class="btn btn-primary btn-sm" type="button" data-notif-mark-all>Ler tudo</button>
         </div>
-      </div>
-      <div class="notif-center-stats">
-        <div class="notif-stat"><strong id="notif-page-unread">${num(state.notifUnread||0)}</strong><span>novas agora</span></div>
-        <div class="notif-stat"><strong id="notif-page-loaded">0</strong><span>carregadas</span></div>
-        <div class="notif-stat"><strong id="notif-page-filter">${esc(notifFilterLabel(state.notifPageFilter))}</strong><span>filtro ativo</span></div>
       </div>
       ${browserNotificationCardHTML()}
       <div class="notif-filterbar" role="tablist" aria-label="Filtros de notificações">
@@ -8440,12 +8433,21 @@ function renderNotificationsPageList(){
     list.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.empty}</div><h3>${title}</h3><p>${msg}</p></div>`;
     return;
   }
-  list.innerHTML=state.notifPageRows.map(n=>{
+  const period=n=>{
+    const age=Date.now()-new Date(n.created_at).getTime();
+    if(age<60*60*1000)return'Agora';
+    if(age<24*60*60*1000)return'Hoje';
+    if(age<48*60*60*1000)return'Ontem';
+    return'Esta semana';
+  };
+  const groups=new Map();
+  state.notifPageRows.forEach(n=>{const key=period(n);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(n)});
+  const rowHTML=n=>{
     const actor=notifActor(n);
     const name=displayName(actor)||'Sistema';
     const av=avatar(actor,50);
     const read=Boolean(n.is_read);
-    return`<article class="notif-full-row ${read?'':'unread'}" data-open-social-notif="${esc(n.id)}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}">
+    return`<article class="notif-full-row notif-type-${esc(n.type||'info')} ${read?'':'unread'}" data-open-social-notif="${esc(n.id)}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}">
       <img src="${esc(av)}" alt="${esc(name)}" onerror="this.onerror=null; this.src='${fallbackAvatar(name,50)}'">
       <div class="notif-full-copy">
         <div class="notif-full-title">${read?'':'<span class="notif-unread-chip" aria-hidden="true"></span>'}<strong>${esc(notifText(n))}</strong></div>
@@ -8457,7 +8459,8 @@ function renderNotificationsPageList(){
         <button class="notif-action-icon danger" type="button" data-notif-action="delete" data-id="${esc(n.id)}" aria-label="Excluir notificação">${IC.trash}</button>
       </div>
     </article>`;
-  }).join('');
+  };
+  list.innerHTML=[...groups].map(([label,rows])=>`<section class="notif-time-group"><h2>${esc(label)}</h2>${rows.map(rowHTML).join('')}</section>`).join('');
 }
 async function setNotificationFilter(filter){
   state.notifPageFilter=NOTIF_FILTERS.some(f=>f[0]===filter)?filter:'all';
@@ -9562,7 +9565,8 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/community-evolution.js?v=evolution-20260614b"></script>
+<script src="assets/js/fa-design-system.js?v=design-20260614"></script>
+<script src="assets/js/community-evolution.js?v=evolution-20260614c"></script>
 <script src="assets/js/social-chat.js?v=chat13-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>

@@ -18,6 +18,9 @@
   let storyElapsed = 0;
   let storyPaused = false;
   let storySuppressClickUntil = 0;
+  let storyGesture = null;
+  let storyLastTap = 0;
+  let storyReplySending = false;
   let decorateTimer = null;
   let decorating = false;
   let typingTimer = null;
@@ -105,7 +108,17 @@
             </div>
             <img id="story-viewer-media" alt="Story">
             <p class="story-content" id="story-viewer-content" hidden></p>
-            <span class="story-owner-stats" id="story-owner-stats" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span id="story-view-count"></span></span>
+            <div class="story-gesture-feedback" id="story-gesture-feedback" aria-hidden="true"><span></span></div>
+            <div class="story-reaction-burst" id="story-reaction-burst" aria-hidden="true"></div>
+            <button class="story-owner-stats" id="story-owner-stats" type="button" data-story-viewers hidden><span class="story-owner-avatars" id="story-owner-avatars"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span id="story-view-count"></span></button>
+            <form class="story-reply-bar" id="story-reply-bar" data-story-reply hidden>
+              <input id="story-reply-input" maxlength="500" autocomplete="off" placeholder="Enviar mensagem..." aria-label="Responder ao story">
+              <button class="story-reaction-open" type="button" data-story-reactions aria-label="Reagir ao story" aria-expanded="false">☺</button>
+              <button class="story-like" type="button" data-story-like aria-label="Curtir story" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
+              <button class="story-reply-send" type="submit" aria-label="Enviar resposta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+            </form>
+            <div class="story-reaction-tray" id="story-reaction-tray" hidden>${Object.entries(REACTIONS).map(([code, meta]) => `<button type="button" data-story-reaction="${code}" aria-label="${safe(meta[1])}">${meta[0]}<span>${safe(meta[1])}</span></button>`).join('')}</div>
+            <div class="story-pause-indicator" id="story-pause-indicator" hidden><i></i><i></i></div>
             <button class="story-hit" type="button" data-story-prev aria-label="Anterior"></button>
             <button class="story-hit next" type="button" data-story-next aria-label="Próximo"></button>
           </div>
@@ -427,11 +440,32 @@
     if (deleteButton) deleteButton.hidden = !isOwner;
     const ownerStats = document.querySelector('#story-owner-stats');
     if (ownerStats) ownerStats.hidden = !isOwner;
+    const replyBar = document.querySelector('#story-reply-bar');
+    if (replyBar) replyBar.hidden = isOwner;
+    const replyInput = document.querySelector('#story-reply-input');
+    if (replyInput) replyInput.value = '';
+    const liked = story.my_reaction === 'heart';
+    const like = document.querySelector('[data-story-like]');
+    like?.classList.toggle('is-on', liked);
+    like?.setAttribute('aria-pressed', String(liked));
+    like?.setAttribute('aria-label', liked ? 'Remover curtida do story' : 'Curtir story');
+    const tray = document.querySelector('#story-reaction-tray');
+    if (tray) tray.hidden = true;
+    tray?.querySelectorAll('[data-story-reaction]').forEach(button => button.classList.toggle('is-on', button.dataset.storyReaction === story.my_reaction));
+    document.querySelector('[data-story-reactions]')?.setAttribute('aria-expanded', 'false');
+    document.querySelector('#story-pause-indicator')?.setAttribute('hidden', '');
+    const stage = document.querySelector('.story-stage');
+    if (stage) {
+      stage.style.transform = '';
+      stage.style.opacity = '';
+      stage.classList.remove('is-gesturing');
+    }
     const viewCount = document.querySelector('#story-view-count');
     if (viewCount) viewCount.textContent = `${Number(story.views_count || 0)} visualiza${Number(story.views_count || 0) === 1 ? 'ção' : 'ções'}`;
     document.querySelector('#story-progress').innerHTML = group.map((_, index) =>
       `<i style="--progress:${index < storyIndex ? '100%' : '0%'}"></i>`).join('');
     api(`/api/community/stories/${encodeURIComponent(story.id)}/view`, { method: 'POST' }).catch(() => {});
+    if (isOwner) loadStoryViewerPreview(story.id);
     clearInterval(storyTimer);
     storyElapsed = 0;
     storyPaused = false;
@@ -444,10 +478,133 @@
     }, 100);
   }
 
+  function activeStory() {
+    return storyGroups[activeStoryGroup]?.[activeStoryIndex] || null;
+  }
+
+  function storyFeedback(copy, tone = '') {
+    const node = document.querySelector('#story-gesture-feedback');
+    if (!node) return;
+    node.className = `story-gesture-feedback show ${tone}`.trim();
+    node.querySelector('span').textContent = copy;
+    clearTimeout(storyFeedback.timer);
+    storyFeedback.timer = setTimeout(() => { node.className = 'story-gesture-feedback'; }, 650);
+  }
+
+  function storyBurst(symbol = '♥') {
+    const root = document.querySelector('#story-reaction-burst');
+    if (!root) return;
+    root.innerHTML = Array.from({ length: 9 }, (_, index) => `<i style="--i:${index};--x:${Math.round((Math.random() - .5) * 150)}px;--y:${-60 - Math.round(Math.random() * 120)}px">${symbol}</i>`).join('');
+    root.classList.remove('show');
+    void root.offsetWidth;
+    root.classList.add('show');
+    setTimeout(() => { root.classList.remove('show'); root.innerHTML = ''; }, 900);
+  }
+
+  async function reactToStory(code, { quiet = false } = {}) {
+    const story = activeStory();
+    if (!story || Number(story.user_id) === Number(state.me?.id)) return;
+    const previous = story.my_reaction || null;
+    const remove = previous === code;
+    story.my_reaction = remove ? null : code;
+    const like = document.querySelector('[data-story-like]');
+    like?.classList.toggle('is-on', story.my_reaction === 'heart');
+    like?.setAttribute('aria-pressed', String(story.my_reaction === 'heart'));
+    document.querySelector('#story-reaction-tray')?.querySelectorAll('[data-story-reaction]').forEach(button => button.classList.toggle('is-on', button.dataset.storyReaction === story.my_reaction));
+    if (!remove) {
+      buzz(code === 'heart' ? [12, 35, 12] : 18);
+      storyBurst(REACTIONS[code]?.[0] || '♥');
+      if (!quiet) storyFeedback(`${REACTIONS[code]?.[1] || 'Reação'} enviada`, 'success');
+    }
+    try {
+      await api(`/api/community/stories/${encodeURIComponent(story.id)}/reactions`, {
+        method: remove ? 'DELETE' : 'POST',
+        body: remove ? undefined : JSON.stringify({ code }),
+      });
+    } catch (error) {
+      story.my_reaction = previous;
+      like?.classList.toggle('is-on', previous === 'heart');
+      like?.setAttribute('aria-pressed', String(previous === 'heart'));
+      toast('error', 'Reação não enviada', error.message);
+    }
+  }
+
+  async function replyToStory(message) {
+    const story = activeStory();
+    const text = String(message || '').trim();
+    if (!story || !text || storyReplySending || Number(story.user_id) === Number(state.me?.id)) return;
+    storyReplySending = true;
+    storyPaused = true;
+    const send = document.querySelector('.story-reply-send');
+    if (send) send.disabled = true;
+    try {
+      if (!window.FAChat?.openWithUser) throw new Error('Chat indisponível neste momento.');
+      await window.FAChat.openWithUser(
+        { id: story.user_id, minecraft_name: story.minecraft_name, username: story.username },
+        { draft: `Resposta ao seu story: ${text}`, sendNow: true },
+      );
+      document.querySelector('#story-reply-input').value = '';
+      storyFeedback('Mensagem enviada', 'success');
+      buzz([10, 45, 10]);
+      setTimeout(closeStory, 500);
+    } catch (error) {
+      toast('error', 'Resposta não enviada', error.message);
+    } finally {
+      storyReplySending = false;
+      storyPaused = false;
+      if (send) send.disabled = false;
+    }
+  }
+
+  async function loadStoryViewerPreview(storyId) {
+    const avatars = document.querySelector('#story-owner-avatars');
+    if (!avatars) return;
+    try {
+      const payload = await api(`/api/community/stories/${encodeURIComponent(storyId)}/viewers`);
+      avatars.innerHTML = (payload.viewers || []).slice(0, 3).map(person => `<img src="${safe(avatar(person, 32))}" alt="">`).join('');
+    } catch { avatars.innerHTML = ''; }
+  }
+
+  async function openStoryViewers() {
+    const story = activeStory();
+    if (!story || Number(story.user_id) !== Number(state.me?.id)) return;
+    storyPaused = true;
+    const back = document.createElement('div');
+    back.className = 'backdrop show story-viewers-backdrop';
+    back.innerHTML = `<section class="sheet story-viewers-sheet" role="dialog" aria-modal="true" aria-labelledby="story-viewers-title">
+      <div class="sheet-header"><div><h2 id="story-viewers-title">Atividade do story</h2><p class="schedule-subtitle">Visualizações e reações em tempo real.</p></div><button class="close-btn" data-story-viewers-close aria-label="Fechar">×</button></div>
+      <div class="story-viewers-list"><div class="skel" style="height:58px"></div><div class="skel" style="height:58px"></div></div>
+    </section>`;
+    document.body.appendChild(back);
+    const close = () => { back.remove(); storyPaused = false; };
+    back.addEventListener('click', event => { if (event.target === back || event.target.closest('[data-story-viewers-close],.story-viewer-row')) close(); });
+    try {
+      const payload = await api(`/api/community/stories/${encodeURIComponent(story.id)}/viewers`);
+      const rows = payload.viewers || [];
+      back.querySelector('.story-viewers-list').innerHTML = rows.length ? rows.map(person => `
+        <button class="story-viewer-row js-profile" type="button" data-uid="${safe(person.id)}" data-mc="${safe(person.minecraft_name || person.username)}">
+          <img src="${safe(avatar(person, 50))}" alt=""><span><strong>${safe(displayName(person))}</strong><small>Viu ${safe(time(person.viewed_at))}</small></span>${person.reaction ? `<b title="${safe(REACTIONS[person.reaction]?.[1] || 'Reagiu')}">${REACTIONS[person.reaction]?.[0] || '♥'}</b>` : ''}
+        </button>`).join('') : '<div class="story-viewers-empty"><strong>Ainda sem visualizações</strong><span>As pessoas que assistirem aparecerão aqui.</span></div>';
+    } catch (error) {
+      back.querySelector('.story-viewers-list').innerHTML = `<div class="story-viewers-empty"><strong>Não foi possível carregar</strong><span>${safe(error.message)}</span></div>`;
+    }
+  }
+
   function closeStory() {
     clearInterval(storyTimer);
     const viewer = document.querySelector('#story-viewer');
     if (viewer) viewer.hidden = true;
+    document.querySelector('#story-reaction-tray')?.setAttribute('hidden', '');
+    document.querySelector('#story-pause-indicator')?.setAttribute('hidden', '');
+    const stage = document.querySelector('.story-stage');
+    if (stage) {
+      stage.style.transform = '';
+      stage.style.opacity = '';
+      stage.style.transition = '';
+      stage.classList.remove('is-gesturing');
+    }
+    storyGesture = null;
+    storyPaused = false;
     document.body.style.overflow = '';
     loadStories();
   }
@@ -763,6 +920,24 @@
       }
       if (event.target.closest('[data-story-close]')) { closeStory(); return; }
       if (event.target.closest('[data-story-delete]')) { deleteActiveStory(); return; }
+      if (event.target.closest('[data-story-viewers]')) { openStoryViewers(); return; }
+      if (event.target.closest('[data-story-like]')) { reactToStory('heart'); return; }
+      const storyReaction = event.target.closest('[data-story-reaction]');
+      if (storyReaction) {
+        reactToStory(storyReaction.dataset.storyReaction);
+        document.querySelector('#story-reaction-tray').hidden = true;
+        document.querySelector('[data-story-reactions]')?.setAttribute('aria-expanded', 'false');
+        storyPaused = false;
+        return;
+      }
+      if (event.target.closest('[data-story-reactions]')) {
+        const tray = document.querySelector('#story-reaction-tray');
+        tray.hidden = !tray.hidden;
+        event.target.closest('[data-story-reactions]').setAttribute('aria-expanded', String(!tray.hidden));
+        storyPaused = !tray.hidden;
+        if (!tray.hidden) storyFeedback('Escolha uma reação');
+        return;
+      }
       if (event.target.closest('[data-story-next]')) { if (Date.now() >= storySuppressClickUntil) nextStory(); return; }
       if (event.target.closest('[data-story-prev]')) { if (Date.now() >= storySuppressClickUntil) previousStory(); return; }
       if (event.target.closest('[data-open-schedule-modal]')) {
@@ -875,6 +1050,18 @@
       clearTimeout(typingTimer);
       typingTimer = setTimeout(() => api('/api/community/typing', { method: 'POST', body: JSON.stringify({ recipient_id: recipientId, is_typing: false }) }).catch(() => {}), 1300);
     });
+    document.addEventListener('submit', event => {
+      const form = event.target.closest('[data-story-reply]');
+      if (!form) return;
+      event.preventDefault();
+      replyToStory(form.querySelector('#story-reply-input')?.value);
+    });
+    document.addEventListener('focusin', event => {
+      if (event.target.closest('#story-reply-input')) storyPaused = true;
+    });
+    document.addEventListener('focusout', event => {
+      if (event.target.closest('#story-reply-input')) storyPaused = false;
+    });
     window.addEventListener('fa:community-typing', event => {
       const detail = event.detail || {};
       const activeId = document.querySelector('[data-chat-profile]')?.dataset.chatProfile;
@@ -917,33 +1104,109 @@
       lightboxY = null;
     }, { passive: true });
 
-    let storyTouch = null;
-    document.querySelector('#story-viewer')?.addEventListener('touchstart', event => {
-      storyTouch = event.touches[0] ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+    const storyViewer = document.querySelector('#story-viewer');
+    const storyStage = document.querySelector('.story-stage');
+    storyViewer?.addEventListener('touchstart', event => {
+      if (event.touches.length !== 1 || event.target.closest('.story-reply-bar,.story-reaction-tray,.story-viewer-actions,.story-owner-stats')) return;
+      const touch = event.touches[0];
+      storyGesture = { x: touch.clientX, y: touch.clientY, at: Date.now(), dx: 0, dy: 0, axis: null };
     }, { passive: true });
-    document.querySelector('#story-viewer')?.addEventListener('touchend', event => {
-      if (!storyTouch || !event.changedTouches[0]) return;
-      const dx = event.changedTouches[0].clientX - storyTouch.x;
-      const dy = event.changedTouches[0].clientY - storyTouch.y;
-      if (Math.abs(dy) > 110 && dy > 0) { storySuppressClickUntil = Date.now() + 300; closeStory(); }
-      else if (Math.abs(dx) > 65) { storySuppressClickUntil = Date.now() + 300; dx < 0 ? nextStory() : previousStory(); }
-      storyTouch = null;
+    storyViewer?.addEventListener('touchmove', event => {
+      if (!storyGesture || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      storyGesture.dx = touch.clientX - storyGesture.x;
+      storyGesture.dy = touch.clientY - storyGesture.y;
+      if (!storyGesture.axis && Math.hypot(storyGesture.dx, storyGesture.dy) > 9) {
+        storyGesture.axis = Math.abs(storyGesture.dx) > Math.abs(storyGesture.dy) * 1.15 ? 'x' : 'y';
+        storyPaused = true;
+        storyStage?.classList.add('is-gesturing');
+      }
+      if (!storyGesture.axis || !storyStage) return;
+      event.preventDefault();
+      if (storyGesture.axis === 'x') {
+        const resisted = storyGesture.dx * .72;
+        storyStage.style.transform = `translate3d(${resisted}px,0,0) scale(.985)`;
+        storyFeedback(storyGesture.dx < 0 ? 'Próximo story' : 'Story anterior');
+      } else {
+        const down = Math.max(0, storyGesture.dy);
+        const up = Math.min(0, storyGesture.dy);
+        storyStage.style.transform = `translate3d(0,${down * .72 + up * .28}px,0) scale(${1 - Math.min(.08, Math.abs(storyGesture.dy) / 1800)})`;
+        storyStage.style.opacity = String(1 - Math.min(.35, down / 700));
+        storyFeedback(storyGesture.dy > 0 ? 'Solte para fechar' : (Number(activeStory()?.user_id) === Number(state.me?.id) ? 'Solte para ver a atividade' : 'Solte para reagir'));
+      }
+    }, { passive: false });
+    storyViewer?.addEventListener('touchend', event => {
+      if (!storyGesture || !event.changedTouches[0]) return;
+      const { dx, dy, at, axis } = storyGesture;
+      const elapsed = Math.max(1, Date.now() - at);
+      const velocity = Math.hypot(dx, dy) / elapsed;
+      const resetStage = () => {
+        if (!storyStage) return;
+        storyStage.style.transition = 'transform 280ms var(--ease-spring),opacity 180ms var(--ease-ui)';
+        storyStage.style.transform = '';
+        storyStage.style.opacity = '';
+        storyStage.classList.remove('is-gesturing');
+        setTimeout(() => { storyStage.style.transition = ''; }, 300);
+      };
+      if (axis === 'y' && dy > 90 && (velocity > .22 || dy > 130)) {
+        storySuppressClickUntil = Date.now() + 400;
+        buzz(18);
+        closeStory();
+      } else if (axis === 'y' && dy < -72) {
+        storySuppressClickUntil = Date.now() + 400;
+        buzz(14);
+        if (Number(activeStory()?.user_id) === Number(state.me?.id)) openStoryViewers();
+        else {
+          const tray = document.querySelector('#story-reaction-tray');
+          tray.hidden = false;
+          document.querySelector('[data-story-reactions]')?.setAttribute('aria-expanded', 'true');
+          storyPaused = true;
+        }
+        resetStage();
+      } else if (axis === 'x' && Math.abs(dx) > 62 && (velocity > .18 || Math.abs(dx) > 100)) {
+        storySuppressClickUntil = Date.now() + 400;
+        buzz(8);
+        dx < 0 ? nextStory() : previousStory();
+      } else if (!axis && elapsed < 280) {
+        const now = Date.now();
+        if (now - storyLastTap < 310) {
+          storySuppressClickUntil = now + 420;
+          reactToStory('heart', { quiet: true });
+          storyFeedback('Curtiu o story', 'success');
+        }
+        storyLastTap = now;
+        resetStage();
+      } else {
+        resetStage();
+      }
+      storyPaused = Boolean(document.querySelector('.story-viewers-backdrop')) || !document.querySelector('#story-reaction-tray')?.hidden;
+      storyGesture = null;
     }, { passive: true });
 
     let storyPressAt = 0;
+    let storyPressTimer = null;
     document.querySelector('.story-stage')?.addEventListener('pointerdown', event => {
-      if (!event.target.closest('.story-hit')) return;
+      if (event.target.closest('.story-reply-bar,.story-reaction-tray,.story-viewer-actions,.story-owner-stats')) return;
       storyPressAt = Date.now();
       storyPaused = true;
+      clearTimeout(storyPressTimer);
+      storyPressTimer = setTimeout(() => {
+        document.querySelector('#story-pause-indicator')?.removeAttribute('hidden');
+        storyFeedback('Pausado');
+      }, 120);
     }, { passive: true });
     document.querySelector('.story-stage')?.addEventListener('pointerup', () => {
       if (storyPressAt && Date.now() - storyPressAt > 350) storySuppressClickUntil = Date.now() + 250;
+      clearTimeout(storyPressTimer);
       storyPressAt = 0;
       storyPaused = false;
+      document.querySelector('#story-pause-indicator')?.setAttribute('hidden', '');
     }, { passive: true });
     document.querySelector('.story-stage')?.addEventListener('pointercancel', () => {
+      clearTimeout(storyPressTimer);
       storyPressAt = 0;
       storyPaused = false;
+      document.querySelector('#story-pause-indicator')?.setAttribute('hidden', '');
     }, { passive: true });
     document.addEventListener('keydown', event => {
       if (document.querySelector('#story-viewer')?.hidden !== false) return;

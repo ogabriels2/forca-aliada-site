@@ -1532,6 +1532,7 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
   'comment_reply',
   'message_reaction',
   'scheduled_post_published',
+  'story_reaction',
 ]);
 
 const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
@@ -10144,6 +10145,7 @@ registerCommunityEvolution(app, pool, auth, {
   socialRankSql,
   socialMeritSql,
   requireAdmin,
+  createSocialNotification,
 });
 
 app.use((err, req, res, _next) => {

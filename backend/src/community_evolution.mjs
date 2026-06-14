@@ -38,6 +38,16 @@ CREATE TABLE IF NOT EXISTS story_views (
   PRIMARY KEY (story_id, viewer_id)
 );
 CREATE INDEX IF NOT EXISTS idx_story_views_viewer ON story_views(viewer_id, viewed_at DESC);
+
+CREATE TABLE IF NOT EXISTS story_reactions (
+  story_id BIGINT NOT NULL REFERENCES user_stories(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code VARCHAR(20) NOT NULL CHECK (code IN ('heart','fire','trophy','shocked','diamond','handshake')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (story_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_story_reactions_story ON story_reactions(story_id, code);
 `;
 
 export function emitCommunityEvent(event, payload) {
@@ -76,6 +86,7 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
     socialRankSql = () => "'ferro'",
     socialMeritSql = () => '0',
     requireAdmin = (_req, _res, next) => next(),
+    createSocialNotification = null,
   } = helpers;
 
   app.get('/api/community/feed/stream', auth, (req, res) => {
@@ -184,7 +195,10 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
                 u.username, u.minecraft_name, COALESCE(up.display_name,'') AS display_name,
                 COALESCE(up.avatar_url,'') AS avatar_url,
                 EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id=s.id AND sv.viewer_id=$1) AS viewed_by_me,
-                (SELECT COUNT(*)::int FROM story_views sv WHERE sv.story_id=s.id) AS views_count
+                (SELECT COUNT(*)::int FROM story_views sv WHERE sv.story_id=s.id AND sv.viewer_id<>s.user_id) AS views_count,
+                (SELECT COUNT(*)::int FROM story_reactions sr WHERE sr.story_id=s.id) AS reactions_count,
+                (SELECT COUNT(*)::int FROM story_reactions sr WHERE sr.story_id=s.id AND sr.code='heart') AS likes_count,
+                (SELECT sr.code FROM story_reactions sr WHERE sr.story_id=s.id AND sr.user_id=$1 LIMIT 1) AS my_reaction
          FROM user_stories s
          JOIN users u ON u.id=s.user_id
          LEFT JOIN user_preferences up ON up.user_id=u.id
@@ -208,7 +222,11 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
         `SELECT s.id, s.user_id, s.media_url, s.content, s.created_at, s.expires_at,
                 u.username, u.minecraft_name, COALESCE(up.display_name,'') AS display_name,
                 COALESCE(up.avatar_url,'') AS avatar_url,
-                EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id=s.id AND sv.viewer_id=$1) AS viewed_by_me
+                EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id=s.id AND sv.viewer_id=$1) AS viewed_by_me,
+                (SELECT COUNT(*)::int FROM story_views sv WHERE sv.story_id=s.id AND sv.viewer_id<>s.user_id) AS views_count,
+                (SELECT COUNT(*)::int FROM story_reactions sr WHERE sr.story_id=s.id) AS reactions_count,
+                (SELECT COUNT(*)::int FROM story_reactions sr WHERE sr.story_id=s.id AND sr.code='heart') AS likes_count,
+                (SELECT sr.code FROM story_reactions sr WHERE sr.story_id=s.id AND sr.user_id=$1 LIMIT 1) AS my_reaction
          FROM user_stories s
          JOIN users u ON u.id=s.user_id
          LEFT JOIN user_preferences up ON up.user_id=u.id
@@ -253,11 +271,92 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ error: 'ID invalido' });
     await pool.query(
-      `INSERT INTO story_views(story_id,viewer_id) VALUES($1,$2)
+      `INSERT INTO story_views(story_id,viewer_id)
+       SELECT $1,$2 WHERE EXISTS(SELECT 1 FROM user_stories WHERE id=$1 AND user_id<>$2)
        ON CONFLICT(story_id,viewer_id) DO UPDATE SET viewed_at=NOW()`,
       [id, req.user.sub],
     );
     res.json({ ok: true });
+  });
+
+  app.get('/api/community/stories/:id/viewers', auth, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'ID invalido' });
+    try {
+      const owner = await pool.query('SELECT 1 FROM user_stories WHERE id=$1 AND user_id=$2', [id, req.user.sub]);
+      if (!owner.rowCount) return res.status(403).json({ error: 'Somente o autor pode ver as visualizacoes' });
+      const { rows } = await pool.query(
+        `SELECT u.id,u.username,u.minecraft_name,COALESCE(up.display_name,'') AS display_name,
+                COALESCE(up.avatar_url,'') AS avatar_url,sv.viewed_at,sr.code AS reaction
+         FROM story_views sv
+         JOIN users u ON u.id=sv.viewer_id
+         LEFT JOIN user_preferences up ON up.user_id=u.id
+         LEFT JOIN story_reactions sr ON sr.story_id=sv.story_id AND sr.user_id=sv.viewer_id
+         WHERE sv.story_id=$1 AND sv.viewer_id<>$2
+         ORDER BY sv.viewed_at DESC`,
+        [id, req.user.sub],
+      );
+      res.json({ viewers: rows });
+    } catch (e) {
+      console.error('[GET story viewers]', e);
+      res.status(500).json({ error: 'Erro ao listar visualizacoes' });
+    }
+  });
+
+  app.get('/api/community/stories/:id/reactions', auth, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'ID invalido' });
+    try {
+      const { rows } = await pool.query(
+        'SELECT code,COUNT(*)::int AS count FROM story_reactions WHERE story_id=$1 GROUP BY code ORDER BY count DESC,code',
+        [id],
+      );
+      const mine = await pool.query('SELECT code FROM story_reactions WHERE story_id=$1 AND user_id=$2', [id, req.user.sub]);
+      res.json({ reactions: rows, my_reaction: mine.rows[0]?.code || null });
+    } catch (e) {
+      console.error('[GET story reactions]', e);
+      res.status(500).json({ error: 'Erro ao listar reacoes' });
+    }
+  });
+
+  app.post('/api/community/stories/:id/reactions', auth, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const code = safeText(req.body?.code, 20).toLowerCase();
+    if (!id || !REACTION_CODES.has(code)) return res.status(400).json({ error: 'Reacao invalida' });
+    try {
+      const story = await pool.query('SELECT user_id FROM user_stories WHERE id=$1 AND expires_at>NOW()', [id]);
+      if (!story.rowCount) return res.status(404).json({ error: 'Story nao encontrado' });
+      await pool.query(
+        `INSERT INTO story_reactions(story_id,user_id,code) VALUES($1,$2,$3)
+         ON CONFLICT(story_id,user_id) DO UPDATE SET code=EXCLUDED.code,updated_at=NOW()`,
+        [id, req.user.sub, code],
+      );
+      if (Number(story.rows[0].user_id) !== Number(req.user.sub) && typeof createSocialNotification === 'function') {
+        createSocialNotification({
+          recipientId: story.rows[0].user_id,
+          actorId: req.user.sub,
+          type: 'story_reaction',
+          entityType: 'story',
+          entityId: id,
+          previewText: code,
+        }).catch(() => {});
+      }
+      const { rows } = await pool.query(
+        'SELECT code,COUNT(*)::int AS count FROM story_reactions WHERE story_id=$1 GROUP BY code ORDER BY count DESC,code',
+        [id],
+      );
+      res.json({ reactions: rows, my_reaction: code });
+    } catch (e) {
+      console.error('[POST story reaction]', e);
+      res.status(500).json({ error: 'Erro ao reagir ao story' });
+    }
+  });
+
+  app.delete('/api/community/stories/:id/reactions', auth, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'ID invalido' });
+    await pool.query('DELETE FROM story_reactions WHERE story_id=$1 AND user_id=$2', [id, req.user.sub]);
+    res.json({ ok: true, my_reaction: null });
   });
 
   app.get('/api/community/discover', auth, async (req, res) => {
