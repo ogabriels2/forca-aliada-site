@@ -58,6 +58,11 @@ import {
   registerLegacyMigration,
   LEGACY_MIGRATION_SCHEMA_SQL,
 } from './server_legacy_migration.mjs';
+import {
+  COMMUNITY_EVOLUTION_SCHEMA_SQL,
+  emitCommunityEvent,
+  registerCommunityEvolution,
+} from './community_evolution.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -1409,6 +1414,7 @@ await pool.query(featureSchemaSql);
   await pool.query(feedV2SchemaSql); // Feed v2: post_impressions, post_saves, feed_not_interested, triggers
   await pool.query(commentUpgradeSchemaSql); // Comment upgrade: parent_comment_id, comment_likes, likes_count, reply_count, triggers
   await pool.query(DASHBOARD_V2_SCHEMA_SQL); // Staff dashboard v2: settings, templates and scheduled broadcasts
+  await pool.query(COMMUNITY_EVOLUTION_SCHEMA_SQL); // Community evolution: stories, reactions, image polls and grouped notifications
 
   // Audit schema — executado no boot, não lazily
   for (const statement of AUDIT_SCHEMA_STATEMENTS) {
@@ -2431,9 +2437,40 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
   if (blocked.length) return null;
 
   const preview = sanitizeText(previewText || '').slice(0, 120);
+  const groupable = new Set(['post_like', 'repost', 'comment_like']);
+  if (groupable.has(type) && entityId) {
+    const { rows: grouped } = await db.query(
+      `UPDATE social_notifications
+       SET actor_id=$2,
+           actor_ids=CASE
+             WHEN actor_ids @> jsonb_build_array($2::integer) THEN actor_ids
+             ELSE actor_ids || jsonb_build_array($2::integer)
+           END,
+           group_count=CASE
+             WHEN actor_ids @> jsonb_build_array($2::integer) THEN group_count
+             ELSE group_count + 1
+           END,
+           preview_text=$6,
+           is_read=FALSE,
+           created_at=NOW()
+       WHERE id=(
+         SELECT id FROM social_notifications
+         WHERE recipient_id=$1
+           AND type=$3
+           AND COALESCE(entity_type,'')=COALESCE($4,'')
+           AND COALESCE(entity_id,0)=COALESCE($5,0)
+         ORDER BY created_at DESC
+         LIMIT 1
+       )
+       RETURNING id,group_count`,
+      [recipient, actor, type, entityType, entityId, preview],
+    );
+    if (grouped.length) return grouped[0];
+  }
+
   const { rows } = await db.query(
-    `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text)
-     SELECT $1,$2,$3,$4,$5,$6
+    `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text, actor_ids)
+     SELECT $1,$2,$3,$4,$5,$6,jsonb_build_array($2::integer)
      WHERE NOT EXISTS (
        SELECT 1 FROM social_notifications
        WHERE recipient_id=$1
@@ -6665,7 +6702,10 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   const pollDurationHours = Number(req.body?.poll_duration_hours) || 24;
   const hasPoll = Array.isArray(rawPollOptions) && rawPollOptions.length >= 2;
   const pollOptions = hasPoll
-    ? rawPollOptions.map(o => String(o || '').trim()).filter(Boolean).slice(0, 4)
+    ? rawPollOptions.map(o => ({
+        text: String(typeof o === 'object' ? o?.text : o || '').trim(),
+        option_image_url: normalizePostMediaUrls([typeof o === 'object' ? o?.option_image_url : ''])[0] || '',
+      })).filter(o => o.text).slice(0, 4)
     : [];
 
   if (!content && !mediaUrls.length && !hasPoll) return res.status(400).json({ error: 'Escreva algo ou adicione uma imagem.' });
@@ -6673,7 +6713,7 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
   if (content.length > 280) return res.status(400).json({ error: 'Post excede 280 caracteres.' });
   if (hasPoll && pollOptions.length < 2) return res.status(400).json({ error: 'Enquete precisa de pelo menos 2 opcoes.' });
   if (hasPoll && pollDurationHours < 1) return res.status(400).json({ error: 'Duracao invalida.' });
-  if (hasPoll && pollOptions.some(o => o.length > 80)) return res.status(400).json({ error: 'Opcao de enquete muito longa (max 80 chars).' });
+  if (hasPoll && pollOptions.some(o => o.text.length > 80)) return res.status(400).json({ error: 'Opcao de enquete muito longa (max 80 chars).' });
   if (requestedPublishAt && Number.isNaN(requestedPublishAt.getTime())) return res.status(400).json({ error: 'Data de agendamento invalida.' });
   if (requestedPublishAt && requestedPublishAt.getTime() < Date.now() + 30_000) return res.status(400).json({ error: 'Escolha um horario futuro para agendar.' });
   if (requestedPublishAt && requestedPublishAt.getTime() > Date.now() + 366 * 24 * 3600 * 1000) return res.status(400).json({ error: 'Agende com no maximo um ano de antecedencia.' });
@@ -6718,10 +6758,10 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       const insertedOptions = [];
       for (let i = 0; i < pollOptions.length; i++) {
         const { rows: optRows } = await client.query(
-          `INSERT INTO post_poll_options(poll_id, text, sort_order) VALUES($1, $2, $3) RETURNING id, text, sort_order`,
-          [poll.id, pollOptions[i], i],
+          `INSERT INTO post_poll_options(poll_id, text, option_image_url, sort_order) VALUES($1, $2, $3, $4) RETURNING id, text, option_image_url, sort_order`,
+          [poll.id, pollOptions[i].text, pollOptions[i].option_image_url, i],
         );
-        insertedOptions.push({ id: optRows[0].id, text: optRows[0].text, votes: 0 });
+        insertedOptions.push({ id: optRows[0].id, text: optRows[0].text, option_image_url: optRows[0].option_image_url, votes: 0 });
       }
       pollData = {
         id: poll.id,
@@ -6780,6 +6820,11 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       },
     });
     await client.query('COMMIT');
+    emitCommunityEvent('new-post', {
+      postId: Number(newPost.id),
+      authorId: Number(publishIdentity.authorId),
+      createdAt: newPost.created_at,
+    });
     const author = publishIdentity.author;
     res.status(201).json({
       ...newPost,
@@ -6905,7 +6950,7 @@ async function publishDueScheduledPosts() {
           [scheduled.author_id, scheduled.created_by_user_id, scheduled.content, scheduled.media_urls || [], scheduled.publish_at],
         );
         const postId = postRows[0].id;
-        const options = Array.isArray(scheduled.poll_options) ? scheduled.poll_options.filter(Boolean).slice(0, 4) : [];
+        const options = Array.isArray(scheduled.poll_options) ? scheduled.poll_options.filter(option => option?.text || typeof option === 'string').slice(0, 4) : [];
         if (options.length >= 2) {
           const { rows: pollRows } = await client.query(
             'INSERT INTO post_polls(post_id, ends_at) VALUES($1, $2) RETURNING id',
@@ -6913,8 +6958,8 @@ async function publishDueScheduledPosts() {
           );
           for (let index = 0; index < options.length; index++) {
             await client.query(
-              'INSERT INTO post_poll_options(poll_id, text, sort_order) VALUES($1,$2,$3)',
-              [pollRows[0].id, options[index], index],
+              'INSERT INTO post_poll_options(poll_id, text, option_image_url, sort_order) VALUES($1,$2,$3,$4)',
+              [pollRows[0].id, options[index]?.text || options[index], options[index]?.option_image_url || '', index],
             );
           }
         }
@@ -6951,6 +6996,11 @@ async function publishDueScheduledPosts() {
           [scheduled.created_by_user_id || scheduled.author_id, postId, String(scheduled.content || 'Post agendado publicado').slice(0, 120)],
         );
         await client.query('COMMIT');
+        emitCommunityEvent('new-post', {
+          postId: Number(postId),
+          authorId: Number(scheduled.author_id),
+          createdAt: scheduled.publish_at,
+        });
       } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
         await pool.query(
@@ -6997,6 +7047,16 @@ app.get('/api/community/posts', auth, async (req, res) => {
   if (filter === 'following') {
     conditions.push(`(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`);
   }
+  if (filter === 'saved') {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM post_saves ps_filter
+      WHERE ps_filter.user_id = $1
+        AND ps_filter.post_id = COALESCE(p.repost_of_id, p.id)
+    )`);
+  }
+  if (filter === 'trending') {
+    conditions.push(`COALESCE(op.created_at, p.created_at) > NOW() - INTERVAL '24 hours'`);
+  }
   if (search) {
     params.push(search);
     conditions.push(`(LOWER(p.content) LIKE $${params.length} OR LOWER(COALESCE(op.content, '')) LIKE $${params.length} OR LOWER(COALESCE(u.minecraft_name, u.username, '')) LIKE $${params.length} OR LOWER(COALESCE(ou.minecraft_name, ou.username, '')) LIKE $${params.length})`);
@@ -7041,9 +7101,22 @@ app.get('/api/community/posts', auth, async (req, res) => {
                SELECT json_agg(row_to_json(rc))
                FROM (
                  SELECT pc.id, pc.content, pc.media_urls, pc.created_at, pc.author_id,
-                   pc.likes_count, pc.reply_count, cu.username, cu.minecraft_name
+                   pc.likes_count, pc.reply_count,
+                   EXISTS(
+                     SELECT 1 FROM comment_likes cl
+                     WHERE cl.comment_id = pc.id AND cl.user_id = $1
+                   ) AS liked_by_me,
+                   (SELECT COUNT(*)::int FROM comment_saves cs WHERE cs.comment_id = pc.id) AS saves_count,
+                   EXISTS(
+                     SELECT 1 FROM comment_saves cs
+                     WHERE cs.comment_id = pc.id AND cs.user_id = $1
+                   ) AS saved_by_me,
+                   cu.username, cu.minecraft_name, cu.photo_url, cu.is_platform_verified,
+                   COALESCE(cup.display_name, '') AS display_name,
+                   COALESCE(cup.avatar_url, '') AS avatar_url
                  FROM post_comments pc
                  JOIN users cu ON cu.id = pc.author_id
+                 LEFT JOIN user_preferences cup ON cup.user_id = cu.id
                  WHERE pc.post_id = COALESCE(p.repost_of_id, p.id)
                    AND pc.is_deleted = FALSE
                    AND NOT EXISTS (
@@ -7064,6 +7137,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
                  SELECT json_agg(json_build_object(
                    'id', ppo.id,
                    'text', ppo.text,
+                   'option_image_url', ppo.option_image_url,
                    'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
                  ) ORDER BY ppo.sort_order)
                  FROM post_poll_options ppo
@@ -7127,6 +7201,7 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
                  SELECT json_agg(json_build_object(
                    'id', ppo.id,
                    'text', ppo.text,
+                   'option_image_url', ppo.option_image_url,
                    'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
                  ) ORDER BY ppo.sort_order)
                  FROM post_poll_options ppo
@@ -7816,6 +7891,7 @@ app.get('/api/community/polls', auth, async (req, res) => {
                  SELECT json_agg(json_build_object(
                    'id', ppo.id,
                    'text', ppo.text,
+                   'option_image_url', ppo.option_image_url,
                    'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
                  ) ORDER BY ppo.sort_order)
                  FROM post_poll_options ppo
@@ -7883,7 +7959,7 @@ app.post('/api/community/posts/:id/poll/vote', auth, async (req, res) => {
     );
     // Fetch updated poll state
     const { rows: updatedOptions } = await client.query(
-      `SELECT ppo.id, ppo.text, ppo.sort_order,
+      `SELECT ppo.id, ppo.text, ppo.option_image_url, ppo.sort_order,
               (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id) AS votes
        FROM post_poll_options ppo WHERE ppo.poll_id=$1 ORDER BY ppo.sort_order`, [poll.id]
     );
@@ -8212,6 +8288,7 @@ app.get('/api/me/social-notifications', auth, async (req, res) => {
 
     const { rows } = await pool.query(`
       SELECT sn.id, sn.type, sn.entity_type, sn.entity_id, sn.preview_text, sn.is_read, sn.created_at,
+             sn.group_count, sn.actor_ids,
              actor.id AS actor_id, actor.username AS actor_username, actor.minecraft_name AS actor_minecraft_name,
              actor.photo_url AS actor_photo_url,
              COALESCE(actor_prefs.avatar_url, '') AS actor_avatar_url,
@@ -10052,6 +10129,14 @@ app.patch('/api/admin/moderation-queue/:id', auth, requireAdmin, async (req, res
 // ─────────────────────────────────────────────
 // Error handler
 // ─────────────────────────────────────────────
+registerCommunityEvolution(app, pool, auth, {
+  fetchMinecraftStatusCached,
+  primaryIntegrationFieldsSql,
+  socialRankSql,
+  socialMeritSql,
+  requireAdmin,
+});
+
 app.use((err, req, res, _next) => {
   const status = err.status || err.statusCode || 500;
   console.error('[error]', {

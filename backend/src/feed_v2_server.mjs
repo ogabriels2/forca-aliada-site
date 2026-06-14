@@ -558,6 +558,16 @@ app.get('/api/community/feed', auth, async (req, res) => {
       `(p.author_id IN (SELECT following_id FROM user_follows WHERE follower_id = $1) OR p.author_id = $1)`,
     );
   }
+  if (filter === 'saved') {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM post_saves ps_filter
+      WHERE ps_filter.user_id = $1
+        AND ps_filter.post_id = COALESCE(p.repost_of_id, p.id)
+    )`);
+  }
+  if (filter === 'trending') {
+    conditions.push(`COALESCE(op.created_at, p.created_at) > NOW() - INTERVAL '24 hours'`);
+  }
 
   if (search) {
     params.push(search);
@@ -897,9 +907,23 @@ app.get('/api/community/feed', auth, async (req, res) => {
       LEFT JOIN LATERAL (
         SELECT json_agg(row_to_json(rc)) AS recent_comments
         FROM (
-          SELECT pc.id, pc.content, pc.created_at, cu.username, cu.minecraft_name
+          SELECT pc.id, pc.content, pc.media_urls, pc.created_at, pc.author_id,
+                 pc.likes_count, pc.reply_count,
+                 EXISTS(
+                   SELECT 1 FROM comment_likes cl
+                   WHERE cl.comment_id = pc.id AND cl.user_id = $1
+                 ) AS liked_by_me,
+                 (SELECT COUNT(*)::int FROM comment_saves cs WHERE cs.comment_id = pc.id) AS saves_count,
+                 EXISTS(
+                   SELECT 1 FROM comment_saves cs
+                   WHERE cs.comment_id = pc.id AND cs.user_id = $1
+                 ) AS saved_by_me,
+                 cu.username, cu.minecraft_name, cu.photo_url, cu.is_platform_verified,
+                 COALESCE(cup.display_name, '') AS display_name,
+                 COALESCE(cup.avatar_url, '') AS avatar_url
           FROM post_comments pc
           JOIN users cu ON cu.id = pc.author_id
+          LEFT JOIN user_preferences cup ON cup.user_id = cu.id
           WHERE pc.post_id = f.target_id
             AND pc.is_deleted = FALSE
             AND NOT EXISTS (
@@ -924,6 +948,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
             SELECT json_agg(json_build_object(
               'id',    ppo.id,
               'text',  ppo.text,
+              'option_image_url', ppo.option_image_url,
               'votes', (SELECT COUNT(*)::int FROM post_poll_votes v WHERE v.option_id = ppo.id)
             ) ORDER BY ppo.sort_order)
             FROM post_poll_options ppo WHERE ppo.poll_id = pp.id

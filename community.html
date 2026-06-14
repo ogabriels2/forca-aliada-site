@@ -78,7 +78,7 @@ body.guest-mode #friends-bar { display:none!important; }
 </script>
 <style>
 /* ─── DESIGN TOKENS ─── */
-:root {
+:root:not(:root) {
   color-scheme: light;
   --ff: 'Outfit', -apple-system, sans-serif;
   --ff-mono: 'JetBrains Mono', monospace;
@@ -137,7 +137,7 @@ body.guest-mode #friends-bar { display:none!important; }
   --t-fast: 0.12s;
   --t-med: 0.22s;
 }
-[data-theme=dark] {
+[data-theme=dark]:not([data-theme=dark]) {
   color-scheme: dark;
   --bg: #060c16;
   --bg-2: #0b1421;
@@ -1939,6 +1939,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 
 /* --- MANAGER VISUAL SYSTEM FOR COMMUNITY --- */
 :root{
+  color-scheme:light;
   --ff:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --ff-mono:'DM Mono','JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
   --ff-display:'Outfit','Syne',sans-serif;
@@ -1951,7 +1952,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   --surface-soft:#eee6d6;
   --ink:#14120d;
   --ink-2:#5f594f;
-  --ink-3:#8d8578;
+  --ink-3:#6f685d;
   --line:rgba(93,73,31,.18);
   --line-strong:rgba(93,73,31,.34);
   --accent:#9b7a2d;
@@ -1983,6 +1984,11 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   --r-md:8px;
   --r-lg:8px;
   --r-xl:10px;
+  --r-full:9999px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --ease-out:cubic-bezier(0,0,.3,1);
+  --t-fast:.12s;
+  --t-med:.22s;
   --shadow-xs:0 1px 0 rgba(255,255,255,.65) inset,0 8px 18px rgba(69,53,25,.08);
   --shadow-sm:0 1px 0 rgba(255,255,255,.72) inset,0 18px 34px rgba(69,53,25,.12);
   --shadow-md:0 1px 0 rgba(255,255,255,.68) inset,0 24px 52px rgba(69,53,25,.16);
@@ -1990,6 +1996,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   --shadow-accent:0 12px 30px rgba(155,122,45,.22);
 }
 [data-theme=dark]{
+  color-scheme:dark;
   --bg:#0a0a08;
   --bg-2:#11110f;
   --surface:rgba(26,26,23,.78);
@@ -1998,7 +2005,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   --surface-soft:#1b1b17;
   --ink:#fdfcf8;
   --ink-2:#d4d0c8;
-  --ink-3:#8f8a7e;
+  --ink-3:#a0998e;
   --line:rgba(201,168,76,.16);
   --line-strong:rgba(201,168,76,.34);
   --accent:#c9a84c;
@@ -3518,6 +3525,7 @@ body::after{
   }
 }
 </style>
+<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614">
 </head>
 <body>
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3745,7 +3753,7 @@ body::after{
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
         <span id="new-posts-count">Novas postagens</span>
       </div>
-      <div class="feed-list" id="feed-list">
+      <div class="feed-list" id="feed-list" aria-live="polite" aria-busy="true">
         <div class="post-skel skel"></div>
         <div class="post-skel skel"></div>
         <div class="post-skel skel"></div>
@@ -5125,6 +5133,7 @@ async function loadFeed({reset=false}={}){
     // list pode ser null — sem o try{} envolvendo, qualquer acesso a list
     // lançaria TypeError fora do catch, deixando state.loading=true para sempre.
     if(!list){ state.loading=false; return; } // guard: DOM ainda não pronto — reseta loading antes de sair
+    list.setAttribute('aria-busy','true');
     if(reset){
       state.cursor=null;
       state.feedEvaluationTimestamp=new Date().toISOString();
@@ -5175,6 +5184,7 @@ async function loadFeed({reset=false}={}){
     }
   }finally{
     state.loading=false;
+    $('#feed-list')?.setAttribute('aria-busy','false');
   }
 }
 function switchTab(filter){
@@ -5513,7 +5523,7 @@ async function publishPost(type){
     if(!localPoll && pollData) {
       localPoll = {
         id: null,
-        options: pollData.options.map((text,i)=>({id:`temp-${i}`,text,votes:0})),
+        options: pollData.options.map((option,i)=>({id:`temp-${i}`,text:option.text,option_image_url:option.option_image_url,votes:0})),
         ends_at: new Date(Date.now() + pollData.duration_hours*3600000).toISOString(),
         is_closed: false,
         user_vote_id: null,
@@ -5601,8 +5611,8 @@ async function retryScheduledPost(id){
 /* ======================= POLL SYSTEM ======================= */
 // Per-composer poll state
 const pollState = {
-  inline: { active: false, options: ['', ''], duration_hours: 24 },
-  modal:  { active: false, options: ['', ''], duration_hours: 24 },
+  inline: { active: false, options: ['', ''], images: ['', ''], duration_hours: 24 },
+  modal:  { active: false, options: ['', ''], images: ['', ''], duration_hours: 24 },
 };
 const POLL_DURATIONS = [
   [1,   '1 hora'],
@@ -5617,7 +5627,7 @@ const POLL_DURATIONS = [
 function getPollData(type) {
   const ps = pollState[type];
   if (!ps?.active) return null;
-  const opts = ps.options.map(o => String(o).trim()).filter(Boolean);
+  const opts = ps.options.map((o,i) => ({text:String(o).trim(),option_image_url:String(ps.images?.[i]||'')})).filter(o=>o.text);
   if (opts.length < 2) return null;
   return { options: opts, duration_hours: ps.duration_hours };
 }
@@ -5626,6 +5636,7 @@ function clearPoll(type) {
   if (!pollState[type]) return;
   pollState[type].active = false;
   pollState[type].options = ['', ''];
+  pollState[type].images = ['', ''];
   pollState[type].duration_hours = 24;
   const btn = $(`#${type}-poll-toggle`);
   if (btn) btn.classList.remove('is-on');
@@ -5640,6 +5651,10 @@ function renderPollBuilder(type) {
 
   const optRows = ps.options.map((val, i) => `
     <div class="poll-opt-row">
+      <label class="poll-opt-image-btn" title="Adicionar imagem">
+        ${ps.images?.[i]?`<img src="${esc(ps.images[i])}" alt="">`:'<span>+</span>'}
+        <input type="file" accept="image/*" data-poll-image="${i}" hidden>
+      </label>
       <input class="poll-opt-input" type="text" maxlength="80" placeholder="${i < 2 ? `Opção ${i + 1}` : `Opção ${i + 1} (opcional)`}"
         value="${esc(val)}" data-poll-opt="${i}" autocomplete="off">
       ${i >= 2 ? `<button class="poll-opt-remove" type="button" data-poll-remove="${i}" aria-label="Remover opção">
@@ -5685,6 +5700,7 @@ function togglePoll(type) {
   pollState[type].active = !pollState[type].active;
   if (!pollState[type].active) {
     pollState[type].options = ['', ''];
+    pollState[type].images = ['', ''];
     pollState[type].duration_hours = 24;
   }
   const btn = $(`#${type}-poll-toggle`);
@@ -5695,6 +5711,22 @@ function togglePoll(type) {
     setTimeout(() => $(`#${type}-poll-builder .poll-opt-input`)?.focus(), 50);
   }
   syncComposer(type);
+}
+
+async function uploadPollOptionImage(type,index,file){
+  if(!file?.type?.startsWith('image/'))return;
+  try{
+    const processed=await smartCompress(file,IMG_COMPRESS_PRESETS.post);
+    await assertSafeImage(processed,type);
+    const form=new FormData();
+    form.append('media',processed,`poll-${Date.now()}-${index}.webp`);
+    const uploaded=await api('/api/community/upload',{method:'POST',body:form,timeoutMs:90000});
+    const url=uploaded.urls?.[0];
+    if(!url)throw new Error('Upload incompleto.');
+    pollState[type].images[index]=url;
+    renderPollBuilder(type);
+    toast('success','Imagem adicionada','A opcao da enquete foi atualizada.');
+  }catch(e){toast('error','Imagem nao adicionada',e.message)}
 }
 
 // Render poll on a post card (display)
@@ -5729,6 +5761,7 @@ function pollHTML(p) {
       <span class="poll-check" aria-hidden="true">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>
       </span>
+      ${opt.option_image_url?`<img class="poll-option-image" src="${esc(opt.option_image_url)}" alt="" loading="lazy" decoding="async">`:''}
       <span class="poll-label">${esc(opt.text)}${isWinner && showResults ? ' 🏆' : ''}</span>
       <span class="poll-pct">${showResults ? pct + '%' : ''}</span>
     </button>`;
@@ -8972,7 +9005,7 @@ function bindEvents(){
       _sentinelInflight=true;
       _showFeedSpinner();
       loadFeed({reset:false}).finally(()=>{ _sentinelInflight=false; });
-    },{rootMargin:'0px 0px 800px 0px',threshold:0});
+    },{rootMargin:'0px 0px 400px 0px',threshold:0});
     obs.observe(sentinel);
   }
 
@@ -9534,6 +9567,7 @@ async function boot(){
 boot();
 </script>
 
+<script src="assets/js/community-evolution.js?v=evolution-20260614"></script>
 <script src="assets/js/social-chat.js?v=chat13-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
