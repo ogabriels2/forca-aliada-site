@@ -95,13 +95,19 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
       if (Number(payload?.recipientId) !== userId) return;
       res.write(`event: typing\ndata: ${JSON.stringify(payload)}\n\n`);
     };
+    const notificationListener = payload => {
+      if (Number(payload?.recipientId) !== userId) return;
+      res.write(`event: notification\ndata: ${JSON.stringify(payload)}\n\n`);
+    };
     communityBus.on('new-post', listener);
     communityBus.on('typing', typingListener);
+    communityBus.on('notification', notificationListener);
     const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 25_000);
     req.on('close', () => {
       clearInterval(keepAlive);
       communityBus.off('new-post', listener);
       communityBus.off('typing', typingListener);
+      communityBus.off('notification', notificationListener);
     });
   });
 

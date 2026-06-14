@@ -10,7 +10,7 @@
 <meta name="application-name" content="FA Community">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Community">
-<script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script>
+<script defer src="assets/js/fa-pwa.js?v=pwa4-20260614" data-fa-app="community"></script>
 <script defer src="assets/js/fa-seo.js"></script>
 <!-- Cache-Control: HTML nunca deve ser cacheado para garantir que JS/CSS atualizados sejam carregados -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -77,103 +77,6 @@ body.guest-mode #friends-bar { display:none!important; }
 })();
 </script>
 <style>
-/* ─── DESIGN TOKENS ─── */
-:root:not(:root) {
-  color-scheme: light;
-  --ff: 'Outfit', -apple-system, sans-serif;
-  --ff-mono: 'JetBrains Mono', monospace;
-  --bg: #f2f5fb;
-  --bg-2: #e8eef8;
-  --surface: rgba(255,255,255,0.94);
-  --surface-solid: #ffffff;
-  --surface-hover: #f5f8fe;
-  --surface-soft: #f0f4fc;
-  --ink: #0b1524;
-  --ink-2: #3d4f68;
-  --ink-3: #8898b0;
-  --line: rgba(11,21,36,0.08);
-  --line-strong: rgba(11,21,36,0.14);
-  --accent: #1251e0;
-  --accent-h: #0c3eb8;
-  --accent-2: #0a8f74;
-  --accent-soft: rgba(18,81,224,0.08);
-  --accent-mid: rgba(18,81,224,0.18);
-  --danger: #dc2626;
-  --danger-soft: rgba(220,38,38,0.09);
-  --success: #059669;
-  --success-soft: rgba(5,150,105,0.09);
-  --warning: #d97706;
-  --warning-soft: rgba(217,119,6,0.10);
-  --gold: #92400e;
-  --gold-light: #fbbf24;
-  --purple: #6d28d9;
-  --purple-light: #a78bfa;
-  /* rank colors */
-  --rk-iron: #64748b;
-  --rk-gold: #b45309;
-  --rk-diamond: #0a7a64;
-  --rk-netherite: #6d28d9;
-  --rk-staff: #1251e0;
-  --rk-owner: #b91c1c;
-  /* layout */
-  --topbar-h: 62px;
-  --left-w: 254px;
-  --right-w: 300px;
-  /* radii */
-  --r-xs: 8px;
-  --r-sm: 14px;
-  --r-md: 18px;
-  --r-lg: 24px;
-  --r-xl: 32px;
-  /* shadows */
-  --shadow-xs: 0 1px 3px rgba(11,21,36,0.06);
-  --shadow-sm: 0 2px 8px rgba(11,21,36,0.07), 0 1px 0 rgba(255,255,255,0.9) inset;
-  --shadow-md: 0 6px 20px rgba(11,21,36,0.08), 0 1px 0 rgba(255,255,255,0.95) inset;
-  --shadow-lg: 0 18px 50px rgba(11,21,36,0.14);
-  --shadow-accent: 0 8px 20px rgba(18,81,224,0.22);
-  /* timing */
-  --ease: cubic-bezier(0.16,1,0.3,1);
-  --ease-out: cubic-bezier(0,0,0.3,1);
-  --t-fast: 0.12s;
-  --t-med: 0.22s;
-}
-[data-theme=dark]:not([data-theme=dark]) {
-  color-scheme: dark;
-  --bg: #060c16;
-  --bg-2: #0b1421;
-  --surface: rgba(13,20,34,0.92);
-  --surface-solid: #0d1422;
-  --surface-hover: #14203a;
-  --surface-soft: #162038;
-  --ink: #eef3ff;
-  --ink-2: #a8bacc;
-  --ink-3: #516070;
-  --line: rgba(255,255,255,0.08);
-  --line-strong: rgba(255,255,255,0.14);
-  --accent: #4e8fff;
-  --accent-h: #6ba4ff;
-  --accent-2: #2ec8a8;
-  --accent-soft: rgba(78,143,255,0.12);
-  --accent-mid: rgba(78,143,255,0.22);
-  --danger: #fb7185;
-  --danger-soft: rgba(251,113,133,0.13);
-  --success: #34d399;
-  --success-soft: rgba(52,211,153,0.13);
-  --warning: #fbbf24;
-  --warning-soft: rgba(251,191,36,0.13);
-  --gold: #fcd34d;
-  --purple-light: #c4b5fd;
-  --rk-gold: #f59e0b;
-  --rk-diamond: #10b981;
-  --rk-netherite: #a78bfa;
-  --rk-staff: #60a5fa;
-  --shadow-xs: 0 1px 3px rgba(0,0,0,0.35);
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.32);
-  --shadow-md: 0 6px 24px rgba(0,0,0,0.38);
-  --shadow-lg: 0 22px 60px rgba(0,0,0,0.52);
-  --shadow-accent: 0 8px 20px rgba(78,143,255,0.28);
-}
-
 /* ─── RESET ─── */
 *{box-sizing:border-box;margin:0;padding:0}
 html{min-height:100%;scroll-behavior:smooth}
@@ -3525,7 +3428,7 @@ body::after{
   }
 }
 </style>
-<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614">
+<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614b">
 </head>
 <body>
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -4977,7 +4880,7 @@ function mediaUrlsFromPost(p){
 function postCollageHTML(urls=[]){
   const safe=urls.slice(0,4);
   if(!safe.length)return'';
-  return`<div class="post-collage" data-count="${safe.length}">${safe.map((url,i)=>`<button class="post-media" type="button" data-lb-open data-lb-url="${esc(url)}" data-lb-index="${i}" aria-label="Ver imagem ${i+1} em tela cheia"><img src="${esc(url)}" alt="Imagem do post ${i+1}" loading="lazy" decoding="async"></button>`).join('')}</div>`;
+  return`<div class="post-collage" data-count="${safe.length}">${safe.map((url,i)=>`<button class="post-media" type="button" data-lb-open data-lb-url="${esc(url)}" data-lb-index="${i}" aria-label="Ver imagem ${i+1} em tela cheia"><img src="${esc(url)}" alt="Imagem do post ${i+1}" width="1200" height="900" loading="lazy" decoding="async"></button>`).join('')}</div>`;
 }
 function commentMediaUrls(comment){
   return [...new Set((Array.isArray(comment?.media_urls)?comment.media_urls:[])
@@ -4987,7 +4890,7 @@ function commentMediaUrls(comment){
 function commentMediaHTML(comment){
   const urls=commentMediaUrls(comment);
   if(!urls.length)return'';
-  return`<div class="comment-media-grid" data-count="${urls.length}">${urls.map((url,index)=>`<button class="comment-media-btn" type="button" data-comment-media-open data-comment-media-index="${index}" aria-label="Ver foto ${index+1} do comentário"><img src="${esc(url)}" alt="Foto anexada ao comentário" loading="lazy" decoding="async"></button>`).join('')}</div>`;
+  return`<div class="comment-media-grid" data-count="${urls.length}">${urls.map((url,index)=>`<button class="comment-media-btn" type="button" data-comment-media-open data-comment-media-index="${index}" aria-label="Ver foto ${index+1} do comentário"><img src="${esc(url)}" alt="Foto anexada ao comentário" width="900" height="700" loading="lazy" decoding="async"></button>`).join('')}</div>`;
 }
 function commentMediaToolsHTML(type){
   state.composerMedia[type] ||= [];
@@ -5042,7 +4945,7 @@ function postCardHTML(p){
     ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(p.display_name||reposter)} repostou</span></div>`:''}
     <div class="post-layout ${rc.length?'has-comments':''}" style="display:grid;grid-template-columns:42px minmax(0,1fr);gap:10px">
       <div class="post-av-col" style="display:flex;flex-direction:column;align-items:center">
-        <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${esc(avSrc)}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'">
+        <img class="av42-sq js-profile" data-mc="${esc(mc)}" data-uid="${esc(authorId)}" src="${esc(avSrc)}" alt="${esc(shown)}" width="50" height="50" decoding="async" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'">
         ${rc.length?`<div class="post-av-connector"></div>`:''}
       </div>
       <div>
@@ -5078,10 +4981,10 @@ function postCardHTML(p){
         ${mediaHTML}
         ${p.poll ? pollHTML(p) : ''}
         <div class="post-actions">
-          <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" ${Number(p.likes_count)>0?`data-has-likers="1"`:''}aria-label="Curtir" title="${Number(p.likes_count)>0?'Clique longo (mobile) ou clique no número para ver quem curtiu':''}">${IC.heart}<span data-action-likes="${Number(p.likes_count)>0?'show-likers':''}">${num(Number(p.likes_count) || 0)}</span></button>
+          <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-pressed="${p.liked_by_me?'true':'false'}" ${Number(p.likes_count)>0?`data-has-likers="1"`:''}aria-label="${p.liked_by_me?'Descurtir':'Curtir'}" title="${Number(p.likes_count)>0?'Clique longo (mobile) ou clique no número para ver quem curtiu':''}">${IC.heart}<span data-action-likes="${Number(p.likes_count)>0?'show-likers':''}">${num(Number(p.likes_count) || 0)}</span></button>
           <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
-          <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-label="Repostar">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
-          <button class="pa pa-save ${p.saved_by_me?'is-on':''}" data-action="save" aria-label="${p.saved_by_me?'Remover dos salvos':'Salvar post'}">${IC.save}<span>${Number(p.saves_count)>0?num(Number(p.saves_count)):''}</span></button>
+          <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-pressed="${p.reposted_by_me?'true':'false'}" aria-label="${p.reposted_by_me?'Remover repost':'Repostar'}">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
+          <button class="pa pa-save ${p.saved_by_me?'is-on':''}" data-action="save" aria-pressed="${p.saved_by_me?'true':'false'}" aria-label="${p.saved_by_me?'Remover dos salvos':'Salvar post'}">${IC.save}<span>${Number(p.saves_count)>0?num(Number(p.saves_count)):''}</span></button>
           <button class="pa pa-share" data-action="share" aria-label="Compartilhar">${IC.share}</button>
         </div>
       </div>
@@ -5271,11 +5174,11 @@ async function loadFriendsBar(){
     }).join('');
     if(reqList) reqList.innerHTML=requests.length?requests.map(p=>{
       const n=p.minecraft_name||p.username||'Jogador'; const shown=displayName(p); const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><strong>${esc(shown)}</strong><small>${rk.label?esc(rk.label)+' · ':''}quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Seguir</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><strong>${esc(shown)}</strong><small>${rk.label?esc(rk.label)+' · ':''}quer conectar</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0" aria-pressed="false">Seguir</button></div>`;
     }).join(''):'<p style="font-size:12.5px;color:var(--ink-2);padding-bottom:6px">Nenhuma solicitacao pendente.</p>';
     if(sugList) sugList.innerHTML=players.slice(0,5).map(p=>{
       const n=p.minecraft_name||p.username||'Jogador'; const shown=displayName(p); const rk=rankInfo(p.rank,p.merit);
-      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><strong>${esc(shown)}</strong><small>${esc(rk.label || 'Perfil')}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0">Adicionar</button></div>`;
+      return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,50)}'"><div><strong>${esc(shown)}</strong><small>${esc(rk.label || 'Perfil')}</small></div><button class="follow-btn" data-fol data-uid="${esc(p.id)}" data-on="0" aria-pressed="false">Adicionar</button></div>`;
     }).join('');
   }catch(e){}
 }
@@ -5976,7 +5879,19 @@ document.addEventListener('visibilitychange', () => document.hidden ? stopPollSy
 
 async function castPollVote(postId, optionId) {
   const pollEl = document.querySelector(`.poll-container[data-poll-post-id="${Number(postId)}"]`);
-  pollEl?.querySelectorAll('.poll-option').forEach(btn => { btn.disabled = true; });
+  const post = findPost(postId) || (state.activeThreadPost && Number(state.activePostId) === Number(postId) ? state.activeThreadPost : null);
+  const previousPoll = post?.poll ? JSON.parse(JSON.stringify(post.poll)) : null;
+  if (post?.poll && !post.poll.user_vote_id && !post.poll_voted_option_id) {
+    const optimisticPoll = JSON.parse(JSON.stringify(post.poll));
+    optimisticPoll.user_vote_id = String(optionId);
+    optimisticPoll.options = optimisticPoll.options.map(option => ({
+      ...option,
+      votes: Number(option.votes || 0) + (String(option.id) === String(optionId) ? 1 : 0),
+    }));
+    applyPollUpdate(postId, optimisticPoll);
+  } else {
+    pollEl?.querySelectorAll('.poll-option').forEach(btn => { btn.disabled = true; });
+  }
   try {
     const result = await api(`/api/community/posts/${encodeURIComponent(postId)}/poll/vote`, {
       method: 'POST',
@@ -5984,7 +5899,8 @@ async function castPollVote(postId, optionId) {
     });
     if (result?.poll) applyPollUpdate(postId, result.poll);
   } catch (e) {
-    pollEl?.querySelectorAll('.poll-option').forEach(btn => { btn.disabled = false; });
+    if (previousPoll) applyPollUpdate(postId, previousPoll);
+    else pollEl?.querySelectorAll('.poll-option').forEach(btn => { btn.disabled = false; });
     toast('error', 'Voto não registrado', e.message);
   }
 }
@@ -6006,6 +5922,8 @@ async function toggleLike(id,btn){
   post.liked_by_me=!liked;
   post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?-1:1));
   btn?.classList.toggle('is-on',post.liked_by_me);
+  btn?.setAttribute('aria-pressed',String(post.liked_by_me));
+  btn?.setAttribute('aria-label',post.liked_by_me?'Descurtir':'Curtir');
   btn?.classList.add('popping');
   const span=btn?.querySelector('span');
   if(span){span.textContent=num(post.likes_count);span.classList.remove('bouncing');void span.offsetWidth;span.classList.add('bouncing');setTimeout(()=>span.classList.remove('bouncing'),280);}
@@ -6014,7 +5932,7 @@ async function toggleLike(id,btn){
   try{await api(`/api/community/posts/${encodeURIComponent(id)}/like`,{method:liked?'DELETE':'POST'})}
   catch(e){
     post.liked_by_me=liked;post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?1:-1));
-    btn?.classList.toggle('is-on',liked);const s2=btn?.querySelector('span');if(s2)s2.textContent=num(post.likes_count);
+    btn?.classList.toggle('is-on',liked);btn?.setAttribute('aria-pressed',String(liked));btn?.setAttribute('aria-label',liked?'Descurtir':'Curtir');const s2=btn?.querySelector('span');if(s2)s2.textContent=num(post.likes_count);
     toast('error','Like não salvo',e.message);
   }
 }
@@ -6026,6 +5944,7 @@ async function toggleSave(id,btn){
   post.saved_by_me=!saved;
   post.saves_count=Math.max(0,Number(post.saves_count||0)+(saved?-1:1));
   btn?.classList.toggle('is-on',!saved);
+  btn?.setAttribute('aria-pressed',String(!saved));
   btn?.setAttribute('aria-label',!saved?'Remover dos salvos':'Salvar post');
   const span=btn?.querySelector('span');
   if(span) span.textContent=Number(post.saves_count)>0?num(Number(post.saves_count)):'';
@@ -6042,6 +5961,7 @@ async function toggleSave(id,btn){
     post.saved_by_me=saved;
     post.saves_count=Math.max(0,Number(post.saves_count||0)+(saved?1:-1));
     btn?.classList.toggle('is-on',saved);
+    btn?.setAttribute('aria-pressed',String(saved));
     btn?.setAttribute('aria-label',saved?'Remover dos salvos':'Salvar post');
     if(span) span.textContent=Number(post.saves_count)>0?num(Number(post.saves_count)):'';
     toast('error','Não foi possível salvar',err.message);
@@ -6086,6 +6006,8 @@ async function toggleRepost(originalId,btn){
   // Optimistic UI
   if(post){ post.reposted_by_me=!reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?-1:1)); }
   btn?.classList.toggle('is-on',!reposted);
+  btn?.setAttribute('aria-pressed',String(!reposted));
+  btn?.setAttribute('aria-label',!reposted?'Remover repost':'Repostar');
   const span=btn?.querySelector('span'); if(span) span.textContent=num(Number(post?.reposts_count||0));
 
   try{
@@ -6113,6 +6035,8 @@ async function toggleRepost(originalId,btn){
     // Revert on real error
     if(post){ post.reposted_by_me=reposted; post.reposts_count=Math.max(0,Number(post.reposts_count||0)+(reposted?1:-1)); }
     btn?.classList.toggle('is-on',reposted);
+    btn?.setAttribute('aria-pressed',String(reposted));
+    btn?.setAttribute('aria-label',reposted?'Remover repost':'Repostar');
     const s2=btn?.querySelector('span'); if(s2) s2.textContent=num(post?.reposts_count||0);
     renderFeed();
     toast('error','Repost não concluído',e.message);
@@ -7651,7 +7575,7 @@ async function renderProfileRoute(identifier){
           <div class="profile-topline">
             <img class="profile-av" src="${esc(avatar(prof,140))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,140)}'">
             <div class="profile-actions-row">
-              ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
+              ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}" aria-pressed="${prof.is_following?'true':'false'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
               ${isMe?'':`<button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
             </div>
           </div>
@@ -7714,7 +7638,7 @@ async function renderProfileRoute(identifier){
         return;
       }
       const rf=e.target.closest('[data-pf-follow]');
-      if(rf){const on=rf.dataset.on==='1';rf.dataset.on=on?'0':'1';rf.innerHTML=on?'Seguir':'Seguindo';toggleFollowUser(rf.dataset.uid,on,null);return}
+      if(rf){const on=rf.dataset.on==='1';toggleFollowUser(rf.dataset.uid,on,rf);return}
       const msg=e.target.closest('[data-pf-message]');
       if(msg){window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
       if(e.target.closest('[data-profile-edit]')){openCommunityProfileEditor();return}
@@ -8050,10 +7974,26 @@ async function openCommunityProfileEditor(){
 
 /* ======================= FOLLOW / BLOCK / REPORT ======================= */
 async function toggleFollowUser(uid,currently,btn){
+  const next=!currently;
+  if(btn){
+    btn.dataset.on=next?'1':'0';
+    btn.textContent=next?'Seguindo':'Seguir';
+    btn.classList.toggle('is-on',next);
+    btn.setAttribute('aria-pressed',String(next));
+    btn.disabled=true;
+  }
   try{
     await api(`/api/me/follows/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});
     toast('success',currently?'Deixou de seguir':'Agora seguindo',currently?'Relação removida.':'');
-  }catch(e){toast('error','Ação não concluída',e.message)}
+  }catch(e){
+    if(btn){
+      btn.dataset.on=currently?'1':'0';
+      btn.textContent=currently?'Seguindo':'Seguir';
+      btn.classList.toggle('is-on',currently);
+      btn.setAttribute('aria-pressed',String(currently));
+    }
+    toast('error','Ação não concluída',e.message);
+  }finally{if(btn)btn.disabled=false}
 }
 async function blockUser(uid,unblock=false){
   if(!uid)return;
@@ -8077,7 +8017,7 @@ async function reportContent(type,id){
 function playerRowHTML(p){
   const mc=p.minecraft_name||p.username||'Jogador';const rk=rankInfo(p.rank,p.merit);
   const on=Boolean(p.is_following||p.followed_by_me);
-  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(p),50)}'"><div><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}">${on?'Seguindo':'Seguir'}</button></div>`;
+  return`<div class="player-row" data-mc="${esc(mc)}" data-uid="${esc(p.id)}" role="button" tabindex="0"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(p),50)}'"><div><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)} · ${num(p.followers_count||0)} seg.</small></div><button class="follow-btn ${on?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${on?'1':'0'}" aria-pressed="${on?'true':'false'}">${on?'Seguindo':'Seguir'}</button></div>`;
 }
 async function loadPlayers(search=''){
   $('#player-list').innerHTML=Array.from({length:3},()=>'<div class="skel" style="height:52px;border-radius:10px"></div>').join('');
@@ -8092,16 +8032,17 @@ async function loadPlayers(search=''){
   }catch(e){$('#player-list').innerHTML=`<p style="font-size:12.5px;color:var(--danger);padding:7px 0">${esc(e.message)}</p>`;updateCommunityPulse()}
 }
 async function toggleFollowBtn(uid,currently,btn){
-  btn.disabled=true;btn.textContent='...';
+  const next=!currently;
+  btn.disabled=true;
+  btn.dataset.on=next?'1':'0';btn.textContent=next?'Seguindo':'Seguir';
+  btn.classList.toggle('is-on',next);btn.setAttribute('aria-pressed',String(next));
   const player=state.players.find(p=>String(p.id)===String(uid));
   try{
     await api(`/api/me/follows/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});
-    const next=!currently;
-    btn.dataset.on=next?'1':'0';btn.textContent=next?'Seguindo':'Seguir';
     btn.classList.toggle('is-on',next);btn.classList.add('popping');setTimeout(()=>btn.classList.remove('popping'),300);
     if(player) player.is_following=next;
   }catch(e){
-    btn.dataset.on=currently?'1':'0';btn.textContent=currently?'Seguindo':'Seguir';btn.classList.toggle('is-on',currently);
+    btn.dataset.on=currently?'1':'0';btn.textContent=currently?'Seguindo':'Seguir';btn.classList.toggle('is-on',currently);btn.setAttribute('aria-pressed',String(currently));
     toast('error','Ação não concluída',e.message);
   }finally{btn.disabled=false;}
 }
@@ -8129,7 +8070,7 @@ async function openRelModal(type,mc,uid){
     const rk=rankInfo(p.rank,p.merit);
     const fol=Boolean(p.followed_by_me);
     const itsMe=Number(p.id)===Number(state.me?.id);
-    return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(p),50)}'"><div><strong>${esc(displayName(p))}</strong><small>${rk.label?esc(rk.label)+' · ':''}@${esc(handleName(p))}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
+    return`<div class="rel-row js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(p),50)}'"><div><strong>${esc(displayName(p))}</strong><small>${rk.label?esc(rk.label)+' · ':''}@${esc(handleName(p))}</small></div>${itsMe?'':`<button class="follow-btn ${fol?'is-on':''}" data-fol data-uid="${esc(p.id)}" data-on="${fol?'1':'0'}" aria-pressed="${fol?'true':'false'}">${fol?'Seguindo':'Seguir'}</button>`}</div>`;
   };
   const draw=()=>{
     const list=$('#rel-list');
@@ -9067,8 +9008,9 @@ function bindEvents(){
   const pill=$('#new-posts-pill');
   const pillCount=$('#new-posts-count');
   function startNewPostsPoll(){
-    if(newPostsPoll) return;
+    if(newPostsPoll||window.faCommunityFeedStreamActive) return;
     newPostsPoll=setInterval(async()=>{
+      if(window.faCommunityFeedStreamActive){stopNewPostsPoll();return}
       if(state.routeActive||state.loading||document.hidden) return;
       try{
         const p=new URLSearchParams({limit:'5',filter:state.filter,evaluation_timestamp:new Date().toISOString(),session_seed:ImpressionTracker.sessionSeed});
@@ -9087,6 +9029,7 @@ function bindEvents(){
   }
   function stopNewPostsPoll(){clearInterval(newPostsPoll);newPostsPoll=null}
   document.addEventListener('visibilitychange',()=>document.hidden?stopNewPostsPoll():startNewPostsPoll());
+  window.addEventListener('fa:community-stream-state',event=>event.detail?.active?stopNewPostsPoll():startNewPostsPoll());
   startNewPostsPoll();
 
   // clicking the pill scrolls to top and merges new posts
@@ -9619,7 +9562,7 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/community-evolution.js?v=evolution-20260614"></script>
+<script src="assets/js/community-evolution.js?v=evolution-20260614b"></script>
 <script src="assets/js/social-chat.js?v=chat13-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>

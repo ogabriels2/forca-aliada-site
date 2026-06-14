@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v3';
+const CACHE_VERSION = 'fa-static-v4';
 const STATIC_ASSETS = [
   './',
   'index.html',

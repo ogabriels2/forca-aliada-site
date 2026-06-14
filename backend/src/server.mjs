@@ -2465,7 +2465,10 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
        RETURNING id,group_count`,
       [recipient, actor, type, entityType, entityId, preview],
     );
-    if (grouped.length) return grouped[0];
+    if (grouped.length) {
+      setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: grouped[0].id, type }), 0);
+      return grouped[0];
+    }
   }
 
   const { rows } = await db.query(
@@ -2483,6 +2486,7 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
      RETURNING id`,
     [recipient, actor, type, entityType, entityId, preview],
   );
+  if (rows[0]) setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: rows[0].id, type }), 0);
   return rows[0] || null;
 }
 
@@ -6996,6 +7000,11 @@ async function publishDueScheduledPosts() {
           [scheduled.created_by_user_id || scheduled.author_id, postId, String(scheduled.content || 'Post agendado publicado').slice(0, 120)],
         );
         await client.query('COMMIT');
+        emitCommunityEvent('notification', {
+          recipientId: Number(scheduled.created_by_user_id || scheduled.author_id),
+          notificationId: null,
+          type: 'scheduled_post_published',
+        });
         emitCommunityEvent('new-post', {
           postId: Number(postId),
           authorId: Number(scheduled.author_id),

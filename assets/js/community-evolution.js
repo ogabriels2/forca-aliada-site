@@ -23,6 +23,7 @@
   let typingTimer = null;
   let typingHideTimer = null;
   let lastTypingSentAt = 0;
+  let pendingCommentFocus = null;
 
   const safe = value => typeof esc === 'function' ? esc(value) : String(value || '');
   const buzz = pattern => {
@@ -159,8 +160,25 @@
       <span class="reaction-wrap" data-no-post-nav>
         <button class="pa reaction-trigger" type="button" data-reaction-trigger aria-label="Reagir">＋</button>
         <span class="reaction-picker" hidden>${Object.entries(REACTIONS).map(([code, meta]) =>
-          `<button type="button" data-reaction="${code}" title="${safe(meta[1])}">${meta[0]}</button>`).join('')}</span>
+          `<button type="button" data-reaction="${code}" aria-label="${safe(meta[1])}" aria-pressed="false" title="${safe(meta[1])}">${meta[0]}</button>`).join('')}</span>
       </span>`;
+  }
+
+  function optimisticReactionPayload(payload, nextCode) {
+    const previousCode = payload?.my_reaction || null;
+    const rows = (payload?.reactions || []).map(row => ({ ...row, count: Number(row.count || 0) }));
+    const counts = new Map(rows.map(row => [row.code, row]));
+    if (previousCode && previousCode !== nextCode && counts.has(previousCode)) {
+      counts.get(previousCode).count = Math.max(0, counts.get(previousCode).count - 1);
+    }
+    if (nextCode && previousCode !== nextCode) {
+      if (!counts.has(nextCode)) counts.set(nextCode, { code: nextCode, count: 0 });
+      counts.get(nextCode).count += 1;
+    }
+    return {
+      reactions: [...counts.values()].filter(row => row.count > 0).sort((a, b) => b.count - a.count || a.code.localeCompare(b.code)),
+      my_reaction: nextCode,
+    };
   }
 
   function renderReactionSummary(card, payload) {
@@ -178,7 +196,11 @@
       ? rows.slice(0, 4).map(row => `<button type="button" title="${safe(REACTIONS[row.code]?.[1] || row.code)}">${REACTIONS[row.code]?.[0] || '•'}</button>`).join('')
         + `<span>${rows.reduce((sum, row) => sum + Number(row.count || 0), 0)}</span>`
       : '';
-    card.querySelectorAll('[data-reaction]').forEach(button => button.classList.toggle('is-on', button.dataset.reaction === payload.my_reaction));
+    card.querySelectorAll('[data-reaction]').forEach(button => {
+      const selected = button.dataset.reaction === payload.my_reaction;
+      button.classList.toggle('is-on', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
   }
 
   async function loadReactions(card) {
@@ -262,6 +284,21 @@
     if (decorating) return;
     clearTimeout(decorateTimer);
     decorateTimer = setTimeout(decorateFeed, 45);
+  }
+
+  function restorePendingCommentFocus() {
+    if (!pendingCommentFocus) return;
+    const target = document.querySelector(`#route-col [data-comment-id="${CSS.escape(String(pendingCommentFocus))}"]`);
+    if (!target) return;
+    pendingCommentFocus = null;
+    target.classList.add('is-return-focus');
+    target.setAttribute('tabindex', '-1');
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.focus({ preventScroll: true });
+    setTimeout(() => {
+      target.classList.remove('is-return-focus');
+      target.removeAttribute('tabindex');
+    }, 2400);
   }
 
   async function loadStories() {
@@ -502,6 +539,7 @@
   }
 
   async function streamFeed() {
+    if (!token) return;
     let wait = 2500;
     while (true) {
       try {
@@ -510,6 +548,10 @@
           cache: 'no-store',
         });
         if (!response.ok || !response.body) throw new Error('stream unavailable');
+        if (!window.faCommunityFeedStreamActive) {
+          window.faCommunityFeedStreamActive = true;
+          window.dispatchEvent(new CustomEvent('fa:community-stream-state', { detail: { active: true } }));
+        }
         wait = 2500;
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -521,6 +563,11 @@
           const events = buffer.split('\n\n');
           buffer = events.pop() || '';
           for (const block of events) {
+            if (block.includes('event: notification')) {
+              loadNotifs().catch(() => {});
+              if (new URLSearchParams(location.search).get('notifications') === '1') loadNotificationsPage({ reset: true }).catch(() => {});
+              continue;
+            }
             if (block.includes('event: typing')) {
               const rawTyping = block.split('\n').find(line => line.startsWith('data: '))?.slice(6);
               if (rawTyping) window.dispatchEvent(new CustomEvent('fa:community-typing', { detail: JSON.parse(rawTyping) }));
@@ -540,6 +587,10 @@
           }
         }
       } catch {}
+      if (window.faCommunityFeedStreamActive) {
+        window.faCommunityFeedStreamActive = false;
+        window.dispatchEvent(new CustomEvent('fa:community-stream-state', { detail: { active: false } }));
+      }
       await new Promise(resolve => setTimeout(resolve, wait));
       wait = Math.min(30000, wait * 1.7);
     }
@@ -679,7 +730,11 @@
       const result = document.startViewTransition ? document.startViewTransition(run) : run();
       setTimeout(() => {
         const heading = document.querySelector('#route-col:not([hidden]) h1,.feed-col h1');
-        if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+        if (heading) {
+          heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+          setTimeout(() => heading.removeAttribute('tabindex'), 0);
+        }
       }, 220);
       return result;
     };
@@ -695,6 +750,8 @@
       const drawer = event.target.closest('[data-drawer-filter="saved"],[data-drawer-filter="trending"]');
       if (drawer) { switchTab(drawer.dataset.drawerFilter); return; }
       if (event.target.closest('[data-clear-feed-context]')) { state.hashtag = ''; state.searchQuery = ''; switchTab('all'); return; }
+      const backToPost = event.target.closest('[data-back-to-post]');
+      if (backToPost) pendingCommentFocus = document.querySelector('#subthread-root [data-comment-id]')?.dataset.commentId || null;
       if (event.target.closest('#server-live-pill')) document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       if (event.target.closest('[data-story-add]')) { createStory(); return; }
       const storyGroup = event.target.closest('[data-story-group]');
@@ -729,17 +786,22 @@
       if (reaction) {
         event.stopPropagation();
         const card = reaction.closest('.post-card');
-        const cached = reactionCache.get(String(card.dataset.postId));
-        const remove = cached?.my_reaction === reaction.dataset.reaction;
+        const cached = reactionCache.get(String(card.dataset.postId)) || { reactions: [], my_reaction: null };
+        const remove = cached.my_reaction === reaction.dataset.reaction;
+        const optimistic = optimisticReactionPayload(cached, remove ? null : reaction.dataset.reaction);
+        renderReactionSummary(card, optimistic);
+        reaction.closest('.reaction-picker').hidden = true;
+        buzz(18);
         try {
           const payload = await api(`/api/community/posts/${encodeURIComponent(card.dataset.postId)}/reactions`, {
             method: remove ? 'DELETE' : 'POST',
             body: remove ? undefined : JSON.stringify({ code: reaction.dataset.reaction }),
           });
           renderReactionSummary(card, payload);
-          reaction.closest('.reaction-picker').hidden = true;
-          buzz(18);
-        } catch (error) { toast('error', 'Reação indisponível', error.message); }
+        } catch (error) {
+          renderReactionSummary(card, cached);
+          toast('error', 'Reação indisponível', error.message);
+        }
         return;
       }
 
@@ -906,6 +968,7 @@
     patchExistingFunctions();
     bindEvolutionEvents();
     new MutationObserver(scheduleDecorate).observe(document.querySelector('#feed-list'), { childList: true, subtree: true });
+    new MutationObserver(restorePendingCommentFocus).observe(document.querySelector('#route-col'), { childList: true, subtree: true });
     scheduleDecorate();
     syncScheduleUI();
     loadStories();

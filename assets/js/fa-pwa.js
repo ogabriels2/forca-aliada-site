@@ -23,10 +23,17 @@
 
   const key = `fa_pwa_install_prompt_seen_${app}_v1`;
   const installedKey = `fa_pwa_installed_${app}_v1`;
+  const sessionCountKey = `fa_pwa_session_count_${app}_v1`;
+  const sessionMarkerKey = `fa_pwa_session_marked_${app}_v1`;
   const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   let deferredPrompt = null;
   let promptNode = null;
+  if (!sessionStorage.getItem(sessionMarkerKey)) {
+    sessionStorage.setItem(sessionMarkerKey, '1');
+    localStorage.setItem(sessionCountKey, String(Number(localStorage.getItem(sessionCountKey) || 0) + 1));
+  }
+  const isEligibleSession = () => Number(localStorage.getItem(sessionCountKey) || 0) >= 3;
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js', { scope: './' }).catch(() => {}));
@@ -55,7 +62,7 @@
   `;
 
   const showPrompt = () => {
-    if (promptNode || localStorage.getItem(key) || localStorage.getItem(installedKey)) return;
+    if (!isEligibleSession() || promptNode || localStorage.getItem(key) || localStorage.getItem(installedKey)) return;
     localStorage.setItem(key, new Date().toISOString());
     if (!document.getElementById('fa-install-style')) {
       const style = document.createElement('style');
