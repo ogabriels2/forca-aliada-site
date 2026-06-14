@@ -3983,14 +3983,6 @@ body::after{
       </div>
       <div class="media-preview-container media-preview-modal" id="modal-media-preview" aria-live="polite"></div>
       <div id="modal-poll-builder"></div>
-      <section class="post-schedule-panel" aria-label="Agendamento da postagem">
-        <div class="post-schedule-head">
-          <label for="modal-schedule-at">Publicar depois <small>Deixe vazio para publicar agora</small></label>
-          <input id="modal-schedule-at" type="datetime-local" aria-label="Data e hora para publicar">
-          <button class="btn btn-ghost btn-sm" type="button" data-load-scheduled-posts>Ver agendados</button>
-        </div>
-        <div class="scheduled-posts-list" id="scheduled-posts-list"></div>
-      </section>
     </div>
     <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-solid)">
       <div class="modal-media-tools">
@@ -4000,6 +3992,10 @@ body::after{
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
           Enquete
         </button>
+        <button class="schedule-trigger-btn" type="button" data-open-schedule-modal aria-label="Agendar publicação" title="Agendar publicação">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span id="schedule-trigger-copy">Agendar</span>
+        </button>
         <span class="media-status" id="modal-media-status"></span>
         <span style="font-size:11px;color:var(--ink-3);pointer-events:none">arraste imagens</span>
       </div>
@@ -4007,6 +4003,35 @@ body::after{
         <div class="ring-wrap" id="modal-char-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="modal-ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg><span id="modal-ring-label"></span></div>
         <button class="btn btn-primary" id="modal-publish-btn" disabled>Publicar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="schedule-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm schedule-sheet" role="dialog" aria-modal="true" aria-labelledby="schedule-title">
+    <div class="sheet-header">
+      <div>
+        <h2 id="schedule-title">Agendar publicação</h2>
+        <p class="schedule-subtitle">Escolha quando este post deve aparecer no feed.</p>
+      </div>
+      <button class="close-btn" data-close="schedule-modal" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="sheet-body schedule-sheet-body">
+      <section class="post-schedule-panel" aria-label="Opções de agendamento">
+        <div class="post-schedule-head">
+          <label for="modal-schedule-at">Data e hora <small>O horário usa o fuso do seu dispositivo.</small></label>
+          <input id="modal-schedule-at" type="datetime-local" aria-label="Data e hora para publicar">
+        </div>
+      </section>
+      <div class="schedule-list-head">
+        <strong>Publicações agendadas</strong>
+        <button class="btn btn-ghost btn-sm" type="button" data-load-scheduled-posts>Atualizar lista</button>
+      </div>
+      <div class="scheduled-posts-list" id="scheduled-posts-list"></div>
+    </div>
+    <div class="sheet-footer schedule-sheet-footer">
+      <button class="btn btn-ghost btn-sm" type="button" data-schedule-clear>Publicar agora</button>
+      <button class="btn btn-primary btn-sm" type="button" data-apply-schedule>Concluir</button>
     </div>
   </div>
 </div>
@@ -4973,6 +4998,21 @@ function commentMediaToolsHTML(type){
       <span class="media-status" id="${type}-media-status"></span>
     </div>`;
 }
+function previewCommentActionsHTML(comment){
+  const liked=Boolean(comment.liked_by_me);
+  const saved=Boolean(comment.saved_by_me);
+  const likes=Number(comment.likes_count||0);
+  const saves=Number(comment.saves_count||0);
+  const replies=Number(comment.reply_count||0);
+  const handle=handleName(comment);
+  return`<div class="preview-comment-actions" data-no-post-nav>
+    <button class="preview-comment-action comment-pa-like${liked?' is-on':''}" type="button" data-comment-like="${esc(comment.id)}" data-liked="${liked?'1':'0'}" aria-label="${liked?'Descurtir':'Curtir'} comentário">${IC.heart}<span data-comment-likes-count="${esc(comment.id)}" data-count="${likes}">${likes>0?num(likes):''}</span></button>
+    <button class="preview-comment-action comment-pa-replies" type="button" data-open-comment-thread="${esc(comment.id)}" aria-label="Responder ao comentário">${IC.comment}<span>${replies>0?num(replies):''}</span></button>
+    <button class="preview-comment-action comment-pa-repost" type="button" data-comment-repost="${esc(comment.id)}" data-comment-content="${esc(String(comment.content||'').slice(0,200))}" data-comment-author="${esc(handle)}" aria-label="Repostar comentário">${IC.repost}</button>
+    <button class="preview-comment-action comment-pa-save${saved?' is-on':''}" type="button" data-comment-save="${esc(comment.id)}" data-saved="${saved?'1':'0'}" aria-label="${saved?'Remover comentário dos salvos':'Salvar comentário'}">${IC.save}<span data-comment-saves-count="${esc(comment.id)}" data-count="${saves}">${saves>0?num(saves):''}</span></button>
+    <button class="preview-comment-action comment-pa-share" type="button" data-comment-share="${esc(comment.id)}" data-comment-content="${esc(String(comment.content||'').slice(0,200))}" aria-label="Compartilhar comentário">${IC.share}</button>
+  </div>`;
+}
 function postCardHTML(p){
   const isRepost=Boolean(p.repost_of_id);
   const reposter=p.minecraft_name||p.username||'Jogador';
@@ -5046,7 +5086,7 @@ function postCardHTML(p){
         </div>
       </div>
     </div>
-    ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map((c,cidx,arr)=>{const cmc=c.minecraft_name||c.username||'?';const cShown=c.display_name||cmc;const cAv=avatar(c,32);const cFallback=fallbackAvatar(cShown,32);return`<div class="preview-row"><div class="preview-row-av-col"><img class="preview-row-av js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='${cFallback}'"><div class="preview-sub-line"></div></div><div class="preview-row-body"><div class="preview-row-meta"><span class="preview-row-author js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}">${esc(cShown)}</span><span class="preview-row-time">${esc(time(c.created_at))}</span></div><span class="preview-row-text">${mentionHTML(c.content||'')}</span></div></div>`;}).join('')}${p.comments_count>2?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver mais ${num(p.comments_count-2)} respostas</button>`:p.comments_count>0&&rc.length>0?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver conversa completa</button>`:''}</div>`:''}
+    ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>{const cmc=c.minecraft_name||c.username||'?';const cShown=c.display_name||cmc;const cAv=avatar(c,32);const cFallback=fallbackAvatar(cShown,32);return`<div class="preview-row" data-comment-id="${esc(c.id)}"><div class="preview-row-av-col"><img class="preview-row-av js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='${cFallback}'"><div class="preview-sub-line"></div></div><div class="preview-row-body"><div class="preview-row-meta"><span class="preview-row-author js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}">${esc(cShown)}</span><span class="preview-row-time">${esc(time(c.created_at))}</span></div><span class="preview-row-text">${mentionHTML(c.content||'')}</span>${previewCommentActionsHTML(c)}</div></div>`;}).join('')}${p.comments_count>2?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver mais ${num(p.comments_count-2)} respostas</button>`:p.comments_count>0&&rc.length>0?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver conversa completa</button>`:''}</div>`:''}
   </article>`;
 }
 function emptyFeed(){
@@ -8746,7 +8786,7 @@ function bindEvents(){
     if(e.target.closest('#drawer-profile-btn')){closeMobileMenu();if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`);return}
   });
 
-  document.addEventListener('click',e=>{
+  document.addEventListener('click',async e=>{
     if(!e.target.closest('.notif-wrap')) $('#notif-menu')?.classList.remove('show');
     if(!e.target.closest('#user-btn')&&!e.target.closest('#account-menu')){$('#account-menu')?.classList.remove('show');$('#account-menu')?.setAttribute('aria-hidden','true')}
     const accountAction=e.target.closest('[data-account-action]');
@@ -8881,6 +8921,18 @@ function bindEvents(){
     if(prow&&!e.target.closest('button')){const uid=prow.dataset.uid;const mc=prow.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
     const jp=e.target.closest('.js-profile');
     if(jp&&!e.target.closest('button')){const uid=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
+
+    const feedCommentAction=e.target.closest('[data-comment-like],[data-comment-save],[data-comment-repost],[data-comment-share],[data-open-comment-thread]');
+    if(feedCommentAction?.closest('.preview-comments')){
+      e.stopPropagation();
+      const card=feedCommentAction.closest('.post-card');
+      const postId=card?.dataset.postId;
+      if(feedCommentAction.matches('[data-comment-like]')){await handleCommentLike(feedCommentAction);return}
+      if(feedCommentAction.matches('[data-comment-save]')){await handleCommentSave(feedCommentAction);return}
+      if(feedCommentAction.matches('[data-comment-repost]')){await repostComment(feedCommentAction.dataset.commentRepost,feedCommentAction.dataset.commentContent,feedCommentAction.dataset.commentAuthor,postId);return}
+      if(feedCommentAction.matches('[data-comment-share]')){openCommentSharePopover(feedCommentAction.dataset.commentShare,feedCommentAction.dataset.commentContent,feedCommentAction);return}
+      if(feedCommentAction.matches('[data-open-comment-thread]')){navigateCommentThread(feedCommentAction.dataset.openCommentThread,postId);return}
+    }
 
     // Handle portaled post-menu items (singleton portal on body)
     const menuEl=e.target.closest('#_post_menu_portal');

@@ -15,6 +15,9 @@
   let activeStoryGroup = 0;
   let activeStoryIndex = 0;
   let storyTimer = null;
+  let storyElapsed = 0;
+  let storyPaused = false;
+  let storySuppressClickUntil = 0;
   let decorateTimer = null;
   let decorating = false;
   let typingTimer = null;
@@ -65,8 +68,8 @@
     const friends = document.querySelector('#friends-bar');
     if (friends && !document.querySelector('#stories-shell')) {
       friends.insertAdjacentHTML('beforebegin', `
-        <section class="stories-shell" id="stories-shell" aria-label="Momentos">
-          <div class="stories-head"><strong>Momentos</strong><span>expiram em 24 horas</span></div>
+        <section class="stories-shell" id="stories-shell" aria-label="Stories">
+          <div class="stories-head"><strong>Stories</strong><span>Visíveis por 24 h</span></div>
           <div class="stories-list" id="stories-list"><div class="skel" style="width:54px;height:54px;border-radius:50%"></div></div>
         </section>`);
     }
@@ -87,15 +90,25 @@
     }
     if (!document.querySelector('#story-viewer')) {
       document.body.insertAdjacentHTML('beforeend', `
-        <section class="story-viewer" id="story-viewer" hidden aria-label="Visualizador de Momentos">
+        <section class="story-viewer" id="story-viewer" hidden aria-label="Visualizador de stories">
+          <button class="story-nav prev" type="button" data-story-prev aria-label="Story anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
           <div class="story-stage">
             <div class="story-progress" id="story-progress"></div>
-            <div class="story-viewer-head"><img id="story-viewer-av" alt=""><strong id="story-viewer-name"></strong><button type="button" data-story-close aria-label="Fechar">×</button></div>
-            <img id="story-viewer-media" alt="Momento">
+            <div class="story-viewer-head">
+              <img id="story-viewer-av" alt="">
+              <div class="story-viewer-meta"><strong id="story-viewer-name"></strong><span id="story-viewer-time"></span></div>
+              <div class="story-viewer-actions">
+                <button class="story-delete" type="button" data-story-delete aria-label="Apagar seu story" title="Apagar story" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg></button>
+                <button type="button" data-story-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+              </div>
+            </div>
+            <img id="story-viewer-media" alt="Story">
             <p class="story-content" id="story-viewer-content" hidden></p>
+            <span class="story-owner-stats" id="story-owner-stats" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span id="story-view-count"></span></span>
             <button class="story-hit" type="button" data-story-prev aria-label="Anterior"></button>
             <button class="story-hit next" type="button" data-story-next aria-label="Próximo"></button>
           </div>
+          <button class="story-nav next" type="button" data-story-next aria-label="Próximo story"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
         </section>`);
     }
     addSchedulePresets();
@@ -263,19 +276,33 @@
       });
       storyGroups = [...groups.values()];
       const mine = state.me || {};
+      const myGroupIndex = storyGroups.findIndex(group => Number(group[0]?.user_id) === Number(mine.id));
+      const myGroup = storyGroups[myGroupIndex];
+      const myStoryItem = myGroup
+        ? `<div class="story-item ${myGroup.every(row => row.viewed_by_me) ? 'is-viewed' : ''}">
+            <button class="story-ring-button" type="button" data-story-group="${myGroupIndex}" aria-label="Ver seu story">
+              <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt=""></span>
+              <span class="story-label">Seu story</span>
+            </button>
+            <button class="story-add" type="button" data-story-add aria-label="Adicionar story">+</button>
+          </div>`
+        : `<button class="story-item" type="button" data-story-add>
+            <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt=""></span>
+            <span class="story-label">Seu story</span>
+            <b class="story-add">+</b>
+          </button>`;
       list.innerHTML = `
-        <button class="story-item" type="button" data-story-add>
-          <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt=""><b class="story-add">+</b></span><span>Seu Momento</span>
-        </button>
+        ${myStoryItem}
         ${storyGroups.map((group, index) => {
+          if (index === myGroupIndex) return '';
           const first = group[0];
           const viewed = group.every(row => row.viewed_by_me);
           return `<button class="story-item ${viewed ? 'is-viewed' : ''}" type="button" data-story-group="${index}">
-            <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}"></span><span>${safe(displayName(first))}</span>
+            <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}"></span><span class="story-label">${safe(displayName(first))}</span>
           </button>`;
         }).join('')}`;
     } catch {
-      list.innerHTML = '<span style="padding:8px;color:var(--ink-3);font-size:11px">Momentos indisponíveis.</span>';
+      list.innerHTML = '<span style="padding:8px;color:var(--ink-3);font-size:11px">Stories indisponíveis.</span>';
     }
   }
 
@@ -286,22 +313,58 @@
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      try {
-        toast('info', 'Preparando Momento', 'Comprimindo e revisando a imagem...');
-        const processed = await smartCompress(file, IMG_COMPRESS_PRESETS.post);
-        await assertSafeImage(processed, 'inline');
-        const form = new FormData();
-        form.append('media', processed, `momento-${Date.now()}.webp`);
-        const upload = await api('/api/community/upload', { method: 'POST', body: form, timeoutMs: 90000 });
-        const mediaUrl = upload.urls?.[0];
-        if (!mediaUrl) throw new Error('Upload incompleto.');
-        await api('/api/community/stories', { method: 'POST', body: JSON.stringify({ media_url: mediaUrl }) });
-        buzz(25);
-        toast('success', 'Momento publicado', 'Ele ficará visível por 24 horas.');
-        await loadStories();
-      } catch (error) {
-        toast('error', 'Não foi possível publicar', error.message);
-      }
+      const previewUrl = URL.createObjectURL(file);
+      const back = document.createElement('div');
+      back.className = 'backdrop show';
+      back.innerHTML = `
+        <div class="sheet story-composer-sheet" role="dialog" aria-modal="true" aria-labelledby="story-composer-title">
+          <div class="sheet-header">
+            <div><h2 id="story-composer-title">Novo story</h2><p class="schedule-subtitle">Compartilhe um momento que desaparece em 24 horas.</p></div>
+            <button class="close-btn" type="button" data-story-compose-cancel aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="story-composer-body">
+            <div class="story-composer-preview"><img src="${safe(previewUrl)}" alt="Prévia do story"></div>
+            <div class="story-composer-options">
+              <label>Legenda opcional<textarea maxlength="280" data-story-caption placeholder="Escreva algo sobre este momento..."></textarea></label>
+              <p class="story-composer-tip">A imagem será otimizada antes da publicação. Somente seus seguidores verão este story.</p>
+            </div>
+          </div>
+          <div class="sheet-footer">
+            <button class="btn btn-secondary" type="button" data-story-compose-cancel>Cancelar</button>
+            <button class="btn btn-primary" type="button" data-story-compose-publish>Compartilhar story</button>
+          </div>
+        </div>`;
+      document.body.appendChild(back);
+      document.body.classList.add('modal-open');
+      const close = () => {
+        URL.revokeObjectURL(previewUrl);
+        back.remove();
+        if (!document.querySelectorAll('.backdrop.show').length) document.body.classList.remove('modal-open');
+      };
+      back.addEventListener('click', async event => {
+        if (event.target === back || event.target.closest('[data-story-compose-cancel]')) { close(); return; }
+        const publish = event.target.closest('[data-story-compose-publish]');
+        if (!publish) return;
+        setBtnLoad(publish, true, 'Publicando');
+        try {
+          const processed = await smartCompress(file, IMG_COMPRESS_PRESETS.post);
+          await assertSafeImage(processed, 'inline');
+          const form = new FormData();
+          form.append('media', processed, `story-${Date.now()}.webp`);
+          const upload = await api('/api/community/upload', { method: 'POST', body: form, timeoutMs: 90000 });
+          const mediaUrl = upload.urls?.[0];
+          if (!mediaUrl) throw new Error('Upload incompleto.');
+          const content = back.querySelector('[data-story-caption]')?.value.trim() || '';
+          await api('/api/community/stories', { method: 'POST', body: JSON.stringify({ media_url: mediaUrl, content }) });
+          close();
+          buzz(25);
+          toast('success', 'Story publicado', 'Ele ficará visível por 24 horas.');
+          await loadStories();
+        } catch (error) {
+          setBtnLoad(publish, false, 'Compartilhar story');
+          toast('error', 'Não foi possível publicar', error.message);
+        }
+      });
     };
     input.click();
   }
@@ -318,19 +381,29 @@
     document.querySelector('#story-viewer-media').src = story.media_url;
     document.querySelector('#story-viewer-av').src = avatar(story, 60);
     document.querySelector('#story-viewer-name').textContent = displayName(story);
+    document.querySelector('#story-viewer-time').textContent = time(story.created_at);
     const content = document.querySelector('#story-viewer-content');
     content.textContent = story.content || '';
     content.hidden = !story.content;
+    const isOwner = Number(story.user_id) === Number(state.me?.id);
+    const deleteButton = document.querySelector('[data-story-delete]');
+    if (deleteButton) deleteButton.hidden = !isOwner;
+    const ownerStats = document.querySelector('#story-owner-stats');
+    if (ownerStats) ownerStats.hidden = !isOwner;
+    const viewCount = document.querySelector('#story-view-count');
+    if (viewCount) viewCount.textContent = `${Number(story.views_count || 0)} visualiza${Number(story.views_count || 0) === 1 ? 'ção' : 'ções'}`;
     document.querySelector('#story-progress').innerHTML = group.map((_, index) =>
       `<i style="--progress:${index < storyIndex ? '100%' : '0%'}"></i>`).join('');
     api(`/api/community/stories/${encodeURIComponent(story.id)}/view`, { method: 'POST' }).catch(() => {});
     clearInterval(storyTimer);
-    let elapsed = 0;
+    storyElapsed = 0;
+    storyPaused = false;
     storyTimer = setInterval(() => {
-      elapsed += 100;
+      if (storyPaused || document.hidden) return;
+      storyElapsed += 100;
       const bar = document.querySelectorAll('#story-progress i')[storyIndex];
-      bar?.style.setProperty('--progress', `${Math.min(100, elapsed / 50)}%`);
-      if (elapsed >= 5000) nextStory();
+      bar?.style.setProperty('--progress', `${Math.min(100, storyElapsed / 50)}%`);
+      if (storyElapsed >= 5000) nextStory();
     }, 100);
   }
 
@@ -340,6 +413,26 @@
     if (viewer) viewer.hidden = true;
     document.body.style.overflow = '';
     loadStories();
+  }
+  async function deleteActiveStory() {
+    const story = storyGroups[activeStoryGroup]?.[activeStoryIndex];
+    if (!story || Number(story.user_id) !== Number(state.me?.id)) return;
+    storyPaused = true;
+    const confirmed = await confirmDialog({
+      title: 'Apagar story',
+      msg: 'Este story será removido imediatamente para todos.',
+      confirmText: 'Apagar story',
+      danger: true,
+    });
+    if (!confirmed) { storyPaused = false; return; }
+    try {
+      await api(`/api/community/stories/${encodeURIComponent(story.id)}`, { method: 'DELETE' });
+      toast('success', 'Story apagado', '');
+      closeStory();
+    } catch (error) {
+      storyPaused = false;
+      toast('error', 'Não foi possível apagar', error.message);
+    }
   }
   function nextStory() {
     const group = storyGroups[activeStoryGroup] || [];
@@ -494,8 +587,22 @@
         <button type="button" data-schedule-hours="1">Em 1 hora</button>
         <button type="button" data-schedule-hours="24">Amanhã</button>
         <button type="button" data-schedule-next-week>Próxima semana</button>
-        <button type="button" data-schedule-clear>Limpar</button>
       </div>`);
+  }
+
+  function syncScheduleUI() {
+    const input = document.querySelector('#modal-schedule-at');
+    const trigger = document.querySelector('[data-open-schedule-modal]');
+    const copy = document.querySelector('#schedule-trigger-copy');
+    const publish = document.querySelector('#modal-publish-btn');
+    if (!input || !trigger || !copy) return;
+    const date = input.value ? new Date(input.value) : null;
+    const scheduled = Boolean(date && !Number.isNaN(date.getTime()));
+    trigger.classList.toggle('is-on', scheduled);
+    copy.textContent = scheduled
+      ? date.toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '')
+      : 'Agendar';
+    if (publish && !publish.querySelector('.spin')) publish.textContent = scheduled ? 'Agendar' : 'Publicar';
   }
 
   async function checkRankUp() {
@@ -591,10 +698,24 @@
       if (event.target.closest('#server-live-pill')) document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       if (event.target.closest('[data-story-add]')) { createStory(); return; }
       const storyGroup = event.target.closest('[data-story-group]');
-      if (storyGroup) { openStory(Number(storyGroup.dataset.storyGroup)); return; }
+      if (storyGroup) {
+        const groupIndex = Number(storyGroup.dataset.storyGroup);
+        const firstUnseen = storyGroups[groupIndex]?.findIndex(story => !story.viewed_by_me) ?? -1;
+        openStory(groupIndex, firstUnseen >= 0 ? firstUnseen : 0);
+        return;
+      }
       if (event.target.closest('[data-story-close]')) { closeStory(); return; }
-      if (event.target.closest('[data-story-next]')) { nextStory(); return; }
-      if (event.target.closest('[data-story-prev]')) { previousStory(); return; }
+      if (event.target.closest('[data-story-delete]')) { deleteActiveStory(); return; }
+      if (event.target.closest('[data-story-next]')) { if (Date.now() >= storySuppressClickUntil) nextStory(); return; }
+      if (event.target.closest('[data-story-prev]')) { if (Date.now() >= storySuppressClickUntil) previousStory(); return; }
+      if (event.target.closest('[data-open-schedule-modal]')) {
+        openModal('schedule-modal');
+        loadScheduledPosts().catch(() => {});
+        syncScheduleUI();
+        setTimeout(() => document.querySelector('#modal-schedule-at')?.focus(), 80);
+        return;
+      }
+      if (event.target.closest('[data-apply-schedule]')) { syncScheduleUI(); closeModal('schedule-modal'); return; }
 
       const trigger = event.target.closest('[data-reaction-trigger]');
       if (trigger) {
@@ -660,7 +781,11 @@
           const date = new Date(Date.now() + hours * 3600000);
           input.value = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
         }
+        syncScheduleUI();
+        if (preset.hasAttribute('data-schedule-clear')) closeModal('schedule-modal');
+        return;
       }
+      if (event.target.closest('#modal-publish-btn')) setTimeout(syncScheduleUI, 700);
     }, true);
 
     document.addEventListener('click', event => {
@@ -677,6 +802,7 @@
       if ([...(event.dataTransfer?.items || [])].some(item => item.kind === 'file')) event.preventDefault();
     });
     document.addEventListener('input', event => {
+      if (event.target.matches('#modal-schedule-at')) syncScheduleUI();
       if (!event.target.closest('[data-chat-input]')) return;
       const recipientId = document.querySelector('[data-chat-profile]')?.dataset.chatProfile;
       if (!recipientId) return;
@@ -737,10 +863,33 @@
       if (!storyTouch || !event.changedTouches[0]) return;
       const dx = event.changedTouches[0].clientX - storyTouch.x;
       const dy = event.changedTouches[0].clientY - storyTouch.y;
-      if (Math.abs(dy) > 110 && dy > 0) closeStory();
-      else if (Math.abs(dx) > 65) dx < 0 ? nextStory() : previousStory();
+      if (Math.abs(dy) > 110 && dy > 0) { storySuppressClickUntil = Date.now() + 300; closeStory(); }
+      else if (Math.abs(dx) > 65) { storySuppressClickUntil = Date.now() + 300; dx < 0 ? nextStory() : previousStory(); }
       storyTouch = null;
     }, { passive: true });
+
+    let storyPressAt = 0;
+    document.querySelector('.story-stage')?.addEventListener('pointerdown', event => {
+      if (!event.target.closest('.story-hit')) return;
+      storyPressAt = Date.now();
+      storyPaused = true;
+    }, { passive: true });
+    document.querySelector('.story-stage')?.addEventListener('pointerup', () => {
+      if (storyPressAt && Date.now() - storyPressAt > 350) storySuppressClickUntil = Date.now() + 250;
+      storyPressAt = 0;
+      storyPaused = false;
+    }, { passive: true });
+    document.querySelector('.story-stage')?.addEventListener('pointercancel', () => {
+      storyPressAt = 0;
+      storyPaused = false;
+    }, { passive: true });
+    document.addEventListener('keydown', event => {
+      if (document.querySelector('#story-viewer')?.hidden !== false) return;
+      if (event.key === 'ArrowRight') nextStory();
+      else if (event.key === 'ArrowLeft') previousStory();
+      else if (event.key === 'Escape') closeStory();
+      else if (event.key === ' ') { event.preventDefault(); storyPaused = !storyPaused; }
+    });
 
     let reactionHold = null;
     document.addEventListener('pointerdown', event => {
@@ -758,6 +907,7 @@
     bindEvolutionEvents();
     new MutationObserver(scheduleDecorate).observe(document.querySelector('#feed-list'), { childList: true, subtree: true });
     scheduleDecorate();
+    syncScheduleUI();
     loadStories();
     loadServerLive();
     loadServerActivity();
