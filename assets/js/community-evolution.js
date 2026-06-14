@@ -235,12 +235,8 @@
     const list = document.querySelector('#feed-list');
     if (!list) { decorating = false; return; }
     list.querySelectorAll('.date-separator').forEach(node => node.remove());
-    let previous = '';
     list.querySelectorAll('.post-card').forEach(card => {
       const post = postForCard(card);
-      const label = dateLabel(post?.created_at || new Date());
-      if (label !== previous) card.insertAdjacentHTML('beforebegin', `<div class="date-separator">${safe(label)}</div>`);
-      previous = label;
       const timestamp = card.querySelector('.post-time');
       if (timestamp && post?.created_at) {
         timestamp.dataset.relative = time(post.created_at);
@@ -328,6 +324,7 @@
         if (!groups.has(String(story.user_id))) groups.set(String(story.user_id), []);
         groups.get(String(story.user_id)).push(story);
       });
+      groups.forEach(group => group.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)));
       const mine = state.me || {};
       const allGroups = [...groups.values()];
       const myGroup = allGroups.find(group => Number(group[0]?.user_id) === Number(mine.id));
@@ -381,6 +378,13 @@
       list.innerHTML = `<button class="story-item story-action story-action-story" type="button" data-story-add><span class="story-action-circle">+</span><span class="story-label">Novo story</span></button>
         <button class="story-item story-action story-action-friend" type="button" data-social-add-friend><span class="story-action-circle">+</span><span class="story-label">Adicionar</span></button>
         <span class="social-strip-error">Não foi possível atualizar amigos e stories.</span>`;
+    } finally {
+      if (!token) {
+        const meta = document.querySelector('#social-strip-meta');
+        if (meta) meta.textContent = 'Login necessario';
+        const error = list.querySelector('.social-strip-error');
+        if (error) error.textContent = 'Entre para ver stories e amigos.';
+      }
     }
   }
 
@@ -443,6 +447,166 @@
           toast('error', 'Não foi possível publicar', error.message);
         }
       });
+    };
+    input.click();
+  }
+
+  function storyFilterCSS(filter = 'normal') {
+    switch (filter) {
+      case 'warm': return 'saturate(1.18) contrast(1.06) sepia(.14)';
+      case 'cinema': return 'contrast(1.18) saturate(.92) brightness(.94)';
+      case 'dream': return 'saturate(1.12) brightness(1.08) blur(.2px)';
+      case 'noir': return 'grayscale(1) contrast(1.14) brightness(.96)';
+      default: return 'none';
+    }
+  }
+
+  function imageBitmapFromFile(file) {
+    if (typeof createImageBitmap === 'function') return createImageBitmap(file);
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+      image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Imagem invalida.')); };
+      image.src = url;
+    });
+  }
+
+  async function renderStoryBlob(file, { scale = 1, rotation = 0, filter = 'normal' } = {}) {
+    const source = await imageBitmapFromFile(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const sourceWidth = source.width || source.naturalWidth || 1080;
+    const sourceHeight = source.height || source.naturalHeight || 1920;
+    const rotated = Math.abs(Math.round(rotation / 90)) % 2 === 1;
+    const effectiveWidth = rotated ? sourceHeight : sourceWidth;
+    const effectiveHeight = rotated ? sourceWidth : sourceHeight;
+    const cover = Math.max(canvas.width / effectiveWidth, canvas.height / effectiveHeight) * Math.max(1, Number(scale) || 1);
+
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.filter = storyFilterCSS(filter);
+    ctx.drawImage(source, -sourceWidth * cover / 2, -sourceHeight * cover / 2, sourceWidth * cover, sourceHeight * cover);
+    ctx.restore();
+    if (typeof source.close === 'function') source.close();
+
+    return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png', .95));
+  }
+
+  async function createStory() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const previewUrl = URL.createObjectURL(file);
+      let zoom = 1;
+      let rotation = 0;
+      let filter = 'normal';
+      const back = document.createElement('div');
+      back.className = 'backdrop show story-camera-backdrop';
+      back.innerHTML = `
+        <div class="sheet story-camera-sheet" role="dialog" aria-modal="true" aria-labelledby="story-composer-title">
+          <div class="story-camera-head">
+            <button class="story-camera-icon" type="button" data-story-compose-cancel aria-label="Fechar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <div><h2 id="story-composer-title">Novo story</h2><p>Edite como uma camera antes de publicar.</p></div>
+            <button class="story-camera-icon" type="button" data-story-compose-repick aria-label="Trocar imagem"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5M3 12A9 9 0 0 1 18.5 5.8L21 8M21 3v5h-5"/></svg></button>
+          </div>
+          <div class="story-camera-body">
+            <div class="story-camera-frame" aria-label="Previa do story">
+              <img src="${safe(previewUrl)}" alt="Previa do story" data-story-preview>
+              <div class="story-camera-glow" aria-hidden="true"></div>
+              <div class="story-camera-hint"><span>Arraste o zoom e gire para enquadrar</span></div>
+            </div>
+            <aside class="story-camera-controls">
+              <label class="story-caption-field"><span>Legenda</span><textarea maxlength="280" data-story-caption placeholder="Escreva algo rapido..."></textarea></label>
+              <label class="story-zoom-field"><span>Zoom</span><input type="range" min="1" max="2.4" value="1" step=".02" data-story-zoom></label>
+              <div class="story-camera-actions" role="group" aria-label="Ajustes do story">
+                <button type="button" data-story-rotate="-90">Girar esquerda</button>
+                <button type="button" data-story-rotate="90">Girar direita</button>
+              </div>
+              <div class="story-filter-row" role="group" aria-label="Filtros">
+                <button type="button" class="is-on" data-story-filter="normal">Original</button>
+                <button type="button" data-story-filter="warm">Quente</button>
+                <button type="button" data-story-filter="cinema">Cinema</button>
+                <button type="button" data-story-filter="dream">Dream</button>
+                <button type="button" data-story-filter="noir">Noir</button>
+              </div>
+              <p class="story-camera-tip">A publicacao sai em formato 9:16, otimizada e visivel por 24 horas.</p>
+            </aside>
+          </div>
+          <div class="story-camera-footer">
+            <button class="btn btn-secondary" type="button" data-story-compose-cancel>Cancelar</button>
+            <button class="btn btn-primary" type="button" data-story-compose-publish>Compartilhar story</button>
+          </div>
+        </div>`;
+      document.body.appendChild(back);
+      document.body.classList.add('modal-open');
+      const preview = back.querySelector('[data-story-preview]');
+      const syncPreview = () => {
+        if (!preview) return;
+        preview.style.transform = `scale(${zoom}) rotate(${rotation}deg)`;
+        preview.style.filter = storyFilterCSS(filter);
+      };
+      const close = () => {
+        URL.revokeObjectURL(previewUrl);
+        back.remove();
+        if (!document.querySelectorAll('.backdrop.show').length) document.body.classList.remove('modal-open');
+      };
+      back.addEventListener('input', event => {
+        if (!event.target.matches('[data-story-zoom]')) return;
+        zoom = Number(event.target.value || 1);
+        syncPreview();
+      });
+      back.addEventListener('click', async event => {
+        if (event.target === back || event.target.closest('[data-story-compose-cancel]')) { close(); return; }
+        if (event.target.closest('[data-story-compose-repick]')) { close(); createStory(); return; }
+        const rotateButton = event.target.closest('[data-story-rotate]');
+        if (rotateButton) {
+          rotation = (rotation + Number(rotateButton.dataset.storyRotate || 0)) % 360;
+          buzz(12);
+          syncPreview();
+          return;
+        }
+        const filterButton = event.target.closest('[data-story-filter]');
+        if (filterButton) {
+          filter = filterButton.dataset.storyFilter || 'normal';
+          back.querySelectorAll('[data-story-filter]').forEach(button => button.classList.toggle('is-on', button === filterButton));
+          syncPreview();
+          return;
+        }
+        const publish = event.target.closest('[data-story-compose-publish]');
+        if (!publish) return;
+        setBtnLoad(publish, true, 'Publicando');
+        try {
+          const rendered = await renderStoryBlob(file, { scale: zoom, rotation, filter });
+          const storyFile = rendered ? new File([rendered], `story-source-${Date.now()}.png`, { type: 'image/png' }) : file;
+          const preset = (typeof IMG_COMPRESS_PRESETS !== 'undefined' && (IMG_COMPRESS_PRESETS.story || IMG_COMPRESS_PRESETS.post)) || { maxSizeMB: .65, maxWidthOrHeight: 1920, initialQuality: .9 };
+          const processed = await smartCompress(storyFile, preset);
+          await assertSafeImage(processed, 'story');
+          const form = new FormData();
+          form.append('media', processed, `story-${Date.now()}.webp`);
+          const upload = await api('/api/community/upload', { method: 'POST', body: form, timeoutMs: 90000 });
+          const mediaUrl = upload.urls?.[0];
+          if (!mediaUrl) throw new Error('Upload incompleto.');
+          const content = back.querySelector('[data-story-caption]')?.value.trim() || '';
+          await api('/api/community/stories', { method: 'POST', body: JSON.stringify({ media_url: mediaUrl, content }) });
+          close();
+          buzz(25);
+          toast('success', 'Story publicado', 'Ele ficara visivel por 24 horas.');
+          await loadStories();
+        } catch (error) {
+          setBtnLoad(publish, false, 'Compartilhar story');
+          toast('error', 'Nao foi possivel publicar', error.message);
+        }
+      });
+      syncPreview();
     };
     input.click();
   }
@@ -673,21 +837,22 @@
       const pill = document.querySelector('#server-live-pill');
       pill?.classList.toggle('is-offline', !live.online);
       const pillCopy = document.querySelector('#server-live-pill-copy');
-      if (pillCopy) pillCopy.textContent = live.online ? `${live.count} online` : 'Servidor offline';
+      const hasPlayers = live.online && Number(live.count || 0) > 0;
+      if (pillCopy) pillCopy.textContent = hasPlayers ? 'Servidor ativo' : live.online ? 'Tudo calmo' : 'Servidor offline';
       const count = document.querySelector('#server-live-count');
-      if (count) count.textContent = String(live.count ?? 0);
+      if (count) count.textContent = hasPlayers ? 'Ao vivo' : live.online ? 'Calmo' : 'Offline';
       const stack = document.querySelector('#live-player-stack');
       if (stack) stack.innerHTML = (live.players || []).slice(0, 8).map(player =>
         `<img src="${safe(avatar(player, 40))}" alt="${safe(displayName(player))}" title="${safe(displayName(player))}">`).join('');
       const copy = document.querySelector('#server-live-copy');
-      if (copy) copy.textContent = live.online
-        ? `${live.count || 0} jogador(es) conectados agora em ${live.host}.`
-        : 'O servidor está temporariamente offline.';
+      if (copy) copy.textContent = hasPlayers
+        ? 'Há movimento no servidor agora. Abra a busca para encontrar a turma.'
+        : live.online ? 'A rede está em silêncio por enquanto. Bom momento para puxar assunto no feed.' : 'O servidor está temporariamente offline.';
       const hours = hourly.hours || [];
       const max = Math.max(1, ...hours.map(row => Number(row.players || 0)));
       const timeline = document.querySelector('#server-timeline');
       if (timeline) timeline.innerHTML = hours.map(row =>
-        `<i style="--h:${Math.max(8, Math.round(Number(row.players || 0) / max * 100))}%" title="${Number(row.players || 0)} jogadores"></i>`).join('');
+        `<i style="--h:${Math.max(8, Math.round(Number(row.players || 0) / max * 100))}%" title="${Number(row.players || 0) > 0 ? 'Movimento recente' : 'Sem movimento'}"></i>`).join('');
     } catch {}
   }
 
@@ -938,8 +1103,8 @@
       const backToPost = event.target.closest('[data-back-to-post]');
       if (backToPost) pendingCommentFocus = document.querySelector('#subthread-root [data-comment-id]')?.dataset.commentId || null;
       if (event.target.closest('#server-live-pill')) document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (event.target.closest('[data-story-add]')) { createStory(); return; }
-      if (event.target.closest('[data-social-add-friend]')) { openModal('friend-modal'); return; }
+      if (event.target.closest('[data-story-add]')) { if (!token) { location.href = loginUrlForCurrentPage(); return; } createStory(); return; }
+      if (event.target.closest('[data-social-add-friend]')) { if (!token) { location.href = loginUrlForCurrentPage(); return; } openModal('friend-modal'); return; }
       const storyGroup = event.target.closest('[data-story-group]');
       if (storyGroup) {
         const groupIndex = Number(storyGroup.dataset.storyGroup);

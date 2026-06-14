@@ -3428,7 +3428,7 @@ body::after{
   }
 }
 </style>
-<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614d">
+<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614e">
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 </head>
 <body>
@@ -3544,16 +3544,16 @@ body::after{
       </a>
     </div>
     <div class="card network-card" id="network-card">
-      <p class="eyebrow">Agora na rede</p>
-      <h3 id="network-card-title">Encontre sua próxima conversa</h3>
-      <p id="network-card-copy">Use a busca para achar jogadores, posts e assuntos sem sair da comunidade.</p>
-      <div class="network-metrics">
-        <button type="button" data-open-search-page><strong id="network-player-count">--</strong><span>jogadores</span></button>
-        <button type="button" data-open-search-page><strong id="network-hot-count">--</strong><span>em alta</span></button>
+      <p class="eyebrow">Seu próximo passo</p>
+      <h3 id="network-card-title">Encontre algo que vale responder</h3>
+      <p id="network-card-copy">Descubra pessoas, assuntos e conversas sem transformar a comunidade em um placar.</p>
+      <div class="network-shortcuts">
+        <button type="button" data-open-search-page><span>Buscar</span><strong>Pessoas e posts</strong></button>
+        <button type="button" data-filter="trending"><span>Descobrir</span><strong>Conversas em alta</strong></button>
       </div>
       <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Abrir busca
+        Explorar comunidade
       </button>
     </div>
   </aside>
@@ -3573,8 +3573,8 @@ body::after{
 
     <section class="community-command" aria-label="Pulso da comunidade">
       <div class="command-copy">
-        <p class="command-kicker"><span></span>Rede viva</p>
-        <h2>O quartel social da Força Aliada.</h2>
+        <p class="command-kicker"><span></span>Ponto de encontro</p>
+        <h2>Chegue, encontre sua turma e participe.</h2>
         <p id="pulse-greeting">Entre, puxe assunto e deixe um rastro bom no servidor.</p>
         <div class="command-tags" aria-label="Estados da comunidade">
           <span><i></i>voz humana</span>
@@ -3589,19 +3589,19 @@ body::after{
         </div>
         <div class="command-grid">
           <div class="pulse-card">
-            <small>jogadores vistos</small>
-            <strong id="pulse-player-count">--</strong>
-            <span id="pulse-status-copy">sintonizando a praça</span>
+            <small>comece por aqui</small>
+            <strong>Responda</strong>
+            <span>entre em uma conversa que já começou</span>
           </div>
           <div class="pulse-card">
-            <small>posts carregados</small>
-            <strong id="pulse-post-count">--</strong>
-            <span id="pulse-mode-label">feed geral</span>
+            <small>compartilhe</small>
+            <strong>Registre</strong>
+            <span>mostre um momento, ideia ou conquista</span>
           </div>
           <div class="pulse-card pulse-card-wide">
-            <small>assuntos quentes</small>
-            <strong id="pulse-hot-count">--</strong>
-            <span>conversas que podem virar história</span>
+            <small>descubra</small>
+            <strong>Encontre sua turma</strong>
+            <span>use Stories, busca e assuntos em alta</span>
           </div>
         </div>
       </div>
@@ -3870,18 +3870,21 @@ body::after{
 </div>
 
 <div class="backdrop" id="post-modal" aria-hidden="true" role="presentation">
-  <div class="sheet sheet-md" role="dialog" aria-modal="true" aria-labelledby="post-title" style="overflow:visible">
+  <div class="sheet sheet-md post-composer-sheet" role="dialog" aria-modal="true" aria-labelledby="post-title">
     <div class="sheet-header">
-      <h2 id="post-title">Novo Post</h2>
+      <div>
+        <h2 id="post-title">Criar publicação</h2>
+        <p class="schedule-subtitle">Compartilhe algo com a comunidade.</p>
+      </div>
       <button class="close-btn" data-close="post-modal" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="sheet-body" style="padding:16px; overflow:visible">
-      <div class="composer-inner">
+    <div class="sheet-body post-composer-body">
+      <div class="composer-inner post-composer-main">
         <img class="av42" id="modal-comp-av" src="assets/images/fa-icon-dark.png" alt="Seu avatar">
         <div class="comp-body">
-          <div class="comp-editor" id="modal-comp-editor" style="border:none; background:transparent;">
+          <div class="comp-editor" id="modal-comp-editor">
             <div class="comp-mirror" id="modal-mirror" style="font-size:16px;"><span class="pl">O que está acontecendo no servidor?</span></div>
-            <textarea class="comp-ta" id="modal-ta" maxlength="280" aria-label="Escrever post" rows="4" spellcheck="true" style="font-size:16px;"></textarea>
+            <textarea class="comp-ta" id="modal-ta" maxlength="280" aria-label="Escrever post" rows="4" spellcheck="true" placeholder="O que está acontecendo no servidor?" style="font-size:16px;"></textarea>
             <div class="mention-box" id="modal-mention-box" role="listbox"></div>
           </div>
         </div>
@@ -3913,6 +3916,36 @@ body::after{
         <div class="ring-wrap" id="modal-char-ring" aria-hidden="true"><svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fg" id="modal-ring-circle" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="100"/></svg><span id="modal-ring-label"></span></div>
         <button class="btn btn-primary" id="modal-publish-btn" disabled>Publicar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="comment-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-md quick-comment-sheet" role="dialog" aria-modal="true" aria-labelledby="quick-comment-title">
+    <div class="sheet-header">
+      <div>
+        <h2 id="quick-comment-title">Responder publicação</h2>
+        <p class="schedule-subtitle">Sua resposta entra direto na conversa.</p>
+      </div>
+      <button class="close-btn" data-close="comment-modal" aria-label="Fechar"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="sheet-body quick-comment-body">
+      <article class="quick-comment-source" id="quick-comment-source"></article>
+      <div class="quick-comment-compose">
+        <img class="av42" id="quick-comment-av" src="assets/images/fa-icon-dark.png" alt="Seu avatar">
+        <div class="quick-comment-field">
+          <textarea id="quick-comment-ta" maxlength="280" rows="4" placeholder="Publique sua resposta" aria-label="Escrever comentário"></textarea>
+          <div class="media-preview-container quick-comment-media-preview" id="quickComment-media-preview" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sheet-footer quick-comment-footer">
+      <div class="modal-media-tools">
+        <button class="btn btn-ghost btn-sm" type="button" data-media-pick="quickComment" title="Adicionar imagens"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-4.5-4.5L5 21"/></svg><span id="quickComment-media-count">0/4</span></button>
+        <input class="media-input" id="quickComment-media-input" data-comment-media-input="quickComment" type="file" multiple accept="image/*" hidden>
+        <span class="media-status" id="quickComment-media-status"></span>
+      </div>
+      <button class="btn btn-primary" id="quick-comment-publish" disabled>Responder</button>
     </div>
   </div>
 </div>
@@ -3964,6 +3997,13 @@ body::after{
         <button class="crop-ratio" type="button" data-ratio="1">1:1</button>
         <button class="crop-ratio" type="button" data-ratio="0.8">4:5</button>
         <button class="crop-ratio" type="button" data-ratio="1.7777777778">16:9</button>
+      </div>
+      <div class="crop-adjustments" role="group" aria-label="Ajustes de imagem">
+        <button class="media-tool-btn" type="button" data-crop-action="rotate-left" aria-label="Girar para esquerda">↶</button>
+        <button class="media-tool-btn" type="button" data-crop-action="rotate-right" aria-label="Girar para direita">↷</button>
+        <button class="media-tool-btn" type="button" data-crop-action="flip" aria-label="Espelhar imagem">↔</button>
+        <label class="crop-zoom-label">Zoom <input id="crop-zoom-range" type="range" min="0" max="1" value="0" step="0.02"></label>
+        <button class="media-tool-btn" type="button" data-crop-action="reset">Redefinir</button>
       </div>
       <button class="btn btn-primary" type="button" id="crop-confirm">Confirmar Corte</button>
     </div>
@@ -4160,11 +4200,12 @@ const state = {
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, activeThreadPost:null, mentionSuggestions:[], routeActive:false,
   searchQuery:'', hashtag:'',
-  composerMedia:{inline:[],modal:[],thread:[],subthread:[],lbDesk:[],lbMob:[]},
+  composerMedia:{inline:[],modal:[],thread:[],subthread:[],lbDesk:[],lbMob:[],quickComment:[]},
+  quickCommentPost:null,
   lightboxPost:null,
   scheduledPosts:[],
   affiliations:{publishing_identities:[],granted_delegates:[]}, publishAsId:null,
-  cropQueue:[], cropper:null, cropObjectUrl:null, cropComposer:'inline', nsfwModelPromise:null
+  cropQueue:[], cropper:null, cropObjectUrl:null, cropComposer:'inline', cropFlipX:1, cropZoomValue:0, nsfwModelPromise:null
 };
 
 /* ======================= IMPRESSION TRACKER v2 ======================= */
@@ -4848,30 +4889,15 @@ function updateCommunityPulse(){
   const name=state.me?.minecraft_name||state.me?.username||'jogador';
   const hour=new Date().getHours();
   const greet=hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite';
-  const scope=state.hashtag?`#${state.hashtag}`:state.searchQuery?`busca: ${state.searchQuery}`:state.filter==='following'?'seguindo':'feed geral';
   const copy=state.posts.length
-    ? `${greet}, ${name}. O feed está acordado: responda alguém, marque um amigo ou registre uma conquista.`
-    : `${greet}, ${name}. A praça está pronta; falta só alguém acender a conversa.`;
+    ? `${greet}, ${name}. Encontre uma conversa, responda no seu ritmo ou compartilhe algo que vale lembrar.`
+    : `${greet}, ${name}. Este espaço está pronto para a primeira boa conversa.`;
   const greeting=$('#pulse-greeting');
-  const players=$('#pulse-player-count');
-  const posts=$('#pulse-post-count');
-  const hot=$('#pulse-hot-count');
-  const status=$('#pulse-status-copy');
-  const mode=$('#pulse-mode-label');
-  const netPlayers=$('#network-player-count');
-  const netHot=$('#network-hot-count');
   const netTitle=$('#network-card-title');
   const netCopy=$('#network-card-copy');
   if(greeting) greeting.textContent=copy;
-  if(players) players.textContent=state.players?.length?num(state.players.length):'--';
-  if(posts) posts.textContent=num(state.posts.length||0);
-  if(hot) hot.textContent=state.trendCount?num(Math.min(state.trendCount,9)):'--';
-  if(status) status.textContent=state.players?.length?'gente real para chamar pelo nome':'procurando sinais de vida';
-  if(mode) mode.textContent=scope;
-  if(netPlayers) netPlayers.textContent=state.players?.length?num(state.players.length):'--';
-  if(netHot) netHot.textContent=state.trendCount?num(state.trendCount):'--';
-  if(netTitle) netTitle.textContent=state.notifUnread>0?'Você tem movimento novo':'Encontre sua próxima conversa';
-  if(netCopy) netCopy.textContent=state.notifUnread>0?`${num(state.notifUnread)} notificação${state.notifUnread>1?'ões':''} esperando sua atenção.`:'Busque jogadores, posts e assuntos sem abrir popups.';
+  if(netTitle) netTitle.textContent=state.notifUnread>0?'Há conversas esperando você':'Encontre algo que vale responder';
+  if(netCopy) netCopy.textContent=state.notifUnread>0?'Abra suas notificações ou descubra outros assuntos no feed.':'Descubra pessoas, assuntos e conversas sem transformar a comunidade em um placar.';
 }
 
 /* ======================= FEED ======================= */
@@ -4893,6 +4919,63 @@ function commentMediaUrls(comment){
   return [...new Set((Array.isArray(comment?.media_urls)?comment.media_urls:[])
     .map(url=>String(url||'').trim())
     .filter(url=>/^https:\/\/res\.cloudinary\.com\/.+\/image\/upload\//i.test(url)))].slice(0,4);
+}
+function quickCommentSourceHTML(post){
+  if(!post)return'';
+  const shown=displayName(post);
+  const handle=handleName(post);
+  const media=mediaUrlsFromPost(post)[0];
+  return`<div class="quick-comment-source-line" aria-hidden="true"></div>
+    <img src="${esc(avatar(post,50))}" alt="${esc(shown)}" onerror="this.onerror=null;this.src='${fallbackAvatar(shown,50)}'">
+    <div class="quick-comment-source-copy">
+      <div><strong>${esc(shown)}</strong><span>@${esc(handle)} · ${esc(time(post.created_at))}</span></div>
+      <p>${mentionHTML(String(post.content||'').slice(0,360))}</p>
+      ${media?`<img class="quick-comment-source-media" src="${esc(media)}" alt="">`:''}
+      <small>Respondendo a <b>@${esc(handle)}</b></small>
+    </div>`;
+}
+async function openQuickCommentComposer(id){
+  if(!token){location.href=loginUrlForCurrentPage();return}
+  let post=findPost(id);
+  if(!post){
+    try{post=await api(`/api/community/posts/${encodeURIComponent(id)}`)}
+    catch(e){toast('error','Publicação indisponível',e.message);return}
+  }
+  state.quickCommentPost=post;
+  clearComposerMedia('quickComment');
+  const source=$('#quick-comment-source');
+  const ta=$('#quick-comment-ta');
+  const av=$('#quick-comment-av');
+  if(source)source.innerHTML=quickCommentSourceHTML(post);
+  if(ta){ta.value='';ta.placeholder=`Responder a @${handleName(post)}`;}
+  if(av&&state.me){av.src=avatar(state.me,50);av.onerror=()=>{av.onerror=null;av.src=fallbackAvatar(displayName(state.me),50)}}
+  const publish=$('#quick-comment-publish');
+  if(publish)publish.disabled=true;
+  openModal('comment-modal');
+  setTimeout(()=>ta?.focus(),100);
+}
+async function submitQuickComment(){
+  const post=state.quickCommentPost;
+  const ta=$('#quick-comment-ta');
+  const content=String(ta?.value||'').trim();
+  const mediaCount=state.composerMedia.quickComment?.length||0;
+  if(!post||(!content&&!mediaCount)||content.length>280)return;
+  const btn=$('#quick-comment-publish');
+  setBtnLoad(btn,true,'Enviando');
+  try{
+    setMediaStatus('quickComment',mediaCount?'Enviando imagens...':'');
+    const {urls:media_urls}=await uploadComposerMedia('quickComment');
+    const id=post.repost_of_id||post.id;
+    await api(`/api/community/posts/${encodeURIComponent(id)}/comments`,{method:'POST',body:JSON.stringify({content,media_urls})});
+    post.comments_count=Number(post.comments_count||0)+1;
+    const cached=findPost(id);if(cached)cached.comments_count=post.comments_count;
+    if(ta)ta.value='';
+    clearComposerMedia('quickComment');
+    closeModal('comment-modal');
+    renderFeed();
+    toast('success','Resposta publicada','Ela já faz parte da conversa.');
+  }catch(e){toast('error','Resposta não enviada',e.message)}
+  finally{setMediaStatus('quickComment','');setBtnLoad(btn,false,'Responder');}
 }
 function commentMediaHTML(comment){
   const urls=commentMediaUrls(comment);
@@ -4989,7 +5072,7 @@ function postCardHTML(p){
         ${p.poll ? pollHTML(p) : ''}
         <div class="post-actions">
           <button class="pa pa-like ${p.liked_by_me?'is-on':''}" data-action="like" aria-pressed="${p.liked_by_me?'true':'false'}" ${Number(p.likes_count)>0?`data-has-likers="1"`:''}aria-label="${p.liked_by_me?'Descurtir':'Curtir'}" title="${Number(p.likes_count)>0?'Clique longo (mobile) ou clique no número para ver quem curtiu':''}">${IC.heart}<span data-action-likes="${Number(p.likes_count)>0?'show-likers':''}">${num(Number(p.likes_count) || 0)}</span></button>
-          <button class="pa pa-comment" data-action="open-thread" aria-label="Comentários">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
+          <button class="pa pa-comment" data-action="comment" aria-label="Comentar">${IC.comment}<span>${Number(p.comments_count)>0?num(Number(p.comments_count)):''}</span></button>
           <button class="pa pa-repost ${p.reposted_by_me?'is-on':''}" data-action="repost" aria-pressed="${p.reposted_by_me?'true':'false'}" aria-label="${p.reposted_by_me?'Remover repost':'Repostar'}">${IC.repost}<span>${Number(p.reposts_count)>0?num(Number(p.reposts_count)):''}</span></button>
           <button class="pa pa-save ${p.saved_by_me?'is-on':''}" data-action="save" aria-pressed="${p.saved_by_me?'true':'false'}" aria-label="${p.saved_by_me?'Remover dos salvos':'Salvar post'}">${IC.save}<span>${Number(p.saves_count)>0?num(Number(p.saves_count)):''}</span></button>
           <button class="pa pa-share" data-action="share" aria-label="Compartilhar">${IC.share}</button>
@@ -5204,6 +5287,11 @@ function updateMediaPreview(type){
   if(wrap){
     wrap.innerHTML=list.map((item,i)=>`<div class="media-preview-item"><img src="${esc(item.url)}" alt="Imagem ${i+1} pronta"><button class="media-remove" type="button" data-remove-media="${type}" data-media-index="${i}" aria-label="Remover imagem">×</button></div>`).join('');
   }
+  if(type==='quickComment'){
+    const btn=$('#quick-comment-publish');
+    const ta=$('#quick-comment-ta');
+    if(btn)btn.disabled=!String(ta?.value||'').trim()&&!list.length;
+  }
   syncComposer(type);
 }
 function clearComposerMedia(type){
@@ -5313,8 +5401,12 @@ async function openNextCrop(){
   if(!item){closeModal('crop-modal');return}
   state.cropCurrent=item;
   state.cropComposer=item.type;
+  state.cropFlipX=1;
+  state.cropZoomValue=0;
   const img=$('#crop-image');
   const confirm=$('#crop-confirm');
+  const zoom=$('#crop-zoom-range');
+  if(zoom)zoom.value='0';
   img.removeAttribute('src');
   $$('.crop-ratio').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.ratio==='free'));
   $('#crop-status').textContent='Carregando editor de imagem...';
@@ -5369,6 +5461,7 @@ function queueMediaFiles(type,files){
  * ─────────────────────────────────────────────────────────────────────────── */
 const IMG_COMPRESS_PRESETS={
   post:    {maxSizeMB:0.5,  maxWidthOrHeight:1600, initialQuality:0.86},
+  story:   {maxSizeMB:0.65, maxWidthOrHeight:1920, initialQuality:0.9},
   avatar:  {maxSizeMB:0.12, maxWidthOrHeight:400,  initialQuality:0.88},
   cover:   {maxSizeMB:0.4,  maxWidthOrHeight:1400, initialQuality:0.86},
 };
@@ -8561,6 +8654,12 @@ function bindEvents(){
     queueMediaFiles(type,input.files||[]);
     input.value='';
   });
+  document.addEventListener('input',e=>{
+    if(!e.target.matches('#crop-zoom-range')||!state.cropper)return;
+    const next=Number(e.target.value||0);
+    state.cropper.zoom(next-state.cropZoomValue);
+    state.cropZoomValue=next;
+  });
   // Fecha share popover de comentário ao clicar fora
   document.addEventListener('click', e => {
     if (_commentSharePopover && !_commentSharePopover.contains(e.target)) closeCommentSharePopover();
@@ -8627,6 +8726,14 @@ function bindEvents(){
       });
     }
   });
+  $('#quick-comment-ta')?.addEventListener('input',e=>{
+    const btn=$('#quick-comment-publish');
+    if(btn)btn.disabled=!e.currentTarget.value.trim()&&!(state.composerMedia.quickComment?.length);
+  });
+  $('#quick-comment-ta')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();submitQuickComment();}
+  });
+  $('#quick-comment-publish')?.addEventListener('click',submitQuickComment);
   $$('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
   $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.filter)));
   $('#load-more-btn')?.addEventListener('click',()=>loadFeed({reset:false}));
@@ -8860,6 +8967,19 @@ function bindEvents(){
       $('#crop-status').textContent=ratioBtn.dataset.ratio==='free'?'Corte livre':'Proporção fixa selecionada';
       return;
     }
+    const cropAction=e.target.closest('[data-crop-action]');
+    if(cropAction){
+      e.preventDefault();
+      const action=cropAction.dataset.cropAction;
+      if(action==='rotate-left')state.cropper?.rotate(-90);
+      if(action==='rotate-right')state.cropper?.rotate(90);
+      if(action==='flip'){state.cropFlipX*=-1;state.cropper?.scaleX(state.cropFlipX)}
+      if(action==='reset'){
+        state.cropFlipX=1;state.cropZoomValue=0;state.cropper?.reset();
+        const zoom=$('#crop-zoom-range');if(zoom)zoom.value='0';
+      }
+      return;
+    }
     if(e.target.closest('#crop-confirm')){e.preventDefault();confirmCrop();return}
     const searchTerm=e.target.closest('[data-search-term]');
     if(searchTerm){const q=searchTerm.dataset.searchTerm;saveSearch(q);Router.navigate(communityUrl({q}));return}
@@ -8935,6 +9055,7 @@ function bindEvents(){
         if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
         if(a==='show-likers'){e.stopPropagation();showSocialSheet(id,'likes');return}
         if(a==='show-reposters'){e.stopPropagation();showSocialSheet(id,'reposts');return}
+        if(a==='comment'){e.preventDefault();openQuickCommentComposer(id);return}
         if(a==='open-thread'){e.preventDefault();if(!token){location.href=`share/post/${encodeURIComponent(id)}`;return}navigatePost(id);return}
         if(a==='repost'){
           const repostBtn=act.closest('.pa-repost');
@@ -9582,7 +9703,7 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system.js?v=design-20260614b"></script>
-<script src="assets/js/community-evolution.js?v=evolution-20260614d"></script>
+<script src="assets/js/community-evolution.js?v=evolution-20260614e"></script>
 <script src="assets/js/social-chat.js?v=chat13-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
