@@ -72,10 +72,11 @@
     const friends = document.querySelector('#friends-bar');
     if (friends && !document.querySelector('#stories-shell')) {
       friends.insertAdjacentHTML('beforebegin', `
-        <section class="stories-shell" id="stories-shell" aria-label="Stories">
-          <div class="stories-head"><strong>Stories</strong><span>Visíveis por 24 h</span></div>
-          <div class="stories-list" id="stories-list"><div class="skel" style="width:54px;height:54px;border-radius:50%"></div></div>
+        <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories e amigos">
+          <div class="stories-head"><div><strong>Stories e amigos</strong><span>Momentos primeiro, sua turma sempre por perto.</span></div><span class="social-strip-meta" id="social-strip-meta">Atualizando...</span></div>
+          <div class="stories-list" id="stories-list"><div class="social-strip-skeleton skel"></div><div class="social-strip-skeleton skel"></div><div class="social-strip-skeleton skel"></div></div>
         </section>`);
+      friends.remove();
     }
 
     const right = document.querySelector('.right-panel');
@@ -318,41 +319,68 @@
     const list = document.querySelector('#stories-list');
     if (!list) return;
     try {
-      const payload = await api('/api/community/stories');
+      const [payload, friendsPayload] = await Promise.all([
+        api('/api/community/stories'),
+        api('/api/me/friends?limit=250').catch(() => ({ rows: [] })),
+      ]);
       const groups = new Map();
       (payload.stories || []).forEach(story => {
         if (!groups.has(String(story.user_id))) groups.set(String(story.user_id), []);
         groups.get(String(story.user_id)).push(story);
       });
-      storyGroups = [...groups.values()];
       const mine = state.me || {};
+      const allGroups = [...groups.values()];
+      const myGroup = allGroups.find(group => Number(group[0]?.user_id) === Number(mine.id));
+      const otherGroups = allGroups.filter(group => group !== myGroup);
+      const unseenGroups = otherGroups.filter(group => group.some(row => !row.viewed_by_me));
+      const viewedGroups = otherGroups.filter(group => group.every(row => row.viewed_by_me));
+      storyGroups = [...(myGroup ? [myGroup] : []), ...unseenGroups, ...viewedGroups];
+      const friends = Array.isArray(friendsPayload.rows) ? friendsPayload.rows : [];
+      const storyUserIds = new Set(storyGroups.map(group => String(group[0]?.user_id)));
+      const friendsWithoutStories = friends.filter(friend => !storyUserIds.has(String(friend.id)));
       const myGroupIndex = storyGroups.findIndex(group => Number(group[0]?.user_id) === Number(mine.id));
-      const myGroup = storyGroups[myGroupIndex];
-      const myStoryItem = myGroup
-        ? `<div class="story-item ${myGroup.every(row => row.viewed_by_me) ? 'is-viewed' : ''}">
+      const myStoryItem = myGroupIndex >= 0
+        ? `<div class="story-item is-own">
             <button class="story-ring-button" type="button" data-story-group="${myGroupIndex}" aria-label="Ver seu story">
               <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt=""></span>
               <span class="story-label">Seu story</span>
+              <span class="story-state-label">Atividade</span>
             </button>
-            <button class="story-add" type="button" data-story-add aria-label="Adicionar story">+</button>
           </div>`
-        : `<button class="story-item" type="button" data-story-add>
-            <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt=""></span>
-            <span class="story-label">Seu story</span>
-            <b class="story-add">+</b>
-          </button>`;
+        : '';
+      const addStory = `<button class="story-item story-action story-action-story" type="button" data-story-add aria-label="Adicionar story">
+        <span class="story-action-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h3l1.4-1.8h2.2L14.5 5h3A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z"/><circle cx="12" cy="12" r="3.2"/><path d="M18.5 3v4M16.5 5h4"/></svg></span>
+        <span class="story-label">Novo story</span><span class="story-state-label">Compartilhar</span>
+      </button>`;
+      const addFriend = `<button class="story-item story-action story-action-friend" type="button" data-social-add-friend aria-label="Adicionar amigo">
+        <span class="story-action-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.5-3.5 2.4-5.2 5.5-5.2s5 1.7 5.5 5.2M18 7v6M15 10h6"/></svg></span>
+        <span class="story-label">Adicionar</span><span class="story-state-label">Amigo</span>
+      </button>`;
+      const storyItems = storyGroups.map((group, index) => {
+        if (index === myGroupIndex) return '';
+        const first = group[0];
+        const viewed = group.every(row => row.viewed_by_me);
+        return `<button class="story-item ${viewed ? 'is-viewed' : 'is-unseen'}" type="button" data-story-group="${index}" aria-label="${viewed ? 'Rever' : 'Ver novo'} story de ${safe(displayName(first))}">
+          <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}"></span>
+          <span class="story-label">${safe(displayName(first))}</span><span class="story-state-label">${viewed ? 'Visto' : 'Novo story'}</span>
+        </button>`;
+      }).join('');
+      const friendItems = friendsWithoutStories.map(friend => {
+        const name = displayName(friend);
+        const mc = friend.minecraft_name || friend.username || '';
+        return `<button class="story-item social-friend js-profile" type="button" data-uid="${safe(friend.id)}" data-mc="${safe(mc)}" aria-label="Abrir perfil de ${safe(name)}">
+          <span class="story-ring"><img src="${safe(avatar(friend, 60))}" alt="${safe(name)}">${friend.is_online ? '<i class="social-online-dot" aria-label="Online"></i>' : ''}</span>
+          <span class="story-label">${safe(name)}</span><span class="story-state-label">${friend.is_online ? 'Online' : 'Amigo'}</span>
+        </button>`;
+      }).join('');
       list.innerHTML = `
-        ${myStoryItem}
-        ${storyGroups.map((group, index) => {
-          if (index === myGroupIndex) return '';
-          const first = group[0];
-          const viewed = group.every(row => row.viewed_by_me);
-          return `<button class="story-item ${viewed ? 'is-viewed' : ''}" type="button" data-story-group="${index}">
-            <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}"></span><span class="story-label">${safe(displayName(first))}</span>
-          </button>`;
-        }).join('')}`;
+        ${addStory}${addFriend}${myStoryItem}${storyItems}${friendItems}`;
+      const meta = document.querySelector('#social-strip-meta');
+      if (meta) meta.textContent = `${unseenGroups.length} novo${unseenGroups.length === 1 ? '' : 's'} · ${friends.length} amigo${friends.length === 1 ? '' : 's'}`;
     } catch {
-      list.innerHTML = '<span style="padding:8px;color:var(--ink-3);font-size:11px">Stories indisponíveis.</span>';
+      list.innerHTML = `<button class="story-item story-action story-action-story" type="button" data-story-add><span class="story-action-circle">+</span><span class="story-label">Novo story</span></button>
+        <button class="story-item story-action story-action-friend" type="button" data-social-add-friend><span class="story-action-circle">+</span><span class="story-label">Adicionar</span></button>
+        <span class="social-strip-error">Não foi possível atualizar amigos e stories.</span>`;
     }
   }
 
@@ -911,6 +939,7 @@
       if (backToPost) pendingCommentFocus = document.querySelector('#subthread-root [data-comment-id]')?.dataset.commentId || null;
       if (event.target.closest('#server-live-pill')) document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       if (event.target.closest('[data-story-add]')) { createStory(); return; }
+      if (event.target.closest('[data-social-add-friend]')) { openModal('friend-modal'); return; }
       const storyGroup = event.target.closest('[data-story-group]');
       if (storyGroup) {
         const groupIndex = Number(storyGroup.dataset.storyGroup);
@@ -1235,6 +1264,7 @@
     scheduleDecorate();
     syncScheduleUI();
     loadStories();
+    setTimeout(loadStories, 1400);
     loadServerLive();
     loadServerActivity();
     loadMeritProgress();

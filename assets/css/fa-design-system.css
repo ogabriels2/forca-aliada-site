@@ -27,6 +27,9 @@ button:active,.btn:active,[role=button]:active { transform: scale(.96); transiti
 @keyframes fa-heart-beat { 15%{transform:scale(.82)}45%{transform:scale(1.3) rotate(-8deg)}68%{transform:scale(.94)}82%{transform:scale(1.08)} }
 @keyframes fa-bookmark-pin { 30%{transform:scale(.8) rotate(-15deg)}55%{transform:scale(1.15) rotate(5deg)}75%{transform:scale(.95) rotate(-3deg)} }
 @keyframes fa-badge-pop { 0%{transform:scale(.4)}60%{transform:scale(1.2)}100%{transform:scale(1)} }
+@keyframes fa-word-in { from{opacity:0;transform:translateY(24px) rotate(2deg);filter:blur(5px)} to{opacity:1;transform:none;filter:none} }
+@keyframes fa-confetti-fall { 0%{opacity:0;transform:translate3d(0,-16px,0) rotate(0)}12%{opacity:1}100%{opacity:0;transform:translate3d(var(--x),105vh,0) rotate(var(--r))} }
+@keyframes fa-toast-in { from{opacity:0;transform:translateY(10px) scale(.97);filter:blur(5px)} to{opacity:1;transform:none;filter:none} }
 
 .fa-reveal { opacity:0;transform:translateY(16px); }
 .fa-reveal.is-revealed { animation:fa-in-up var(--dur-slow) var(--ease-decel) both; }
@@ -52,9 +55,13 @@ button:active,.btn:active,[role=button]:active { transform: scale(.96); transiti
 .sheet { transition:transform var(--dur-med) var(--ease-spring),opacity var(--dur-fast) var(--ease-ui); }
 .sheet-handle { height:28px;display:none;align-items:center;justify-content:center;flex:none;touch-action:none; }
 .sheet-handle::before { content:'';width:38px;height:4px;border-radius:99px;background:var(--line-strong,rgba(128,128,128,.35)); }
-.toast { overflow:hidden; }
+.toast:not(.leaving) { overflow:hidden;animation:fa-toast-in var(--dur-med) var(--ease-spring) both!important; }
 .toast::after { content:'';position:absolute;inset:auto 0 0;height:2px;background:var(--accent,var(--fa-gold));transform-origin:left;animation:fa-toast-progress 4s linear both; }
+.toast.fa-merit-toast { border-color:color-mix(in srgb,var(--fa-gold) 58%,transparent)!important;background-image:radial-gradient(circle at 10% 0,rgba(201,168,76,.22),transparent 50%);box-shadow:0 18px 60px rgba(201,168,76,.2)!important; }
+.toast.fa-merit-toast::after { height:3px;background:linear-gradient(90deg,var(--fa-gold),#f3dc8b); }
 @keyframes fa-toast-progress { to { transform:scaleX(0) } }
+.fa-confetti { position:fixed;inset:0;z-index:2147483500;overflow:hidden;pointer-events:none; }
+.fa-confetti i { position:absolute;top:-18px;left:var(--left);width:7px;height:13px;border-radius:2px;background:var(--color);animation:fa-confetti-fall var(--time) var(--ease-decel) var(--delay) both; }
 .fa-like-particles { position:fixed;z-index:2147483600;width:1px;height:1px;pointer-events:none; }
 .fa-like-particles i { position:absolute;width:5px;height:5px;border-radius:50%;background:#ff355e;box-shadow:0 0 8px rgba(255,53,94,.6);animation:fa-like-particle 600ms var(--ease-decel) both; }
 .fa-like-particles i:nth-child(2n) { background:#ff829b; }
@@ -70,6 +77,7 @@ body[data-fa-page=index] .desktop-nav { justify-self:center; }
 body[data-fa-page=index] header.fa-header-hidden { transform:translateY(-110%); }
 body[data-fa-page=index] .hero-bg { will-change:transform;transition:transform 500ms var(--ease-gesture); }
 body[data-fa-page=index] .hero-content { animation:fa-in-up var(--dur-xslow) var(--ease-spring) both; }
+body[data-fa-page=index] .hero h1 .fa-hero-word { display:inline-block;margin-right:.18em;opacity:0;animation:fa-word-in 650ms var(--ease-spring) calc(var(--word-index) * 90ms + 120ms) both; }
 body[data-fa-page=index] .hero h1::after { content:'';display:block;width:min(220px,48%);height:3px;margin:18px auto 0;border-radius:99px;background:linear-gradient(90deg,transparent,var(--fa-gold),transparent);transform-origin:center;animation:fa-underline 900ms var(--ease-spring) 300ms both; }
 @keyframes fa-underline { from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)} }
 body[data-fa-page=index] .feature-card { border-radius:20px!important; }
@@ -77,8 +85,13 @@ body[data-fa-page=index] .stats-strip { border-block:1px solid color-mix(in srgb
 body[data-fa-page=index] .status-pill::before { content:'';position:absolute;inset:-3px;border:1px solid color-mix(in srgb,var(--fa-gold) 50%,transparent);border-radius:inherit;animation:fa-pulse 2s infinite;pointer-events:none; }
 body[data-fa-page=login] .login-card,body[data-fa-page=signup] .signup-card { animation:fa-in-up var(--dur-slow) var(--ease-spring) both; }
 [data-theme=dark] body[data-fa-page=login] .login-card,[data-theme=dark] body[data-fa-page=signup] .signup-card { box-shadow:0 0 0 1px rgba(201,168,76,.26),0 28px 80px rgba(0,0,0,.4); }
-body[data-fa-page=login] .field label,body[data-fa-page=signup] .field label { transition:color var(--dur-fast),transform var(--dur-med) var(--ease-spring);transform-origin:left; }
-body[data-fa-page=login] .field:focus-within label,body[data-fa-page=signup] .field:focus-within label { color:var(--accent);transform:translateY(-1px) scale(.96); }
+body[data-fa-page=login] .field,body[data-fa-page=signup] .field { position:relative; }
+body[data-fa-page=login] .field > label,body[data-fa-page=signup] .field > label { position:absolute;left:10px;top:13px;z-index:3;margin:0;padding:0 5px;background:var(--surface,var(--card-bg,#fff));color:var(--text-3,var(--ink-3));pointer-events:none;transform-origin:left;transition:color var(--dur-fast),transform var(--dur-med) var(--ease-spring),top var(--dur-med) var(--ease-spring); }
+body[data-fa-page=login] .field.fa-float > label,body[data-fa-page=login] .field:focus-within > label,body[data-fa-page=login] .field:has(input:not(:placeholder-shown)) > label,body[data-fa-page=signup] .field.fa-float > label,body[data-fa-page=signup] .field:focus-within > label,body[data-fa-page=signup] .field:has(input:not(:placeholder-shown)) > label { top:-7px;color:var(--accent);transform:scale(.86); }
+body[data-fa-page=login] .field .input-wrap input::placeholder,body[data-fa-page=signup] .field .input-wrap input::placeholder { opacity:0;transition:opacity var(--dur-fast); }
+body[data-fa-page=login] .field:focus-within .input-wrap input::placeholder,body[data-fa-page=signup] .field:focus-within .input-wrap input::placeholder { opacity:.72; }
+body[data-fa-page=login] .btn-oauth-social,body[data-fa-page=signup] .btn-oauth-social { transition:transform var(--dur-med) var(--ease-spring),border-color var(--dur-fast),box-shadow var(--dur-fast),background var(--dur-fast); }
+body[data-fa-page=login] .btn-oauth-social:hover,body[data-fa-page=signup] .btn-oauth-social:hover { transform:translateY(-2px) scale(1.02);border-color:color-mix(in srgb,var(--accent) 42%,transparent);box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 13%,transparent); }
 body[data-fa-page=account] .rank-card,body[data-fa-page=account] .merit-rank-card,body[data-fa-page=profile] .profile-hero { background-image:radial-gradient(circle at 85% 0,color-mix(in srgb,var(--fa-gold) 20%,transparent),transparent 42%),linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,transparent),transparent); }
 body[data-fa-page=account] .rank-progress-bar,body[data-fa-page=account] .merit-progress-track { overflow:visible; }
 body[data-fa-page=account] .rank-progress-fill,body[data-fa-page=account] .merit-progress-bar { position:relative; }

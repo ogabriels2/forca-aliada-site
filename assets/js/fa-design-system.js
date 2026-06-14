@@ -34,6 +34,37 @@
     else node.classList.add('is-revealed');
   });
 
+  if (page === 'index') {
+    const title = document.querySelector('.hero h1');
+    if (title && !title.dataset.faSplit) {
+      const words = title.textContent.trim().split(/\s+/);
+      title.innerHTML = words.map((word,index) => `<span class="fa-hero-word" style="--word-index:${index}">${word}</span>`).join(' ');
+      title.dataset.faSplit = 'true';
+    }
+    const countUp = node => {
+      if (node.dataset.faCounted) return;
+      const match = node.textContent.trim().match(/^([\d.,]+)(.*)$/);
+      if (!match) return;
+      node.dataset.faCounted = 'true';
+      const target = Number(match[1].replace(',','.'));
+      const suffix = match[2];
+      const started = Date.now();
+      const frame = () => {
+        const progress = Math.min(1,(Date.now()-started)/850);
+        const eased = 1 - Math.pow(1-progress,3);
+        node.textContent = `${Math.round(target*eased)}${suffix}`;
+        if (progress < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    };
+    const statObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      countUp(entry.target);
+      statObserver.unobserve(entry.target);
+    }), { threshold:.35 }) : null;
+    document.querySelectorAll('.stats-strip .stat-number').forEach(node => statObserver ? statObserver.observe(node) : countUp(node));
+  }
+
   document.addEventListener('click', event => {
     const target = event.target.closest('.btn-secondary,.btn-ghost,.tbtn,.pa,.follow-btn,.header-pill');
     if (!target || reduce.matches) return;
@@ -106,6 +137,50 @@
   };
   decorateSheets(document);
   new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => node.nodeType===1 && decorateSheets(node)))).observe(document.body,{childList:true,subtree:true});
+
+  const polishedToasts = new WeakSet();
+  const polishToast = toast => {
+    if (!toast || polishedToasts.has(toast)) return;
+    polishedToasts.add(toast);
+    if (/m[eé]rito|rank|cargo/i.test(toast.textContent || '')) toast.classList.add('fa-merit-toast');
+    haptic(toast.classList.contains('error') ? 'error' : toast.classList.contains('warning') ? 'warning' : toast.classList.contains('success') ? 'success' : 'soft');
+  };
+  const toastObserver = new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+    if (node.nodeType !== 1) return;
+    if (node.matches?.('.toast')) polishToast(node);
+    node.querySelectorAll?.('.toast').forEach(polishToast);
+  })));
+  toastObserver.observe(document.body,{childList:true,subtree:true});
+  document.querySelectorAll('.toast').forEach(polishToast);
+
+  let confettiShown = false;
+  const showConfetti = () => {
+    if (confettiShown || reduce.matches) return;
+    confettiShown = true;
+    const root = document.createElement('div');
+    const colors = ['#c9a84c','#f3dc8b','#1761f0','#34d399','#fb7185'];
+    root.className = 'fa-confetti';
+    root.innerHTML = Array.from({length:38},(_,index) => `<i style="--left:${Math.round(Math.random()*100)}%;--x:${Math.round((Math.random()-.5)*180)}px;--r:${Math.round(Math.random()*720-360)}deg;--time:${900+Math.round(Math.random()*900)}ms;--delay:${index*15}ms;--color:${colors[index%colors.length]}"></i>`).join('');
+    document.body.appendChild(root);
+    setTimeout(() => root.remove(),2200);
+  };
+  if (page === 'signup') {
+    const success = document.querySelector('#view-success');
+    const checkSuccess = () => { if (success && getComputedStyle(success).display !== 'none') showConfetti(); };
+    if (success) new MutationObserver(checkSuccess).observe(success,{attributes:true,attributeFilter:['style','class']});
+    checkSuccess();
+  }
+
+  if (page === 'login' || page === 'signup') {
+    document.querySelectorAll('.field input').forEach(input => {
+      const field = input.closest('.field');
+      const syncFloatingLabel = () => field?.classList.toggle('fa-float', input === document.activeElement || Boolean(input.value));
+      input.addEventListener('focus', syncFloatingLabel);
+      input.addEventListener('blur', syncFloatingLabel);
+      input.addEventListener('input', syncFloatingLabel);
+      syncFloatingLabel();
+    });
+  }
 
   let postPress = null;
   document.addEventListener('pointerdown', event => {

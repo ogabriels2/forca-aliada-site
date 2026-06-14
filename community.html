@@ -44,7 +44,7 @@ body.guest-mode #fab-post,
 body.guest-mode #desktop-chat-btn,
 body.guest-mode #notif-btn,
 body.guest-mode #inline-composer,
-body.guest-mode #friends-bar { display:none!important; }
+body.guest-mode #stories-shell { display:none!important; }
 </style>
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://api.mcheads.org" crossorigin>
@@ -3428,8 +3428,8 @@ body::after{
   }
 }
 </style>
-<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614c">
-<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614">
+<link rel="stylesheet" href="assets/css/community-evolution.css?v=evolution-20260614d">
+<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 </head>
 <body>
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3607,15 +3607,21 @@ body::after{
       </div>
     </section>
 
-    <!-- COMPOSER -->
-    <div class="friends-scroll-wrap" id="friends-bar" aria-label="Amigos e Jogadores Online">
-      <div class="friend-item" onclick="openModal('friend-modal')">
-        <div class="friend-add"><svg viewBox="0 0 24 24" width="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-        <span class="friend-name">Adicionar</span>
+    <!-- STORIES + AMIGOS -->
+    <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories e amigos">
+      <div class="stories-head">
+        <div>
+          <strong>Stories e amigos</strong>
+          <span>Momentos primeiro, sua turma sempre por perto.</span>
+        </div>
+        <span class="social-strip-meta" id="social-strip-meta">Atualizando...</span>
       </div>
-      <div id="friends-list" style="display:flex; gap:12px">
-              </div>
-    </div>
+      <div class="stories-list" id="stories-list" aria-live="polite">
+        <div class="social-strip-skeleton skel"></div>
+        <div class="social-strip-skeleton skel"></div>
+        <div class="social-strip-skeleton skel"></div>
+      </div>
+    </section>
 
         <div class="composer" id="inline-composer" style="padding:10px 13px;">
       <div style="display:grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 11px; align-items: end;">
@@ -5156,7 +5162,8 @@ function switchTab(filter){
 
 /* ======================= BARRA DE AMIGOS ======================= */
 async function loadFriendsBar(){
-  const list=$('#friends-list'), sugList=$('#friend-sug-list'), reqList=$('#friend-requests-list'); if(!list)return;
+  const list=$('#friends-list'), sugList=$('#friend-sug-list'), reqList=$('#friend-requests-list');
+  if(!list&&!sugList&&!reqList)return;
   try {
     const [friendsPayload, requestsPayload, playersPayload]=await Promise.all([
       api('/api/me/friends?limit=12'),
@@ -5167,7 +5174,7 @@ async function loadFriendsBar(){
     const requests=Array.isArray(requestsPayload.rows)?requestsPayload.rows:[];
     const players=Array.isArray(playersPayload)?playersPayload:[];
     const barRows=(friends.length?friends:players).slice(0,8);
-    list.innerHTML=barRows.map((p)=>{
+    if(list) list.innerHTML=barRows.map((p)=>{
       const n=p.minecraft_name||p.username||'Jogador'; 
       const shown=displayName(p);
       const isOnline = p.is_online === true; // AGORA USA O DADO REAL DO BANCO!
@@ -8310,6 +8317,15 @@ function notifText(n){
   const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,comment_reply:`${a} respondeu seu comentário`,comment_like:`${a} curtiu seu comentário`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,message_reaction:`${a} reagiu à sua mensagem`,story_reaction:`${a} reagiu ao seu story`,repost:`${a} repostou seu post`,friend_joined:`${a} entrou na comunidade`,moderation_warn:'Você recebeu um aviso da moderação',scheduled_post_published:'Seu post agendado foi publicado'};
   return map[n.type]||'Nova notificação';
 }
+function notifTypeIcon(type){
+  const map={
+    post_like:IC.heart,comment_like:IC.heart,story_reaction:IC.heart,
+    comment:IC.comment,comment_reply:IC.comment,mention_post:IC.info,mention_comment:IC.info,
+    direct_message:IC.send,message_reaction:IC.send,repost:IC.repost,
+    new_follower:IC.user,friend_joined:IC.group,moderation_warn:IC.warn,scheduled_post_published:IC.ok
+  };
+  return map[type]||IC.info;
+}
 function notifActor(n){
   return {username:n.actor_username,minecraft_name:n.actor_minecraft_name,display_name:n.actor_display_name,avatar_url:n.actor_avatar_url,photo_url:n.actor_photo_url,integration:n.actor_integration};
 }
@@ -8331,7 +8347,7 @@ function renderNotifs(){
   list.innerHTML=browserInvite+(state.notifs.length?state.notifs.map(n=>{
     const actor=notifActor(n);
     const nm=displayName(actor)||'Sistema';
-    return`<button class="notif-row ${n.is_read?'':'unread'}" data-nid="${n.id}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}"><img src="${esc(avatar(actor,50))}" alt="${esc(nm)}" onerror="this.onerror=null; this.src='${fallbackAvatar(nm,50)}'"><div><strong>${esc(notifText(n))}</strong><small>${esc(n.preview_text||'')} · ${esc(time(n.created_at))}</small></div></button>`;
+    return`<button class="notif-row ${n.is_read?'':'unread'}" data-nid="${n.id}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}"><span class="notif-avatar-wrap"><img src="${esc(avatar(actor,50))}" alt="${esc(nm)}" onerror="this.onerror=null; this.src='${fallbackAvatar(nm,50)}'"><i class="notif-type-badge">${notifTypeIcon(n.type)}</i></span><div><strong>${esc(notifText(n))}</strong><small>${esc(n.preview_text||'')} · ${esc(time(n.created_at))}</small></div></button>`;
   }).join(''):`<div style="padding:18px 13px;text-align:center;color:var(--ink-3);font-size:13px">Nenhuma notificação recente.</div>`);
 }
 
@@ -8448,7 +8464,7 @@ function renderNotificationsPageList(){
     const av=avatar(actor,50);
     const read=Boolean(n.is_read);
     return`<article class="notif-full-row notif-type-${esc(n.type||'info')} ${read?'':'unread'}" data-open-social-notif="${esc(n.id)}" data-et="${esc(n.entity_type||'')}" data-eid="${esc(n.entity_id||'')}" data-ntype="${esc(n.type||'')}" data-actor="${esc(n.actor_id||'')}">
-      <img src="${esc(av)}" alt="${esc(name)}" onerror="this.onerror=null; this.src='${fallbackAvatar(name,50)}'">
+      <span class="notif-avatar-wrap"><img src="${esc(av)}" alt="${esc(name)}" onerror="this.onerror=null; this.src='${fallbackAvatar(name,50)}'"><i class="notif-type-badge">${notifTypeIcon(n.type)}</i></span>
       <div class="notif-full-copy">
         <div class="notif-full-title">${read?'':'<span class="notif-unread-chip" aria-hidden="true"></span>'}<strong>${esc(notifText(n))}</strong></div>
         <p>${esc(n.preview_text||'Interacao social na comunidade.')}</p>
@@ -9565,8 +9581,8 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/fa-design-system.js?v=design-20260614"></script>
-<script src="assets/js/community-evolution.js?v=evolution-20260614c"></script>
+<script src="assets/js/fa-design-system.js?v=design-20260614b"></script>
+<script src="assets/js/community-evolution.js?v=evolution-20260614d"></script>
 <script src="assets/js/social-chat.js?v=chat13-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>

@@ -5472,7 +5472,7 @@ app.delete('/api/me/follows/:targetId', auth, async (req, res) => {
 
 // ─────────────────────────────────────────────
 app.get('/api/me/friends', auth, async (req, res) => {
-  const limit = clampInt(req.query.limit, 24, 1, 80);
+  const limit = clampInt(req.query.limit, 24, 1, 250);
   const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
   const params = [req.user.sub];
   const conditions = [
