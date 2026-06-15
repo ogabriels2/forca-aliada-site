@@ -3441,6 +3441,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615a">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3553,19 +3554,6 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
         Notificações
         <span class="rnav-badge" id="nav-notif-badge" hidden>0</span>
       </a>
-    </div>
-    <div class="card network-card" id="network-card">
-      <p class="eyebrow">Seu próximo passo</p>
-      <h3 id="network-card-title">Encontre algo que vale responder</h3>
-      <p id="network-card-copy">Descubra pessoas, assuntos e conversas sem transformar a comunidade em um placar.</p>
-      <div class="network-shortcuts">
-        <button type="button" data-open-search-page><span>Buscar</span><strong>Pessoas e posts</strong></button>
-        <button type="button" data-filter="trending"><span>Descobrir</span><strong>Conversas em alta</strong></button>
-      </div>
-      <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Explorar comunidade
-      </button>
     </div>
   </aside>
 
@@ -7682,7 +7670,7 @@ async function renderProfileRoute(identifier){
         <span class="crumb-path">@${esc(handle)}</span>
       </div>
       <div class="profile-hero">
-        <div class="profile-cover ${rk.cls}${safeProfileImageUrl(prof.cover_url)?' has-img':''}" data-profile-cover="${esc(safeProfileImageUrl(prof.cover_url)||'')}">${safeProfileImageUrl(prof.cover_url)?`<img class="cover-img" src="${esc(safeProfileImageUrl(prof.cover_url))}" alt="" onerror="this.style.display='none';this.closest('.profile-cover').classList.remove('has-img')">`:''}</div>
+        <div class="profile-cover ${rk.cls}${safeProfileImageUrl(prof.cover_url)?' has-img':''}" data-profile-cover="${esc(safeProfileImageUrl(prof.cover_url)||'')}" ${safeProfileImageUrl(prof.cover_url)?`data-lb-open data-lb-url="${esc(safeProfileImageUrl(prof.cover_url))}" role="button" tabindex="0" aria-label="Ver capa completa de ${esc(shown)}"`:''}>${safeProfileImageUrl(prof.cover_url)?`<img class="cover-img" src="${esc(safeProfileImageUrl(prof.cover_url))}" alt="Capa de ${esc(shown)}" onerror="this.style.display='none';this.closest('.profile-cover').classList.remove('has-img')">`:''}</div>
         <div class="profile-hero-body">
           <div class="profile-topline">
             <img class="profile-av" src="${esc(avatar(prof,140))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,140)}'">
@@ -9063,7 +9051,14 @@ function bindEvents(){
         const a=act.dataset.action;
         if(a==='menu'){e.stopPropagation();openPostMenu(act.closest('.more-btn'));return}
         if(!token&&!['share','copy','open-thread'].includes(a)){location.href=loginUrlForCurrentPage();return}
-        if(a==='like'){toggleLike(id,act.closest('.pa-like'));return}
+        if(a==='like'){
+          const likesCountTarget=e.target.closest('[data-action-likes="show-likers"]');
+          if(likesCountTarget){
+            if(!matchMedia('(pointer: coarse)').matches) showSocialSheet(id,'likes');
+            return;
+          }
+          toggleLike(id,act.closest('.pa-like'));return
+        }
         if(a==='show-likers'){e.stopPropagation();showSocialSheet(id,'likes');return}
         if(a==='show-reposters'){e.stopPropagation();showSocialSheet(id,'reposts');return}
         if(a==='comment'){e.preventDefault();openQuickCommentComposer(id);return}
@@ -9102,6 +9097,7 @@ function bindEvents(){
     const likesSpan=e.target.closest('[data-action-likes="show-likers"]');
     if(likesSpan){
       e.stopPropagation();
+      if(matchMedia('(pointer: coarse)').matches) return;
       const card=likesSpan.closest('.post-card');
       if(card) showSocialSheet(card.dataset.postId,'likes');
       return;
@@ -9110,11 +9106,12 @@ function bindEvents(){
   document.addEventListener('keydown',e=>{if(e.key==='Escape') $$('.backdrop.show').forEach(m=>{if(m.id==='crop-modal'){state.cropQueue=[];destroyCropper()}closeModal(m.id)})});
 
   /* ── Long-press on like button/count to show likers (mobile UX) ── */
-  let _lpTimer=null, _lpFired=false;
+  let _lpTimer=null, _lpFired=false, _lpStart=null;
   document.addEventListener('pointerdown',e=>{
     const likeBtn=e.target.closest('.pa-like[data-has-likers="1"]');
-    if(!likeBtn)return;
+    if(!likeBtn||e.pointerType!=='touch')return;
     _lpFired=false;
+    _lpStart={x:e.clientX,y:e.clientY};
     clearTimeout(_lpTimer);
     _lpTimer=setTimeout(()=>{
       _lpFired=true;
@@ -9122,8 +9119,13 @@ function bindEvents(){
       if(card) showSocialSheet(card.dataset.postId,'likes');
     },500);
   },{passive:true});
-  document.addEventListener('pointerup',()=>{clearTimeout(_lpTimer);});
-  document.addEventListener('pointercancel',()=>{clearTimeout(_lpTimer);});
+  document.addEventListener('pointermove',e=>{
+    if(_lpStart&&Math.hypot(e.clientX-_lpStart.x,e.clientY-_lpStart.y)>10){
+      clearTimeout(_lpTimer);_lpStart=null;
+    }
+  },{passive:true});
+  document.addEventListener('pointerup',()=>{clearTimeout(_lpTimer);_lpStart=null;});
+  document.addEventListener('pointercancel',()=>{clearTimeout(_lpTimer);_lpStart=null;});
   /* Prevent the normal like toggle on pointerup if long-press fired */
   document.addEventListener('click',e=>{
     if(_lpFired&&e.target.closest('.pa-like')){e.stopImmediatePropagation();_lpFired=false;}
@@ -9713,9 +9715,10 @@ async function boot(){
 boot();
 </script>
 
-<script src="assets/js/fa-design-system.js?v=design-20260614b"></script>
-<script src="assets/js/community-evolution-20260614h.js?v=20260614h"></script>
+<script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260615a"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
+<script src="assets/js/community-social-refinement-20260615a.js?v=20260615a"></script>
 <script src="assets/js/social-chat.js?v=chat13-20260608"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>

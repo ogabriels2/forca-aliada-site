@@ -1,0 +1,488 @@
+/* Refinamentos finais de timeline, comentários, perfil e modalidades de entrada. */
+
+body.social-ui-v2 .server-live-pill.is-unknown i {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent);
+}
+
+body.social-ui-v2 .pa-like[data-has-likers="1"] span {
+  text-decoration: none !important;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-unseen .story-ring::before {
+  opacity: 1 !important;
+  background: linear-gradient(45deg,#feda75 0%,#fa7e1e 22%,#d62976 48%,#962fbf 72%,#4f5bd5 100%) border-box !important;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-viewed {
+  opacity: .86;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-viewed .story-ring::before {
+  opacity: 1 !important;
+  background: color-mix(in srgb,var(--ink-3) 48%,var(--line)) border-box !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+/* Feed comments form one continuous thread aligned with the post avatar. */
+body.social-ui-v2 .post-layout.has-comments .post-av-connector {
+  width: 2px;
+  min-height: 18px;
+  margin-top: 6px;
+  background: color-mix(in srgb,var(--line-strong) 78%,transparent);
+}
+
+body.social-ui-v2 .preview-comments {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.social-ui-v2 .preview-comments::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: -18px;
+  bottom: 26px;
+  left: 22px;
+  width: 2px;
+  border-radius: 99px;
+  background: color-mix(in srgb,var(--line-strong) 76%,transparent);
+}
+
+body.social-ui-v2 .preview-row {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: 46px minmax(0,1fr);
+  gap: 11px;
+  padding: 10px 0 0;
+}
+
+body.social-ui-v2 .preview-row-av {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--social-surface);
+  border-radius: 13px;
+  box-sizing: border-box;
+}
+
+body.social-ui-v2 .preview-row-body {
+  padding-top: 2px;
+}
+
+body.social-ui-v2 .preview-more-btn {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 2px 57px;
+}
+
+body.social-ui-v2 .preview-comment-actions,
+body.social-ui-v2 .comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 7px;
+}
+
+body.social-ui-v2 .preview-comment-action,
+body.social-ui-v2 .comment-pa {
+  min-width: 38px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 9px;
+  border-radius: 11px;
+  font: 600 10.5px/1 var(--ff-mono);
+}
+
+body.social-ui-v2 .preview-comment-action svg,
+body.social-ui-v2 .comment-pa svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Full thread follows the same avatar-to-avatar visual grammar. */
+body.social-ui-v2 .comments-list,
+body.social-ui-v2 .comments-list-wrap {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.social-ui-v2 .comment-row {
+  position: relative;
+  grid-template-columns: 46px minmax(0,1fr);
+  gap: 11px;
+  padding: 12px 0;
+  border: 0;
+  background: transparent;
+}
+
+body.social-ui-v2 .comment-row:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 53px;
+  bottom: -13px;
+  width: 2px;
+  border-radius: 99px;
+  background: color-mix(in srgb,var(--line-strong) 76%,transparent);
+}
+
+body.social-ui-v2 .comment-row > img {
+  position: relative;
+  z-index: 1;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--social-surface);
+  border-radius: 14px;
+  box-sizing: border-box;
+}
+
+body.social-ui-v2 .comment-row:not(.is-deleted):hover::after {
+  display: none;
+}
+
+/* Profile covers stay cinematic instead of expanding to the image's full height. */
+body.social-ui-v2 .profile-cover,
+body.social-ui-v2 .profile-cover.has-img {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 3 / 1;
+  max-height: 230px;
+  cursor: zoom-in;
+}
+
+body.social-ui-v2 .profile-cover .cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+body.social-ui-v2 .profile-cover[data-lb-open]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.profile-cover-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0,0,0,.86);
+  backdrop-filter: blur(18px);
+  animation: socialCoverIn 180ms ease both;
+}
+
+.profile-cover-viewer img {
+  max-width: min(1100px,100%);
+  max-height: calc(100dvh - 48px);
+  object-fit: contain;
+  border-radius: 14px;
+  box-shadow: 0 28px 90px rgba(0,0,0,.5);
+}
+
+.profile-cover-viewer button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 50%;
+  background: rgba(20,20,20,.72);
+  color: #fff;
+  font-size: 24px;
+}
+
+@keyframes socialCoverIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Useful lateral content becomes a compact carousel when rails no longer fit. */
+.compact-social-discovery {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  body.social-ui-v2 .compact-social-discovery {
+    display: flex;
+    order: 2;
+    width: min(100%,var(--social-feed-max));
+    gap: 9px;
+    overflow-x: auto;
+    padding: 0 2px 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  body.social-ui-v2 .compact-social-discovery::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.social-ui-v2 .compact-tool-card {
+    min-width: 210px;
+    flex: 1 0 210px;
+    display: grid;
+    align-content: space-between;
+    gap: 7px;
+    min-height: 104px;
+    padding: 12px;
+    border: 1px solid var(--social-border);
+    border-radius: 15px;
+    background: var(--social-surface);
+    box-shadow: var(--social-shadow-card);
+    scroll-snap-align: start;
+  }
+
+  body.social-ui-v2 .compact-tool-card small {
+    color: var(--ink-3);
+    font: 700 9px/1 var(--ff-mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  body.social-ui-v2 .compact-tool-card strong {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    color: var(--ink);
+    font-size: 12px;
+  }
+
+  body.social-ui-v2 .compact-tool-card strong i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb,var(--accent) 13%,transparent);
+  }
+
+  body.social-ui-v2 .compact-tool-trends strong span {
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 9px;
+  }
+
+  body.social-ui-v2 .compact-tool-card button {
+    justify-self: start;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font: 800 10px/1 var(--ff);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body.social-ui-v2 .post-card:hover,
+  body.social-ui-v2 .story-item:hover,
+  body.social-ui-v2 .btn:hover,
+  body.social-ui-v2 .pa:hover,
+  body.social-ui-v2 .comment-pa:hover,
+  body.social-ui-v2 .preview-comment-action:hover {
+    will-change: transform;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  body.social-ui-v2 .post-card:hover,
+  body.social-ui-v2 .story-item:hover,
+  body.social-ui-v2 .btn:hover,
+  body.social-ui-v2 .tbtn:hover,
+  body.social-ui-v2 .rnav-item:hover,
+  body.social-ui-v2 .trend-item:hover,
+  body.social-ui-v2 .player-row:hover,
+  body.social-ui-v2 .pa:hover,
+  body.social-ui-v2 .comment-pa:hover,
+  body.social-ui-v2 .preview-comment-action:hover,
+  body.social-ui-v2 .post-card:hover .post-media img {
+    transform: none !important;
+  }
+
+  body.social-ui-v2 .post-card:hover,
+  body.social-ui-v2 .comment-row:hover,
+  body.social-ui-v2 .trend-item:hover,
+  body.social-ui-v2 .player-row:hover {
+    background: inherit !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body.social-ui-v2 .feed-tabs {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+
+  body.social-ui-v2 .feed-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.social-ui-v2 .compact-social-discovery {
+    width: 100%;
+    padding: 0 12px 4px;
+  }
+
+  body.social-ui-v2 .compact-tool-card {
+    min-width: 188px;
+    flex-basis: 188px;
+    min-height: 96px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+
+  body.social-ui-v2 #feed-list > .post-card,
+  body.social-ui-v2 .profile-feed-stack > .post-card {
+    padding: 12px;
+  }
+
+  body.social-ui-v2 .post-layout {
+    grid-template-columns: 42px minmax(0,1fr) !important;
+    gap: 10px !important;
+  }
+
+  body.social-ui-v2 .av42-sq,
+  body.social-ui-v2 .post-card .av42 {
+    width: 42px;
+    height: 42px;
+  }
+
+  body.social-ui-v2 .post-head {
+    align-items: flex-start;
+  }
+
+  body.social-ui-v2 .post-content {
+    margin-top: 5px;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+
+  body.social-ui-v2 .post-collage,
+  body.social-ui-v2 .post-actions {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  body.social-ui-v2 .post-collage {
+    border: 1px solid var(--social-border);
+    border-radius: 14px;
+  }
+
+  body.social-ui-v2 .post-actions {
+    min-height: 38px;
+    gap: 0;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 5px;
+  }
+
+  body.social-ui-v2 .pa {
+    min-width: 34px;
+    min-height: 34px;
+    height: 34px;
+    padding: 0 6px;
+    border-radius: 999px;
+  }
+
+  body.social-ui-v2 .preview-comments {
+    margin-top: 1px;
+  }
+
+  body.social-ui-v2 .preview-comments::before {
+    left: 20px;
+  }
+
+  body.social-ui-v2 .preview-row {
+    grid-template-columns: 42px minmax(0,1fr);
+    gap: 10px;
+  }
+
+  body.social-ui-v2 .preview-row-av {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  body.social-ui-v2 .preview-more-btn {
+    margin-left: 52px;
+  }
+
+  body.social-ui-v2 .preview-comment-actions,
+  body.social-ui-v2 .comment-meta {
+    justify-content: space-between;
+    gap: 0;
+  }
+
+  body.social-ui-v2 .preview-comment-action,
+  body.social-ui-v2 .comment-pa {
+    min-width: 34px;
+    min-height: 34px;
+    height: 34px;
+    padding: 0 6px;
+    border-radius: 999px;
+  }
+
+  body.social-ui-v2 .comment-row {
+    grid-template-columns: 42px minmax(0,1fr);
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  body.social-ui-v2 .comment-row > img {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+
+  body.social-ui-v2 .comment-row:not(:last-child)::before {
+    left: 32px;
+    top: 51px;
+    bottom: -12px;
+  }
+
+  body.social-ui-v2 .profile-cover,
+  body.social-ui-v2 .profile-cover.has-img {
+    aspect-ratio: 2.4 / 1;
+    max-height: 180px;
+  }
+
+  body.social-ui-v2 .quick-comment-source-line {
+    left: 22px;
+    width: 2px;
+    background: color-mix(in srgb,var(--line-strong) 78%,transparent);
+  }
+
+  body.social-ui-v2 .quick-comment-source img,
+  body.social-ui-v2 .quick-comment-compose > img {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+}
+
+@media (max-width: 430px) {
+  body.social-ui-v2 .post-collage {
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 13px;
+  }
+
+  body.social-ui-v2 .post-author .handle {
+    max-width: 76px;
+  }
+}
