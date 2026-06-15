@@ -262,6 +262,18 @@ body.social-ui-v2 .profile-cover[data-lb-open]:focus-visible {
     font-size: 12px;
   }
 
+  body.social-ui-v2 .compact-tool-card p {
+    display: none;
+    margin: 0;
+    color: var(--ink-3);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  body.social-ui-v2 .compact-tool-card.is-expanded p {
+    display: block;
+  }
+
   body.social-ui-v2 .compact-tool-card strong i {
     width: 8px;
     height: 8px;

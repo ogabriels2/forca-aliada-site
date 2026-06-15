@@ -13,12 +13,14 @@
       .map(item => `<span>${safeText(item.querySelector('.hashtag')?.textContent || item.textContent)}</span>`)
       .join('');
     const serverCopy = safeText(document.querySelector('#server-live-pill-copy')?.textContent) || 'Verificando servidor';
+    const serverDetail = safeText(document.querySelector('#server-live-copy')?.textContent) || 'O estado ao vivo está sendo atualizado.';
 
     return `
       <article class="compact-tool-card compact-tool-server">
         <small>Pulso ao vivo</small>
         <strong><i></i>${serverCopy}</strong>
-        <button type="button" data-compact-server>Ver atividade</button>
+        <p>${serverDetail}</p>
+        <button type="button" data-compact-server>Ver estado</button>
       </article>
       <article class="compact-tool-card">
         <small>Descobrir</small>
@@ -47,8 +49,11 @@
   }
 
   document.addEventListener('click', event => {
-    if (event.target.closest('[data-compact-server]')) {
-      document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const serverButton = event.target.closest('[data-compact-server]');
+    if (serverButton) {
+      const card = serverButton.closest('.compact-tool-server');
+      card?.classList.toggle('is-expanded');
+      serverButton.textContent = card?.classList.contains('is-expanded') ? 'Recolher' : 'Ver estado';
     }
   });
 
@@ -97,4 +102,5 @@
 
   syncCompactDiscovery();
   setTimeout(syncCompactDiscovery, 1200);
+  setTimeout(syncCompactDiscovery, 5000);
 })();
