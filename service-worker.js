@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v15';
+const CACHE_VERSION = 'fa-static-v16';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -19,6 +19,7 @@ const STATIC_ASSETS = [
   'assets/js/fa-design-system-20260615a.js',
   'assets/js/community-social-ui-20260614a.js',
   'assets/js/community-social-refinement-20260615a.js',
+  'assets/js/social-chat.js',
   'assets/css/fa-design-system.css',
   'assets/css/community-evolution.css',
   'assets/css/community-evolution-20260614f.css',

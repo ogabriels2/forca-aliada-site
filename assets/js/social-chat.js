@@ -1,7 +1,7 @@
 /**
  * Força Aliada — Chat Direto  (social-chat.js)
  * ═══════════════════════════════════════════════════════════════════════════
- * VERSION: chat13-20260608
+ * VERSION: chat14-20260615
  *
  * NOVIDADES vs chat7:
  *  • SSE (Server-Sent Events) — recebe mensagens em ≤100ms sem polling
@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 (function () {
-  window._faChatScriptVersion = 'chat13-20260608';
+  window._faChatScriptVersion = 'chat14-20260615';
   if (window.FAChat) return;
 
   // ── Storage seguro ────────────────────────────────────────────────────────────
@@ -1487,12 +1487,17 @@
 
       const postPath = parsed.pathname.match(/\/share\/post\/(\d+)\/?$/i);
       const commentPath = parsed.pathname.match(/\/share\/comment\/(\d+)\/?$/i);
+      const storyPath = parsed.pathname.match(/\/share\/story\/(\d+)\/?$/i);
       const postQuery = parsed.searchParams.get('post')
         || (/(?:^|\/)post\.html$/i.test(parsed.pathname) ? parsed.searchParams.get('id') : '');
+      const storyQuery = parsed.searchParams.get('story');
       if (postPath?.[1] || /^\d+$/.test(String(postQuery || ''))) {
         return { kind: 'post', id: String(postPath?.[1] || postQuery) };
       }
       if (commentPath?.[1]) return { kind: 'comment', id: String(commentPath[1]) };
+      if (storyPath?.[1] || /^\d+$/.test(String(storyQuery || ''))) {
+        return { kind: 'story', id: String(storyPath?.[1] || storyQuery) };
+      }
     } catch {}
     return null;
   }
@@ -1517,7 +1522,7 @@
       html += esc(text.slice(cursor, index));
       const target = socialTargetFromUrl(cleanUrl);
       if (target) {
-        const label = target.kind === 'post' ? 'Abrir postagem' : 'Abrir comentario';
+        const label = target.kind === 'post' ? 'Abrir postagem' : target.kind === 'story' ? 'Abrir story' : 'Abrir comentario';
         html += `<a class="fa-chat-message-link is-internal" href="${esc(cleanUrl)}" data-chat-open-${target.kind}="${esc(target.id)}">${esc(label)}</a>${esc(suffix)}`;
       } else {
         html += `<a class="fa-chat-message-link" href="${esc(cleanUrl)}" target="_blank" rel="noopener noreferrer">${esc(cleanUrl)}</a>${esc(suffix)}`;
@@ -1556,6 +1561,14 @@
   }
 
   function renderSocialPreviewCard(kind, payload = {}) {
+    if (kind === 'story') {
+      return `
+        <button class="fa-chat-social-card fa-chat-social-card--comment fa-chat-social-card--story" type="button" data-chat-open-story="${esc(payload.id || '')}">
+          <span class="fa-chat-social-card-brand">Forca Aliada · story</span>
+          <span class="fa-chat-social-card-text">Story compartilhado</span>
+          <span class="fa-chat-social-card-context">Toque para assistir na comunidade.</span>
+        </button>`;
+    }
     if (kind === 'comment') {
       const comment = payload.root_comment || {};
       const post = payload.original_post || {};
@@ -1586,6 +1599,7 @@
   }
 
   function socialPreviewError(kind, id) {
+    if (kind === 'story') return renderSocialPreviewCard('story', { id });
     return `<button class="fa-chat-social-card is-unavailable" type="button" data-chat-open-${kind}="${esc(id)}"><strong>Conteudo indisponivel</strong><small>Abrir na comunidade</small></button>`;
   }
 
@@ -1593,9 +1607,11 @@
     const key = `${kind}:${id}`;
     if (state._socialPreviewCache.has(key)) return state._socialPreviewCache.get(key);
     if (state._socialPreviewPending.has(key)) return state._socialPreviewPending.get(key);
-    const pending = api(kind === 'post'
-      ? `/api/community/posts/${encodeURIComponent(id)}`
-      : `/api/community/comments/${encodeURIComponent(id)}/thread`
+    const pending = (kind === 'story'
+      ? Promise.resolve({ id })
+      : api(kind === 'post'
+        ? `/api/community/posts/${encodeURIComponent(id)}`
+        : `/api/community/comments/${encodeURIComponent(id)}/thread`)
     ).then(data => {
       state._socialPreviewCache.set(key, data);
       return data;
@@ -2184,6 +2200,12 @@
       const postId = data?.root_comment?.post_id || data?.original_post?.id;
       if (postId) location.href = `community.html?post=${encodeURIComponent(postId)}`;
     } catch {}
+  }
+
+  function openCommunityStory(storyId) {
+    if (!storyId) return;
+    closePanel();
+    location.href = `community.html?story=${encodeURIComponent(storyId)}`;
   }
 
   async function uploadPendingAttachments(attachments = []) {
@@ -2862,6 +2884,7 @@
     const imageOpen   = event.target.closest('[data-chat-image-open]');
     const openPost    = event.target.closest('[data-chat-open-post]');
     const openComment = event.target.closest('[data-chat-open-comment]');
+    const openStory   = event.target.closest('[data-chat-open-story]');
     const contextCancel=event.target.closest('[data-chat-context-cancel]');
     const messageReply= event.target.closest('[data-chat-message-reply]');
     const messageEdit = event.target.closest('[data-chat-message-edit]');
@@ -2947,6 +2970,12 @@
         event.preventDefault();
         event.stopPropagation();
         await openCommunityComment(openComment.dataset.chatOpenComment);
+        return;
+      }
+      if (openStory) {
+        event.preventDefault();
+        event.stopPropagation();
+        openCommunityStory(openStory.dataset.chatOpenStory);
         return;
       }
       if (downloadBtn) {

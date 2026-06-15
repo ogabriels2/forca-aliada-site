@@ -11,10 +11,12 @@
   };
   const evoQueue = [];
   const reactionCache = new Map();
+  const locallyViewedStories = new Set();
   let storyGroups = [];
   let activeStoryGroup = 0;
   let activeStoryIndex = 0;
   let storyTimer = null;
+  let storyFrame = null;
   let storyElapsed = 0;
   let storyPaused = false;
   let storySuppressClickUntil = 0;
@@ -99,10 +101,11 @@
           <button class="story-nav prev" type="button" data-story-prev aria-label="Story anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
           <div class="story-stage">
             <div class="story-progress" id="story-progress"></div>
-            <div class="story-viewer-head">
+            <div class="story-viewer-head" data-story-profile role="button" tabindex="0" aria-label="Abrir perfil">
               <img id="story-viewer-av" alt="">
               <div class="story-viewer-meta"><strong id="story-viewer-name"></strong><span id="story-viewer-time"></span></div>
               <div class="story-viewer-actions">
+                <button class="story-share" type="button" data-story-share aria-label="Compartilhar story" title="Compartilhar story"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg></button>
                 <button class="story-delete" type="button" data-story-delete aria-label="Apagar seu story" title="Apagar story" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg></button>
                 <button type="button" data-story-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
               </div>
@@ -357,6 +360,7 @@
       ]);
       const groups = new Map();
       (payload.stories || []).forEach(story => {
+        if (locallyViewedStories.has(String(story.id))) story.viewed_by_me = true;
         if (!groups.has(String(story.user_id))) groups.set(String(story.user_id), []);
         groups.get(String(story.user_id)).push(story);
       });
@@ -660,6 +664,12 @@
     document.querySelector('#story-viewer-av').src = avatar(story, 60);
     document.querySelector('#story-viewer-name').textContent = displayName(story);
     document.querySelector('#story-viewer-time').textContent = time(story.created_at);
+    const profileLink = document.querySelector('[data-story-profile]');
+    if (profileLink) {
+      profileLink.dataset.uid = String(story.user_id || '');
+      profileLink.dataset.mc = String(story.minecraft_name || story.username || '');
+      profileLink.setAttribute('aria-label', `Abrir perfil de ${displayName(story)}`);
+    }
     const content = document.querySelector('#story-viewer-content');
     content.textContent = story.content || '';
     content.hidden = !story.content;
@@ -693,17 +703,28 @@
     document.querySelector('#story-progress').innerHTML = group.map((_, index) =>
       `<i style="--progress:${index < storyIndex ? '100%' : '0%'}"></i>`).join('');
     api(`/api/community/stories/${encodeURIComponent(story.id)}/view`, { method: 'POST' }).catch(() => {});
+    if (!isOwner) {
+      story.viewed_by_me = true;
+      locallyViewedStories.add(String(story.id));
+    }
     if (isOwner) loadStoryViewerPreview(story.id);
     clearInterval(storyTimer);
+    cancelAnimationFrame(storyFrame);
     storyElapsed = 0;
     storyPaused = false;
-    storyTimer = setInterval(() => {
-      if (storyPaused || document.hidden) return;
-      storyElapsed += 100;
+    let previousFrame = performance.now();
+    const tick = now => {
+      if (!storyPaused && !document.hidden) storyElapsed += Math.max(0, now - previousFrame);
+      previousFrame = now;
       const bar = document.querySelectorAll('#story-progress i')[storyIndex];
       bar?.style.setProperty('--progress', `${Math.min(100, storyElapsed / 50)}%`);
-      if (storyElapsed >= 5000) nextStory();
-    }, 100);
+      if (storyElapsed >= 5000) {
+        nextStory();
+        return;
+      }
+      storyFrame = requestAnimationFrame(tick);
+    };
+    storyFrame = requestAnimationFrame(tick);
   }
 
   function activeStory() {
@@ -767,9 +788,10 @@
     if (send) send.disabled = true;
     try {
       if (!window.FAChat?.openWithUser) throw new Error('Chat indisponível neste momento.');
+      const storyUrl = new URL(communityUrl({ story: story.id }), location.href).href;
       await window.FAChat.openWithUser(
         { id: story.user_id, minecraft_name: story.minecraft_name, username: story.username },
-        { draft: `Resposta ao seu story: ${text}`, sendNow: true },
+        { draft: `Resposta ao seu story: ${text}\n${storyUrl}`, sendNow: true },
       );
       document.querySelector('#story-reply-input').value = '';
       storyFeedback('Mensagem enviada', 'success');
@@ -820,6 +842,8 @@
 
   function closeStory() {
     clearInterval(storyTimer);
+    cancelAnimationFrame(storyFrame);
+    storyFrame = null;
     const viewer = document.querySelector('#story-viewer');
     if (viewer) viewer.hidden = true;
     document.querySelector('#story-reaction-tray')?.setAttribute('hidden', '');
@@ -834,7 +858,50 @@
     storyGesture = null;
     storyPaused = false;
     document.body.style.overflow = '';
+    const currentUrl = new URL(location.href);
+    if (currentUrl.searchParams.has('story')) {
+      currentUrl.searchParams.delete('story');
+      history.replaceState(history.state, document.title, currentUrl.pathname + currentUrl.search + currentUrl.hash);
+    }
     loadStories();
+  }
+  function storyShareDetails(story = activeStory()) {
+    if (!story) return null;
+    return {
+      id: story.id,
+      kind: 'story',
+      url: new URL(communityUrl({ story: story.id }), location.href).href,
+      title: `Story de ${displayName(story)} na Forca Aliada`,
+      text: String(story.content || 'Veja este story na comunidade Forca Aliada').slice(0, 180),
+    };
+  }
+  function shareActiveStory() {
+    const details = storyShareDetails();
+    if (!details) return;
+    if (typeof window.openShareDetails === 'function') {
+      storyPaused = true;
+      const modal = document.querySelector('#share-modal');
+      const resume = new MutationObserver(() => {
+        if (modal?.classList.contains('show')) return;
+        storyPaused = false;
+        resume.disconnect();
+      });
+      if (modal) resume.observe(modal, { attributes: true, attributeFilter: ['class', 'aria-hidden'] });
+      window.openShareDetails(details);
+    }
+    else navigator.share?.({ title: details.title, text: details.text, url: details.url }).catch(() => {});
+  }
+  function openStoryFromUrl() {
+    const storyId = new URL(location.href).searchParams.get('story');
+    if (!storyId) return false;
+    for (let groupIndex = 0; groupIndex < storyGroups.length; groupIndex += 1) {
+      const storyIndex = storyGroups[groupIndex].findIndex(story => String(story.id) === String(storyId));
+      if (storyIndex >= 0) {
+        openStory(groupIndex, storyIndex);
+        return true;
+      }
+    }
+    return false;
   }
   async function deleteActiveStory() {
     const story = storyGroups[activeStoryGroup]?.[activeStoryIndex];
@@ -1163,6 +1230,13 @@
       if (event.target.closest('#server-live-pill')) document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       if (event.target.closest('[data-story-add]')) { if (!token) { location.href = loginUrlForCurrentPage(); return; } createStory(); return; }
       if (event.target.closest('[data-social-add-friend]')) { if (!token) { location.href = loginUrlForCurrentPage(); return; } openModal('friend-modal'); return; }
+      const socialProfile = event.target.closest('.social-friend.js-profile,.discover-card.js-profile,.story-viewer-row.js-profile');
+      if (socialProfile) {
+        const identifier = socialProfile.dataset.uid ? `id:${socialProfile.dataset.uid}` : socialProfile.dataset.mc;
+        if (document.querySelector('#story-viewer')?.hidden === false) closeStory();
+        if (identifier) navigateProfile(identifier);
+        return;
+      }
       const storyGroup = event.target.closest('[data-story-group]');
       if (storyGroup) {
         const groupIndex = Number(storyGroup.dataset.storyGroup);
@@ -1172,6 +1246,7 @@
       }
       if (event.target.closest('[data-story-close]')) { closeStory(); return; }
       if (event.target.closest('[data-story-delete]')) { deleteActiveStory(); return; }
+      if (event.target.closest('[data-story-share]')) { event.stopPropagation(); shareActiveStory(); return; }
       if (event.target.closest('[data-story-viewers]')) { openStoryViewers(); return; }
       if (event.target.closest('[data-story-like]')) { reactToStory('heart'); return; }
       const storyReaction = event.target.closest('[data-story-reaction]');
@@ -1190,8 +1265,27 @@
         if (!tray.hidden) storyFeedback('Escolha uma reação');
         return;
       }
-      if (event.target.closest('[data-story-next]')) { if (Date.now() >= storySuppressClickUntil) nextStory(); return; }
-      if (event.target.closest('[data-story-prev]')) { if (Date.now() >= storySuppressClickUntil) previousStory(); return; }
+      const storyNext = event.target.closest('[data-story-next]');
+      if (storyNext) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!matchMedia('(pointer: coarse)').matches || Date.now() >= storySuppressClickUntil) nextStory();
+        return;
+      }
+      const storyPrev = event.target.closest('[data-story-prev]');
+      if (storyPrev) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!matchMedia('(pointer: coarse)').matches || Date.now() >= storySuppressClickUntil) previousStory();
+        return;
+      }
+      const storyProfile = event.target.closest('[data-story-profile]');
+      if (storyProfile && !event.target.closest('.story-viewer-actions')) {
+        const identifier = storyProfile.dataset.uid ? `id:${storyProfile.dataset.uid}` : storyProfile.dataset.mc;
+        closeStory();
+        if (identifier) navigateProfile(identifier);
+        return;
+      }
       if (event.target.closest('[data-open-schedule-modal]')) {
         openModal('schedule-modal');
         loadScheduledPosts().catch(() => {});
@@ -1239,19 +1333,6 @@
         const expanded = timestamp.getAttribute('aria-expanded') === 'true';
         timestamp.textContent = expanded ? timestamp.dataset.relative : timestamp.dataset.absolute;
         timestamp.setAttribute('aria-expanded', String(!expanded));
-        return;
-      }
-      const nativeShare = event.target.closest('.pa-share');
-      if (nativeShare && navigator.share) {
-        const card = nativeShare.closest('.post-card');
-        const post = postForCard(card);
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        navigator.share({
-          title: `Post de ${displayName(post)}`,
-          text: String(post?.content || '').slice(0, 180),
-          url: new URL(communityUrl({ post: card.dataset.postId }), location.href).href,
-        }).catch(() => {});
         return;
       }
       if (event.target.closest('#new-posts-pill') && mergeLivePosts()) {
@@ -1463,7 +1544,12 @@
     }, { passive: true });
     document.addEventListener('keydown', event => {
       if (document.querySelector('#story-viewer')?.hidden !== false) return;
-      if (event.key === 'ArrowRight') nextStory();
+      if (event.key === 'Enter' && event.target.closest('[data-story-profile]')) {
+        const target = event.target.closest('[data-story-profile]');
+        closeStory();
+        navigateProfile(target.dataset.uid ? `id:${target.dataset.uid}` : target.dataset.mc);
+      }
+      else if (event.key === 'ArrowRight') nextStory();
       else if (event.key === 'ArrowLeft') previousStory();
       else if (event.key === 'Escape') closeStory();
       else if (event.key === ' ') { event.preventDefault(); storyPaused = !storyPaused; }
@@ -1492,10 +1578,10 @@
     if (feedCol) new MutationObserver(stabilizeFeedLayout).observe(feedCol, { childList: true });
     scheduleDecorate();
     syncScheduleUI();
-    loadStories();
+    loadStories().then(openStoryFromUrl);
     setTimeout(stabilizeFeedLayout, 500);
     setTimeout(stabilizeFeedLayout, 1800);
-    setTimeout(loadStories, 1400);
+    setTimeout(() => loadStories().then(openStoryFromUrl), 1400);
     loadServerLive();
     loadServerActivity();
     loadMeritProgress();

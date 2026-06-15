@@ -50,7 +50,7 @@ body.guest-mode #inline-composer { display:none!important; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/social-chat.css?v=chat13-20260608">
+<link rel="stylesheet" href="assets/css/social-chat.css?v=chat14-20260615">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -3441,7 +3441,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615b">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615c">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3780,7 +3780,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 <div class="backdrop" id="share-modal" aria-hidden="true" role="presentation">
   <div class="sheet share-sheet" role="dialog" aria-modal="true" aria-labelledby="share-title">
     <div class="sheet-header">
-      <h2 id="share-title">Enviar por mensagem</h2>
+      <h2 id="share-title">Compartilhar</h2>
       <button class="close-btn" data-close="share-modal" aria-label="Fechar">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
@@ -3790,11 +3790,15 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
         <strong id="share-summary-title">Post da comunidade</strong>
         <p id="share-summary-text">Link pronto para compartilhar.</p>
       </div>
-      <div class="share-actions" style="margin-top:10px">
+      <div class="share-mode-choices" aria-label="Como compartilhar">
+        <button class="share-mode-choice is-primary" type="button" id="share-inside-btn"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></span><strong>Enviar por mensagem</strong><small>Compartilhar dentro da Força Aliada</small></button>
+        <button class="share-mode-choice" type="button" id="share-outside-btn"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg></span><strong>Compartilhar em outro app</strong><small>Abrir o compartilhamento do sistema</small></button>
+      </div>
+      <div class="share-actions" data-share-inside hidden style="margin-top:10px">
         <button class="btn btn-secondary btn-sm" type="button" id="share-copy-btn">Copiar link</button>
         <a class="btn btn-primary btn-sm" id="share-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       </div>
-      <div class="share-recipient-tools">
+      <div class="share-recipient-tools" data-share-inside>
         <label class="share-recipient-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input id="share-recipient-search" type="search" placeholder="Buscar pessoas e grupos" autocomplete="off">
@@ -3805,13 +3809,13 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
           <button class="share-filter-btn" type="button" data-share-filter="group">Grupos</button>
         </div>
       </div>
-      <div class="share-recipient-meta">
+      <div class="share-recipient-meta" data-share-inside>
         <strong id="share-recipient-count">Escolha quem vai receber</strong>
         <span>O conteúdo será enviado sem abrir o chat</span>
       </div>
-      <div class="share-chat-list" id="share-chat-list"><div class="skel" style="height:52px;border-radius:10px"></div></div>
+      <div class="share-chat-list" id="share-chat-list" data-share-inside><div class="skel" style="height:52px;border-radius:10px"></div></div>
     </div>
-    <div class="sheet-footer share-footer">
+    <div class="sheet-footer share-footer" data-share-inside>
       <div class="share-message-wrap">
         <textarea id="share-message-input" maxlength="500" rows="2" placeholder="Adicionar uma mensagem opcional..."></textarea>
         <button class="btn btn-primary share-send-btn" type="button" id="share-send-btn" disabled><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Enviar</button>
@@ -6673,6 +6677,8 @@ function commentShareDetails(commentId, commentContent = '') {
 function openCommentSharePopover(commentId, commentContent, btn) {
   closeCommentSharePopover();
   const details = commentShareDetails(commentId, commentContent);
+  openShareDetails(details);
+  return;
   const url = details.url;
   const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
   const waIcon   = `<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>`;
@@ -6769,6 +6775,14 @@ async function copyShareContext(details){
   try{await navigator.clipboard.writeText(url);toast('success','Link copiado!',url)}
   catch{toast('info','Copie manualmente',url)}
 }
+async function shareOutside(details){
+  if(!details)return;
+  const payload={title:String(details.title||'Forca Aliada'),text:String(details.text||''),url:String(details.url||'')};
+  if(navigator.share){
+    try{await navigator.share(payload);return}catch(error){if(error?.name==='AbortError')return}
+  }
+  await copyShareContext(details);
+}
 function shareTargetKey(target){return `${target.kind}:${target.id}`}
 function shareClientRef(kind='share'){return `${kind}-${Date.now()}-${Math.random().toString(16).slice(2,10)}`.slice(0,80)}
 function updateShareSendState(){
@@ -6787,6 +6801,7 @@ async function openShareDetails(details){
   shareSelected=new Map();
   shareFilter='all';
   shareSending=false;
+  document.querySelector('#share-modal .share-sheet')?.classList.remove('is-inside');
   $('#share-summary-title').textContent=details.title;
   $('#share-summary-text').textContent=details.text||'Link pronto para compartilhar.';
   $('#share-whatsapp-link').href=`https://wa.me/?text=${encodeURIComponent(`${details.title}\n${details.url}`)}`;
@@ -6838,6 +6853,7 @@ async function openShareDetails(details){
     if(list)list.innerHTML=`<div class="empty-card"><p>${esc(e.message||'Nao foi possivel carregar conversas.')}</p></div>`;
   }
 }
+window.openShareDetails=openShareDetails;
 async function openShareSheet(id){
   return openShareDetails(postShareDetails(id));
 }
@@ -8884,6 +8900,18 @@ function bindEvents(){
     if(cancelScheduled){e.preventDefault();cancelScheduledPost(cancelScheduled.dataset.cancelScheduledPost).catch(err=>toast('error','Não foi possível cancelar',err.message));return}
     const retryScheduled=e.target.closest('[data-retry-scheduled-post]');
     if(retryScheduled){e.preventDefault();retryScheduledPost(retryScheduled.dataset.retryScheduledPost).catch(err=>toast('error','Não foi possível reagendar',err.message));return}
+    if(e.target.closest('#share-inside-btn')&&shareContext){
+      e.preventDefault();
+      document.querySelector('#share-modal .share-sheet')?.classList.add('is-inside');
+      setTimeout(()=>document.querySelector('#share-recipient-search')?.focus(),80);
+      return;
+    }
+    if(e.target.closest('#share-outside-btn')&&shareContext){
+      e.preventDefault();
+      closeModal('share-modal');
+      shareOutside(shareContext);
+      return;
+    }
     if(e.target.closest('#share-copy-btn')&&shareContext){e.preventDefault();copyShareContext(shareContext);return}
     const shareFilterBtn=e.target.closest('[data-share-filter]');
     if(shareFilterBtn&&shareContext){
@@ -9716,10 +9744,10 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260615a"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260615c"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
-<script src="assets/js/community-social-refinement-20260615a.js?v=20260615b"></script>
-<script src="assets/js/social-chat.js?v=chat13-20260608"></script>
+<script src="assets/js/community-social-refinement-20260615a.js?v=20260615c"></script>
+<script src="assets/js/social-chat.js?v=chat14-20260615"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
@@ -9730,7 +9758,7 @@ boot();
    Anti-loop: o redirect só ocorre se ?_v= ainda não corresponder à versão.
 ──────────────────────────────────────────────────────────────────────────── */
 (function () {
-  var EXPECTED = 'chat13-20260608';
+  var EXPECTED = 'chat14-20260615';
   var alreadyBusted = location.search.indexOf('_v=' + EXPECTED) !== -1;
   if (!alreadyBusted && window._faChatScriptVersion !== EXPECTED) {
     var base = location.href.split('?')[0].split('#')[0];
