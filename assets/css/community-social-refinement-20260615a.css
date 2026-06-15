@@ -5,6 +5,301 @@ body.social-ui-v2 .server-live-pill.is-unknown i {
   box-shadow: 0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent);
 }
 
+/* Final interaction polish: notifications, discovery, stories and media viewer. */
+.notif-dot[hidden],
+#nav-notif-badge[hidden],
+#drawer-notif-badge[hidden],
+[data-pf-notifs][hidden] {
+  display: none !important;
+}
+
+body.social-ui-v2 #stories-shell .stories-head {
+  display: none !important;
+}
+
+body.social-ui-v2 #stories-shell.stories-shell {
+  min-height: 0;
+}
+
+body.social-ui-v2 #stories-shell .stories-list {
+  padding-block: 12px;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-unseen .story-ring::before {
+  inset: -5px;
+  padding: 4px;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-viewed .story-ring::before {
+  inset: -5px;
+  padding: 4px;
+  background: #73777e;
+}
+
+body.social-ui-v2 .post-actions .pa-save {
+  margin-left: auto;
+}
+
+body.social-ui-v2 .preview-comment-actions .comment-pa-save,
+body.social-ui-v2 .comment-actions .comment-pa-save {
+  margin-left: auto;
+}
+
+body.social-ui-v2 .reaction-wrap,
+body.social-ui-v2 .reaction-summary {
+  display: none !important;
+}
+
+body.social-ui-v2 .profile-notif-btn {
+  width: 40px;
+  padding: 0;
+}
+
+body.social-ui-v2 .profile-notif-btn.is-on {
+  color: var(--accent);
+  border-color: color-mix(in srgb,var(--accent) 55%,var(--line));
+  background: var(--accent-soft);
+}
+
+.profile-notif-options {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+}
+
+.profile-notif-option {
+  display: grid;
+  grid-template-columns: 36px minmax(0,1fr) 14px;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  text-align: left;
+  transition: transform .18s var(--ease),border-color .18s,background .18s;
+}
+
+.profile-notif-option:hover,
+.profile-notif-option.is-active {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb,var(--accent) 60%,var(--line));
+  background: var(--accent-soft);
+}
+
+.profile-notif-option > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+}
+
+.profile-notif-option svg {
+  width: 17px;
+  height: 17px;
+}
+
+.profile-notif-option strong,
+.profile-notif-option small {
+  display: block;
+}
+
+.profile-notif-option small {
+  margin-top: 2px;
+  color: var(--ink-3);
+  line-height: 1.35;
+}
+
+.profile-notif-option > i {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ink-3);
+  border-radius: 50%;
+}
+
+.profile-notif-option.is-active > i {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--surface-solid);
+  background: var(--accent);
+}
+
+body.social-ui-v2 .discover-row {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 7px;
+}
+
+body.social-ui-v2 .discover-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0,1fr);
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+  text-align: left;
+}
+
+body.social-ui-v2 .discover-card img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+body.social-ui-v2 .discover-card strong,
+body.social-ui-v2 .discover-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.social-ui-v2 .discover-posts {
+  display: grid;
+  gap: 0;
+}
+
+body.social-ui-v2 .discover-posts > h2 {
+  margin-bottom: 7px;
+}
+
+body.social-ui-v2 .discover-posts .post-card {
+  border-width: 1px 0 0;
+  border-radius: 0;
+}
+
+.lb-stage {
+  order: 1;
+}
+
+.lb-panel {
+  order: 2;
+}
+
+.lb-social .lb-share-btn {
+  margin-left: auto;
+}
+
+.lb-img-wrap.is-gesturing .lb-img {
+  transition: none;
+}
+
+.lb-img-wrap.is-gesturing {
+  background: rgba(255,255,255,.018);
+}
+
+@media(max-width:767px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body.social-ui-v2 #feed-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.social-ui-v2 #feed-col > #stories-shell {
+    order: -2;
+    margin: 0;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  body.social-ui-v2 #feed-col > .col-header {
+    order: -1;
+  }
+
+  body.social-ui-v2 #stories-shell .stories-list {
+    padding: 12px 10px 10px;
+  }
+
+  body.social-ui-v2 #stories-shell .story-state-label {
+    display: none;
+  }
+
+  body.social-ui-v2 #route-col,
+  body.social-ui-v2 .profile-hero,
+  body.social-ui-v2 .profile-hero-body,
+  body.social-ui-v2 .profile-insights,
+  body.social-ui-v2 .profile-content-grid,
+  body.social-ui-v2 .profile-tab-content,
+  body.social-ui-v2 .profile-feed-stack,
+  body.social-ui-v2 .post-card,
+  body.social-ui-v2 .post-main {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body.social-ui-v2 .profile-hero {
+    margin-inline: 8px;
+    width: auto;
+    border-radius: 18px;
+  }
+
+  body.social-ui-v2 .profile-insights,
+  body.social-ui-v2 .profile-content-grid {
+    margin-inline: 8px;
+  }
+
+  body.social-ui-v2 .profile-actions-row {
+    max-width: 100%;
+    justify-content: flex-end;
+  }
+
+  body.social-ui-v2 .profile-actions-row .btn {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  body.social-ui-v2 .post-content,
+  body.social-ui-v2 .profile-tab-content {
+    overflow-wrap: anywhere;
+  }
+
+  body.social-ui-v2 .discover-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  body.social-ui-v2 .discover-card {
+    flex: 0 0 190px;
+  }
+
+  body.social-ui-v2 .discover-posts .post-card {
+    margin-inline: -10px;
+  }
+
+  .backdrop.show .story-camera-sheet,
+  .backdrop.show .post-composer-sheet,
+  .backdrop.show .quick-comment-sheet,
+  .backdrop.show .share-sheet,
+  .backdrop.show .profile-notif-sheet {
+    max-height: 96dvh;
+    min-height: min(76dvh,720px);
+  }
+
+  .profile-notif-backdrop {
+    align-items: flex-end;
+  }
+
+  .lb-mob-social .lb-share-btn {
+    margin-left: auto;
+  }
+
+  .lb-reply-ta,
+  #story-reply-input {
+    font-size: 16px !important;
+  }
+}
+
 body.social-ui-v2 .pa-like[data-has-likers="1"] span {
   text-decoration: none !important;
 }
@@ -858,5 +1153,94 @@ body.social-ui-v2 .notif-full-row {
 
   body.social-ui-v2 .notif-full-actions .danger {
     display: none;
+  }
+}
+
+/* Keep the final responsive decisions above legacy refinement rules. */
+body.social-ui-v2 #stories-shell .stories-head {
+  display: none !important;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-unseen .story-ring::before,
+body.social-ui-v2 #stories-shell .story-item.is-viewed .story-ring::before {
+  inset: -5px;
+  padding: 4px;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-viewed .story-ring::before {
+  background: #73777e !important;
+}
+
+body.social-ui-v2 .post-actions .pa-save,
+body.social-ui-v2 .preview-comment-actions .comment-pa-save,
+body.social-ui-v2 .comment-actions .comment-pa-save {
+  margin-left: auto;
+}
+
+body.social-ui-v2 .post-actions:not(:has(.pa-save)) .pa-share {
+  margin-left: auto;
+}
+
+body.social-ui-v2 .reaction-wrap,
+body.social-ui-v2 .reaction-summary {
+  display: none !important;
+}
+
+@media(max-width:767px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body.social-ui-v2 #feed-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.social-ui-v2 #feed-col > #stories-shell {
+    order: -2;
+    margin: 0;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  body.social-ui-v2 #feed-col > .col-header {
+    order: -1;
+  }
+
+  body.social-ui-v2 #route-col,
+  body.social-ui-v2 .profile-hero,
+  body.social-ui-v2 .profile-hero-body,
+  body.social-ui-v2 .profile-insights,
+  body.social-ui-v2 .profile-content-grid,
+  body.social-ui-v2 .profile-tab-content,
+  body.social-ui-v2 .profile-feed-stack,
+  body.social-ui-v2 .post-card,
+  body.social-ui-v2 .post-main {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body.social-ui-v2 .profile-hero {
+    margin-inline: 8px;
+    width: auto;
+    border-radius: 18px;
+  }
+
+  body.social-ui-v2 .profile-insights,
+  body.social-ui-v2 .profile-content-grid {
+    margin-inline: 8px;
+  }
+
+  body.social-ui-v2 .profile-actions-row {
+    max-width: 100%;
+    justify-content: flex-end;
+  }
+
+  body.social-ui-v2 .profile-actions-row .btn {
+    flex: 0 1 auto;
+    min-width: 0;
   }
 }

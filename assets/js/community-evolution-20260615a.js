@@ -75,7 +75,6 @@
     if (friends && !document.querySelector('#stories-shell')) {
       friends.insertAdjacentHTML('beforebegin', `
         <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories e amigos">
-          <div class="stories-head"><div><strong>Stories e amigos</strong><span>Momentos primeiro, sua turma sempre por perto.</span></div><span class="social-strip-meta" id="social-strip-meta">Atualizando...</span></div>
           <div class="stories-list" id="stories-list"><div class="social-strip-skeleton skel"></div><div class="social-strip-skeleton skel"></div><div class="social-strip-skeleton skel"></div></div>
         </section>`);
       friends.remove();
@@ -276,8 +275,7 @@
       }
       card.querySelectorAll('.pa-like,.pa-save,.pa-repost').forEach(button => button.setAttribute('aria-pressed', String(button.classList.contains('is-on'))));
       card.querySelectorAll('.post-content').forEach(formatMarkdown);
-      const actions = card.querySelector('.post-actions');
-      if (actions && !actions.querySelector('.reaction-wrap')) actions.insertAdjacentHTML('beforeend', reactionMarkup());
+      card.querySelectorAll('.reaction-wrap,.reaction-summary').forEach(node => node.remove());
       card.querySelectorAll('.post-media img').forEach(img => {
         if (!img.width) img.width = 900;
         if (!img.height) img.height = 700;
@@ -287,7 +285,6 @@
         if (!img.height) img.height = 50;
         img.decoding = 'async';
       });
-      reactionObserver?.observe(card);
       const author = displayName(post);
       card.querySelector('.pa-like')?.setAttribute('aria-label', `${card.querySelector('.pa-like')?.classList.contains('is-on') ? 'Descurtir' : 'Curtir'} post de ${author}`);
       card.querySelector('.pa-comment')?.setAttribute('aria-label', `Abrir comentários do post de ${author}`);
@@ -379,7 +376,7 @@
       const myStoryItem = myGroupIndex >= 0
         ? `<div class="story-item is-own">
             <button class="story-ring-button" type="button" data-story-group="${myGroupIndex}" aria-label="Ver seu story">
-              <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt=""></span>
+              <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt="" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(mine),60))}'"></span>
               <span class="story-label">Seu story</span>
               <span class="story-state-label">Atividade</span>
             </button>
@@ -398,7 +395,7 @@
         const first = group[0];
         const viewed = group.every(row => row.viewed_by_me);
         return `<button class="story-item ${viewed ? 'is-viewed' : 'is-unseen'}" type="button" data-story-group="${index}" aria-label="${viewed ? 'Rever' : 'Ver novo'} story de ${safe(displayName(first))}">
-          <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}"></span>
+          <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(first),60))}'"></span>
           <span class="story-label">${safe(displayName(first))}</span><span class="story-state-label">${viewed ? 'Visto' : 'Novo story'}</span>
         </button>`;
       }).join('');
@@ -406,7 +403,7 @@
         const name = displayName(friend);
         const mc = friend.minecraft_name || friend.username || '';
         return `<button class="story-item social-friend js-profile" type="button" data-uid="${safe(friend.id)}" data-mc="${safe(mc)}" aria-label="Abrir perfil de ${safe(name)}">
-          <span class="story-ring"><img src="${safe(avatar(friend, 60))}" alt="${safe(name)}">${friend.is_online ? '<i class="social-online-dot" aria-label="Online"></i>' : ''}</span>
+          <span class="story-ring"><img src="${safe(avatar(friend, 60))}" alt="${safe(name)}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(name,60))}'">${friend.is_online ? '<i class="social-online-dot" aria-label="Online"></i>' : ''}</span>
           <span class="story-label">${safe(name)}</span><span class="story-state-label">${friend.is_online ? 'Online' : 'Amigo'}</span>
         </button>`;
       }).join('');
@@ -661,7 +658,9 @@
     viewer.hidden = false;
     document.body.style.overflow = 'hidden';
     document.querySelector('#story-viewer-media').src = story.media_url;
-    document.querySelector('#story-viewer-av').src = avatar(story, 60);
+    const storyAvatar = document.querySelector('#story-viewer-av');
+    storyAvatar.onerror = () => { storyAvatar.onerror = null; storyAvatar.src = fallbackAvatar(displayName(story), 60); };
+    storyAvatar.src = avatar(story, 60);
     document.querySelector('#story-viewer-name').textContent = displayName(story);
     document.querySelector('#story-viewer-time').textContent = time(story.created_at);
     const profileLink = document.querySelector('[data-story-profile]');
@@ -811,7 +810,7 @@
     if (!avatars) return;
     try {
       const payload = await api(`/api/community/stories/${encodeURIComponent(storyId)}/viewers`);
-      avatars.innerHTML = (payload.viewers || []).slice(0, 3).map(person => `<img src="${safe(avatar(person, 32))}" alt="">`).join('');
+      avatars.innerHTML = (payload.viewers || []).slice(0, 3).map(person => `<img src="${safe(avatar(person, 32))}" alt="" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(person),32))}'">`).join('');
     } catch { avatars.innerHTML = ''; }
   }
 
@@ -833,7 +832,7 @@
       const rows = payload.viewers || [];
       back.querySelector('.story-viewers-list').innerHTML = rows.length ? rows.map(person => `
         <button class="story-viewer-row js-profile" type="button" data-uid="${safe(person.id)}" data-mc="${safe(person.minecraft_name || person.username)}">
-          <img src="${safe(avatar(person, 50))}" alt=""><span><strong>${safe(displayName(person))}</strong><small>Viu ${safe(time(person.viewed_at))}</small></span>${person.reaction ? `<b title="${safe(REACTIONS[person.reaction]?.[1] || 'Reagiu')}">${REACTIONS[person.reaction]?.[0] || '♥'}</b>` : ''}
+          <img src="${safe(avatar(person, 50))}" alt="" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(person),50))}'"><span><strong>${safe(displayName(person))}</strong><small>Viu ${safe(time(person.viewed_at))}</small></span>${person.reaction ? `<b title="${safe(REACTIONS[person.reaction]?.[1] || 'Reagiu')}">${REACTIONS[person.reaction]?.[0] || '♥'}</b>` : ''}
         </button>`).join('') : '<div class="story-viewers-empty"><strong>Ainda sem visualizações</strong><span>As pessoas que assistirem aparecerão aqui.</span></div>';
     } catch (error) {
       back.querySelector('.story-viewers-list').innerHTML = `<div class="story-viewers-empty"><strong>Não foi possível carregar</strong><span>${safe(error.message)}</span></div>`;
@@ -957,7 +956,7 @@
       if (count) count.textContent = hasPlayers ? 'Ao vivo' : online ? 'Calmo' : onlineKnown ? 'Offline' : 'Status';
       const stack = document.querySelector('#live-player-stack');
       if (stack) stack.innerHTML = players.slice(0, 8).map(player =>
-        `<img src="${safe(avatar(player, 40))}" alt="${safe(displayName(player))}" title="${safe(displayName(player))}">`).join('');
+        `<img src="${safe(avatar(player, 40))}" alt="${safe(displayName(player))}" title="${safe(displayName(player))}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(player),40))}'">`).join('');
       const copy = document.querySelector('#server-live-copy');
       if (copy) copy.textContent = hasPlayers
         ? 'Há movimento no servidor agora. Abra a busca para encontrar a turma.'
@@ -991,7 +990,7 @@
       const anchor = cards[Math.min(2, cards.length - 1)];
       if (!anchor) return;
       anchor.insertAdjacentHTML('afterend', `<aside class="server-activity-card" aria-label="Atividade recente do servidor">
-        <img src="${safe(avatar(player, 50))}" alt="${safe(displayName(player))}">
+        <img src="${safe(avatar(player, 50))}" alt="${safe(displayName(player))}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(player),50))}'">
         <div><strong>${safe(displayName(player))} entrou no servidor</strong><small>${safe(time(player.entered_at))} · ${safe(player.origin || 'Minecraft')}</small></div>
         <i class="live-dot" aria-hidden="true"></i>
       </aside>`);
@@ -1040,7 +1039,7 @@
           for (const block of events) {
             if (block.includes('event: notification')) {
               loadNotifs().catch(() => {});
-              if (new URLSearchParams(location.search).get('notifications') === '1') loadNotificationsPage({ reset: true }).catch(() => {});
+              if (new URLSearchParams(location.search).get('notifications') === '1') loadNotificationsPage({ reset: true, markViewed: true }).catch(() => {});
               continue;
             }
             if (block.includes('event: typing')) {
@@ -1095,13 +1094,19 @@
     if (!results) return;
     try {
       const data = await api('/api/community/discover');
+      (data.posts || []).forEach(post => {
+        const idx = state.posts.findIndex(item => Number(item.id) === Number(post.id));
+        if (idx >= 0) state.posts[idx] = { ...state.posts[idx], ...post };
+        else state.posts.push(post);
+      });
       results.innerHTML = `<div class="discover-grid">
         <section class="search-section"><h2>Descobrir pessoas</h2><div class="discover-row">${(data.players || []).map(player =>
-          `<button class="discover-card js-profile" type="button" data-uid="${safe(player.id)}" data-mc="${safe(player.minecraft_name || player.username)}"><img src="${safe(avatar(player, 60))}" alt=""><strong>${safe(displayName(player))}</strong><small>${player.is_online ? 'Online agora' : 'Perfil recomendado'}</small></button>`).join('')}</div></section>
-        <section class="search-section"><h2>Posts em destaque</h2>${(data.posts || []).map(post => searchResultPostHTML(post)).join('') || '<p>Sem destaques agora.</p>'}</section>
+          `<button class="discover-card js-profile" type="button" data-uid="${safe(player.id)}" data-mc="${safe(player.minecraft_name || player.username)}"><img src="${safe(avatar(player, 60))}" alt="" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(player),60))}'"><span><strong>${safe(displayName(player))}</strong><small>${player.is_online ? 'Online agora' : 'Perfil recomendado'}</small></span></button>`).join('')}</div></section>
+        <section class="search-section discover-posts"><h2>Posts em destaque</h2>${(data.posts || []).map(postCardHTML).join('') || '<p>Sem destaques agora.</p>'}</section>
         <section class="search-section"><h2>Comunidades em alta</h2><div class="search-chip-row">${(data.hashtags || []).map(tag =>
           `<button class="search-chip" type="button" data-hashtag="${safe(tag.tag)}">#${safe(tag.tag)} · ${safe(tag.count)}</button>`).join('')}</div></section>
       </div>`;
+      scheduleDecorate();
     } catch {}
   }
 
@@ -1189,10 +1194,16 @@
       box.innerHTML = Array.from({ length: 5 }, () => '<div class="skel" style="height:58px;border-radius:8px;margin-bottom:8px"></div>').join('');
       try {
         const data = await api(`/api/community/search?q=${encodeURIComponent(q)}&type=all`);
+        (data.posts || []).forEach(post => {
+          const idx = state.posts.findIndex(item => Number(item.id) === Number(post.id));
+          if (idx >= 0) state.posts[idx] = { ...state.posts[idx], ...post };
+          else state.posts.push(post);
+        });
         box.innerHTML = `
           <div class="search-section"><h2>Pessoas</h2>${(data.players || []).map(searchResultPersonHTML).join('') || '<p>Nenhum jogador encontrado.</p>'}</div>
-          <div class="search-section"><h2>Posts</h2>${(data.posts || []).map(searchResultPostHTML).join('') || '<p>Nenhum post encontrado.</p>'}</div>
+          <div class="search-section discover-posts"><h2>Posts</h2>${(data.posts || []).map(postCardHTML).join('') || '<p>Nenhum post encontrado.</p>'}</div>
           <div class="search-section"><h2>Hashtags</h2><div class="search-chip-row">${(data.hashtags || []).map(tag => `<button class="search-chip" data-hashtag="${safe(tag.tag)}" type="button">#${safe(tag.tag)} · ${safe(tag.count)}</button>`).join('') || '<span>Nenhuma hashtag encontrada.</span>'}</div></div>`;
+        scheduleDecorate();
       } catch (error) {
         box.innerHTML = `<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Busca indisponível</h3><p>${safe(error.message)}</p></div>`;
       }
@@ -1428,13 +1439,6 @@
       if (pulled && !state.loading) { buzz(20); _refreshFeedWithVariety(); }
       pullStart = null;
       pulled = false;
-    }, { passive: true });
-
-    let lightboxY = null;
-    document.querySelector('#lb-img-wrap')?.addEventListener('touchstart', event => { lightboxY = event.touches[0]?.clientY ?? null; }, { passive: true });
-    document.querySelector('#lb-img-wrap')?.addEventListener('touchend', event => {
-      if (lightboxY != null && (event.changedTouches[0]?.clientY || 0) - lightboxY > 120) document.querySelector('#lb-mob-close')?.click();
-      lightboxY = null;
     }, { passive: true });
 
     const storyViewer = document.querySelector('#story-viewer');

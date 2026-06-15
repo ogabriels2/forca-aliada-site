@@ -231,6 +231,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
     socialRankSql,
     primaryIntegrationFieldsSql,
     createSocialNotification,
+    notifyProfileSubscribers,
     auditFromReq,
     extractMentions,   // opcional — pode não existir em versões antigas
     normalizePostMediaUrls,
@@ -497,6 +498,14 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
         entityId: postId,
         previewText: content,
       }).catch(e => console.warn('[comment notification]', e?.message));
+      notifyProfileSubscribers?.({
+        creatorId: req.user.sub,
+        type: 'creator_reply',
+        entityType: 'post',
+        entityId: postId,
+        previewText: content,
+        allOnly: true,
+      }).catch(e => console.warn('[subscriber reply notification]', e?.message));
 
       // Notificação ao autor do comentário pai (se existir e for pessoa diferente)
       if (parentComment && parentComment.author_id !== req.user.sub && parentComment.author_id !== post.author_id) {

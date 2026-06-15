@@ -48,6 +48,17 @@ CREATE TABLE IF NOT EXISTS story_reactions (
   PRIMARY KEY (story_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_story_reactions_story ON story_reactions(story_id, code);
+
+CREATE TABLE IF NOT EXISTS profile_notification_preferences (
+  subscriber_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  level VARCHAR(16) NOT NULL DEFAULT 'default' CHECK (level IN ('off','default','all')),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (subscriber_id, creator_id),
+  CHECK (subscriber_id <> creator_id)
+);
+CREATE INDEX IF NOT EXISTS idx_profile_notification_preferences_creator
+  ON profile_notification_preferences(creator_id, level);
 `;
 
 export function emitCommunityEvent(event, payload) {
@@ -87,6 +98,7 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
     socialMeritSql = () => '0',
     requireAdmin = (_req, _res, next) => next(),
     createSocialNotification = null,
+    notifyProfileSubscribers = null,
   } = helpers;
 
   app.get('/api/community/feed/stream', auth, (req, res) => {
@@ -252,6 +264,15 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
          RETURNING id,user_id,media_url,content,created_at,expires_at`,
         [req.user.sub, mediaUrl, content],
       );
+      if (typeof notifyProfileSubscribers === 'function') {
+        notifyProfileSubscribers({
+          creatorId: req.user.sub,
+          type: 'creator_story',
+          entityType: 'story',
+          entityId: rows[0].id,
+          previewText: content || 'Publicou um novo story.',
+        }).catch(() => {});
+      }
       res.status(201).json({ story: rows[0] });
     } catch (e) {
       console.error('[POST stories]', e);
@@ -391,7 +412,7 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
            ORDER BY ((SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=p.id) * 2
                     + (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id=p.id AND pc.is_deleted=FALSE) * 4) DESC,
                     p.created_at DESC
-           LIMIT 3`,
+           LIMIT 8`,
           [req.user.sub],
         ),
         pool.query(
@@ -458,15 +479,19 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
          LEFT JOIN users u ON LOWER(u.minecraft_name)=LOWER(ps.player)
          LEFT JOIN user_preferences up ON up.user_id=u.id
          WHERE ps.left_at IS NULL
-         ORDER BY ps.entered_at ASC
+           AND ps.entered_at > NOW()-INTERVAL '12 hours'
+         ORDER BY ps.entered_at DESC
          LIMIT 20`,
       );
+      const hasRemoteStatus = typeof status?.online === 'boolean';
+      const online = hasRemoteStatus ? status.online : rows.length > 0;
+      const count = online ? Math.max(0, Number(hasRemoteStatus ? status?.players?.online : rows.length)) : 0;
       res.json({
-        online: Boolean(status?.online),
+        online,
         host: status?.host || process.env.MC_HOST || 'fa.ogabriels.com',
-        count: Number(status?.players?.online ?? rows.length),
+        count,
         max: Number(status?.players?.max || 0),
-        players: rows,
+        players: rows.slice(0, count),
         checked_at: status?.checkedAt?.toISOString?.() || new Date().toISOString(),
       });
     } catch (e) {
@@ -511,6 +536,7 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
 
   app.get('/api/server/activity', auth, async (_req, res) => {
     try {
+      const status = typeof fetchMinecraftStatusCached === 'function' ? await fetchMinecraftStatusCached() : null;
       const { rows } = await pool.query(
         `SELECT ps.player,ps.entered_at,ps.origin,u.id,u.username,u.minecraft_name,
                 COALESCE(up.display_name,'') AS display_name,COALESCE(up.avatar_url,'') AS avatar_url,
@@ -518,11 +544,16 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
          FROM player_sessions ps
          LEFT JOIN users u ON LOWER(u.minecraft_name)=LOWER(ps.player)
          LEFT JOIN user_preferences up ON up.user_id=u.id
-         WHERE ps.entered_at > NOW()-INTERVAL '6 hours'
+         WHERE ps.left_at IS NULL
+           AND ps.entered_at > NOW()-INTERVAL '12 hours'
          ORDER BY ps.entered_at DESC
          LIMIT 8`,
       );
-      res.json({ activity: rows });
+      const hasRemoteStatus = typeof status?.online === 'boolean';
+      const onlineCount = hasRemoteStatus
+        ? (status.online ? Math.max(0, Number(status?.players?.online || 0)) : 0)
+        : rows.length;
+      res.json({ activity: rows.slice(0, onlineCount) });
     } catch (e) {
       console.error('[GET server activity]', e);
       res.status(500).json({ error: 'Erro ao consultar atividade recente' });

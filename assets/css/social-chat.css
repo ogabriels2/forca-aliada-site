@@ -52,6 +52,14 @@
   color: var(--fc-ink);
 }
 
+@media(max-width:767px) {
+  #fa-chat-root input,
+  #fa-chat-root textarea,
+  #fa-chat-root select {
+    font-size: 16px !important;
+  }
+}
+
 /* =========================================================
    Message interactions and feed-like shared posts
    ========================================================= */

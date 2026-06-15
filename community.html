@@ -50,7 +50,7 @@ body.guest-mode #inline-composer { display:none!important; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/social-chat.css?v=chat14-20260615">
+<link rel="stylesheet" href="assets/css/social-chat.css?v=chat15-20260615">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -3441,7 +3441,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615c">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615d">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3475,7 +3475,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
       <div class="notif-wrap">
         <button class="notif-btn tbtn" id="notif-btn" aria-label="Notificações" aria-expanded="false" aria-haspopup="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span class="notif-dot" id="notif-dot" hidden aria-hidden="true">0</span>
+          <span class="notif-dot" id="notif-dot" hidden aria-hidden="true"></span>
         </button>
         <div class="notif-menu" id="notif-menu" role="menu">
           <div class="notif-head">
@@ -3552,7 +3552,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
       <a class="rnav-item" id="social-notif-nav" href="community.html?notifications=1" data-notification-route>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Notificações
-        <span class="rnav-badge" id="nav-notif-badge" hidden>0</span>
+        <span class="rnav-badge" id="nav-notif-badge" hidden></span>
       </a>
     </div>
   </aside>
@@ -3765,7 +3765,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
       <button class="mobile-drawer-item is-active" type="button" data-drawer-filter="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Feed geral</span></button>
       <button class="mobile-drawer-item" type="button" data-drawer-filter="following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg><span>Seguindo</span></button>
       <button class="mobile-drawer-item" type="button" id="drawer-search-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Buscar</span></button>
-      <a class="mobile-drawer-item" href="community.html?notifications=1" data-notification-route><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificações</span><span class="rnav-badge" id="drawer-notif-badge" hidden>0</span></a>
+      <a class="mobile-drawer-item" href="community.html?notifications=1" data-notification-route><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificações</span><span class="rnav-badge" id="drawer-notif-badge" hidden></span></a>
     </nav>
     <div class="mobile-drawer-season network-card">
       <p class="eyebrow">Agora na rede</p>
@@ -7692,7 +7692,7 @@ async function renderProfileRoute(identifier){
             <img class="profile-av" src="${esc(avatar(prof,140))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,140)}'">
             <div class="profile-actions-row">
               ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}" aria-pressed="${prof.is_following?'true':'false'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
-              ${isMe?'':`<button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
+              ${isMe?'':`<button class="btn btn-secondary profile-notif-btn ${prof.notification_level&&prof.notification_level!=='off'?'is-on':''}" data-pf-notifs data-uid="${esc(prof.id)}" data-level="${esc(prof.notification_level||'off')}" aria-label="Notificações deste perfil" title="Notificações deste perfil" ${prof.is_following?'':'hidden'}>${IC.bell||IC.info}</button><button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
             </div>
           </div>
           <div class="profile-name-row">
@@ -7755,6 +7755,8 @@ async function renderProfileRoute(identifier){
       }
       const rf=e.target.closest('[data-pf-follow]');
       if(rf){const on=rf.dataset.on==='1';toggleFollowUser(rf.dataset.uid,on,rf);return}
+      const pn=e.target.closest('[data-pf-notifs]');
+      if(pn){openProfileNotificationPreference(pn);return}
       const msg=e.target.closest('[data-pf-message]');
       if(msg){window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
       if(e.target.closest('[data-profile-edit]')){openCommunityProfileEditor();return}
@@ -8100,6 +8102,12 @@ async function toggleFollowUser(uid,currently,btn){
   }
   try{
     await api(`/api/me/follows/${encodeURIComponent(uid)}`,{method:currently?'DELETE':'POST'});
+    const notifButton=document.querySelector(`[data-pf-notifs][data-uid="${CSS.escape(String(uid))}"]`);
+    if(notifButton){
+      notifButton.hidden=currently;
+      notifButton.dataset.level=currently?'off':'default';
+      notifButton.classList.toggle('is-on',!currently);
+    }
     toast('success',currently?'Deixou de seguir':'Agora seguindo',currently?'Relação removida.':'');
   }catch(e){
     if(btn){
@@ -8110,6 +8118,37 @@ async function toggleFollowUser(uid,currently,btn){
     }
     toast('error','Ação não concluída',e.message);
   }finally{if(btn)btn.disabled=false}
+}
+function openProfileNotificationPreference(button){
+  const uid=button?.dataset.uid;
+  if(!uid)return;
+  const current=button.dataset.level||'default';
+  const back=document.createElement('div');
+  back.className='backdrop show profile-notif-backdrop';
+  const choices=[
+    ['off','Desativadas','Nenhuma publicação deste perfil será enviada ao seu sino.'],
+    ['default','Padrão','Avisos de novas postagens e stories.'],
+    ['all','Todas','Inclui também repostagens e respostas.'],
+  ];
+  back.innerHTML=`<div class="sheet sheet-sm profile-notif-sheet" role="dialog" aria-modal="true" aria-labelledby="profile-notif-title">
+    <div class="sheet-header"><div><h2 id="profile-notif-title">Notificações do perfil</h2><p class="schedule-subtitle">Escolha quanto deste perfil aparece no seu radar.</p></div><button class="close-btn" type="button" data-pf-notif-close aria-label="Fechar">${IC.close||'×'}</button></div>
+    <div class="profile-notif-options">${choices.map(([level,label,copy])=>`<button type="button" class="profile-notif-option ${current===level?'is-active':''}" data-pf-notif-level="${level}"><span>${IC.bell||IC.info}</span><div><strong>${label}</strong><small>${copy}</small></div><i></i></button>`).join('')}</div>
+  </div>`;
+  const close=()=>{back.remove();if(!document.querySelector('.backdrop.show'))document.body.classList.remove('modal-open')};
+  back.addEventListener('click',async event=>{
+    if(event.target===back||event.target.closest('[data-pf-notif-close]')){close();return}
+    const option=event.target.closest('[data-pf-notif-level]');if(!option)return;
+    const level=option.dataset.pfNotifLevel;
+    option.disabled=true;
+    try{
+      await api(`/api/community/player/${encodeURIComponent(uid)}/notification-preference`,{method:'PUT',body:JSON.stringify({level})});
+      button.dataset.level=level;
+      button.classList.toggle('is-on',level!=='off');
+      close();
+      toast('success','Notificações atualizadas',level==='off'?'Este perfil ficou silencioso.':level==='all'?'Você receberá todas as novidades.':'Postagens e stories aparecerão no seu radar.');
+    }catch(error){option.disabled=false;toast('error','Não foi possível atualizar',error.message)}
+  });
+  document.body.appendChild(back);document.body.classList.add('modal-open');
 }
 async function blockUser(uid,unblock=false){
   if(!uid)return;
@@ -8422,14 +8461,14 @@ async function maybeShowBrowserNotifications(rows=[]){
 }
 function notifText(n){
   const a=n.actor_minecraft_name||n.actor_username||'Alguém';
-  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,comment_reply:`${a} respondeu seu comentário`,comment_like:`${a} curtiu seu comentário`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,message_reaction:`${a} reagiu à sua mensagem`,story_reaction:`${a} reagiu ao seu story`,repost:`${a} repostou seu post`,friend_joined:`${a} entrou na comunidade`,moderation_warn:'Você recebeu um aviso da moderação',scheduled_post_published:'Seu post agendado foi publicado'};
+  const map={new_follower:`${a} começou a seguir você`,post_like:`${a} curtiu seu post`,comment:`${a} respondeu seu post`,comment_reply:`${a} respondeu seu comentário`,comment_like:`${a} curtiu seu comentário`,mention_post:`${a} mencionou você em um post`,mention_comment:`${a} mencionou você em um comentário`,direct_message:`${a} enviou uma mensagem`,message_reaction:`${a} reagiu à sua mensagem`,story_reaction:`${a} reagiu ao seu story`,repost:`${a} repostou seu post`,creator_post:`${a} publicou algo novo`,creator_story:`${a} publicou um novo story`,creator_repost:`${a} repostou algo`,creator_reply:`${a} respondeu na comunidade`,friend_joined:`${a} entrou na comunidade`,moderation_warn:'Você recebeu um aviso da moderação',scheduled_post_published:'Seu post agendado foi publicado'};
   return map[n.type]||'Nova notificação';
 }
 function notifTypeIcon(type){
   const map={
     post_like:IC.heart,comment_like:IC.heart,story_reaction:IC.heart,
     comment:IC.comment,comment_reply:IC.comment,mention_post:IC.info,mention_comment:IC.info,
-    direct_message:IC.send,message_reaction:IC.send,repost:IC.repost,
+    direct_message:IC.send,message_reaction:IC.send,repost:IC.repost,creator_post:IC.info,creator_story:IC.info,creator_repost:IC.repost,creator_reply:IC.comment,
     new_follower:IC.user,friend_joined:IC.group,moderation_warn:IC.warn,scheduled_post_published:IC.ok
   };
   return map[type]||IC.info;
@@ -8447,9 +8486,10 @@ async function loadNotifs(){
 function renderNotifs(){
   const dot=$('#notif-dot');const badge=$('#nav-notif-badge');const drawerBadge=$('#drawer-notif-badge');
   const hasUnread=state.notifUnread>0;
-  if(dot){dot.hidden=!hasUnread;dot.textContent=state.notifUnread>9?'9+':String(state.notifUnread||0);}
-  if(badge){badge.hidden=!hasUnread;badge.textContent=state.notifUnread>9?'9+':String(state.notifUnread||0);}
-  if(drawerBadge){drawerBadge.hidden=!hasUnread;drawerBadge.textContent=state.notifUnread>9?'9+':String(state.notifUnread||0);}
+  const unreadCopy=hasUnread?(state.notifUnread>9?'9+':String(state.notifUnread)):'';
+  if(dot){dot.hidden=!hasUnread;dot.textContent=unreadCopy;}
+  if(badge){badge.hidden=!hasUnread;badge.textContent=unreadCopy;}
+  if(drawerBadge){drawerBadge.hidden=!hasUnread;drawerBadge.textContent=unreadCopy;}
   const list=$('#notif-list');
   const browserInvite=browserNotificationState()==='default'?`<button class="notif-row unread" type="button" data-enable-browser-notifs><span class="browser-notif-icon">${IC.bell||IC.info}</span><div><strong>Ativar notificações do navegador</strong><small>Receba mensagens e interações sem interromper sua navegação.</small></div></button>`:'';
   list.innerHTML=browserInvite+(state.notifs.length?state.notifs.map(n=>{
@@ -8483,6 +8523,7 @@ function notifQueryForFilter(filter, cursor){
 function notifRouteEntity(n){
   if(n.entity_type==='post'&&n.entity_id) return 'Abrir post';
   if(n.entity_type==='user'&&n.entity_id) return 'Abrir perfil';
+  if(n.entity_type==='story'&&n.actor_id) return 'Abrir perfil';
   if((n.type==='direct_message'||n.type==='message_reaction')&&n.actor_id) return 'Abrir chat';
   return 'Ver';
 }
@@ -8516,9 +8557,9 @@ function renderNotificationsRoute(){
       <div class="notif-load-area"><button class="btn btn-secondary btn-sm" id="notif-page-more" type="button" data-notif-more hidden>Carregar mais</button></div>
     </section>
   `);
-  loadNotificationsPage({reset:true});
+  loadNotificationsPage({reset:true,markViewed:true});
 }
-async function loadNotificationsPage({reset=false}={}){
+async function loadNotificationsPage({reset=false,markViewed=false}={}){
   if(state.notifPageLoading||(!state.notifPageHasMore&&!reset))return;
   state.notifPageLoading=true;
   const list=$('#notif-page-list');
@@ -8533,6 +8574,12 @@ async function loadNotificationsPage({reset=false}={}){
     state.notifPageRows=reset?rows:[...state.notifPageRows,...rows];
     state.notifPageCursor=payload.next_cursor||null;
     state.notifPageHasMore=Boolean(payload.has_more);
+    if(markViewed&&state.notifUnread>0){
+      await api('/api/me/social-notifications/read-all',{method:'POST'}).catch(()=>{});
+      state.notifUnread=0;
+      state.notifPageRows=state.notifPageRows.map(n=>({...n,is_read:true}));
+      renderNotifs();
+    }
     renderNotificationsPageList();
   }catch(e){
     if(list)list.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Notificações indisponíveis</h3><p>${esc(e.message)}</p></div>`;
@@ -8619,6 +8666,7 @@ async function openSocialNotification(row){
   $('#notif-menu')?.classList.remove('show');
   if(row.dataset.et==='post'&&row.dataset.eid) navigatePost(row.dataset.eid);
   else if(row.dataset.et==='user'&&row.dataset.eid) navigateProfile(`id:${row.dataset.eid}`);
+  else if(row.dataset.et==='story'&&row.dataset.actor) navigateProfile(`id:${row.dataset.actor}`);
   else if((row.dataset.ntype==='direct_message'||row.dataset.ntype==='message_reaction')&&row.dataset.actor) window.FAChat?.openWithUser({id:row.dataset.actor});
   await loadNotifs();
 }
@@ -8761,6 +8809,10 @@ function bindEvents(){
     }
     const m=$('#notif-menu');const open=!m.classList.contains('show');
     m.classList.toggle('show',open);$('#notif-btn').setAttribute('aria-expanded',String(open));
+    if(open&&state.notifUnread>0){
+      api('/api/me/social-notifications/read-all',{method:'POST'}).catch(()=>{});
+      state.notifUnread=0;state.notifs=state.notifs.map(n=>({...n,is_read:true}));renderNotifs();
+    }
   });
   $('#mark-read-btn').addEventListener('click',async e=>{
     e.stopPropagation();
@@ -8947,7 +8999,7 @@ function bindEvents(){
     const notifFilter=e.target.closest('[data-notif-filter]');
     if(notifFilter){e.preventDefault();setNotificationFilter(notifFilter.dataset.notifFilter).catch(err=>toast('error','Filtro indisponivel',err.message));return}
     if(e.target.closest('[data-notif-more]')){e.preventDefault();loadNotificationsPage({reset:false});return}
-    if(e.target.closest('[data-notif-refresh]')){e.preventDefault();loadNotificationsPage({reset:true});loadNotifs();return}
+    if(e.target.closest('[data-notif-refresh]')){e.preventDefault();loadNotificationsPage({reset:true,markViewed:true});loadNotifs();return}
     if(e.target.closest('[data-notif-mark-all]')){e.preventDefault();markAllSocialNotificationsRead().catch(err=>toast('error','Nao foi possivel marcar tudo',err.message));return}
     if(e.target.closest('[data-enable-browser-notifs]')){e.preventDefault();requestBrowserNotifications().catch(err=>toast('error','Não foi possível ativar',err.message));return}
     const notifAction=e.target.closest('[data-notif-action]');
@@ -9430,9 +9482,15 @@ function bindEvents(){
 
   /* ── zoom ── */
   const ZOOM_MIN=1, ZOOM_MAX=5, ZOOM_STEP=0.35;
+  function clampLbPan(scale,px,py){
+    const maxX=Math.max(0,((lbImg.clientWidth||0)*scale-(lbImgWrap.clientWidth||0))/2);
+    const maxY=Math.max(0,((lbImg.clientHeight||0)*scale-(lbImgWrap.clientHeight||0))/2);
+    return{x:Math.max(-maxX,Math.min(maxX,Number(px)||0)),y:Math.max(-maxY,Math.min(maxY,Number(py)||0))};
+  }
   function applyLbTransform(scale,px,py){
     lbScale=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,scale));
-    lbPanX=px; lbPanY=py;
+    const clamped=clampLbPan(lbScale,px,py);
+    lbPanX=clamped.x; lbPanY=clamped.y;
     lbImg.style.transform=`translate(${lbPanX}px,${lbPanY}px) scale(${lbScale})`;
     lbZoomPct.textContent=Math.round(lbScale*100)+'%';
     lbImgWrap.style.cursor=lbScale>1?'grab':'default';
@@ -9444,14 +9502,14 @@ function bindEvents(){
     if(lbScale<=1||e.button!==0)return;
     lbDragging=true;
     lbDragStart={x:e.clientX,y:e.clientY,px:lbPanX,py:lbPanY};
-    lbImgWrap.classList.add('is-grabbing');
+    lbImgWrap.classList.add('is-grabbing','is-gesturing');
     e.preventDefault();
   });
   window.addEventListener('mousemove',e=>{
     if(!lbDragging)return;
     applyLbTransform(lbScale,lbDragStart.px+(e.clientX-lbDragStart.x),lbDragStart.py+(e.clientY-lbDragStart.y));
   });
-  window.addEventListener('mouseup',()=>{lbDragging=false;lbImgWrap.classList.remove('is-grabbing')});
+  window.addEventListener('mouseup',()=>{lbDragging=false;lbImgWrap.classList.remove('is-grabbing','is-gesturing');applyLbTransform(lbScale,lbPanX,lbPanY)});
 
   /* ── wheel zoom desktop ── */
   lbImgWrap.addEventListener('wheel',e=>{
@@ -9473,29 +9531,23 @@ function bindEvents(){
   });
 
   /* ── touch: pinch zoom + pan ── */
-  let touchState={pinching:false,lastDist:0,lastMidX:0,lastMidY:0,tapTimer:null,tapCount:0,panStartX:0,panStartY:0,panPx:0,panPy:0};
+  let touchState={pinching:false,lastDist:0,lastMidX:0,lastMidY:0,panStartX:0,panStartY:0,panPx:0,panPy:0,moved:false,lastTapAt:0};
   function touchDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)}
   function touchMid(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2}}
 
   lbImgWrap.addEventListener('touchstart',e=>{
     if(e.touches.length===2){
       touchState.pinching=true;
+      touchState.moved=true;
       touchState.lastDist=touchDist(e.touches);
       const m=touchMid(e.touches);touchState.lastMidX=m.x;touchState.lastMidY=m.y;
+      lbImgWrap.classList.add('is-gesturing');
       e.preventDefault();
     } else if(e.touches.length===1&&!touchState.pinching){
       touchState.panStartX=e.touches[0].clientX;
       touchState.panStartY=e.touches[0].clientY;
       touchState.panPx=lbPanX;touchState.panPy=lbPanY;
-      /* double-tap detect */
-      touchState.tapCount++;
-      if(touchState.tapCount===1) touchState.tapTimer=setTimeout(()=>touchState.tapCount=0,300);
-      else if(touchState.tapCount===2){
-        clearTimeout(touchState.tapTimer);touchState.tapCount=0;
-        /* double-tap = zoom toggle */
-        if(lbScale>1)resetLbTransform();else applyLbTransform(2.5,0,0);
-        e.preventDefault();
-      }
+      touchState.moved=false;
     }
   },{passive:false});
 
@@ -9507,18 +9559,33 @@ function bindEvents(){
       const m=touchMid(e.touches);
       const dx=m.x-touchState.lastMidX;
       const dy=m.y-touchState.lastMidY;
+      touchState.moved=true;
       applyLbTransform(lbScale*ratio,lbPanX+dx,lbPanY+dy);
       touchState.lastDist=dist;touchState.lastMidX=m.x;touchState.lastMidY=m.y;
-    } else if(e.touches.length===1&&lbScale>1){
-      e.preventDefault();
+    } else if(e.touches.length===1){
       const dx=e.touches[0].clientX-touchState.panStartX;
       const dy=e.touches[0].clientY-touchState.panStartY;
+      if(Math.hypot(dx,dy)>5)touchState.moved=true;
+      if(lbScale<=1)return;
+      e.preventDefault();
+      lbImgWrap.classList.add('is-gesturing');
       applyLbTransform(lbScale,touchState.panPx+dx,touchState.panPy+dy);
     }
   },{passive:false});
 
   lbImgWrap.addEventListener('touchend',e=>{
     if(e.touches.length<2)touchState.pinching=false;
+    if(!e.touches.length){
+      lbImgWrap.classList.remove('is-gesturing');
+      applyLbTransform(lbScale,lbPanX,lbPanY);
+      if(!touchState.moved){
+        const now=Date.now();
+        if(now-touchState.lastTapAt<290){
+          if(lbScale>1)resetLbTransform();else applyLbTransform(2.5,0,0);
+          touchState.lastTapAt=0;
+        }else touchState.lastTapAt=now;
+      }
+    }
   });
 
   /* ── botões zoom ctrl ── */
@@ -9737,17 +9804,17 @@ async function boot(){
   Router.init();
   if(token){
     startPollSync();
-    setInterval(()=>{if(!document.hidden)loadNotifs()},45000);
+    setInterval(()=>{if(!document.hidden)loadNotifs()},15000);
   }
 }
 boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260615c"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260615d"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
-<script src="assets/js/community-social-refinement-20260615a.js?v=20260615c"></script>
-<script src="assets/js/social-chat.js?v=chat14-20260615"></script>
+<script src="assets/js/community-social-refinement-20260615a.js?v=20260615d"></script>
+<script src="assets/js/social-chat.js?v=chat15-20260615"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────

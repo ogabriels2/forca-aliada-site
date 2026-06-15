@@ -1533,6 +1533,10 @@ const SOCIAL_NOTIFICATION_TYPES = new Set([
   'message_reaction',
   'scheduled_post_published',
   'story_reaction',
+  'creator_post',
+  'creator_story',
+  'creator_repost',
+  'creator_reply',
 ]);
 
 const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
@@ -2467,7 +2471,7 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
       [recipient, actor, type, entityType, entityId, preview],
     );
     if (grouped.length) {
-      setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: grouped[0].id, type }), 0);
+      setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: grouped[0].id, type }), 180);
       return grouped[0];
     }
   }
@@ -2487,8 +2491,38 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
      RETURNING id`,
     [recipient, actor, type, entityType, entityId, preview],
   );
-  if (rows[0]) setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: rows[0].id, type }), 0);
+  if (rows[0]) setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: rows[0].id, type }), 180);
   return rows[0] || null;
+}
+
+async function notifyProfileSubscribers({
+  creatorId,
+  type,
+  entityType = null,
+  entityId = null,
+  previewText = '',
+  allOnly = false,
+}) {
+  const creator = Number(creatorId);
+  if (!creator || !SOCIAL_NOTIFICATION_TYPES.has(type)) return [];
+  const { rows } = await pool.query(
+    `SELECT f.follower_id AS recipient_id
+     FROM user_follows f
+     LEFT JOIN profile_notification_preferences p
+       ON p.subscriber_id=f.follower_id AND p.creator_id=f.following_id
+     WHERE f.following_id=$1
+       AND COALESCE(p.level,'default') <> 'off'
+       AND ($2::boolean = FALSE OR COALESCE(p.level,'default') = 'all')`,
+    [creator, Boolean(allOnly)],
+  );
+  return Promise.allSettled(rows.map(row => createSocialNotification({
+    recipientId: row.recipient_id,
+    actorId: creator,
+    type,
+    entityType,
+    entityId,
+    previewText,
+  })));
 }
 
 let optionalTxSeq = 0;
@@ -5120,6 +5154,11 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
               WHERE f1.follower_id = u.id)::int AS friends_count,
              (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id)::int AS posts_count,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id) AS is_following,
+             CASE
+               WHEN EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id)
+               THEN COALESCE((SELECT level FROM profile_notification_preferences WHERE subscriber_id=$1 AND creator_id=u.id), 'default')
+               ELSE 'off'
+             END AS notification_level,
              EXISTS(SELECT 1 FROM user_follows f1
                     JOIN user_follows f2 ON f2.follower_id = u.id AND f2.following_id = $1
                     WHERE f1.follower_id = $1 AND f1.following_id = u.id) AS is_friend,
@@ -5427,6 +5466,12 @@ app.post('/api/me/follows/:targetId', auth, async (req, res) => {
       [req.user.sub, targetId],
     );
     if (rowCount > 0) {
+      await pool.query(
+        `INSERT INTO profile_notification_preferences(subscriber_id,creator_id,level)
+         VALUES($1,$2,'default')
+         ON CONFLICT(subscriber_id,creator_id) DO NOTHING`,
+        [req.user.sub, targetId],
+      );
       createSocialNotification({
         recipientId: targetId,
         actorId: req.user.sub,
@@ -5463,6 +5508,7 @@ app.delete('/api/me/follows/:targetId', auth, async (req, res) => {
   const targetId = parseInt(req.params.targetId, 10);
   try {
     await pool.query('DELETE FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, targetId]);
+    await pool.query('DELETE FROM profile_notification_preferences WHERE subscriber_id=$1 AND creator_id=$2', [req.user.sub, targetId]);
     res.json({ ok: true });
   } catch (e) {
     console.error('[DELETE /api/me/follows/:targetId]', e);
@@ -6830,6 +6876,13 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       authorId: Number(publishIdentity.authorId),
       createdAt: newPost.created_at,
     });
+    notifyProfileSubscribers({
+      creatorId: publishIdentity.authorId,
+      type: 'creator_post',
+      entityType: 'post',
+      entityId: newPost.id,
+      previewText: content,
+    }).catch(err => console.warn('[subscriber post notification skipped]', err?.message || err));
     const author = publishIdentity.author;
     res.status(201).json({
       ...newPost,
@@ -7011,6 +7064,13 @@ async function publishDueScheduledPosts() {
           authorId: Number(scheduled.author_id),
           createdAt: scheduled.publish_at,
         });
+        notifyProfileSubscribers({
+          creatorId: scheduled.author_id,
+          type: 'creator_post',
+          entityType: 'post',
+          entityId: postId,
+          previewText: scheduled.content,
+        }).catch(err => console.warn('[subscriber scheduled post notification skipped]', err?.message || err));
       } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
         await pool.query(
@@ -7303,6 +7363,14 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
       entityId: target.target_id,
       previewText: quote || target.content,
     }).catch(err => console.warn('[repost notification skipped]', err?.message || err));
+    notifyProfileSubscribers({
+      creatorId: publishIdentity.authorId,
+      type: 'creator_repost',
+      entityType: 'post',
+      entityId: target.target_id,
+      previewText: quote || target.content,
+      allOnly: true,
+    }).catch(err => console.warn('[subscriber repost notification skipped]', err?.message || err));
     res.status(201).json({ ok: true, repost: rows[0] });
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
@@ -7460,6 +7528,14 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
       }
     }
     await client.query('COMMIT');
+    notifyProfileSubscribers({
+      creatorId: req.user.sub,
+      type: 'creator_reply',
+      entityType: 'post',
+      entityId: postId,
+      previewText: content,
+      allOnly: true,
+    }).catch(err => console.warn('[subscriber reply notification skipped]', err?.message || err));
     res.status(201).json({ ok: true, id: newComment.id, created_at: newComment.created_at, media_urls: newComment.media_urls });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -7789,6 +7865,7 @@ registerCommentUpgradeEndpoints(app, pool, auth, {
   socialRankSql,
   primaryIntegrationFieldsSql,
   createSocialNotification,
+  notifyProfileSubscribers,
   auditFromReq,
   extractMentions,
   normalizePostMediaUrls,
@@ -10146,6 +10223,49 @@ registerCommunityEvolution(app, pool, auth, {
   socialMeritSql,
   requireAdmin,
   createSocialNotification,
+  notifyProfileSubscribers,
+});
+
+app.get('/api/community/player/:targetId/notification-preference', auth, async (req, res) => {
+  const targetId = parseInt(req.params.targetId, 10);
+  if (!targetId || targetId === Number(req.user.sub)) return res.status(400).json({ error: 'Perfil invalido' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT EXISTS(
+         SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=$2
+       ) AS is_following,
+       COALESCE((
+         SELECT level FROM profile_notification_preferences WHERE subscriber_id=$1 AND creator_id=$2
+       ), 'default') AS level`,
+      [req.user.sub, targetId],
+    );
+    res.json({ is_following: Boolean(rows[0]?.is_following), level: rows[0]?.is_following ? rows[0]?.level : 'off' });
+  } catch (e) {
+    console.error('[GET profile notification preference]', e);
+    res.status(500).json({ error: 'Erro ao consultar notificacoes do perfil' });
+  }
+});
+
+app.put('/api/community/player/:targetId/notification-preference', auth, async (req, res) => {
+  const targetId = parseInt(req.params.targetId, 10);
+  const level = sanitize(req.body?.level || '').toLowerCase();
+  if (!targetId || targetId === Number(req.user.sub) || !['off', 'default', 'all'].includes(level)) {
+    return res.status(400).json({ error: 'Preferencia invalida' });
+  }
+  try {
+    const follows = await pool.query('SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=$2', [req.user.sub, targetId]);
+    if (!follows.rowCount) return res.status(403).json({ error: 'Siga este perfil para ativar notificacoes.' });
+    await pool.query(
+      `INSERT INTO profile_notification_preferences(subscriber_id,creator_id,level,updated_at)
+       VALUES($1,$2,$3,NOW())
+       ON CONFLICT(subscriber_id,creator_id) DO UPDATE SET level=EXCLUDED.level,updated_at=NOW()`,
+      [req.user.sub, targetId, level],
+    );
+    res.json({ ok: true, level });
+  } catch (e) {
+    console.error('[PUT profile notification preference]', e);
+    res.status(500).json({ error: 'Erro ao atualizar notificacoes do perfil' });
+  }
 });
 
 app.use((err, req, res, _next) => {
