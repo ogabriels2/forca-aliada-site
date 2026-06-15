@@ -10,7 +10,6 @@
     handshake: ['🤝', 'Juntos'],
   };
   const evoQueue = [];
-  const reactionCache = new Map();
   const locallyViewedStories = new Set();
   let storyGroups = [];
   let activeStoryGroup = 0;
@@ -74,7 +73,7 @@
     const friends = document.querySelector('#friends-bar');
     if (friends && !document.querySelector('#stories-shell')) {
       friends.insertAdjacentHTML('beforebegin', `
-        <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories e amigos">
+        <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories">
           <div class="stories-list" id="stories-list"><div class="social-strip-skeleton skel"></div><div class="social-strip-skeleton skel"></div><div class="social-strip-skeleton skel"></div></div>
         </section>`);
       friends.remove();
@@ -199,65 +198,6 @@
     });
   }
 
-  function reactionMarkup() {
-    return `
-      <span class="reaction-wrap" data-no-post-nav>
-        <button class="pa reaction-trigger" type="button" data-reaction-trigger aria-label="Reagir">＋</button>
-        <span class="reaction-picker" hidden>${Object.entries(REACTIONS).map(([code, meta]) =>
-          `<button type="button" data-reaction="${code}" aria-label="${safe(meta[1])}" aria-pressed="false" title="${safe(meta[1])}">${meta[0]}</button>`).join('')}</span>
-      </span>`;
-  }
-
-  function optimisticReactionPayload(payload, nextCode) {
-    const previousCode = payload?.my_reaction || null;
-    const rows = (payload?.reactions || []).map(row => ({ ...row, count: Number(row.count || 0) }));
-    const counts = new Map(rows.map(row => [row.code, row]));
-    if (previousCode && previousCode !== nextCode && counts.has(previousCode)) {
-      counts.get(previousCode).count = Math.max(0, counts.get(previousCode).count - 1);
-    }
-    if (nextCode && previousCode !== nextCode) {
-      if (!counts.has(nextCode)) counts.set(nextCode, { code: nextCode, count: 0 });
-      counts.get(nextCode).count += 1;
-    }
-    return {
-      reactions: [...counts.values()].filter(row => row.count > 0).sort((a, b) => b.count - a.count || a.code.localeCompare(b.code)),
-      my_reaction: nextCode,
-    };
-  }
-
-  function renderReactionSummary(card, payload) {
-    reactionCache.set(String(card.dataset.postId), payload);
-    const actions = card.querySelector('.post-actions');
-    if (!actions) return;
-    let summary = card.querySelector('.reaction-summary');
-    if (!summary) {
-      summary = document.createElement('div');
-      summary.className = 'reaction-summary';
-      actions.insertAdjacentElement('beforebegin', summary);
-    }
-    const rows = payload.reactions || [];
-    summary.innerHTML = rows.length
-      ? rows.slice(0, 4).map(row => `<button type="button" title="${safe(REACTIONS[row.code]?.[1] || row.code)}">${REACTIONS[row.code]?.[0] || '•'}</button>`).join('')
-        + `<span>${rows.reduce((sum, row) => sum + Number(row.count || 0), 0)}</span>`
-      : '';
-    card.querySelectorAll('[data-reaction]').forEach(button => {
-      const selected = button.dataset.reaction === payload.my_reaction;
-      button.classList.toggle('is-on', selected);
-      button.setAttribute('aria-pressed', String(selected));
-    });
-  }
-
-  async function loadReactions(card) {
-    if (!card || card.dataset.reactionsLoaded) return;
-    card.dataset.reactionsLoaded = '1';
-    try {
-      const payload = await api(`/api/community/posts/${encodeURIComponent(card.dataset.postId)}/reactions`);
-      renderReactionSummary(card, payload);
-    } catch {
-      delete card.dataset.reactionsLoaded;
-    }
-  }
-
   function decorateFeed() {
     if (decorating) return;
     decorating = true;
@@ -310,13 +250,6 @@
       target.insertAdjacentHTML('beforeend', `<span class="web-presence-chip ${online ? 'is-online' : ''}"><i class="live-dot"></i>${safe(copy)}</span>`);
     } catch {}
   }
-
-  const reactionObserver = 'IntersectionObserver' in window
-    ? new IntersectionObserver(entries => entries.filter(entry => entry.isIntersecting).forEach(entry => {
-      reactionObserver.unobserve(entry.target);
-      loadReactions(entry.target);
-    }), { rootMargin: '250px' })
-    : null;
 
   function scheduleDecorate() {
     if (decorating) return;
@@ -1306,37 +1239,6 @@
       }
       if (event.target.closest('[data-apply-schedule]')) { syncScheduleUI(); closeModal('schedule-modal'); return; }
 
-      const trigger = event.target.closest('[data-reaction-trigger]');
-      if (trigger) {
-        event.stopPropagation();
-        const picker = trigger.parentElement.querySelector('.reaction-picker');
-        document.querySelectorAll('.reaction-picker').forEach(node => { if (node !== picker) node.hidden = true; });
-        picker.hidden = !picker.hidden;
-        return;
-      }
-      const reaction = event.target.closest('[data-reaction]');
-      if (reaction) {
-        event.stopPropagation();
-        const card = reaction.closest('.post-card');
-        const cached = reactionCache.get(String(card.dataset.postId)) || { reactions: [], my_reaction: null };
-        const remove = cached.my_reaction === reaction.dataset.reaction;
-        const optimistic = optimisticReactionPayload(cached, remove ? null : reaction.dataset.reaction);
-        renderReactionSummary(card, optimistic);
-        reaction.closest('.reaction-picker').hidden = true;
-        buzz(18);
-        try {
-          const payload = await api(`/api/community/posts/${encodeURIComponent(card.dataset.postId)}/reactions`, {
-            method: remove ? 'DELETE' : 'POST',
-            body: remove ? undefined : JSON.stringify({ code: reaction.dataset.reaction }),
-          });
-          renderReactionSummary(card, payload);
-        } catch (error) {
-          renderReactionSummary(card, cached);
-          toast('error', 'Reação indisponível', error.message);
-        }
-        return;
-      }
-
       const timestamp = event.target.closest('.post-time');
       if (timestamp) {
         event.preventDefault();
@@ -1559,14 +1461,6 @@
       else if (event.key === ' ') { event.preventDefault(); storyPaused = !storyPaused; }
     });
 
-    let reactionHold = null;
-    document.addEventListener('pointerdown', event => {
-      const trigger = event.target.closest('.reaction-trigger');
-      if (!trigger || event.pointerType !== 'touch') return;
-      clearTimeout(reactionHold);
-      reactionHold = setTimeout(() => { trigger.parentElement.querySelector('.reaction-picker').hidden = false; buzz(12); }, 650);
-    }, { passive: true });
-    document.addEventListener('pointerup', () => clearTimeout(reactionHold), { passive: true });
   }
 
   function init() {

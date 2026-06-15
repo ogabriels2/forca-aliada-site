@@ -515,6 +515,17 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
   .stats { gap: 7px; }
   .stat { min-height: 70px; padding: 10px; }
 }
+@media (max-width: 760px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: clip; }
+  .shell, .profile-hero, .hero-body, .content-grid, .main-feed, .side-stack, .card {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .profile-hero { overflow: hidden; }
+  .profile-actions { width: 100%; flex-wrap: wrap; justify-content: flex-end; }
+  .profile-actions .btn { flex: 0 1 auto; min-width: 0; }
+  .identity-text, .main-feed, .side-stack { overflow-wrap: anywhere; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }

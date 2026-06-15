@@ -1558,6 +1558,17 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0;
 }
 @media (max-width: 700px) { .legacy-preview-grid { grid-template-columns: repeat(2, 1fr); } }
+
+@media (max-width: 700px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: clip; }
+  .main-content, .account-layout, .content-area, .card, .profile-overview, .legacy-mode-grid, .legacy-preview-grid {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .account-layout { padding-inline: 12px; }
+  .card { overflow-wrap: anywhere; }
+  .data-input, .pw-input-wrap { min-width: 0; max-width: 100%; }
+}
 .legacy-preview-stat {
   background: var(--bg-color); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 14px 12px; text-align: center;

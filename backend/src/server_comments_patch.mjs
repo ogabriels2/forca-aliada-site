@@ -489,15 +489,18 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       // Notificação ao autor do post
       await client.query('COMMIT');
 
-      // Fire-and-forget notifications
-      createSocialNotification?.({
+      // A confirmação da API também confirma a persistência da notificação principal.
+      const commentNotification = await createSocialNotification?.({
         recipientId: post.author_id,
         actorId: req.user.sub,
         type: 'comment',
         entityType: 'post',
         entityId: postId,
         previewText: content,
-      }).catch(e => console.warn('[comment notification]', e?.message));
+      }).catch(e => {
+        console.error('[comment notification failed]', e);
+        return null;
+      });
       notifyProfileSubscribers?.({
         creatorId: req.user.sub,
         type: 'creator_reply',
@@ -509,14 +512,14 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
 
       // Notificação ao autor do comentário pai (se existir e for pessoa diferente)
       if (parentComment && parentComment.author_id !== req.user.sub && parentComment.author_id !== post.author_id) {
-        createSocialNotification?.({
+        await createSocialNotification?.({
           recipientId: parentComment.author_id,
           actorId: req.user.sub,
           type: 'comment_reply',
           entityType: 'comment',
           entityId: newComment.id,
           previewText: content,
-        }).catch(e => console.warn('[reply notification]', e?.message));
+        }).catch(e => console.error('[reply notification failed]', e));
       }
 
       // Menções
@@ -546,6 +549,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
         id: newComment.id,
         created_at: newComment.created_at,
         parent_comment_id: newComment.parent_comment_id,
+        notification_created: Boolean(commentNotification),
       });
     } catch (e) {
       await client.query('ROLLBACK').catch(() => {});
@@ -588,17 +592,19 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
         [commentId],
       );
 
-      // Notifica o autor do comentário (fire-and-forget)
-      createSocialNotification?.({
+      const notification = await createSocialNotification?.({
         recipientId: comment.author_id,
         actorId: req.user.sub,
         type: 'comment_like',
         entityType: 'comment',
         entityId: commentId,
         previewText: '',
-      }).catch(() => {});
+      }).catch(e => {
+        console.error('[comment like notification failed]', e);
+        return null;
+      });
 
-      res.json({ ok: true, liked_by_me: true, likes_count: countRow[0]?.likes_count ?? 0 });
+      res.json({ ok: true, liked_by_me: true, likes_count: countRow[0]?.likes_count ?? 0, notification_created: Boolean(notification) });
     } catch (e) {
       console.error('[POST /api/community/comments/:id/like]', e);
       res.status(500).json({ error: 'Erro ao curtir comentário' });

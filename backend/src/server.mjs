@@ -2444,16 +2444,16 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
   const preview = sanitizeText(previewText || '').slice(0, 120);
   const groupable = new Set(['post_like', 'repost', 'comment_like']);
   if (groupable.has(type) && entityId) {
-    const { rows: grouped } = await db.query(
+    const { rows: refreshed } = await db.query(
       `UPDATE social_notifications
        SET actor_id=$2,
            actor_ids=CASE
-             WHEN actor_ids @> jsonb_build_array($2::integer) THEN actor_ids
-             ELSE actor_ids || jsonb_build_array($2::integer)
+             WHEN COALESCE(actor_ids,'[]'::jsonb) @> jsonb_build_array($2::integer) THEN COALESCE(actor_ids,'[]'::jsonb)
+             ELSE COALESCE(actor_ids,'[]'::jsonb) || jsonb_build_array($2::integer)
            END,
            group_count=CASE
-             WHEN actor_ids @> jsonb_build_array($2::integer) THEN group_count
-             ELSE group_count + 1
+             WHEN COALESCE(actor_ids,'[]'::jsonb) @> jsonb_build_array($2::integer) THEN COALESCE(group_count,1)
+             ELSE COALESCE(group_count,1) + 1
            END,
            preview_text=$6,
            is_read=FALSE,
@@ -2470,28 +2470,19 @@ async function createSocialNotification({ recipientId, actorId, type, entityType
        RETURNING id,group_count`,
       [recipient, actor, type, entityType, entityId, preview],
     );
-    if (grouped.length) {
-      setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: grouped[0].id, type }), 180);
-      return grouped[0];
+    if (refreshed.length) {
+      setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: refreshed[0].id, type }), 350);
+      return { ...refreshed[0], refreshed: true };
     }
   }
 
   const { rows } = await db.query(
     `INSERT INTO social_notifications(recipient_id, actor_id, type, entity_type, entity_id, preview_text, actor_ids)
-     SELECT $1,$2,$3,$4,$5,$6,jsonb_build_array($2::integer)
-     WHERE NOT EXISTS (
-       SELECT 1 FROM social_notifications
-       WHERE recipient_id=$1
-         AND actor_id=$2
-         AND type=$3
-         AND COALESCE(entity_type, '') = COALESCE($4, '')
-         AND COALESCE(entity_id, 0) = COALESCE($5, 0)
-         AND created_at > NOW() - INTERVAL '1 hour'
-     )
+     VALUES($1,$2,$3,$4,$5,$6,jsonb_build_array($2::integer))
      RETURNING id`,
     [recipient, actor, type, entityType, entityId, preview],
   );
-  if (rows[0]) setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: rows[0].id, type }), 180);
+  if (rows[0]) setTimeout(() => emitCommunityEvent('notification', { recipientId: recipient, notificationId: rows[0].id, type }), 350);
   return rows[0] || null;
 }
 
@@ -2511,8 +2502,8 @@ async function notifyProfileSubscribers({
      LEFT JOIN profile_notification_preferences p
        ON p.subscriber_id=f.follower_id AND p.creator_id=f.following_id
      WHERE f.following_id=$1
-       AND COALESCE(p.level,'default') <> 'off'
-       AND ($2::boolean = FALSE OR COALESCE(p.level,'default') = 'all')`,
+       AND COALESCE(p.level,'off') <> 'off'
+       AND ($2::boolean = FALSE OR COALESCE(p.level,'off') = 'all')`,
     [creator, Boolean(allOnly)],
   );
   return Promise.allSettled(rows.map(row => createSocialNotification({
@@ -2675,11 +2666,14 @@ next();
 // ─────────────────────────────────────────────
 // Health
 // ─────────────────────────────────────────────
-app.get('/healthz', (_req, res) => res.json({
+const healthHandler = (_req, res) => res.json({
   ok: true,
   startedAt: PROCESS_STARTED_AT.toISOString(),
   uptimeSeconds: Math.floor(process.uptime()),
-}));
+  build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
+});
+app.get('/healthz', healthHandler);
+app.get('/api/healthz', healthHandler);
 
 // Admin-only health endpoint with detailed diagnostics
 app.get('/admin/health', auth, requireAdmin, (_req, res) => res.json({
@@ -5156,7 +5150,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id) AS is_following,
              CASE
                WHEN EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id)
-               THEN COALESCE((SELECT level FROM profile_notification_preferences WHERE subscriber_id=$1 AND creator_id=u.id), 'default')
+               THEN COALESCE((SELECT level FROM profile_notification_preferences WHERE subscriber_id=$1 AND creator_id=u.id), 'off')
                ELSE 'off'
              END AS notification_level,
              EXISTS(SELECT 1 FROM user_follows f1
@@ -5468,18 +5462,18 @@ app.post('/api/me/follows/:targetId', auth, async (req, res) => {
     if (rowCount > 0) {
       await pool.query(
         `INSERT INTO profile_notification_preferences(subscriber_id,creator_id,level)
-         VALUES($1,$2,'default')
+         VALUES($1,$2,'off')
          ON CONFLICT(subscriber_id,creator_id) DO NOTHING`,
         [req.user.sub, targetId],
       );
-      createSocialNotification({
+      await createSocialNotification({
         recipientId: targetId,
         actorId: req.user.sub,
         type: 'new_follower',
         entityType: 'user',
         entityId: req.user.sub,
         previewText: `${req.user.minecraft_name || req.user.username} comecou a seguir voce.`,
-      }).catch(err => console.warn('[follow notification skipped]', err?.message || err));
+      }).catch(err => console.error('[follow notification failed]', err));
       if (target[0]?.minecraft_name) {
         createMinecraftNotification({
           minecraftName: target[0].minecraft_name,
@@ -5866,14 +5860,17 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
     await client.query('COMMIT');
     committed = true;
 
-    createSocialNotification({
+    const messageNotification = await createSocialNotification({
       recipientId: conv.recipient_id,
       actorId: req.user.sub,
       type: 'direct_message',
       entityType: 'direct_message',
       entityId: rows[0].id,
       previewText: body || chatAttachmentPreviewText(attachments),
-    }).catch(err => console.warn('[direct_message notification skipped]', err?.message || err));
+    }).catch(err => {
+      console.error('[direct_message notification failed]', err);
+      return null;
+    });
 
     // ── SSE fan-out: push instantâneo para o peer (e outras abas do remetente)
     notifyNewMessage('direct', conversationId, {
@@ -5883,7 +5880,7 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
       minecraft_name: req.user.minecraft_name,
     });
 
-    res.status(201).json({ ...rows[0], reply_to: replyPreview });
+    res.status(201).json({ ...rows[0], reply_to: replyPreview, notification_created: Boolean(messageNotification) });
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/me/conversations/:id/messages]', e);
@@ -6243,14 +6240,14 @@ function registerChatMessageInteractionRoutes(kind) {
       const update = { id: messageId, sender_id: message.sender_id, ...summary, [isGroup ? 'group_id' : 'conversation_id']: containerId };
       notifyMessageUpdate(kind, containerId, { ...update, my_reactions: undefined });
       if (Number(message.sender_id) !== Number(req.user.sub)) {
-        createSocialNotification({
+        await createSocialNotification({
           recipientId: message.sender_id,
           actorId: req.user.sub,
           type: 'message_reaction',
           entityType: isGroup ? 'group_message' : 'direct_message',
           entityId: messageId,
           previewText: `${emoji} ${String(message.body || '').slice(0, 90)}`,
-        }).catch(err => console.warn('[message reaction notification skipped]', err?.message || err));
+        }).catch(err => console.error('[message reaction notification failed]', err));
       }
       res.json(update);
     } catch (e) {
@@ -7355,14 +7352,17 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
     await client.query('COMMIT');
     committed = true;
     // Fire-and-forget: notificação não deve bloquear nem reverter o repost.
-    createSocialNotification({
+    const repostNotification = await createSocialNotification({
       recipientId: target.author_id,
       actorId: publishIdentity.authorId,
       type: 'repost',
       entityType: 'post',
       entityId: target.target_id,
       previewText: quote || target.content,
-    }).catch(err => console.warn('[repost notification skipped]', err?.message || err));
+    }).catch(err => {
+      console.error('[repost notification failed]', err);
+      return null;
+    });
     notifyProfileSubscribers({
       creatorId: publishIdentity.authorId,
       type: 'creator_repost',
@@ -7371,7 +7371,7 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
       previewText: quote || target.content,
       allOnly: true,
     }).catch(err => console.warn('[subscriber repost notification skipped]', err?.message || err));
-    res.status(201).json({ ok: true, repost: rows[0] });
+    res.status(201).json({ ok: true, repost: rows[0], notification_created: Boolean(repostNotification) });
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/repost]', e);
@@ -7486,7 +7486,7 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
     );
     const newComment = rows[0];
 
-    await optionalTransactionStep(client, 'comment notification', () => createSocialNotification({
+    const commentNotification = await optionalTransactionStep(client, 'comment notification', () => createSocialNotification({
       recipientId: post.author_id,
       actorId: req.user.sub,
       type: 'comment',
@@ -7536,7 +7536,13 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
       previewText: content,
       allOnly: true,
     }).catch(err => console.warn('[subscriber reply notification skipped]', err?.message || err));
-    res.status(201).json({ ok: true, id: newComment.id, created_at: newComment.created_at, media_urls: newComment.media_urls });
+    res.status(201).json({
+      ok: true,
+      id: newComment.id,
+      created_at: newComment.created_at,
+      media_urls: newComment.media_urls,
+      notification_created: Boolean(commentNotification),
+    });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts/:id/comments]', e);
@@ -7722,17 +7728,21 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
       await client.query('UPDATE user_posts SET likes_count = likes_count + 1 WHERE id = $1', [postId]);
     }
     await client.query('COMMIT');
+    let notification = null;
     if (rowCount > 0) {
-      createSocialNotification({
+      notification = await createSocialNotification({
         recipientId: post.author_id,
         actorId: req.user.sub,
         type: 'post_like',
         entityType: 'post',
         entityId: postId,
         previewText: post.content,
-      }).catch(err => console.warn('[like notification skipped]', err?.message || err));
+      }).catch(err => {
+        console.error('[like notification failed]', err);
+        return null;
+      });
     }
-    res.json({ ok: true, created: rowCount > 0 });
+    res.json({ ok: true, created: rowCount > 0, notification_created: Boolean(notification) });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/posts/:id/like]', e);
@@ -10236,7 +10246,7 @@ app.get('/api/community/player/:targetId/notification-preference', auth, async (
        ) AS is_following,
        COALESCE((
          SELECT level FROM profile_notification_preferences WHERE subscriber_id=$1 AND creator_id=$2
-       ), 'default') AS level`,
+       ), 'off') AS level`,
       [req.user.sub, targetId],
     );
     res.json({ is_following: Boolean(rows[0]?.is_following), level: rows[0]?.is_following ? rows[0]?.level : 'off' });

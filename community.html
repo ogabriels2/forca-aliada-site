@@ -3441,7 +3441,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615d">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615e">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3607,14 +3607,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
     </section>
 
     <!-- STORIES + AMIGOS -->
-    <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories e amigos">
-      <div class="stories-head">
-        <div>
-          <strong>Stories e amigos</strong>
-          <span>Momentos primeiro, sua turma sempre por perto.</span>
-        </div>
-        <span class="social-strip-meta" id="social-strip-meta">Atualizando...</span>
-      </div>
+    <section class="stories-shell social-strip" id="stories-shell" aria-label="Stories">
       <div class="stories-list" id="stories-list" aria-live="polite">
         <div class="social-strip-skeleton skel"></div>
         <div class="social-strip-skeleton skel"></div>
@@ -4896,11 +4889,7 @@ function updateCommunityPulse(){
     ? `${greet}, ${name}. Encontre uma conversa, responda no seu ritmo ou compartilhe algo que vale lembrar.`
     : `${greet}, ${name}. Este espaço está pronto para a primeira boa conversa.`;
   const greeting=$('#pulse-greeting');
-  const netTitle=$('#network-card-title');
-  const netCopy=$('#network-card-copy');
   if(greeting) greeting.textContent=copy;
-  if(netTitle) netTitle.textContent=state.notifUnread>0?'Há conversas esperando você':'Encontre algo que vale responder';
-  if(netCopy) netCopy.textContent=state.notifUnread>0?'Abra suas notificações ou descubra outros assuntos no feed.':'Descubra pessoas, assuntos e conversas sem transformar a comunidade em um placar.';
 }
 
 /* ======================= FEED ======================= */
@@ -8105,8 +8094,8 @@ async function toggleFollowUser(uid,currently,btn){
     const notifButton=document.querySelector(`[data-pf-notifs][data-uid="${CSS.escape(String(uid))}"]`);
     if(notifButton){
       notifButton.hidden=currently;
-      notifButton.dataset.level=currently?'off':'default';
-      notifButton.classList.toggle('is-on',!currently);
+      notifButton.dataset.level='off';
+      notifButton.classList.remove('is-on');
     }
     toast('success',currently?'Deixou de seguir':'Agora seguindo',currently?'Relação removida.':'');
   }catch(e){
@@ -9804,16 +9793,18 @@ async function boot(){
   Router.init();
   if(token){
     startPollSync();
-    setInterval(()=>{if(!document.hidden)loadNotifs()},15000);
+    setInterval(()=>{if(!document.hidden)loadNotifs()},5000);
+    window.addEventListener('focus',()=>loadNotifs());
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadNotifs()});
   }
 }
 boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260615d"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260615e"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
-<script src="assets/js/community-social-refinement-20260615a.js?v=20260615d"></script>
+<script src="assets/js/community-social-refinement-20260615a.js?v=20260615e"></script>
 <script src="assets/js/social-chat.js?v=chat15-20260615"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>

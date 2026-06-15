@@ -52,7 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_story_reactions_story ON story_reactions(story_id
 CREATE TABLE IF NOT EXISTS profile_notification_preferences (
   subscriber_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  level VARCHAR(16) NOT NULL DEFAULT 'default' CHECK (level IN ('off','default','all')),
+  level VARCHAR(16) NOT NULL DEFAULT 'off' CHECK (level IN ('off','default','all')),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (subscriber_id, creator_id),
   CHECK (subscriber_id <> creator_id)
@@ -352,21 +352,25 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
          ON CONFLICT(story_id,user_id) DO UPDATE SET code=EXCLUDED.code,updated_at=NOW()`,
         [id, req.user.sub, code],
       );
+      let notification = null;
       if (Number(story.rows[0].user_id) !== Number(req.user.sub) && typeof createSocialNotification === 'function') {
-        createSocialNotification({
+        notification = await createSocialNotification({
           recipientId: story.rows[0].user_id,
           actorId: req.user.sub,
           type: 'story_reaction',
           entityType: 'story',
           entityId: id,
           previewText: code,
-        }).catch(() => {});
+        }).catch(error => {
+          console.error('[story reaction notification failed]', error);
+          return null;
+        });
       }
       const { rows } = await pool.query(
         'SELECT code,COUNT(*)::int AS count FROM story_reactions WHERE story_id=$1 GROUP BY code ORDER BY count DESC,code',
         [id],
       );
-      res.json({ reactions: rows, my_reaction: code });
+      res.json({ reactions: rows, my_reaction: code, notification_created: Boolean(notification) });
     } catch (e) {
       console.error('[POST story reaction]', e);
       res.status(500).json({ error: 'Erro ao reagir ao story' });
