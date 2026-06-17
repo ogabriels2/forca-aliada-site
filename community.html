@@ -3464,7 +3464,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617d">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617e">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -4527,9 +4527,29 @@ function setBtnLoad(btn,loading,label=''){
 /* ======================= MODALS ======================= */
 // Track whether mousedown originated inside the sheet (to avoid closing on drag-out)
 let _modalMousedownInsideSheet = false;
+let _sheetSuppressGestureUntil = 0;
+function suppressResidualSheetGesture(ms=560){
+  _sheetSuppressGestureUntil=Math.max(_sheetSuppressGestureUntil,performance.now()+ms);
+}
+function isSheetGestureSuppressed(){
+  return performance.now()<_sheetSuppressGestureUntil;
+}
 document.addEventListener('mousedown', e => {
   _modalMousedownInsideSheet = Boolean(e.target.closest('.sheet'));
 }, true);
+document.addEventListener('click',e=>{
+  if(!isSheetGestureSuppressed())return;
+  e.preventDefault();
+  e.stopPropagation();
+},true);
+document.addEventListener('focusin',e=>{
+  if(!isSheetGestureSuppressed())return;
+  const el=e.target;
+  if(el?.matches?.('input,textarea,select,[contenteditable="true"]')){
+    el.blur?.();
+    e.stopPropagation();
+  }
+},true);
 
 const MODAL_HOST_SELECTOR = '.backdrop.show,.social-sheet-overlay.show,.mobile-drawer-shell.show,.lb.is-open';
 let _modalScrollY = 0;
@@ -4694,8 +4714,10 @@ function closeSheetHost(host){
 function startSheetDrag(event,host,sheet){
   if(event.pointerType==='mouse'&&event.button!==0)return;
   if(!sheetDragSurface(event,sheet))return;
+  event.preventDefault();
   const startY=event.clientY;
   let lastY=startY,lastT=performance.now(),velocity=0,dragged=false;
+  document.body.classList.add('sheet-gesture-active');
   sheet.classList.add('is-sheet-dragging');
   sheet.classList.remove('sheet-elastic-reset');
   host.classList.add('sheet-drag-active');
@@ -4705,7 +4727,10 @@ function startSheetDrag(event,host,sheet){
     const now=performance.now();
     velocity=(ev.clientY-lastY)/Math.max(1,now-lastT);
     lastY=ev.clientY;lastT=now;
-    if(Math.abs(dy)>2)dragged=true;
+    if(Math.abs(dy)>2){
+      dragged=true;
+      suppressResidualSheetGesture();
+    }
     const y=resistedSheetY(dy);
     const fade=Math.max(.72,1-Math.max(0,y)/560);
     const scale=1-Math.min(.035,Math.max(0,y)/1800);
@@ -4718,9 +4743,11 @@ function startSheetDrag(event,host,sheet){
     document.removeEventListener('pointermove',move,true);
     document.removeEventListener('pointerup',end,true);
     document.removeEventListener('pointercancel',end,true);
+    document.body.classList.remove('sheet-gesture-active');
     host.classList.remove('sheet-drag-active');
     sheet.classList.remove('is-sheet-dragging');
     const dy=(ev?.clientY??lastY)-startY;
+    if(dragged)suppressResidualSheetGesture(680);
     if(dragged&&(dy>126||velocity>.72)){
       animateSheetReleaseClose(host,sheet,()=>closeSheetHost(host));
       return;
@@ -9588,19 +9615,27 @@ function bindEvents(){
     /* abrir */
     lb.classList.add('is-open');
     lb.setAttribute('aria-hidden','false');
-    document.body.classList.add('modal-open');
+    document.body.classList.add('modal-open','lightbox-open');
+    syncModalScrollLock();
 
     /* foco acessível */
-    setTimeout(()=>$('#lb-close-desk')?.focus(),60);
+    if(window.matchMedia?.('(hover: hover) and (pointer: fine)').matches){
+      setTimeout(()=>{
+        try{$('#lb-close-desk')?.focus({preventScroll:true})}
+        catch(_){$('#lb-close-desk')?.focus()}
+      },60);
+    }
 
     /* carregar comentários assíncrono */
     loadLbComments(post.repost_of_id||post.id);
   }
 
   function closeLightbox(){
+    if(lb.contains(document.activeElement))document.activeElement.blur?.();
     lb.classList.remove('is-open');
     lb.setAttribute('aria-hidden','true');
-    document.body.classList.remove('modal-open');
+    document.body.classList.remove('lightbox-open');
+    if(!$$('.backdrop.show,.social-sheet-overlay.show,.mobile-drawer-shell.show').length)document.body.classList.remove('modal-open');
     lbPost=null;lbUrls=[];
     state.lightboxPost=null;
     lbTaDesk.value='';lbTaMob.value='';
@@ -9608,6 +9643,7 @@ function bindEvents(){
     lbImg.classList.remove('is-loading');
     lbMobMenu.hidden=true;
     resetLbTransform();
+    syncModalScrollLock();
   }
 
   /* ── imagem ── */

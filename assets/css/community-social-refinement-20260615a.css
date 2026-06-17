@@ -1338,10 +1338,53 @@ body.social-ui-v2.modal-scroll-locked {
   overscroll-behavior: none;
 }
 
+body.social-ui-v2.lightbox-open {
+  overscroll-behavior: none;
+}
+
+body.social-ui-v2.lightbox-open .page-body,
+body.social-ui-v2.lightbox-open .topbar,
+body.social-ui-v2.lightbox-open .mobile-nav,
+body.social-ui-v2.lightbox-open .fab-post {
+  pointer-events: none;
+}
+
+body.social-ui-v2.lightbox-open #lb {
+  pointer-events: auto;
+}
+
+body.social-ui-v2.sheet-gesture-active {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.social-ui-v2.sheet-gesture-active * {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body.social-ui-v2 .backdrop.show,
 body.social-ui-v2 .social-sheet-overlay.show {
   z-index: 2147481800;
   overscroll-behavior: contain;
+}
+
+body.social-ui-v2 #lb.lb {
+  z-index: 2147481600;
+  isolation: isolate;
+  overscroll-behavior: contain;
+}
+
+body.social-ui-v2 #lb.lb,
+body.social-ui-v2 #lb .lb-stage,
+body.social-ui-v2 #lb .lb-img-wrap {
+  touch-action: none;
+}
+
+body.social-ui-v2 #lb .lb-panel,
+body.social-ui-v2 #lb .lb-comments,
+body.social-ui-v2 #lb .lb-reply-ta {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 body.social-ui-v2 #toast-stack {
