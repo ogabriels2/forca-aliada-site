@@ -3464,7 +3464,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617b">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617c">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -4655,7 +4655,7 @@ function prepareDraggableSheets(root=document){
     if(!sheet||sheet.dataset.sheetDragReady)return;
     sheet.dataset.sheetDragReady='1';
     sheet.classList.add('sheet-draggable');
-    if(!sheet.querySelector('.sheet-drag-handle,.social-sheet-handle')){
+    if(!sheet.querySelector('.sheet-drag-handle,.social-sheet-handle,[data-sheet-drag-handle]')){
       sheet.insertAdjacentHTML('afterbegin','<div class="sheet-drag-handle" data-sheet-drag-handle aria-hidden="true"><span></span></div>');
     }
     sheet.addEventListener('pointerdown',event=>startSheetDrag(event,host,sheet),{passive:false});
@@ -7009,7 +7009,8 @@ async function openShareDetails(details){
   shareFilter='all';
   shareSending=false;
   const shareSheet=document.querySelector('#share-modal .share-sheet');
-  shareSheet?.classList.remove('is-inside','is-story-share');
+  shareSheet?.classList.remove('is-story-share');
+  shareSheet?.classList.add('is-inside');
   shareSheet?.classList.toggle('is-story-share',details.kind==='story');
   $('#share-summary-title').textContent=details.title;
   $('#share-summary-text').textContent=details.text||'Link pronto para compartilhar.';

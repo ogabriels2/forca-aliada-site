@@ -70,10 +70,13 @@ body.social-ui-v2 .social-sheet-overlay.sheet-closing .social-sheet {
 
 body.social-ui-v2 .sheet-drag-handle,
 body.social-ui-v2 .social-sheet-handle {
+  width: 100%;
   height: 24px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
+  margin: 0;
+  background: transparent;
   cursor: grab;
   touch-action: none;
 }
@@ -98,6 +101,22 @@ body.social-ui-v2 .sheet-draggable .story-camera-head {
 body.social-ui-v2 .sheet-draggable .sheet-header button,
 body.social-ui-v2 .sheet-draggable .story-camera-head button {
   cursor: pointer;
+}
+
+body.social-ui-v2 .sheet-draggable .story-camera-head[data-sheet-drag-handle] {
+  position: relative;
+}
+
+body.social-ui-v2 .sheet-draggable .story-camera-head[data-sheet-drag-handle]::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb,var(--ink-3) 42%,transparent);
+  transform: translateX(-50%);
 }
 
 body.social-ui-v2 .sheet.is-sheet-dragging,
@@ -1300,6 +1319,11 @@ body.social-ui-v2 .share-sheet {
   flex-direction: column;
 }
 
+body.social-ui-v2 .share-sheet.is-inside .share-mode-choices,
+body.social-ui-v2 .share-sheet.is-inside .share-actions {
+  display: none !important;
+}
+
 body.social-ui-v2 .share-sheet .sheet-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -1419,8 +1443,7 @@ body.social-ui-v2 .share-sheet.is-story-share .share-summary::before {
   }
 
   body.social-ui-v2 .share-sheet.is-inside .share-mode-choices {
-    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
-    gap: 7px;
+    display: none !important;
   }
 
   body.social-ui-v2 .share-sheet.is-inside .share-mode-choice {
@@ -1487,5 +1510,89 @@ body.social-ui-v2 .share-sheet.is-story-share .share-summary::before {
   body.social-ui-v2 .share-send-btn svg {
     width: 17px;
     height: 17px;
+  }
+
+  body.social-ui-v2 .story-camera-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  body.social-ui-v2 .story-camera-sheet {
+    width: 100%;
+    height: min(92dvh,780px);
+    max-height: calc(100dvh - 8px);
+    border: 0;
+    border-radius: 24px 24px 0 0;
+  }
+
+  body.social-ui-v2 .story-camera-head {
+    min-height: 54px;
+    padding: 14px 12px 9px;
+  }
+
+  body.social-ui-v2 .story-camera-head p,
+  body.social-ui-v2 .story-camera-hint,
+  body.social-ui-v2 .story-camera-tip {
+    display: none;
+  }
+
+  body.social-ui-v2 .story-camera-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(220px,38dvh) minmax(0,1fr);
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    overflow: hidden;
+    padding: 10px 12px;
+  }
+
+  body.social-ui-v2 .story-camera-frame {
+    width: min(46vw,190px);
+    height: auto;
+    max-height: 38dvh;
+    place-self: center;
+    border-radius: 20px;
+  }
+
+  body.social-ui-v2 .story-camera-frame img {
+    position: absolute;
+    inset: 0;
+  }
+
+  body.social-ui-v2 .story-camera-controls {
+    min-height: 0;
+    overflow: auto;
+    align-content: start;
+    gap: 9px;
+    padding: 2px 0 6px;
+    overscroll-behavior: contain;
+  }
+
+  body.social-ui-v2 .story-caption-field textarea {
+    min-height: 70px;
+    max-height: 110px;
+  }
+
+  body.social-ui-v2 .story-camera-actions,
+  body.social-ui-v2 .story-filter-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  body.social-ui-v2 .story-camera-actions::-webkit-scrollbar,
+  body.social-ui-v2 .story-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.social-ui-v2 .story-camera-actions button,
+  body.social-ui-v2 .story-filter-row button {
+    flex: 0 0 auto;
+  }
+
+  body.social-ui-v2 .story-camera-footer {
+    padding: 9px 12px max(11px,env(safe-area-inset-bottom));
   }
 }
