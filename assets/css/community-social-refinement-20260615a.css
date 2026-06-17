@@ -68,6 +68,11 @@ body.social-ui-v2 .social-sheet-overlay.sheet-closing .social-sheet {
   animation: socialSheetElasticOut 210ms cubic-bezier(.45,0,.78,.2) both !important;
 }
 
+body.social-ui-v2 .backdrop.sheet-drag-release .sheet,
+body.social-ui-v2 .social-sheet-overlay.sheet-drag-release .social-sheet {
+  animation: none !important;
+}
+
 body.social-ui-v2 .sheet-drag-handle,
 body.social-ui-v2 .social-sheet-handle {
   width: 100%;
@@ -131,11 +136,40 @@ body.social-ui-v2 .social-sheet.sheet-elastic-reset {
   transition: transform 520ms cubic-bezier(.16,1.32,.29,1), opacity 180ms ease;
 }
 
+body.social-ui-v2 .sheet.is-sheet-release-closing,
+body.social-ui-v2 .social-sheet.is-sheet-release-closing {
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
 body.social-ui-v2 .sheet-body,
 body.social-ui-v2 .social-sheet-body,
 body.social-ui-v2 .share-chat-list,
 body.social-ui-v2 .story-viewers-list {
   overscroll-behavior: contain;
+}
+
+body.social-ui-v2 :is(
+  .sheet-body,
+  .social-sheet-body,
+  .share-chat-list,
+  .story-viewers-list,
+  .relation-list2,
+  .affiliate-list,
+  .friend-list,
+  .notif-list,
+  .profile-notif-options,
+  .story-camera-controls,
+  .mobile-drawer-nav,
+  .lb-comments,
+  #player-list,
+  .player-list,
+  .search-results-panel,
+  .discover-row
+) {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
 }
 
 @keyframes socialSheetElasticIn {
@@ -1349,6 +1383,31 @@ body.social-ui-v2 .share-sheet.is-story-share .share-summary::before {
   box-shadow: 0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);
 }
 
+body.social-ui-v2 .share-recipient-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+body.social-ui-v2 .share-outside-mini {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb,var(--accent) 36%,var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb,var(--accent-soft) 44%,transparent);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform var(--t-fast),background var(--t-fast),border-color var(--t-fast);
+}
+
+body.social-ui-v2 .share-outside-mini:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
 @media(max-width:767px) {
   html,
   body {
@@ -1458,7 +1517,6 @@ body.social-ui-v2 .share-sheet.is-story-share .share-summary::before {
   }
 
   body.social-ui-v2 .share-sheet.is-inside .share-mode-choice small,
-  body.social-ui-v2 .share-recipient-meta span,
   body.social-ui-v2 .share-send-status span {
     display: none;
   }
@@ -1476,6 +1534,17 @@ body.social-ui-v2 .share-sheet.is-story-share .share-summary::before {
     border-radius: 14px;
     background: #0f0f0d;
     scrollbar-width: none;
+  }
+
+  body.social-ui-v2 .share-recipient-meta {
+    align-items: center;
+  }
+
+  body.social-ui-v2 .share-outside-mini {
+    min-height: 28px;
+    padding-inline: 9px;
+    font-size: 10px;
+    white-space: nowrap;
   }
 
   body.social-ui-v2 .share-chat-list::-webkit-scrollbar {

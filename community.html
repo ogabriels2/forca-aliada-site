@@ -3464,7 +3464,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617c">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617d">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3827,7 +3827,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
       </div>
       <div class="share-recipient-meta" data-share-inside>
         <strong id="share-recipient-count">Escolha quem vai receber</strong>
-        <span>O conteúdo será enviado sem abrir o chat</span>
+        <span class="share-recipient-actions"><button class="share-outside-mini" type="button" id="share-outside-mini-btn">Compartilhar fora</button></span>
       </div>
       <div class="share-chat-list" id="share-chat-list" data-share-inside><div class="skel" style="height:52px;border-radius:10px"></div></div>
     </div>
@@ -4624,9 +4624,10 @@ function syncModalScrollLock(){
 
 function resetSheetMotion(host){
   host?.querySelectorAll?.('.sheet,.social-sheet').forEach(sheet=>{
-    sheet.classList.remove('is-sheet-dragging','sheet-elastic-reset');
+    sheet.classList.remove('is-sheet-dragging','sheet-elastic-reset','is-sheet-release-closing');
     sheet.style.transform='';
     sheet.style.opacity='';
+    sheet.style.transition='';
   });
 }
 function closeEphemeralSheet(back,afterClose){
@@ -4634,7 +4635,7 @@ function closeEphemeralSheet(back,afterClose){
   if(back._sheetCloseTimer){clearTimeout(back._sheetCloseTimer);back._sheetCloseTimer=null}
   const finish=()=>{
     back._sheetCloseTimer=null;
-    back.classList.remove('show','sheet-closing','sheet-drag-active');
+    back.classList.remove('show','sheet-closing','sheet-drag-active','sheet-drag-release');
     resetSheetMotion(back);
     if(back.isConnected)back.remove();
     if(!$$('.backdrop.show,.social-sheet-overlay.show').length)document.body.classList.remove('modal-open');
@@ -4673,6 +4674,17 @@ function resistedSheetY(dy){
   if(dy<112)return dy;
   return 112+(dy-112)*.52;
 }
+function animateSheetReleaseClose(host,sheet,done){
+  if(!host||!sheet){done?.();return}
+  const travel=Math.max(360,Math.min(window.innerHeight+120,window.innerHeight*.82+120));
+  host.classList.add('sheet-closing','sheet-drag-release');
+  sheet.classList.remove('is-sheet-dragging','sheet-elastic-reset');
+  sheet.classList.add('is-sheet-release-closing');
+  sheet.style.transition='transform 260ms cubic-bezier(.22,1,.36,1), opacity 190ms ease';
+  sheet.style.transform=`translate3d(0,${travel}px,0) scale(.965)`;
+  sheet.style.opacity='0';
+  setTimeout(()=>done?.(),260);
+}
 function closeSheetHost(host){
   if(typeof host._sheetClose==='function'){host._sheetClose();return}
   if(host.classList.contains('social-sheet-overlay')){closeSocialSheet?.();return}
@@ -4710,7 +4722,7 @@ function startSheetDrag(event,host,sheet){
     sheet.classList.remove('is-sheet-dragging');
     const dy=(ev?.clientY??lastY)-startY;
     if(dragged&&(dy>126||velocity>.72)){
-      closeSheetHost(host);
+      animateSheetReleaseClose(host,sheet,()=>closeSheetHost(host));
       return;
     }
     sheet.classList.add('sheet-elastic-reset');
@@ -4725,7 +4737,7 @@ function startSheetDrag(event,host,sheet){
 const sheetObserver=new MutationObserver(()=>requestAnimationFrame(()=>{prepareDraggableSheets();syncModalScrollLock()}));
 if(document.body)sheetObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 function openModal(id){const m=$('#'+id);if(!m)return;if(m._sheetCloseTimer){clearTimeout(m._sheetCloseTimer);m._sheetCloseTimer=null}m.classList.remove('sheet-closing');m.classList.add('show');m.setAttribute('aria-hidden','false');resetSheetMotion(m);document.body.classList.add('modal-open');prepareDraggableSheets(m);syncModalScrollLock()}
-function closeModal(id,{immediate=false}={}){const m=$('#'+id);if(!m)return;if(m._sheetCloseTimer){clearTimeout(m._sheetCloseTimer);m._sheetCloseTimer=null}const finish=()=>{m._sheetCloseTimer=null;m.classList.remove('show','sheet-closing','sheet-drag-active');m.setAttribute('aria-hidden','true');resetSheetMotion(m);if(!$$('.backdrop.show,.social-sheet-overlay.show').length)document.body.classList.remove('modal-open');syncModalScrollLock()};if(immediate||!m.classList.contains('show')||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){finish();return}m.classList.add('sheet-closing');m._sheetCloseTimer=setTimeout(finish,210)}
+function closeModal(id,{immediate=false}={}){const m=$('#'+id);if(!m)return;if(m._sheetCloseTimer){clearTimeout(m._sheetCloseTimer);m._sheetCloseTimer=null}const finish=()=>{m._sheetCloseTimer=null;m.classList.remove('show','sheet-closing','sheet-drag-active','sheet-drag-release');m.setAttribute('aria-hidden','true');resetSheetMotion(m);if(!$$('.backdrop.show,.social-sheet-overlay.show').length)document.body.classList.remove('modal-open');syncModalScrollLock()};if(immediate||!m.classList.contains('show')||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){finish();return}m.classList.add('sheet-closing');m._sheetCloseTimer=setTimeout(finish,210)}
 function confirmDialog({title,msg,confirmText='Confirmar',danger=false}){
   return new Promise(res=>{
     const back=document.createElement('div');
@@ -9174,7 +9186,7 @@ function bindEvents(){
       setTimeout(()=>document.querySelector('#share-recipient-search')?.focus(),80);
       return;
     }
-    if(e.target.closest('#share-outside-btn')&&shareContext){
+    if(e.target.closest('#share-outside-btn,#share-outside-mini-btn')&&shareContext){
       e.preventDefault();
       closeModal('share-modal');
       shareOutside(shareContext);
