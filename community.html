@@ -3441,7 +3441,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260615e">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617a">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -4508,16 +4508,118 @@ document.addEventListener('mousedown', e => {
   _modalMousedownInsideSheet = Boolean(e.target.closest('.sheet'));
 }, true);
 
-function openModal(id){const m=$('#'+id);if(!m)return;m.classList.add('show');m.setAttribute('aria-hidden','false');document.body.classList.add('modal-open')}
-function closeModal(id){const m=$('#'+id);if(!m)return;m.classList.remove('show');m.setAttribute('aria-hidden','true');if(!$$('.backdrop.show').length)document.body.classList.remove('modal-open')}
+function resetSheetMotion(host){
+  host?.querySelectorAll?.('.sheet,.social-sheet').forEach(sheet=>{
+    sheet.classList.remove('is-sheet-dragging','sheet-elastic-reset');
+    sheet.style.transform='';
+    sheet.style.opacity='';
+  });
+}
+function closeEphemeralSheet(back,afterClose){
+  if(!back)return;
+  if(back._sheetCloseTimer){clearTimeout(back._sheetCloseTimer);back._sheetCloseTimer=null}
+  const finish=()=>{
+    back._sheetCloseTimer=null;
+    back.classList.remove('show','sheet-closing','sheet-drag-active');
+    resetSheetMotion(back);
+    if(back.isConnected)back.remove();
+    if(!$$('.backdrop.show,.social-sheet-overlay.show').length)document.body.classList.remove('modal-open');
+    afterClose?.();
+  };
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){finish();return}
+  back.classList.add('sheet-closing');
+  back._sheetCloseTimer=setTimeout(finish,210);
+}
+window.closeEphemeralSheet=closeEphemeralSheet;
+function prepareDraggableSheets(root=document){
+  const hosts=[];
+  if(root?.matches?.('.backdrop,.social-sheet-overlay'))hosts.push(root);
+  root?.querySelectorAll?.('.backdrop.show,.social-sheet-overlay.show').forEach(host=>hosts.push(host));
+  hosts.forEach(host=>{
+    const sheet=host.querySelector?.('.sheet,.social-sheet');
+    if(!sheet||sheet.dataset.sheetDragReady)return;
+    sheet.dataset.sheetDragReady='1';
+    sheet.classList.add('sheet-draggable');
+    if(!sheet.querySelector('.sheet-drag-handle,.social-sheet-handle')){
+      sheet.insertAdjacentHTML('afterbegin','<div class="sheet-drag-handle" data-sheet-drag-handle aria-hidden="true"><span></span></div>');
+    }
+    sheet.addEventListener('pointerdown',event=>startSheetDrag(event,host,sheet),{passive:false});
+  });
+}
+window.prepareDraggableSheets=prepareDraggableSheets;
+function sheetDragSurface(event,sheet){
+  const handle=event.target.closest('[data-sheet-drag-handle],.sheet-drag-handle,.social-sheet-handle,.sheet-header,.story-camera-head');
+  if(!handle||!sheet.contains(handle))return null;
+  if(event.target.closest('button,a,input,textarea,select,label,[contenteditable="true"],[data-no-sheet-drag]'))return null;
+  return handle;
+}
+function resistedSheetY(dy){
+  if(dy<0)return dy*.22;
+  if(dy<112)return dy;
+  return 112+(dy-112)*.52;
+}
+function closeSheetHost(host){
+  if(typeof host._sheetClose==='function'){host._sheetClose();return}
+  if(host.classList.contains('social-sheet-overlay')){closeSocialSheet?.();return}
+  if(host.id){closeModal(host.id);return}
+  closeEphemeralSheet(host);
+}
+function startSheetDrag(event,host,sheet){
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  if(!sheetDragSurface(event,sheet))return;
+  const startY=event.clientY;
+  let lastY=startY,lastT=performance.now(),velocity=0,dragged=false;
+  sheet.classList.add('is-sheet-dragging');
+  sheet.classList.remove('sheet-elastic-reset');
+  host.classList.add('sheet-drag-active');
+  sheet.setPointerCapture?.(event.pointerId);
+  const move=ev=>{
+    const dy=ev.clientY-startY;
+    const now=performance.now();
+    velocity=(ev.clientY-lastY)/Math.max(1,now-lastT);
+    lastY=ev.clientY;lastT=now;
+    if(Math.abs(dy)>2)dragged=true;
+    const y=resistedSheetY(dy);
+    const fade=Math.max(.72,1-Math.max(0,y)/560);
+    const scale=1-Math.min(.035,Math.max(0,y)/1800);
+    sheet.style.transform=`translate3d(0,${y}px,0) scale(${scale})`;
+    sheet.style.opacity=String(fade);
+    ev.preventDefault();
+  };
+  const end=ev=>{
+    sheet.releasePointerCapture?.(event.pointerId);
+    document.removeEventListener('pointermove',move,true);
+    document.removeEventListener('pointerup',end,true);
+    document.removeEventListener('pointercancel',end,true);
+    host.classList.remove('sheet-drag-active');
+    sheet.classList.remove('is-sheet-dragging');
+    const dy=(ev?.clientY??lastY)-startY;
+    if(dragged&&(dy>126||velocity>.72)){
+      closeSheetHost(host);
+      return;
+    }
+    sheet.classList.add('sheet-elastic-reset');
+    sheet.style.transform='';
+    sheet.style.opacity='';
+    setTimeout(()=>sheet.classList.remove('sheet-elastic-reset'),540);
+  };
+  document.addEventListener('pointermove',move,{capture:true,passive:false});
+  document.addEventListener('pointerup',end,{capture:true,passive:true});
+  document.addEventListener('pointercancel',end,{capture:true,passive:true});
+}
+const sheetObserver=new MutationObserver(()=>requestAnimationFrame(()=>prepareDraggableSheets()));
+if(document.body)sheetObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+function openModal(id){const m=$('#'+id);if(!m)return;if(m._sheetCloseTimer){clearTimeout(m._sheetCloseTimer);m._sheetCloseTimer=null}m.classList.remove('sheet-closing');m.classList.add('show');m.setAttribute('aria-hidden','false');resetSheetMotion(m);document.body.classList.add('modal-open');prepareDraggableSheets(m)}
+function closeModal(id,{immediate=false}={}){const m=$('#'+id);if(!m)return;if(m._sheetCloseTimer){clearTimeout(m._sheetCloseTimer);m._sheetCloseTimer=null}const finish=()=>{m._sheetCloseTimer=null;m.classList.remove('show','sheet-closing','sheet-drag-active');m.setAttribute('aria-hidden','true');resetSheetMotion(m);if(!$$('.backdrop.show,.social-sheet-overlay.show').length)document.body.classList.remove('modal-open')};if(immediate||!m.classList.contains('show')||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){finish();return}m.classList.add('sheet-closing');m._sheetCloseTimer=setTimeout(finish,210)}
 function confirmDialog({title,msg,confirmText='Confirmar',danger=false}){
   return new Promise(res=>{
     const back=document.createElement('div');
     back.className='backdrop show';
     back.innerHTML=`<div class="sheet sheet-sm" role="dialog" aria-modal="true"><div class="confirm-body"><h2>${esc(title)}</h2><p>${esc(msg)}</p></div><div class="confirm-footer"><button class="btn btn-secondary" data-c="no">Cancelar</button><button class="btn ${danger?'btn-danger':'btn-primary'}" data-c="yes">${esc(confirmText)}</button></div></div>`;
-    const close=v=>{document.body.classList.remove('modal-open');back.remove();res(v)};
+    let done=false;
+    const close=v=>{if(done)return;done=true;closeEphemeralSheet(back,()=>res(v))};
     back.addEventListener('click',e=>{const c=e.target.closest('[data-c]')?.dataset.c;if(c==='yes')close(true);else if(c==='no'||(e.target===back&&!_modalMousedownInsideSheet))close(false)});
-    document.body.appendChild(back);document.body.classList.add('modal-open');
+    document.body.appendChild(back);document.body.classList.add('modal-open');prepareDraggableSheets(back);
     requestAnimationFrame(()=>back.querySelector('[data-c="no"]')?.focus());
   });
 }
@@ -4578,9 +4680,10 @@ function reportDialog(){
         btn.addEventListener('click',e=>{e.stopPropagation();close(null)});
       });
     }
-    const close=v=>{document.body.classList.remove('modal-open');back.remove();res(v)};
+    let done=false;
+    const close=v=>{if(done)return;done=true;closeEphemeralSheet(back,()=>res(v))};
     back.addEventListener('click',e=>{if(e.target===back&&!_modalMousedownInsideSheet)close(null)});
-    document.body.appendChild(back);document.body.classList.add('modal-open');
+    document.body.appendChild(back);document.body.classList.add('modal-open');prepareDraggableSheets(back);
     render();
     setTimeout(()=>back.querySelector('#report-comment-ta')?.focus(),80);
   });
@@ -7238,7 +7341,7 @@ function buildSocialSheetDOM(){
 }
 function closeSocialSheet(){
   const o=$('#social-sheet-overlay');
-  if(o)o.classList.remove('show');
+  if(o)closeEphemeralSheet(o);
 }
 function socialUserRowHTML(u,extraInfo){
   const mc=u.minecraft_name||u.username||'Jogador';
@@ -7261,7 +7364,12 @@ async function showSocialSheet(postId,startTab='likes'){
   const body=$('#social-sheet-body');
   const tabs=$('#social-sheet-tabs');
   const title=$('#social-sheet-title');
+  if(overlay._sheetCloseTimer){clearTimeout(overlay._sheetCloseTimer);overlay._sheetCloseTimer=null}
+  overlay.classList.remove('sheet-closing');
   overlay.classList.add('show');
+  document.body.classList.add('modal-open');
+  resetSheetMotion(overlay);
+  prepareDraggableSheets(overlay);
 
   // Build tabs
   const tabDefs=[{id:'likes',label:'Curtidas'},{id:'reposts',label:'Reposts'}];
@@ -9802,7 +9910,7 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260615e"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260617a"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
 <script src="assets/js/community-social-refinement-20260615a.js?v=20260615e"></script>
 <script src="assets/js/social-chat.js?v=chat15-20260615"></script>

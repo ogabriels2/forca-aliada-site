@@ -134,6 +134,10 @@
     return document.body.classList.contains('guest-mode') || !(typeof token !== 'undefined' && token);
   }
 
+  function sheetOverlayOpen() {
+    return Boolean(document.querySelector('.backdrop.show,.social-sheet-overlay.show'));
+  }
+
   function stabilizeFeedLayout() {
     const feed = document.querySelector('#feed-col');
     const header = feed?.querySelector('.col-header');
@@ -483,7 +487,7 @@
       back.className = 'backdrop show story-camera-backdrop';
       back.innerHTML = `
         <div class="sheet story-camera-sheet" role="dialog" aria-modal="true" aria-labelledby="story-composer-title">
-          <div class="story-camera-head">
+          <div class="story-camera-head" data-sheet-drag-handle>
             <button class="story-camera-icon" type="button" data-story-compose-cancel aria-label="Fechar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
             <div><h2 id="story-composer-title">Novo story</h2><p>Edite como uma camera antes de publicar.</p></div>
             <button class="story-camera-icon" type="button" data-story-compose-repick aria-label="Trocar imagem"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5M3 12A9 9 0 0 1 18.5 5.8L21 8M21 3v5h-5"/></svg></button>
@@ -518,17 +522,25 @@
         </div>`;
       document.body.appendChild(back);
       document.body.classList.add('modal-open');
+      window.prepareDraggableSheets?.(back);
       const preview = back.querySelector('[data-story-preview]');
       const syncPreview = () => {
         if (!preview) return;
         preview.style.transform = `scale(${zoom}) rotate(${rotation}deg)`;
         preview.style.filter = storyFilterCSS(filter);
       };
-      const close = () => {
+      let closed = false;
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
         URL.revokeObjectURL(previewUrl);
-        back.remove();
         if (!document.querySelectorAll('.backdrop.show').length) document.body.classList.remove('modal-open');
       };
+      const close = () => {
+        if (window.closeEphemeralSheet) window.closeEphemeralSheet(back, cleanup);
+        else { back.remove(); cleanup(); }
+      };
+      back._sheetClose = close;
       back.addEventListener('input', event => {
         if (!event.target.matches('[data-story-zoom]')) return;
         zoom = Number(event.target.value || 1);
@@ -758,7 +770,13 @@
       <div class="story-viewers-list"><div class="skel" style="height:58px"></div><div class="skel" style="height:58px"></div></div>
     </section>`;
     document.body.appendChild(back);
-    const close = () => { back.remove(); storyPaused = false; };
+    window.prepareDraggableSheets?.(back);
+    const finishClose = () => { storyPaused = false; };
+    const close = () => {
+      if (window.closeEphemeralSheet) window.closeEphemeralSheet(back, finishClose);
+      else { back.remove(); finishClose(); }
+    };
+    back._sheetClose = close;
     back.addEventListener('click', event => { if (event.target === back || event.target.closest('[data-story-viewers-close],.story-viewer-row')) close(); });
     try {
       const payload = await api(`/api/community/stories/${encodeURIComponent(story.id)}/viewers`);
@@ -1346,11 +1364,13 @@
     const storyViewer = document.querySelector('#story-viewer');
     const storyStage = document.querySelector('.story-stage');
     storyViewer?.addEventListener('touchstart', event => {
+      if (sheetOverlayOpen()) return;
       if (event.touches.length !== 1 || event.target.closest('.story-reply-bar,.story-reaction-tray,.story-viewer-actions,.story-owner-stats')) return;
       const touch = event.touches[0];
       storyGesture = { x: touch.clientX, y: touch.clientY, at: Date.now(), dx: 0, dy: 0, axis: null };
     }, { passive: true });
     storyViewer?.addEventListener('touchmove', event => {
+      if (sheetOverlayOpen()) return;
       if (!storyGesture || event.touches.length !== 1) return;
       const touch = event.touches[0];
       storyGesture.dx = touch.clientX - storyGesture.x;
@@ -1375,6 +1395,7 @@
       }
     }, { passive: false });
     storyViewer?.addEventListener('touchend', event => {
+      if (sheetOverlayOpen()) { storyGesture = null; return; }
       if (!storyGesture || !event.changedTouches[0]) return;
       const { dx, dy, at, axis } = storyGesture;
       const elapsed = Math.max(1, Date.now() - at);
@@ -1425,6 +1446,7 @@
     let storyPressAt = 0;
     let storyPressTimer = null;
     document.querySelector('.story-stage')?.addEventListener('pointerdown', event => {
+      if (sheetOverlayOpen()) return;
       if (event.pointerType !== 'mouse') return;
       if (event.target.closest('.story-reply-bar,.story-reaction-tray,.story-viewer-actions,.story-owner-stats')) return;
       storyPressAt = Date.now();
@@ -1450,6 +1472,7 @@
     }, { passive: true });
     document.addEventListener('keydown', event => {
       if (document.querySelector('#story-viewer')?.hidden !== false) return;
+      if (sheetOverlayOpen()) return;
       if (event.key === 'Enter' && event.target.closest('[data-story-profile]')) {
         const target = event.target.closest('[data-story-profile]');
         closeStory();

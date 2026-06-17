@@ -50,6 +50,90 @@ body.social-ui-v2 .reaction-summary {
   display: none !important;
 }
 
+body.social-ui-v2 .backdrop.show .sheet,
+body.social-ui-v2 .social-sheet-overlay.show .social-sheet {
+  animation: socialSheetElasticIn 430ms cubic-bezier(.16,1.16,.34,1) both;
+  transform-origin: center bottom;
+  will-change: transform, opacity;
+}
+
+body.social-ui-v2 .backdrop.sheet-closing,
+body.social-ui-v2 .social-sheet-overlay.sheet-closing {
+  pointer-events: none;
+  animation: socialBackdropOut 190ms ease both;
+}
+
+body.social-ui-v2 .backdrop.sheet-closing .sheet,
+body.social-ui-v2 .social-sheet-overlay.sheet-closing .social-sheet {
+  animation: socialSheetElasticOut 210ms cubic-bezier(.45,0,.78,.2) both !important;
+}
+
+body.social-ui-v2 .sheet-drag-handle,
+body.social-ui-v2 .social-sheet-handle {
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+body.social-ui-v2 .sheet-drag-handle span,
+body.social-ui-v2 .social-sheet-handle::before {
+  content: "";
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb,var(--ink-3) 48%,transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset;
+}
+
+body.social-ui-v2 .sheet-draggable .sheet-header,
+body.social-ui-v2 .sheet-draggable .story-camera-head {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+body.social-ui-v2 .sheet-draggable .sheet-header button,
+body.social-ui-v2 .sheet-draggable .story-camera-head button {
+  cursor: pointer;
+}
+
+body.social-ui-v2 .sheet.is-sheet-dragging,
+body.social-ui-v2 .social-sheet.is-sheet-dragging {
+  animation: none !important;
+  transition: none !important;
+  cursor: grabbing;
+}
+
+body.social-ui-v2 .sheet.sheet-elastic-reset,
+body.social-ui-v2 .social-sheet.sheet-elastic-reset {
+  transition: transform 520ms cubic-bezier(.16,1.32,.29,1), opacity 180ms ease;
+}
+
+body.social-ui-v2 .sheet-body,
+body.social-ui-v2 .social-sheet-body,
+body.social-ui-v2 .share-chat-list,
+body.social-ui-v2 .story-viewers-list {
+  overscroll-behavior: contain;
+}
+
+@keyframes socialSheetElasticIn {
+  0% { opacity: 0; transform: translate3d(0,34px,0) scale(.965); }
+  66% { opacity: 1; transform: translate3d(0,-5px,0) scale(1.006); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+
+@keyframes socialSheetElasticOut {
+  0% { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0,34px,0) scale(.965); }
+}
+
+@keyframes socialBackdropOut {
+  to { opacity: 0; }
+}
+
 body.social-ui-v2 .profile-notif-btn {
   width: 40px;
   padding: 0;
@@ -976,6 +1060,11 @@ body.social-ui-v2 .notif-full-row {
   body.social-ui-v2 .post-actions {
     justify-content: flex-start;
     gap: clamp(4px,3vw,14px);
+  }
+
+  body.social-ui-v2 .share-recipient-search input,
+  body.social-ui-v2 .share-message-wrap textarea {
+    font-size: 16px;
   }
 
   body.social-ui-v2 .preview-comment-actions,
