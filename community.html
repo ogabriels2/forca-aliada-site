@@ -3464,7 +3464,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260617e">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260619a">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -8963,6 +8963,139 @@ function showSearchRoute(query){
   showSearchPage(state.searchQuery);
 }
 
+/* ======================= MOTION FEEDBACK ======================= */
+function initMotionFeedback(){
+  if(document.body.dataset.motionFeedbackReady==='1')return;
+  document.body.dataset.motionFeedbackReady='1';
+  const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const interactiveSelector=[
+    'button:not([disabled])',
+    'a[href]',
+    '.share-chat-row',
+    '.social-user-row',
+    '.search-result',
+    '.notif-full-row',
+    '.trend-item',
+    '.player-row',
+    '.rel-row',
+    '.profile-notif-option',
+    '.poll-option',
+    '.media-tile'
+  ].join(',');
+  const rippleSelector=[
+    'button:not([disabled])',
+    '.share-chat-row',
+    '.social-user-row',
+    '.search-result',
+    '.notif-full-row',
+    '.profile-notif-option',
+    '.poll-option',
+    '.media-tile'
+  ].join(',');
+  const noPressSelector='input,textarea,select,label,[contenteditable="true"],[data-no-motion],.sheet-drag-handle,.social-sheet-handle,.story-hit,.lb-bg';
+  const revealSelector=[
+    '.post-card',
+    '.preview-row',
+    '.story-item',
+    '.compact-tool-card',
+    '.search-result',
+    '.notif-full-row',
+    '.social-user-row',
+    '.share-chat-row',
+    '.profile-notif-option',
+    '.profile-hero',
+    '.search-hero',
+    '.empty-card',
+    '.trend-item',
+    '.player-row',
+    '.media-tile',
+    '.feed-end-card'
+  ].join(',');
+  const isReduced=()=>Boolean(reduce?.matches);
+  function motionTarget(target,selector){
+    const el=target.closest?.(selector);
+    if(!el||el.closest(noPressSelector)||el.closest('.is-sheet-dragging'))return null;
+    if(el.closest('.sheet-drag-active,.sheet-gesture-active'))return null;
+    return el;
+  }
+  function clearPress(el){
+    if(!el)return;
+    el.classList.remove('is-pressing');
+  }
+  function spawnRipple(el,event){
+    if(isReduced()||!el.matches?.(rippleSelector)||el.closest('[data-no-ripple]'))return;
+    const rect=el.getBoundingClientRect();
+    if(!rect.width||!rect.height||rect.width>760||rect.height>360)return;
+    const size=Math.max(rect.width,rect.height)*1.25;
+    const ripple=document.createElement('span');
+    ripple.className='motion-ripple';
+    ripple.style.width=`${size}px`;
+    ripple.style.height=`${size}px`;
+    ripple.style.left=`${event.clientX-rect.left-size/2}px`;
+    ripple.style.top=`${event.clientY-rect.top-size/2}px`;
+    el.classList.add('has-motion-ripple');
+    el.appendChild(ripple);
+    ripple.addEventListener('animationend',()=>ripple.remove(),{once:true});
+  }
+  document.addEventListener('pointerdown',event=>{
+    if(event.pointerType==='mouse'&&event.button!==0)return;
+    if(document.body.classList.contains('sheet-gesture-active'))return;
+    const el=motionTarget(event.target,interactiveSelector);
+    if(!el)return;
+    el.classList.add('motion-pressable','is-pressing');
+    spawnRipple(el,event);
+  },{capture:true,passive:true});
+  ['pointerup','pointercancel','pointerleave'].forEach(type=>{
+    document.addEventListener(type,event=>clearPress(event.target.closest?.('.is-pressing')),{capture:true,passive:true});
+  });
+  document.addEventListener('click',event=>{
+    const el=event.target.closest?.('.pa-like,.pa-repost,.pa-save,.story-like,.lb-like,.poll-option,[data-story-reaction],.share-send-btn,.story-reply-send');
+    if(!el||isReduced())return;
+    el.classList.remove('motion-pop');
+    void el.offsetWidth;
+    el.classList.add('motion-pop');
+  },true);
+  let revealObserver=null;
+  if('IntersectionObserver' in window){
+    revealObserver=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(!entry.isIntersecting)return;
+        entry.target.classList.add('is-motion-visible');
+        revealObserver.unobserve(entry.target);
+      });
+    },{rootMargin:'0px 0px -6% 0px',threshold:.04});
+  }
+  let revealFrame=0;
+  function decorateReveals(root=document){
+    const scope=root.nodeType===1?root:document;
+    const found=scope.querySelectorAll?[...scope.querySelectorAll(revealSelector)]:[];
+    const nodes=(scope.matches?.(revealSelector)?[scope]:[]).concat(found);
+    nodes.forEach((el,index)=>{
+      if(el.dataset.motionSeen==='1')return;
+      el.dataset.motionSeen='1';
+      el.classList.add('motion-reveal');
+      el.style.setProperty('--motion-delay',`${Math.min(index%8,6)*32}ms`);
+      if(isReduced()||!revealObserver)el.classList.add('is-motion-visible');
+      else revealObserver.observe(el);
+    });
+  }
+  function scheduleReveal(root=document){
+    cancelAnimationFrame(revealFrame);
+    revealFrame=requestAnimationFrame(()=>decorateReveals(root));
+  }
+  scheduleReveal(document);
+  const obs=new MutationObserver(mutations=>{
+    for(const mutation of mutations){
+      for(const node of mutation.addedNodes){
+        if(node.nodeType===1)scheduleReveal(node);
+      }
+    }
+  });
+  obs.observe(document.body,{childList:true,subtree:true});
+  reduce?.addEventListener?.('change',()=>scheduleReveal(document));
+  window.addEventListener('fa:motion-refresh',()=>scheduleReveal(document));
+}
+
 /* ======================= EVENT DELEGATION ======================= */
 function bindEvents(){
   document.addEventListener('change',e=>{
@@ -10039,7 +10172,7 @@ Router.register('/community/notifications',renderNotificationsRoute);
 Router.register('/profile/:id',renderProfileRoute);
 
 async function boot(){
-  bindEvents(); syncComposer('inline'); syncComposer('modal'); updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+  bindEvents(); initMotionFeedback(); syncComposer('inline'); syncComposer('modal'); updateThemeIcon(document.documentElement.getAttribute('data-theme'));
   const scheduleInput=$('#modal-schedule-at');
   if(scheduleInput){
     const min=new Date(Date.now()+60000);min.setSeconds(0,0);

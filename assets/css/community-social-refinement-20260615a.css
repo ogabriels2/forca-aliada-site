@@ -5,6 +5,413 @@ body.social-ui-v2 .server-live-pill.is-unknown i {
   box-shadow: 0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent);
 }
 
+/* Professional motion layer: unified easing, tactile feedback and media polish. */
+body.social-ui-v2 {
+  --motion-fast: 140ms;
+  --motion-med: 240ms;
+  --motion-slow: 420ms;
+  --motion-reveal: 560ms;
+  --motion-spring: cubic-bezier(.2,.86,.24,1);
+  --motion-pop: cubic-bezier(.18,1.35,.28,1);
+  --motion-exit: cubic-bezier(.42,0,.72,.18);
+  --motion-glow: color-mix(in srgb,var(--accent) 32%,transparent);
+}
+
+body.social-ui-v2 .motion-reveal {
+  opacity: 0;
+  transform: translate3d(0,16px,0) scale(.985);
+  filter: blur(4px);
+  will-change: transform, opacity, filter;
+}
+
+body.social-ui-v2 .motion-reveal.is-motion-visible {
+  animation: socialMotionReveal var(--motion-reveal) var(--motion-spring) both;
+  animation-delay: var(--motion-delay,0ms);
+}
+
+body.social-ui-v2 .motion-pressable {
+  transform-origin: center;
+  backface-visibility: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.social-ui-v2 .motion-pressable.is-pressing {
+  transform: translate3d(0,1px,0) scale(.975) !important;
+  filter: brightness(1.04);
+}
+
+body.social-ui-v2 .has-motion-ripple {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+body.social-ui-v2 .motion-ripple {
+  position: absolute;
+  z-index: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: radial-gradient(circle,color-mix(in srgb,#fff 70%,var(--accent) 30%) 0%,color-mix(in srgb,var(--accent) 36%,transparent) 48%,transparent 72%);
+  opacity: .55;
+  pointer-events: none;
+  transform: translate3d(0,0,0) scale(0);
+  animation: socialMotionRipple 620ms var(--motion-spring) forwards;
+}
+
+body.social-ui-v2 .motion-pop {
+  animation: socialMotionPop 420ms var(--motion-pop);
+}
+
+body.social-ui-v2 :is(
+  .btn,
+  .tbtn,
+  .mbtn,
+  .pa,
+  .comment-pa,
+  .preview-comment-action,
+  .preview-more-btn,
+  .more-btn,
+  .pm-item,
+  .tab,
+  .rnav-item,
+  .story-item,
+  .story-action-circle,
+  .story-nav,
+  .story-like,
+  .story-share,
+  .story-reply-send,
+  .story-reaction-open,
+  .story-camera-icon,
+  .story-camera-actions button,
+  .story-filter-row button,
+  .share-mode-choice,
+  .share-chat-row,
+  .share-send-btn,
+  .share-outside-mini,
+  .social-user-row,
+  .profile-notif-option,
+  .profile-notif-btn,
+  .search-result,
+  .notif-full-row,
+  .trend-item,
+  .player-row,
+  .rel-row,
+  .poll-option,
+  .media-tile,
+  .post-media,
+  .comment-media-btn,
+  .lb-act,
+  .lb-nav,
+  .lb-zoom-btn,
+  .lb-mob-btn,
+  .lb-mob-menu-item,
+  .toast-action
+) {
+  transition:
+    transform var(--motion-fast) var(--motion-spring),
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    filter var(--motion-fast) ease;
+}
+
+body.social-ui-v2 :is(.post-card,.composer,.card,.profile-hero,.search-hero,.search-results-panel,.search-side-panel,.compact-tool-card,.feed-end-card) {
+  transition:
+    transform var(--motion-med) var(--motion-spring),
+    border-color var(--motion-med) ease,
+    box-shadow var(--motion-med) ease,
+    background-color var(--motion-med) ease;
+}
+
+body.social-ui-v2 :is(.post-media,.comment-media-btn,.media-tile,.media-preview-item,.story-camera-frame,.lb-img-wrap) {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+body.social-ui-v2 :is(.post-media,.comment-media-btn,.media-tile,.media-preview-item,.story-camera-frame)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,transparent 0%,rgba(255,255,255,.16) 42%,transparent 64%);
+  opacity: 0;
+  transform: translate3d(-120%,0,0);
+  pointer-events: none;
+}
+
+body.social-ui-v2 :is(.post-media,.comment-media-btn,.media-tile,.media-preview-item,.story-camera-frame) img {
+  transition:
+    transform 520ms var(--motion-spring),
+    filter 360ms ease,
+    opacity 260ms ease;
+  will-change: transform, filter;
+}
+
+body.social-ui-v2 .media-preview-item {
+  animation: socialMotionMediaAdd 340ms var(--motion-pop) both;
+}
+
+body.social-ui-v2 .post-skel::after,
+body.social-ui-v2 .skel::after {
+  animation: socialMotionShimmer 1.25s linear infinite;
+}
+
+body.social-ui-v2 .backdrop.show:not(.sheet-closing),
+body.social-ui-v2 .social-sheet-overlay.show:not(.sheet-closing),
+body.social-ui-v2 .mobile-drawer-shell.show {
+  animation: socialMotionBackdropIn var(--motion-med) ease both;
+}
+
+body.social-ui-v2 .backdrop.show:not(.sheet-closing) .sheet,
+body.social-ui-v2 .social-sheet-overlay.show:not(.sheet-closing) .social-sheet {
+  animation: socialMotionSheetIn 460ms var(--motion-pop) both;
+  transform-origin: center bottom;
+}
+
+body.social-ui-v2 .backdrop.sheet-closing .sheet,
+body.social-ui-v2 .social-sheet-overlay.sheet-closing .social-sheet {
+  animation: socialMotionSheetOut 230ms var(--motion-exit) both !important;
+}
+
+body.social-ui-v2 .mobile-drawer-shell.show .mobile-drawer {
+  animation: socialMotionDrawerIn 360ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 :is(.post-menu.show,.notif-menu.show,.account-menu.show,.mention-box.show,.lb-mob-menu:not([hidden])) {
+  animation: socialMotionMenuIn 180ms var(--motion-spring) both;
+  transform-origin: top right;
+}
+
+body.social-ui-v2 #new-posts-pill:not([hidden]) {
+  animation: socialMotionPillIn 360ms var(--motion-pop) both;
+}
+
+body.social-ui-v2 .toast {
+  animation: socialMotionToastIn 380ms var(--motion-pop) both;
+}
+
+body.social-ui-v2 .toast.leaving {
+  animation: socialMotionToastOut 220ms var(--motion-exit) forwards;
+}
+
+body.social-ui-v2 #lb.lb.is-open .lb-bg {
+  animation: socialMotionBackdropIn 220ms ease both;
+}
+
+body.social-ui-v2 #lb.lb.is-open .lb-img {
+  animation: socialMotionLightboxMediaIn 420ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 #lb.lb.is-open .lb-panel {
+  animation: socialMotionPanelIn 360ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 #lb.lb.is-open :is(.lb-mob-top,.lb-zoom-ctrl) {
+  animation: socialMotionSlideDown 330ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 #lb.lb.is-open .lb-mob-bottom {
+  animation: socialMotionSlideUp 330ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 #lb .lb-img.is-loading {
+  opacity: .36;
+  filter: blur(9px) saturate(.72);
+}
+
+body.social-ui-v2 #lb .lb-img-wrap.is-grabbing .lb-img,
+body.social-ui-v2 #lb .lb-img-wrap.is-gesturing .lb-img {
+  transition: none !important;
+}
+
+body.social-ui-v2 .story-viewer:not([hidden]) .story-stage {
+  animation: socialMotionStoryIn 340ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 .story-reaction-tray:not([hidden]) {
+  animation: socialMotionTrayIn 220ms var(--motion-pop) both;
+}
+
+body.social-ui-v2 .story-gesture-feedback span {
+  animation: socialMotionPop 420ms var(--motion-pop);
+}
+
+body.social-ui-v2 .story-progress i::after {
+  transition: width 120ms linear;
+}
+
+body.social-ui-v2 .story-ring::before {
+  transition: filter var(--motion-med) ease, opacity var(--motion-med) ease, transform var(--motion-med) var(--motion-spring);
+}
+
+body.social-ui-v2 .story-item.is-unseen .story-ring::before {
+  animation: socialMotionStoryRing 2.8s linear infinite;
+}
+
+@media (hover:hover) and (pointer:fine) {
+  body.social-ui-v2 :is(.post-card,.compact-tool-card,.search-result,.notif-full-row,.trend-item,.player-row,.share-chat-row,.social-user-row,.profile-notif-option,.rel-row):hover {
+    transform: translate3d(0,-2px,0);
+    box-shadow: 0 14px 34px rgba(0,0,0,.18);
+  }
+
+  body.social-ui-v2 :is(.post-media,.comment-media-btn,.media-tile):hover img {
+    transform: scale(1.035);
+    filter: saturate(1.08) contrast(1.03);
+  }
+
+  body.social-ui-v2 :is(.post-media,.comment-media-btn,.media-tile,.media-preview-item,.story-camera-frame):hover::after {
+    animation: socialMotionImageSheen 720ms ease;
+  }
+
+  body.social-ui-v2 :is(.btn,.tbtn,.mbtn,.pa,.comment-pa,.preview-comment-action,.story-item,.share-mode-choice,.lb-act,.lb-nav,.lb-zoom-btn):hover {
+    filter: brightness(1.07);
+  }
+}
+
+@media (hover:none), (pointer:coarse) {
+  body.social-ui-v2 .motion-pressable.is-pressing {
+    transform: scale(.955) !important;
+  }
+
+  body.social-ui-v2 :is(.post-card,.compact-tool-card,.search-result,.notif-full-row,.trend-item,.player-row,.share-chat-row,.social-user-row,.profile-notif-option,.rel-row):hover {
+    box-shadow: none;
+  }
+}
+
+@keyframes socialMotionReveal {
+  0% { opacity: 0; transform: translate3d(0,16px,0) scale(.985); filter: blur(4px); }
+  68% { opacity: 1; transform: translate3d(0,-2px,0) scale(1.002); filter: blur(0); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); }
+}
+
+@keyframes socialMotionRipple {
+  0% { opacity: .52; transform: scale(0); }
+  70% { opacity: .18; }
+  100% { opacity: 0; transform: scale(16); }
+}
+
+@keyframes socialMotionPop {
+  0% { transform: scale(.88); }
+  55% { transform: scale(1.13); }
+  100% { transform: scale(1); }
+}
+
+@keyframes socialMotionMediaAdd {
+  0% { opacity: 0; transform: scale(.92) translateY(8px); filter: blur(4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+
+@keyframes socialMotionShimmer {
+  to { transform: translateX(110%); }
+}
+
+@keyframes socialMotionBackdropIn {
+  from { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+  to { opacity: 1; }
+}
+
+@keyframes socialMotionSheetIn {
+  0% { opacity: 0; transform: translate3d(0,44px,0) scale(.96); }
+  58% { opacity: 1; transform: translate3d(0,-7px,0) scale(1.008); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+
+@keyframes socialMotionSheetOut {
+  to { opacity: 0; transform: translate3d(0,42px,0) scale(.965); }
+}
+
+@keyframes socialMotionDrawerIn {
+  from { opacity: 0; transform: translate3d(-18px,0,0) scale(.985); }
+  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+
+@keyframes socialMotionMenuIn {
+  0% { opacity: 0; transform: translate3d(0,-6px,0) scale(.965); filter: blur(2px); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); }
+}
+
+@keyframes socialMotionPillIn {
+  0% { opacity: 0; transform: translate3d(0,-12px,0) scale(.86); }
+  62% { opacity: 1; transform: translate3d(0,2px,0) scale(1.04); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+
+@keyframes socialMotionToastIn {
+  0% { opacity: 0; transform: translate3d(0,14px,0) scale(.94); filter: blur(4px); }
+  70% { opacity: 1; transform: translate3d(0,-2px,0) scale(1.01); filter: blur(0); }
+  100% { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); }
+}
+
+@keyframes socialMotionToastOut {
+  to { opacity: 0; transform: translate3d(0,8px,0) scale(.96); filter: blur(3px); }
+}
+
+@keyframes socialMotionLightboxMediaIn {
+  0% { opacity: 0; transform: scale(.94); filter: blur(10px) saturate(.8); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0) saturate(1); }
+}
+
+@keyframes socialMotionPanelIn {
+  from { opacity: 0; transform: translate3d(22px,0,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+
+@keyframes socialMotionSlideDown {
+  from { opacity: 0; transform: translate3d(0,-12px,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+
+@keyframes socialMotionSlideUp {
+  from { opacity: 0; transform: translate3d(0,14px,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+
+@keyframes socialMotionStoryIn {
+  from { opacity: 0; transform: scale(.965); filter: blur(8px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes socialMotionTrayIn {
+  from { opacity: 0; transform: translate3d(0,8px,0) scale(.95); }
+  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+
+@keyframes socialMotionImageSheen {
+  0% { opacity: 0; transform: translate3d(-120%,0,0); }
+  22% { opacity: .72; }
+  100% { opacity: 0; transform: translate3d(120%,0,0); }
+}
+
+@keyframes socialMotionStoryRing {
+  0% { filter: hue-rotate(0deg) saturate(1); transform: scale(1); }
+  50% { filter: hue-rotate(14deg) saturate(1.12); transform: scale(1.015); }
+  100% { filter: hue-rotate(0deg) saturate(1); transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.social-ui-v2,
+  body.social-ui-v2 * ,
+  body.social-ui-v2 *::before,
+  body.social-ui-v2 *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+
+  body.social-ui-v2 .motion-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  body.social-ui-v2 .motion-ripple {
+    display: none !important;
+  }
+}
+
 /* Final interaction polish: notifications, discovery, stories and media viewer. */
 .notif-dot[hidden],
 #nav-notif-badge[hidden],
@@ -1706,5 +2113,73 @@ body.social-ui-v2 .share-outside-mini:hover {
 
   body.social-ui-v2 .story-camera-footer {
     padding: 9px 12px max(11px,env(safe-area-inset-bottom));
+  }
+}
+
+/* Motion precedence pass: keep the professional motion layer above legacy rules. */
+body.social-ui-v2 .motion-reveal:not(.is-motion-visible) {
+  opacity: 0;
+  transform: translate3d(0,16px,0) scale(.985);
+  filter: blur(4px);
+}
+
+body.social-ui-v2 .motion-reveal.is-motion-visible {
+  animation: socialMotionReveal var(--motion-reveal) var(--motion-spring) both;
+  animation-delay: var(--motion-delay,0ms);
+}
+
+body.social-ui-v2 .backdrop.show:not(.sheet-closing) .sheet,
+body.social-ui-v2 .social-sheet-overlay.show:not(.sheet-closing) .social-sheet {
+  animation: socialMotionSheetIn 460ms var(--motion-pop) both;
+  transform-origin: center bottom;
+}
+
+body.social-ui-v2 .backdrop.sheet-closing .sheet,
+body.social-ui-v2 .social-sheet-overlay.sheet-closing .social-sheet {
+  animation: socialMotionSheetOut 230ms var(--motion-exit) both !important;
+}
+
+body.social-ui-v2 .toast {
+  animation: socialMotionToastIn 380ms var(--motion-pop) both;
+}
+
+body.social-ui-v2 .toast.leaving {
+  animation: socialMotionToastOut 220ms var(--motion-exit) forwards;
+}
+
+body.social-ui-v2 :is(.post-menu.show,.notif-menu.show,.account-menu.show,.mention-box.show,.lb-mob-menu:not([hidden])) {
+  animation: socialMotionMenuIn 180ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 #lb.lb.is-open .lb-img {
+  animation: socialMotionLightboxMediaIn 420ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 #lb.lb.is-open .lb-panel {
+  animation: socialMotionPanelIn 360ms var(--motion-spring) both;
+}
+
+body.social-ui-v2 :is(.post-media,.comment-media-btn,.media-tile,.media-preview-item,.story-camera-frame) img {
+  transition:
+    transform 520ms var(--motion-spring),
+    filter 360ms ease,
+    opacity 260ms ease;
+}
+
+body.social-ui-v2 .motion-pressable.is-pressing {
+  transform: translate3d(0,1px,0) scale(.975) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.social-ui-v2 .motion-reveal,
+  body.social-ui-v2 .motion-reveal.is-motion-visible {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  body.social-ui-v2 .motion-ripple {
+    display: none !important;
   }
 }
