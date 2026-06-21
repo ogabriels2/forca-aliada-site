@@ -525,6 +525,85 @@ const pool = new Pool({
   ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
+function readNonNegativeIntEnv(name, fallback) {
+  const value = Number(process.env[name] ?? fallback);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
+}
+
+const DB_BOOT_RETRY_MS = readNonNegativeIntEnv('DB_BOOT_RETRY_MS', 60_000);
+const dbStartupState = {
+  ready: false,
+  lastError: null,
+  lastAttemptAt: null,
+  readyAt: null,
+};
+
+function summarizeDbError(error) {
+  const message = String(error?.message || error || 'Erro desconhecido no banco de dados');
+  return {
+    message,
+    code: error?.code || null,
+    severity: error?.severity || null,
+    detail: error?.detail || null,
+    hint: error?.hint || null,
+  };
+}
+
+function isDatabaseComputeQuotaError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('compute time quota')
+    || message.includes('exceeded the compute')
+    || message.includes('exceeded compute');
+}
+
+function shouldStartWithoutDatabase(error) {
+  return process.env.START_WITHOUT_DATABASE === 'true' || isDatabaseComputeQuotaError(error);
+}
+
+function markDatabaseReady() {
+  dbStartupState.ready = true;
+  dbStartupState.lastError = null;
+  dbStartupState.readyAt = new Date().toISOString();
+}
+
+function markDatabaseUnavailable(error) {
+  dbStartupState.ready = false;
+  dbStartupState.lastAttemptAt = new Date().toISOString();
+  dbStartupState.lastError = summarizeDbError(error);
+}
+
+function databaseStartupHint(error) {
+  if (isDatabaseComputeQuotaError(error)) {
+    return 'O provedor do Postgres recusou a conexao porque a cota de compute acabou. Aumente/restaure a cota ou troque DATABASE_URL para um banco ativo.';
+  }
+  return 'Falha ao preparar o banco no boot.';
+}
+
+function logDatabaseStartupError(error, label = '[startup:db]') {
+  const summary = summarizeDbError(error);
+  console.error(label, {
+    ...summary,
+    action: databaseStartupHint(error),
+  });
+}
+
+app.use((req, res, next) => {
+  if (dbStartupState.ready || !dbStartupState.lastError) return next();
+
+  const healthPaths = new Set(['/healthz', '/api/healthz', '/ping', '/admin/health']);
+  if (healthPaths.has(req.path)) return next();
+
+  if (DB_BOOT_RETRY_MS > 0) {
+    res.set('Retry-After', String(Math.ceil(DB_BOOT_RETRY_MS / 1000)));
+  }
+
+  return res.status(503).json({
+    error: 'Banco de dados temporariamente indisponivel.',
+    code: 'DATABASE_UNAVAILABLE',
+    database: dbStartupState.lastError,
+  });
+});
+
 let runtimeDashboardSettingsCache = { value: {}, expiresAt: 0 };
 async function getRuntimeDashboardSettings(force = false) {
   if (!force && Date.now() < runtimeDashboardSettingsCache.expiresAt) return runtimeDashboardSettingsCache.value;
@@ -2671,6 +2750,11 @@ const healthHandler = (_req, res) => res.json({
   startedAt: PROCESS_STARTED_AT.toISOString(),
   uptimeSeconds: Math.floor(process.uptime()),
   build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
+  database: dbStartupState.ready
+    ? { status: 'ready', readyAt: dbStartupState.readyAt }
+    : dbStartupState.lastError
+      ? { status: 'unavailable', lastAttemptAt: dbStartupState.lastAttemptAt, error: dbStartupState.lastError }
+      : { status: 'starting' },
 });
 app.get('/healthz', healthHandler);
 app.get('/api/healthz', healthHandler);
@@ -2680,6 +2764,11 @@ app.get('/admin/health', auth, requireAdmin, (_req, res) => res.json({
   ok: true,
   startedAt: PROCESS_STARTED_AT.toISOString(),
   uptimeSeconds: Math.floor(process.uptime()),
+  database: dbStartupState.ready
+    ? { status: 'ready', readyAt: dbStartupState.readyAt }
+    : dbStartupState.lastError
+      ? { status: 'unavailable', lastAttemptAt: dbStartupState.lastAttemptAt, error: dbStartupState.lastError }
+      : { status: 'starting' },
   mc_state: _mcState,
   cloud_lockout: { active: _cloudLockout.active, since: _cloudLockout.since || null },
   app_connected: isAppConnectedInMemory(),
@@ -10305,11 +10394,64 @@ const legacyMigrationService = registerLegacyMigration(app, pool, auth, requireA
 // Boot
 // ─────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-migrate()
-.then(seedAdmin)
-.then(() => {
+let scheduledPostsTimer = null;
+let databaseRetryTimer = null;
+
+function startScheduledPostPublisher() {
+  if (scheduledPostsTimer) return;
   publishDueScheduledPosts().catch(() => {});
-  setInterval(() => publishDueScheduledPosts().catch(() => {}), 30_000).unref?.();
+  scheduledPostsTimer = setInterval(() => publishDueScheduledPosts().catch(() => {}), 30_000);
+  scheduledPostsTimer.unref?.();
+}
+
+async function prepareDatabaseForBoot() {
+  await migrate();
+  await seedAdmin();
+  markDatabaseReady();
+}
+
+function scheduleDatabaseRetry() {
+  if (databaseRetryTimer || DB_BOOT_RETRY_MS <= 0) return;
+  databaseRetryTimer = setInterval(async () => {
+    if (dbStartupState.ready) {
+      clearInterval(databaseRetryTimer);
+      databaseRetryTimer = null;
+      return;
+    }
+
+    try {
+      await prepareDatabaseForBoot();
+      console.info('[startup:db] Banco de dados pronto apos retry.');
+      startScheduledPostPublisher();
+      clearInterval(databaseRetryTimer);
+      databaseRetryTimer = null;
+    } catch (error) {
+      markDatabaseUnavailable(error);
+      logDatabaseStartupError(error, '[startup:db:retry]');
+    }
+  }, DB_BOOT_RETRY_MS);
+  databaseRetryTimer.unref?.();
+}
+
+function startHttpServer() {
   app.listen(PORT, () => console.log(`✅  API ${DEPLOY_SCHEMA_VERSION} rodando na porta ${PORT}`));
-})
-.catch(e => { console.error('[migrate]', e); process.exit(1); });
+}
+
+prepareDatabaseForBoot()
+  .then(() => {
+    startScheduledPostPublisher();
+    startHttpServer();
+  })
+  .catch(error => {
+    markDatabaseUnavailable(error);
+    logDatabaseStartupError(error);
+
+    if (!shouldStartWithoutDatabase(error)) {
+      process.exit(1);
+      return;
+    }
+
+    console.warn('[startup:db] API iniciando em modo degradado; endpoints com banco retornarao 503 ate o Postgres voltar.');
+    scheduleDatabaseRetry();
+    startHttpServer();
+  });
