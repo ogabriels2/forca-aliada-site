@@ -20,8 +20,16 @@
 - `PORT` (default `8787`)
 - `MC_HOST` (default `fa.ogabriels.com`)
 - `PG_SSL_NO_VERIFY=true` (somente se seu provedor exigir)
+- `START_WITHOUT_DATABASE=true` (forca o boot em modo degradado se o banco falhar)
+- `DB_BOOT_RETRY_MS` (intervalo de retry do boot do banco; default `60000`)
 - `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`
 - `FRONTEND_BASE_URL` (default `https://forcaaliada.ogabriels.com`; usado no redirect final do login Microsoft)
+
+## Render / banco sem cota
+
+Se o Render mostrar `Your account or project has exceeded the compute time quota`, o erro vem do provedor do PostgreSQL, nao do Node. O backend agora sobe em modo degradado nesse caso: `/healthz` continua respondendo, endpoints que dependem do banco retornam `503 DATABASE_UNAVAILABLE`, e o processo tenta preparar o banco novamente a cada `DB_BOOT_RETRY_MS`.
+
+Para recuperar a aplicacao por completo, restaure a cota/compute do banco, faca upgrade do plano ou atualize `DATABASE_URL` para um Postgres ativo. Quando o banco voltar, o backend tenta rodar as migracoes de novo automaticamente.
 
 ## Rodar
 ```bash
