@@ -993,9 +993,11 @@
       const cards = list.querySelectorAll('.post-card');
       const anchor = cards[Math.min(2, cards.length - 1)];
       if (!anchor) return;
+      const origin = String(player.origin || '').toLowerCase();
+      const originLabel = origin === 'bedrock' ? 'Bedrock' : (origin === 'java' || player.player ? 'Java' : (player.origin || 'Minecraft'));
       anchor.insertAdjacentHTML('afterend', `<aside class="server-activity-card" aria-label="Atividade recente do servidor">
         <img src="${safe(avatar(player, 50))}" alt="${safe(displayName(player))}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(player),50))}'">
-        <div><strong>${safe(displayName(player))} entrou no servidor</strong><small>${safe(time(player.entered_at))} · ${safe(player.origin || 'Minecraft')}</small></div>
+        <div><strong>${safe(displayName(player))} entrou no servidor</strong><small>${safe(time(player.entered_at))} · ${safe(originLabel)}</small></div>
         <i class="live-dot" aria-hidden="true"></i>
       </aside>`);
     } catch {}

@@ -3481,7 +3481,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260705b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705f">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705g">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -4417,8 +4417,8 @@ function minecraftHead(p,s=50){
   const integ=integrationOf(source);
   const edition=String(integ.mc_edition||source.mc_edition||'').toLowerCase();
   const bedrockGamer=String(integ.xbox_gamertag||source.xbox_gamertag||'').trim();
-  const javaName=String(source.minecraft_name||'').trim();
-  const anyName=javaName||String(source.username||'').trim();
+  const javaName=String(source.minecraft_name||source.player||'').trim();
+  const anyName=javaName||String(source.username||source.player||'').trim();
 
   // Bedrock: prefix with '.' for mcheads to render with overlay layer too
   if(edition==='bedrock'&&bedrockGamer){
@@ -4441,7 +4441,7 @@ function minecraftHead(p,s=50){
     return `https://api.mcheads.org/head/.${encodeURIComponent(anyName)}/${s}`;
   }
 
-  return fallbackAvatar(source.display_name||source.username||source.minecraft_name||'Jogador',s);
+  return fallbackAvatar(source.display_name||source.minecraft_name||source.player||source.username||'Jogador',s);
 }
 const skin = (n,s=50) => minecraftHead(n,s);
 const safeProfileImageUrl = v => {
@@ -4452,8 +4452,8 @@ const safeProfileImageUrl = v => {
     return ['http:','https:'].includes(url.protocol)?url.href:'';
   }catch{return ''}
 };
-const displayName = p => String(p?.display_name || p?.minecraft_name || p?.username || 'Jogador').trim();
-const handleName = p => String(p?.username || p?.minecraft_name || 'jogador').trim();
+const displayName = p => String(p?.display_name || p?.minecraft_name || p?.player || p?.username || 'Jogador').trim();
+const handleName = p => String(p?.username || p?.minecraft_name || p?.player || 'jogador').trim();
 const avatar = (p, s=50) => {
   const custom = safeProfileImageUrl(p?.avatar_url || p?.photo_url);
   return custom || minecraftHead(p, s);
@@ -4562,19 +4562,25 @@ const Router={
   dispatch(path=location.pathname + location.search){
     const url = new URL(path, location.origin);
     const query = url.searchParams;
-    if(query.get('post')) return this.routes['/community/post/:id']?.(query.get('post'));
-    if(query.get('profile')) return this.routes['/profile/:id']?.(query.get('profile'));
-    if(query.get('notifications') === '1') return renderNotificationsRoute();
-    if(query.get('search') === '1') return showSearchPage('');
-    if(query.get('tag')) return showHashtagRoute(query.get('tag'));
-    if(query.get('q')) return showSearchRoute(query.get('q'));
+    if(query.get('post')){setMobileNavActive('none');return this.routes['/community/post/:id']?.(query.get('post'));}
+    if(query.get('profile')){setMobileNavActive('profile');return this.routes['/profile/:id']?.(query.get('profile'));}
+    if(query.get('notifications') === '1'){setMobileNavActive('none');return renderNotificationsRoute();}
+    if(query.get('search') === '1'){setMobileNavActive('search');return showSearchPage('');}
+    if(query.get('tag')){setMobileNavActive('search');return showHashtagRoute(query.get('tag'));}
+    if(query.get('q')){setMobileNavActive('search');return showSearchRoute(query.get('q'));}
     const p=(url.pathname.replace(/\/+$/,'')||'/community');
     for(const[pat,fn] of Object.entries(this.routes)){
       const rx=new RegExp('^'+pat.replace(/:[^/]+/g,'([^/]+)').replace(/\//g,'\\/')+'$');
       const m=p.match(rx);
-      if(m) return fn(...m.slice(1).map(decodeURIComponent));
+      if(m){
+        if(pat==='/profile/:id') setMobileNavActive('profile');
+        else if(pat==='/community') setMobileNavActive('home');
+        else setMobileNavActive('none');
+        return fn(...m.slice(1).map(decodeURIComponent));
+      }
     }
-    if(p.endsWith('/community.html')||p.endsWith('/community')) return this.routes['/community']?.();
+    if(p.endsWith('/community.html')||p.endsWith('/community')){setMobileNavActive('home');return this.routes['/community']?.();}
+    setMobileNavActive('home');
     return this.routes['/community']?.();
   },
   init(){
@@ -5038,6 +5044,7 @@ function showFeedUI(){
   feedCol.style.display='';routeCol.classList.remove('show');routeCol.innerHTML='';
   document.title='Comunidade | Força Aliada';
   setRailActive(state.filter);
+  setMobileNavActive('home');
   window.stabilizeCommunityFeedLayout?.();
   if(returningFromRoute){
     if(forceTop){
@@ -5060,6 +5067,23 @@ function showRouteUI(html){
   routeCol.scrollTop=0;
   window.scrollTo({top:0,behavior:'instant'});
 }
+function isPlainCommunityHome(){
+  const url=new URL(location.href);
+  const path=url.pathname.replace(/\/+$/,'')||'/community';
+  const isCommunityPath=path==='/community'||path.endsWith('/community')||path==='/community.html'||path.endsWith('/community.html');
+  return isCommunityPath&&!url.search;
+}
+function mobileNavModeFromLocation(path=location.href){
+  const url=new URL(path,location.origin);
+  const query=url.searchParams;
+  if(query.get('profile')) return 'profile';
+  if(query.get('search')==='1'||query.get('q')||query.get('tag')) return 'search';
+  if(query.get('post')||query.get('notifications')==='1') return 'none';
+  const clean=(url.pathname.replace(/\/+$/,'')||'/community');
+  if(clean==='/profile'||clean.startsWith('/profile/')) return 'profile';
+  if(clean.endsWith('/community')||clean.endsWith('/community.html')) return 'home';
+  return 'home';
+}
 function setRailActive(mode){
   $$('.rnav-item').forEach(item=>{
     const active = mode === 'notifications'
@@ -5068,6 +5092,30 @@ function setRailActive(mode){
     item.classList.toggle('is-active', active);
   });
   $$('.mobile-drawer-item[data-drawer-filter]').forEach(item=>item.classList.toggle('is-active', item.dataset.drawerFilter === mode));
+}
+function setMobileNavActive(mode='none'){
+  const map={
+    home:'#mobile-home-btn',
+    search:'#mobile-search-btn',
+    post:'#mobile-post-btn',
+    chat:'#mobile-chat-btn',
+    profile:'#mobile-profile-btn'
+  };
+  const activeSelector=map[mode]||'';
+  $$('.mobile-bottom-nav .mbtn').forEach(btn=>{
+    const active=Boolean(activeSelector&&btn.matches(activeSelector));
+    const wasActive=btn.classList.contains('is-active');
+    btn.classList.toggle('is-active',active);
+    if(active) btn.setAttribute('aria-current','page');
+    else btn.removeAttribute('aria-current');
+    if(active&&!wasActive){
+      btn.classList.remove('nav-activated');
+      void btn.offsetWidth;
+      btn.classList.add('nav-activated');
+      setTimeout(()=>btn.classList.remove('nav-activated'),420);
+    }
+  });
+  document.body.dataset.mobileNav=mode||'none';
 }
 
 /* ======================= COMPOSER ======================= */
@@ -8744,7 +8792,7 @@ function openSearchPage(seed=''){
   Router.navigate(communityUrl(q?{q}:{search:'1'}));
 }
 function searchResultPersonHTML(p){
-  const n=p.minecraft_name||p.username||'Jogador';
+  const n=p.minecraft_name||p.player||p.username||'Jogador';
   const rk=rankInfo(p.rank,p.merit);
   return`<button class="search-result js-profile" data-mc="${esc(n)}" data-uid="${esc(p.id)}" type="button"><img src="${esc(avatar(p,50))}" alt="${esc(displayName(p))}" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(p),50)}'"><span><strong>${esc(displayName(p))}</strong><small>@${esc(handleName(p))}${rankSuffix(p.rank,p.merit)}</small></span><span class="follow-btn ${p.is_following?'is-on':''}" style="pointer-events:none">${p.is_following?'Seguindo':'Perfil'}</span></button>`;
 }
@@ -8758,6 +8806,7 @@ function searchResultPostHTML(p){
 function showSearchPage(seed=''){
   const term=String(seed||'').trim();
   state.routeActive=true;
+  setMobileNavActive('search');
   document.title=term?`Busca: ${term} | FA Community`:'Buscar | FA Community';
   const top=$('#global-search'); if(top) top.value=term;
   showRouteUI(`
@@ -8842,6 +8891,7 @@ async function runSearchPage(term){
   }catch(e){box.innerHTML=`<div class="empty-card"><div class="empty-icon">${IC.err}</div><h3>Busca indisponível</h3><p>${esc(e.message)}</p></div>`}
 }
 function openSearchModal(seed=''){
+  setMobileNavActive('search');
   openSearchPage(seed);
 }
 
@@ -8982,6 +9032,7 @@ function renderNotificationsRoute(){
   state.notifPageFilter='all';state.notifPageRows=[];state.notifPageCursor=null;state.notifPageHasMore=true;
   document.title='Notificações da rede | Força Aliada';
   setRailActive('notifications');
+  setMobileNavActive('none');
   showRouteUI(`
     <div class="route-top">
       <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
@@ -9314,8 +9365,10 @@ function bindEvents(){
   document.querySelectorAll('[data-spa-home]').forEach(el=>{
     el.addEventListener('click',e=>{
       e.preventDefault();
-      if(!state.routeActive&&window.scrollY<=200){_refreshFeedWithVariety();return;}
-      if(!state.routeActive&&window.scrollY>200){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>_refreshFeedWithVariety(),350);return;}
+      setMobileNavActive('home');
+      const plainHome=!state.routeActive&&isPlainCommunityHome();
+      if(plainHome&&window.scrollY<=200){_refreshFeedWithVariety();return;}
+      if(plainHome&&window.scrollY>200){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>_refreshFeedWithVariety(),350);return;}
       state.forceFeedTopOnNextHome = true;
       clearSavedFeedScroll();
       Router.navigate('/community',{feedTop:true});
@@ -9444,7 +9497,8 @@ function bindEvents(){
   });
   $('#global-search')?.addEventListener('focus',e=>openSearchPage(e.currentTarget.value.trim()));
   $('#mobile-home-btn')?.addEventListener('click',()=>{
-    const isOnFeed=!state.routeActive;
+    setMobileNavActive('home');
+    const isOnFeed=!state.routeActive&&isPlainCommunityHome();
     const scrolledDown=window.scrollY>200;
 
     if(!isOnFeed){
@@ -9465,9 +9519,10 @@ function bindEvents(){
       _refreshFeedWithVariety();
     }
   });
-  $('#mobile-search-btn')?.addEventListener('click',()=>openSearchModal());
-  $('#mobile-post-btn')?.addEventListener('click',()=>{ if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
+  $('#mobile-search-btn')?.addEventListener('click',()=>{setMobileNavActive('search');openSearchModal();});
+  $('#mobile-post-btn')?.addEventListener('click',()=>{ setMobileNavActive('post'); if(state.routeActive) Router.navigate('/community'); openModal('post-modal'); setTimeout(() => $('#modal-ta')?.focus(), 100); });
   function openChat(){
+    setMobileNavActive('chat');
     if(window.FAChat){window.FAChat.open();return;}
     let elapsed=0;
     const tick=150,max=45000;
@@ -9479,7 +9534,7 @@ function bindEvents(){
   }
   $('#mobile-chat-btn')?.addEventListener('click', openChat);
   $('#desktop-chat-btn')?.addEventListener('click', openChat);
-  $('#mobile-profile-btn')?.addEventListener('click',()=>{if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
+  $('#mobile-profile-btn')?.addEventListener('click',()=>{setMobileNavActive('profile');if(state.me)navigateProfile(state.me.minecraft_name||`id:${state.me.id}`)});
   const mobileMenu=$('#mobile-side-menu');
   const closeMobileMenu=()=>{
     mobileMenu?.classList.remove('show');
@@ -10383,6 +10438,7 @@ Router.register('/profile/:id',renderProfileRoute);
 
 async function boot(){
   bindEvents(); initMotionFeedback(); syncComposer('inline'); syncComposer('modal'); updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+  setMobileNavActive(mobileNavModeFromLocation());
   const scheduleInput=$('#modal-schedule-at');
   if(scheduleInput){
     const min=new Date(Date.now()+60000);min.setSeconds(0,0);
@@ -10420,7 +10476,7 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260705e"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260705f"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
 <script src="assets/js/community-social-refinement-20260615a.js?v=20260705a"></script>
 <script src="assets/js/social-chat.js?v=chat14-20260705a"></script>
