@@ -167,9 +167,9 @@ header {
   backdrop-filter: saturate(180%) blur(24px); border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05); padding: 8px;
   display: flex; flex-direction: column; min-width: 260px; opacity: 0; visibility: hidden;
-  transform: translateY(-10px); transition: var(--transicao-rapida);
+  pointer-events: none; transform: translateY(-10px); transition: var(--transicao-rapida);
 }
-.user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.user-dropdown.show { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
 
 .dropdown-header { padding: 12px 8px; display: flex; align-items: center; gap: 12px; }
 .dropdown-header img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
@@ -535,14 +535,63 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
   .status-pill { display: none !important; }
   .logo-text { display: none; } /* Libera espaço */
   
-  .header-actions { gap: 12px; }
-  .mobile-menu-btn { display: block; margin-left: 8px; }
+  body[data-fa-page=index] header,
+  header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 64px;
+    gap: 12px;
+    padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  }
+  .brand-link { flex: 0 0 auto; min-width: 42px; }
+  .logo-img { width: 38px; height: 38px; border-radius: 11px; }
+  .header-actions {
+    margin-left: auto;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    gap: 10px;
+    min-width: 0;
+  }
+  #auth-container {
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .mobile-menu-btn {
+    order: 1;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin-left: 0;
+    border-radius: 999px;
+    color: var(--text-primary);
+    flex: 0 0 42px;
+  }
   
   /* Dropdown User Profile Ajustes no Mobile */
   .user-btn .desktop-only-text, .user-btn .dropdown-arrow { display: none; }
   .user-btn { padding: 4px; border-radius: 50%; }
-  .btn-login { padding: 8px 16px; }
-  .user-dropdown { right: -10px; min-width: 240px; }
+  .btn-login {
+    min-height: 38px;
+    max-width: 124px;
+    padding: 8px 14px;
+    white-space: nowrap;
+  }
+  .user-dropdown {
+    position: fixed;
+    top: 66px;
+    right: 12px;
+    left: auto;
+    width: min(292px, calc(100vw - 24px));
+    min-width: 0;
+    max-height: calc(100dvh - 82px);
+    overflow: auto;
+    z-index: 1200;
+  }
   
   .stats-strip { flex-direction: column; gap: 30px; }
   .community-entry { padding: 48px 5%; }
@@ -954,7 +1003,7 @@ footer { background: #fff; padding: 80px 5% 40px; text-align: center; border-top
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
 <link rel="preload" as="image" href="assets/images/hero.webp" type="image/webp" fetchpriority="high">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
+<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260705b">
 </head>
 <body>
 

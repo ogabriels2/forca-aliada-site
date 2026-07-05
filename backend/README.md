@@ -22,6 +22,7 @@
 - `PG_SSL_NO_VERIFY=true` (somente se seu provedor exigir)
 - `START_WITHOUT_DATABASE=true` (forca o boot em modo degradado se o banco falhar)
 - `DB_BOOT_RETRY_MS` (intervalo de retry do boot do banco; default `60000`)
+- `SCHEDULED_POST_POLL_MS` (intervalo para publicar posts agendados; default `900000`)
 - `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`
 - `FRONTEND_BASE_URL` (default `https://forcaaliada.ogabriels.com`; usado no redirect final do login Microsoft)
 

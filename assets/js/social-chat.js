@@ -1564,7 +1564,7 @@
     if (kind === 'story') {
       return `
         <button class="fa-chat-social-card fa-chat-social-card--comment fa-chat-social-card--story" type="button" data-chat-open-story="${esc(payload.id || '')}">
-          <span class="fa-chat-social-card-brand">Forca Aliada · story</span>
+          <span class="fa-chat-social-card-brand">Forca Aliada - story</span>
           <span class="fa-chat-social-card-text">Story compartilhado</span>
           <span class="fa-chat-social-card-context">Toque para assistir na comunidade.</span>
         </button>`;

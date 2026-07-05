@@ -531,6 +531,10 @@ function readNonNegativeIntEnv(name, fallback) {
 }
 
 const DB_BOOT_RETRY_MS = readNonNegativeIntEnv('DB_BOOT_RETRY_MS', 60_000);
+const SCHEDULED_POST_POLL_MS = Math.max(
+  60_000,
+  readNonNegativeIntEnv('SCHEDULED_POST_POLL_MS', 15 * 60_000),
+);
 const dbStartupState = {
   ready: false,
   lastError: null,
@@ -7254,7 +7258,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
              EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me,
              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
              COALESCE((
-               SELECT json_agg(row_to_json(rc))
+               SELECT json_agg(row_to_json(rc) ORDER BY rc.created_at ASC, rc.id ASC)
                FROM (
                  SELECT pc.id, pc.content, pc.media_urls, pc.created_at, pc.author_id,
                    pc.likes_count, pc.reply_count,
@@ -7275,12 +7279,13 @@ app.get('/api/community/posts', auth, async (req, res) => {
                  LEFT JOIN user_preferences cup ON cup.user_id = cu.id
                  WHERE pc.post_id = COALESCE(p.repost_of_id, p.id)
                    AND pc.is_deleted = FALSE
+                   AND pc.parent_comment_id IS NULL
                    AND NOT EXISTS (
                      SELECT 1 FROM user_blocks cub
                      WHERE (cub.blocker_id = $1 AND cub.blocked_id = cu.id)
                         OR (cub.blocker_id = cu.id AND cub.blocked_id = $1)
                    )
-                 ORDER BY pc.created_at DESC
+                 ORDER BY pc.created_at ASC, pc.id ASC
                  LIMIT 3
                ) rc
              ), '[]'::json) AS recent_comments,
@@ -10400,7 +10405,10 @@ let databaseRetryTimer = null;
 function startScheduledPostPublisher() {
   if (scheduledPostsTimer) return;
   publishDueScheduledPosts().catch(() => {});
-  scheduledPostsTimer = setInterval(() => publishDueScheduledPosts().catch(() => {}), 30_000);
+  scheduledPostsTimer = setInterval(
+    () => publishDueScheduledPosts().catch(() => {}),
+    SCHEDULED_POST_POLL_MS,
+  );
   scheduledPostsTimer.unref?.();
 }
 

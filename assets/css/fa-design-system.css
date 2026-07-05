@@ -109,6 +109,64 @@ body[data-fa-page=profile] .profile-hero,body[data-fa-page=post] .post-card { bo
   .backdrop.show .sheet { border-radius:22px 22px 0 0; }
   .mobile-bottom-nav { padding-bottom:env(safe-area-inset-bottom); }
 }
+@media (max-width:860px) {
+  body[data-fa-page=index] header {
+    display:flex!important;
+    justify-content:space-between;
+    align-items:center;
+    min-height:64px;
+    gap:12px;
+    padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));
+  }
+  body[data-fa-page=index] .brand-link { flex:0 0 auto;min-width:42px; }
+  body[data-fa-page=index] .logo-img { width:38px;height:38px;border-radius:11px; }
+  body[data-fa-page=index] .header-actions {
+    margin-left:auto;
+    flex:0 0 auto;
+    justify-content:flex-end;
+    gap:10px;
+    min-width:0;
+  }
+  body[data-fa-page=index] #auth-container {
+    order:2;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    min-width:0;
+  }
+  body[data-fa-page=index] .mobile-menu-btn {
+    order:1;
+    display:grid;
+    place-items:center;
+    width:42px;
+    height:42px;
+    margin-left:0;
+    border-radius:999px;
+    color:var(--text-primary);
+    flex:0 0 42px;
+  }
+  body[data-fa-page=index] .btn-login {
+    min-height:38px;
+    max-width:124px;
+    padding:8px 14px;
+    white-space:nowrap;
+  }
+  body[data-fa-page=index] .user-dropdown {
+    position:fixed;
+    top:66px;
+    right:12px;
+    left:auto;
+    width:min(292px,calc(100vw - 24px));
+    min-width:0;
+    max-height:calc(100dvh - 82px);
+    overflow:auto;
+    z-index:1200;
+    pointer-events:none;
+  }
+  body[data-fa-page=index] .user-dropdown.show {
+    pointer-events:auto;
+  }
+}
 @media (pointer:coarse) {
   button,.btn,[role=button],input,select { min-height:44px; }
 }

@@ -149,6 +149,7 @@
 
     const guest = isGuestExperience();
     document.body.classList.toggle('community-guest-clean', guest);
+    document.querySelectorAll('[data-tab="saved"],[data-filter="saved"],[data-drawer-filter="saved"]').forEach(node => { node.hidden = guest; });
     if (!guest) return;
 
     document.querySelector('.profile-mini')?.classList.add('is-guest-card');
@@ -313,7 +314,7 @@
       const myStoryItem = myGroupIndex >= 0
         ? `<div class="story-item is-own">
             <button class="story-ring-button" type="button" data-story-group="${myGroupIndex}" aria-label="Ver seu story">
-              <span class="story-ring"><img src="${safe(avatar(mine, 60))}" alt="" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(mine),60))}'"></span>
+              <span class="story-ring"><img class="story-avatar-img" width="64" height="64" src="${safe(avatar(mine, 60))}" alt="" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(mine),60))}'"></span>
               <span class="story-label">Seu story</span>
               <span class="story-state-label">Atividade</span>
             </button>
@@ -332,7 +333,7 @@
         const first = group[0];
         const viewed = group.every(row => row.viewed_by_me);
         return `<button class="story-item ${viewed ? 'is-viewed' : 'is-unseen'}" type="button" data-story-group="${index}" aria-label="${viewed ? 'Rever' : 'Ver novo'} story de ${safe(displayName(first))}">
-          <span class="story-ring"><img src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(first),60))}'"></span>
+          <span class="story-ring"><img class="story-avatar-img" width="64" height="64" src="${safe(avatar(first, 60))}" alt="${safe(displayName(first))}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(displayName(first),60))}'"></span>
           <span class="story-label">${safe(displayName(first))}</span><span class="story-state-label">${viewed ? 'Visto' : 'Novo story'}</span>
         </button>`;
       }).join('');
@@ -340,7 +341,7 @@
         const name = displayName(friend);
         const mc = friend.minecraft_name || friend.username || '';
         return `<button class="story-item social-friend js-profile" type="button" data-uid="${safe(friend.id)}" data-mc="${safe(mc)}" aria-label="Abrir perfil de ${safe(name)}">
-          <span class="story-ring"><img src="${safe(avatar(friend, 60))}" alt="${safe(name)}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(name,60))}'">${friend.is_online ? '<i class="social-online-dot" aria-label="Online"></i>' : ''}</span>
+          <span class="story-ring"><img class="story-avatar-img" width="64" height="64" src="${safe(avatar(friend, 60))}" alt="${safe(name)}" onerror="this.onerror=null;this.src='${safe(fallbackAvatar(name,60))}'">${friend.is_online ? '<i class="social-online-dot" aria-label="Online"></i>' : ''}</span>
           <span class="story-label">${safe(name)}</span><span class="story-state-label">${friend.is_online ? 'Online' : 'Amigo'}</span>
         </button>`;
       }).join('');
@@ -1162,7 +1163,12 @@
 
     const originalNavigate = Router.navigate.bind(Router);
     Router.navigate = function evolutionNavigate(path, options = {}) {
-      try { history.replaceState({ ...(history.state || {}), evoScrollY: scrollY }, document.title); } catch {}
+      const feedScrollY = state.routeActive
+        ? Number(state.feedScrollY || history.state?.feedScrollY || history.state?.evoScrollY || 0)
+        : Math.max(0, scrollY || document.documentElement.scrollTop || 0);
+      if (!state.routeActive && typeof rememberFeedScroll === 'function') rememberFeedScroll();
+      else if (!state.routeActive) state.feedScrollY = feedScrollY;
+      try { history.replaceState({ ...(history.state || {}), evoScrollY: feedScrollY, feedScrollY }, document.title); } catch {}
       const run = () => originalNavigate(path, options);
       const result = document.startViewTransition ? document.startViewTransition(run) : run();
       setTimeout(() => {
@@ -1175,7 +1181,11 @@
       }, 220);
       return result;
     };
-    window.addEventListener('popstate', event => setTimeout(() => scrollTo({ top: Number(event.state?.evoScrollY || 0), behavior: 'instant' }), 80));
+    window.addEventListener('popstate', event => setTimeout(() => {
+      const url = new URL(location.href);
+      const plainFeed = (url.pathname.replace(/\/+$/, '') === '/community' || url.pathname.replace(/\/+$/, '') === '/community.html') && !url.search;
+      if (plainFeed) scrollTo({ top: Number(event.state?.feedScrollY ?? event.state?.evoScrollY ?? 0), behavior: 'instant' });
+    }, 80));
   }
 
   function bindEvolutionEvents() {
@@ -1190,8 +1200,8 @@
       const backToPost = event.target.closest('[data-back-to-post]');
       if (backToPost) pendingCommentFocus = document.querySelector('#subthread-root [data-comment-id]')?.dataset.commentId || null;
       if (event.target.closest('#server-live-pill')) document.querySelector('#server-live-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (event.target.closest('[data-story-add]')) { if (!token) { location.href = loginUrlForCurrentPage(); return; } createStory(); return; }
-      if (event.target.closest('[data-social-add-friend]')) { if (!token) { location.href = loginUrlForCurrentPage(); return; } openModal('friend-modal'); return; }
+      if (event.target.closest('[data-story-add]')) { if (!token) { (window.promptGuestAccount || window.openGuestAccountPrompt || (() => { location.href = loginUrlForCurrentPage(); }))('story'); return; } createStory(); return; }
+      if (event.target.closest('[data-social-add-friend]')) { if (!token) { (window.promptGuestAccount || window.openGuestAccountPrompt || (() => { location.href = loginUrlForCurrentPage(); }))('friend'); return; } openModal('friend-modal'); return; }
       const socialProfile = event.target.closest('.social-friend.js-profile,.discover-card.js-profile,.story-viewer-row.js-profile');
       if (socialProfile) {
         const identifier = socialProfile.dataset.uid ? `id:${socialProfile.dataset.uid}` : socialProfile.dataset.mc;
@@ -1259,6 +1269,7 @@
 
       const timestamp = event.target.closest('.post-time');
       if (timestamp) {
+        if (timestamp.matches('a[href]') || timestamp.dataset.action === 'open-thread') return;
         event.preventDefault();
         event.stopPropagation();
         const expanded = timestamp.getAttribute('aria-expanded') === 'true';

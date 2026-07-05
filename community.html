@@ -1038,6 +1038,8 @@ img{display:block}
 .comment-author strong:hover{color:var(--accent)}
 .comment-author .handle{font-size:11px;color:var(--ink-3);font-weight:500}
 .comment-author .ts{font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.comment-reply-context{display:inline-flex;align-items:center;gap:4px;margin-top:3px;color:var(--ink-3);font-size:11.5px;font-weight:750}
+.comment-reply-context strong{color:var(--accent);font-weight:850}
 .comment-row p{margin-top:4px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
 .comment-media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:5px;margin-top:8px;max-width:448px}
 .comment-media-grid[data-count="1"]{grid-template-columns:minmax(0,320px)}
@@ -1424,6 +1426,21 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .account-menu button:hover{background:var(--surface-hover)}
 .account-menu button.danger{color:#ef4444}
 .account-mobile-only{display:none!important}
+.guest-account-sheet{width:min(430px,100%);overflow:hidden}
+.guest-account-body{display:grid;gap:14px;text-align:center;padding:18px}
+.guest-account-icon{width:48px;height:48px;margin:0 auto;display:grid;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
+.guest-account-icon svg{width:24px;height:24px}
+.guest-account-body p{margin:0;color:var(--ink-2);font-size:13px;line-height:1.48}
+.guest-account-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.guest-account-actions .btn{justify-content:center}
+.guest-account-later{justify-self:center;color:var(--ink-3);font-size:12px;font-weight:800;padding:6px 8px;border-radius:999px}
+.guest-account-later:hover{background:var(--surface-hover);color:var(--ink)}
+@media(max-width:520px){
+  #guest-account-modal.backdrop.show{align-items:flex-end;padding:8px 8px max(8px,env(safe-area-inset-bottom))}
+  .guest-account-sheet{width:100%;border-radius:22px 22px 18px 18px}
+  .guest-account-body{padding:17px 14px max(16px,env(safe-area-inset-bottom))}
+  .guest-account-actions{grid-template-columns:1fr}
+}
 .share-sheet{width:min(590px,100%);background:#0c0c0b!important;border-color:color-mix(in srgb,var(--accent) 42%,var(--line))!important}
 .share-sheet .sheet-header{background:#11110f}
 .share-sheet .sheet-body{flex:1;min-height:0;display:grid;grid-template-rows:auto auto auto auto minmax(220px,1fr);gap:11px;padding:12px;overflow:hidden}
@@ -1794,7 +1811,7 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
 .mobile-bottom-nav{display:none}
 .mobile-drawer-shell{position:fixed;inset:0;z-index:920;display:none;background:rgba(15,23,42,.38);backdrop-filter:blur(10px)}
 .mobile-drawer-shell.show{display:block}
-.mobile-drawer{width:min(330px,calc(100vw - 42px));height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:14px;border-right:1px solid var(--line);background:var(--surface-solid);box-shadow:var(--shadow-lg);transform:translateX(-105%);transition:transform var(--t-med) var(--ease)}
+.mobile-drawer{width:min(330px,calc(100vw - 42px));height:100%;margin-left:auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:14px;border-left:1px solid var(--line);background:var(--surface-solid);box-shadow:var(--shadow-lg);transform:translateX(105%);transition:transform var(--t-med) var(--ease)}
 .mobile-drawer-shell.show .mobile-drawer{transform:translateX(0)}
 .mobile-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .mobile-drawer-profile{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg)}
@@ -3462,9 +3479,9 @@ body.community-guest-clean .mini-stats,body.community-guest-clean #my-profile-bt
 #feed-col>#feed-sentinel{order:5}#feed-col>.load-more-area{order:6}
 body.community-guest-clean [data-filter="following"],body.community-guest-clean #social-notif-nav,body.guest-mode [data-filter="following"],body.guest-mode #social-notif-nav{display:none!important}
 </style>
-<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
+<link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260705b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260619a">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705c">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -3790,6 +3807,29 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
       <button class="btn btn-secondary btn-sm network-search-btn" type="button" data-open-search-page>Buscar na comunidade</button>
     </div>
   </aside>
+</div>
+
+<!-- GUEST ACCOUNT PROMPT -->
+<div class="backdrop" id="guest-account-modal" aria-hidden="true" role="presentation">
+  <div class="sheet sheet-sm guest-account-sheet" role="dialog" aria-modal="true" aria-labelledby="guest-account-title">
+    <div class="sheet-header">
+      <h2 id="guest-account-title">Entre para interagir</h2>
+      <button class="close-btn" data-close="guest-account-modal" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body guest-account-body">
+      <span class="guest-account-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+      </span>
+      <p id="guest-account-text">Crie uma conta ou entre para curtir, comentar e usar a rede social sem perder onde voce estava.</p>
+      <div class="guest-account-actions">
+        <a class="btn btn-primary" id="guest-account-signup" href="signup.html">Criar conta</a>
+        <a class="btn btn-secondary" id="guest-account-login" href="login.html">Entrar</a>
+      </div>
+      <button class="guest-account-later" type="button" data-close="guest-account-modal">Agora nao</button>
+    </div>
+  </div>
 </div>
 
 <!-- SHARE MODAL -->
@@ -4201,20 +4241,61 @@ const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PRO
 const API_BASES = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 const TK_KEY = 'fa_token', THEME_KEY = 'fa_theme';
 const token = localStorage.getItem(TK_KEY);
-function loginUrlForCurrentPage(){
-  const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'');
+function currentAuthNextPath(){
+  const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'') || 'community';
   try {
     sessionStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
     localStorage.setItem('fa_login_next', JSON.stringify({ path: here, at: Date.now() }));
   } catch {}
-  const url = new URL('login.html', location.href);
+  return here;
+}
+function authUrlForCurrentPage(page){
+  const here = currentAuthNextPath();
+  const url = new URL(page, location.href);
   url.searchParams.set('next', here);
   return `${url.pathname.replace(/^\//,'')}${url.search}`;
 }
+function loginUrlForCurrentPage(){
+  return authUrlForCurrentPage('login.html');
+}
+function signupUrlForCurrentPage(){
+  return authUrlForCurrentPage('signup.html');
+}
+function promptGuestAccount(action='default'){
+  const guestActionCopy = {
+    like: ['Entre para curtir', 'Sua curtida fica salva no seu perfil e ajuda a destacar boas publicacoes.'],
+    comment: ['Entre para comentar', 'Crie uma conta ou entre para responder sem perder este post.'],
+    repost: ['Entre para repostar', 'Reposte publicacoes no seu perfil e continue a conversa com a comunidade.'],
+    save: ['Entre para salvar', 'Salve posts e volte neles depois em qualquer dispositivo.'],
+    story: ['Entre para criar story', 'Stories sao ligados ao seu perfil, entao precisamos saber quem esta publicando.'],
+    friend: ['Entre para adicionar amigos', 'Use uma conta para encontrar jogadores, perfis e conversas.'],
+    share_inside: ['Entre para enviar por mensagem', 'O compartilhamento por chat precisa de uma conta. Voce ainda pode compartilhar fora do site.'],
+    quick_comment: ['Entre para responder', 'Crie uma conta ou entre para participar da conversa sem perder onde voce estava.'],
+    comment_like: ['Entre para curtir comentarios', 'Com uma conta, suas reacoes aparecem corretamente para todo mundo.'],
+    comment_save: ['Entre para salvar comentarios', 'Salve comentarios importantes e encontre tudo depois no seu perfil.'],
+    comment_repost: ['Entre para repostar comentarios', 'Reposte comentarios no seu perfil e continue a discussao.'],
+    default: ['Entre para interagir', 'Crie uma conta ou entre para curtir, comentar e usar a rede social sem perder onde voce estava.']
+  };
+  const copy = guestActionCopy[action] || guestActionCopy.default;
+  const modal = document.querySelector('#guest-account-modal');
+  if(!modal){ location.href = loginUrlForCurrentPage(); return; }
+  const title = document.querySelector('#guest-account-title');
+  const text = document.querySelector('#guest-account-text');
+  const login = document.querySelector('#guest-account-login');
+  const signup = document.querySelector('#guest-account-signup');
+  if(title) title.textContent = copy[0];
+  if(text) text.textContent = copy[1];
+  if(login) login.href = loginUrlForCurrentPage();
+  if(signup) signup.href = signupUrlForCurrentPage();
+  openModal('guest-account-modal');
+}
+window.promptGuestAccount = promptGuestAccount;
+window.openGuestAccountPrompt = promptGuestAccount;
 /* ======================= STATE ======================= */
 const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
   feedEvaluationTimestamp:null,
+  feedScrollY:0,
   players:[], notifs:[], notifUnread:0, trendCount:0,
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, activeThreadPost:null, mentionSuggestions:[], routeActive:false,
@@ -4261,13 +4342,22 @@ const ImpressionTracker = (() => {
     }
   }
   async function flush() {
+    if (!token) return;
     if (!_buf.size) return;
     _snapshotActive();
+    const activeIds = [..._buf.entries()]
+      .filter(([, imp]) => imp._start !== null)
+      .map(([id]) => id);
     const payload = [..._buf.values()]
       .filter(i => i.dwell_ms > 0 || i.max_reaction > 0)
       .map(({ post_id, dwell_ms, max_reaction }) => ({ post_id, dwell_ms: Math.round(dwell_ms), max_reaction }));
     if (!payload.length) return;
-    try { await api('/api/community/feed/impressions', { method: 'POST', body: JSON.stringify({ impressions: payload }) }); }
+    try {
+      await api('/api/community/feed/impressions', { method: 'POST', body: JSON.stringify({ impressions: payload }) });
+      _buf.clear();
+      const now = Date.now();
+      activeIds.forEach(id => _buf.set(id, { post_id: Number(id), dwell_ms: 0, max_reaction: 0, _start: now }));
+    }
     catch (e) { console.warn('[ImpressionTracker] flush error:', e.message); }
   }
   let _obs = null;
@@ -4403,6 +4493,26 @@ function communityShareUrl(params={}){
   Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
   return url.href;
 }
+const FEED_SCROLL_KEY = 'fa_community_feed_scroll_v2';
+function rememberFeedScroll(){
+  if(state.routeActive) return;
+  const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  state.feedScrollY = y;
+  try { sessionStorage.setItem(FEED_SCROLL_KEY, String(y)); } catch {}
+  try { history.replaceState({ ...(history.state || {}), feedScrollY: y, evoScrollY: y }, document.title); } catch {}
+}
+function savedFeedScroll(){
+  const raw = state.feedScrollY || (() => { try { return Number(sessionStorage.getItem(FEED_SCROLL_KEY) || 0); } catch { return 0; } })();
+  return Number.isFinite(Number(raw)) ? Math.max(0, Number(raw)) : 0;
+}
+function restoreFeedScroll(){
+  const y = savedFeedScroll();
+  if(!y) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo({ top: Math.min(y, max), behavior: 'instant' });
+  }));
+}
 
 /* ======================= API ======================= */
 async function api(path, opts={}){
@@ -4435,8 +4545,12 @@ const Router={
   register(pat,fn){ this.routes[pat]=fn; },
   navigate(path,{push=true,replace=false}={}){
     const navPath = path === '/community' ? communityUrl() : path;
-    if(replace) history.replaceState({},document.title,navPath);
-    else if(push) history.pushState({},document.title,navPath);
+    const targetUrl = new URL(navPath, location.origin);
+    const isPlainFeed = (targetUrl.pathname.replace(/\/+$/,'') === '/community' || targetUrl.pathname.replace(/\/+$/,'') === '/community.html') && !targetUrl.search;
+    if(!state.routeActive && !isPlainFeed) rememberFeedScroll();
+    const historyState = { ...(history.state || {}), feedScrollY: savedFeedScroll() };
+    if(replace) history.replaceState(historyState,document.title,navPath);
+    else if(push) history.pushState(historyState,document.title,navPath);
     this.dispatch(navPath);
   },
   dispatch(path=location.pathname + location.search){
@@ -4909,14 +5023,17 @@ function closeAllPostMenus() {
 
 
 function showFeedUI(){
+  const returningFromRoute = state.routeActive;
   state.routeActive=false;
   state.activeThreadPost=null;
   const feedCol=$('#feed-col'),routeCol=$('#route-col');
   feedCol.style.display='';routeCol.classList.remove('show');routeCol.innerHTML='';
   document.title='Comunidade | Força Aliada';
   setRailActive(state.filter);
+  if(returningFromRoute) restoreFeedScroll();
 }
 function showRouteUI(html){
+  if(!state.routeActive) rememberFeedScroll();
   state.routeActive=true;
   const feedCol=$('#feed-col'),routeCol=$('#route-col');
   feedCol.style.display='none';routeCol.classList.add('show');
@@ -5184,7 +5301,7 @@ function quickCommentSourceHTML(post){
     </div>`;
 }
 async function openQuickCommentComposer(id){
-  if(!token){location.href=loginUrlForCurrentPage();return}
+  if(!token){promptGuestAccount('quick_comment');return}
   let post=findPost(id);
   if(!post){
     try{post=await api(`/api/community/posts/${encodeURIComponent(id)}`)}
@@ -5255,6 +5372,31 @@ function previewCommentActionsHTML(comment){
     <button class="preview-comment-action comment-pa-share" type="button" data-comment-share="${esc(comment.id)}" data-comment-content="${esc(String(comment.content||'').slice(0,200))}" aria-label="Compartilhar comentário">${IC.share}</button>
   </div>`;
 }
+function previewCommentHTML(c){
+  const cmc=c.minecraft_name||c.username||'?';
+  const cShown=c.display_name||cmc;
+  const cAv=avatar(c,32);
+  const cFallback=fallbackAvatar(cShown,32);
+  const mediaHTML=commentMediaHTML(c);
+  const content=String(c.content||'').trim();
+  const replyCount=Number(c.reply_count||0);
+  return`<div class="preview-row${mediaHTML?' has-media':''}" data-comment-id="${esc(c.id)}">
+    <div class="preview-row-av-col">
+      <img class="preview-row-av js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='${cFallback}'">
+      <div class="preview-sub-line"></div>
+    </div>
+    <div class="preview-row-body">
+      <div class="preview-row-meta">
+        <span class="preview-row-author js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}">${esc(cShown)}</span>
+        <span class="preview-row-time">${esc(time(c.created_at))}</span>
+        ${replyCount>0?`<span class="preview-row-thread">${num(replyCount)} ${replyCount===1?'resposta':'respostas'}</span>`:''}
+      </div>
+      ${content?`<span class="preview-row-text">${mentionHTML(content)}</span>`:''}
+      ${mediaHTML}
+      ${previewCommentActionsHTML(c)}
+    </div>
+  </div>`;
+}
 function postCardHTML(p){
   const isRepost=Boolean(p.repost_of_id);
   const reposter=p.minecraft_name||p.username||'Jogador';
@@ -5280,6 +5422,11 @@ function postCardHTML(p){
   const canEdit=!isRepost&&canManage&&((Date.now()-new Date(p.created_at))/60000)<=15;
   const rc=Array.isArray(p.recent_comments)?p.recent_comments:[];
   const postUrl=communityUrl({post:targetPostId});
+  const previewComments=rc
+    .slice()
+    .sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0)||Number(a.id||0)-Number(b.id||0))
+    .slice(0,3);
+  const remainingComments=Math.max(0,Number(p.comments_count||0)-previewComments.length);
   return`<article class="post-card ${p.is_pinned?'is-pinned':''} ${isRepost?'is-repost':''}" data-post-id="${targetPostId}" data-record-id="${p.id}" tabindex="0" role="article" aria-label="Post de ${esc(mc)}">
     ${isRepost?`<div class="repost-label">${IC.repost}<span>${esc(p.display_name||reposter)} repostou</span></div>`:''}
     <div class="post-layout ${rc.length?'has-comments':''}" style="display:grid;grid-template-columns:42px minmax(0,1fr);gap:10px">
@@ -5328,7 +5475,7 @@ function postCardHTML(p){
         </div>
       </div>
     </div>
-    ${rc.length?`<div class="preview-comments">${rc.slice(0,2).map(c=>{const cmc=c.minecraft_name||c.username||'?';const cShown=c.display_name||cmc;const cAv=avatar(c,32);const cFallback=fallbackAvatar(cShown,32);return`<div class="preview-row" data-comment-id="${esc(c.id)}"><div class="preview-row-av-col"><img class="preview-row-av js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}" src="${esc(cAv)}" alt="${esc(cShown)}" onerror="this.onerror=null;this.src='${cFallback}'"><div class="preview-sub-line"></div></div><div class="preview-row-body"><div class="preview-row-meta"><span class="preview-row-author js-profile" data-mc="${esc(cmc)}" data-uid="${esc(c.author_id||c.user_id||'')}">${esc(cShown)}</span><span class="preview-row-time">${esc(time(c.created_at))}</span></div><span class="preview-row-text">${mentionHTML(c.content||'')}</span>${previewCommentActionsHTML(c)}</div></div>`;}).join('')}${p.comments_count>2?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver mais ${num(p.comments_count-2)} respostas</button>`:p.comments_count>0&&rc.length>0?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver conversa completa</button>`:''}</div>`:''}
+    ${previewComments.length?`<div class="preview-comments">${previewComments.map(previewCommentHTML).join('')}${remainingComments>0?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver mais ${num(remainingComments)} respostas</button>`:`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver conversa completa</button>`}</div>`:''}
   </article>`;
 }
 function emptyFeed(){
@@ -6502,9 +6649,10 @@ async function deleteComment(postId, commentId, post) {
   if (!ok) return;
   try {
     await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
-    const commentsResp2 = await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`);
+    const activeCommentSort = $('#comments-sort-bar .sort-btn.active')?.dataset.sort || 'oldest';
+    const commentsResp2 = await api(`/api/community/posts/${encodeURIComponent(postId)}/comments?sort=${encodeURIComponent(activeCommentSort)}`);
     const commentsList2 = Array.isArray(commentsResp2) ? commentsResp2 : (Array.isArray(commentsResp2?.comments) ? commentsResp2.comments : []);
-    renderThreadComments(commentsList2, postId, post, commentsResp2?.next_cursor || null, commentsResp2?.has_more || false, commentsResp2?.sort || 'oldest');
+    renderThreadComments(commentsList2, postId, post, commentsResp2?.next_cursor || null, commentsResp2?.has_more || false, commentsResp2?.sort || activeCommentSort);
     const nextCount = Math.max(0, Number(post?.comments_count || 0) - 1);
     if (post) post.comments_count = nextCount;
     const fp = findPost(postId); if (fp) fp.comments_count = nextCount;
@@ -6518,10 +6666,11 @@ async function deleteCommentFromSubthread(postId, commentId, rootCommentId) {
   if (!ok) return;
   try {
     await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
-    const resp = await api(`/api/community/comments/${encodeURIComponent(rootCommentId)}/thread`);
+    const activeSubSort = $('#subreplies-sort-bar .sort-btn.active')?.dataset.sort || 'oldest';
+    const resp = await api(`/api/community/comments/${encodeURIComponent(rootCommentId)}/thread?sort=${encodeURIComponent(activeSubSort)}`);
     const newReplies = Array.isArray(resp.replies) ? resp.replies : [];
     const repliesWrap = $('#subthread-replies');
-    if (repliesWrap) repliesWrap.innerHTML = buildSubthreadRepliesHTML(newReplies, resp.has_more, resp.next_cursor, rootCommentId, postId, resp.sort || 'relevance');
+    if (repliesWrap) repliesWrap.innerHTML = buildSubthreadRepliesHTML(newReplies, resp.has_more, resp.next_cursor, rootCommentId, postId, resp.sort || activeSubSort);
     toast('success', 'Resposta removida', '');
   } catch (e) { toast('error', 'Não foi possível remover', e.message); }
 }
@@ -6539,12 +6688,12 @@ async function navigateCommentThread(commentId, fromPostId) {
   `);
 
   try {
-    const data = await api(`/api/community/comments/${encodeURIComponent(commentId)}/thread`);
+    const data = await api(`/api/community/comments/${encodeURIComponent(commentId)}/thread?sort=oldest`);
     const rootComment = data.root_comment;
     const originalPost = data.original_post;
     const replies = Array.isArray(data.replies) ? data.replies : [];
     const postId = rootComment.post_id || fromPostId;
-    const sort = data.sort || 'relevance';
+    const sort = data.sort || 'oldest';
 
     const postAuthorShown = originalPost ? displayName(originalPost) : 'Jogador';
     const postContent = originalPost?.content ? String(originalPost.content).slice(0, 120) + (originalPost.content.length > 120 ? '…' : '') : '';
@@ -6612,9 +6761,9 @@ async function navigateCommentThread(commentId, fromPostId) {
 
 function buildSubthreadRepliesHTML(replies, hasMore, nextCursor, rootCommentId, postId, sort) {
   const sorts = [
-    { key: 'relevance', label: 'Relevância' },
+    { key: 'oldest',    label: 'Ordem' },
     { key: 'recent',    label: 'Recentes' },
-    { key: 'oldest',    label: 'Antigos' },
+    { key: 'relevance', label: 'Destaques' },
     { key: 'top',       label: 'Top' },
   ];
   const sortBarHTML = `
@@ -6637,6 +6786,8 @@ function buildSubthreadRepliesHTML(replies, hasMore, nextCursor, rootCommentId, 
 
 function bindSubthreadEvents(container, rootComment, postId, initialSort) {
   let currentSort = initialSort;
+  let replyTargetId = rootComment.id;
+  let replyTargetName = displayName(rootComment);
 
   container.addEventListener('click', async e => {
     if (e.target.closest('[data-back-to-post]')) {
@@ -6661,8 +6812,10 @@ function bindSubthreadEvents(container, rootComment, postId, initialSort) {
     if (replyToBtn) {
       e.stopPropagation();
       const name = replyToBtn.dataset.replyName || '';
+      replyTargetId = replyToBtn.dataset.replyToComment || rootComment.id;
+      replyTargetName = name || displayName(rootComment);
       const ta = $('#subreply-ta');
-      if (ta) { ta.placeholder = `Responder a @${name}…`; ta.focus(); }
+      if (ta) { ta.placeholder = `Responder a @${replyTargetName}...`; ta.dataset.replyTargetId = String(replyTargetId); ta.focus(); }
       return;
     }
 
@@ -6745,9 +6898,13 @@ function bindSubthreadEvents(container, rootComment, postId, initialSort) {
       const { urls: media_urls } = await uploadComposerMedia('subthread');
       await api(`/api/community/posts/${encodeURIComponent(postId)}/comments/reply`, {
         method: 'POST',
-        body: JSON.stringify({ content, media_urls, parent_comment_id: rootComment.id }),
+        body: JSON.stringify({ content, media_urls, parent_comment_id: replyTargetId || rootComment.id }),
       });
       replyTA.value = '';
+      replyTargetId = rootComment.id;
+      replyTargetName = displayName(rootComment);
+      replyTA.placeholder = `Responder a @${replyTargetName}...`;
+      delete replyTA.dataset.replyTargetId;
       clearComposerMedia('subthread');
       const resp = await api(`/api/community/comments/${encodeURIComponent(rootComment.id)}/thread?sort=${currentSort}`);
       const newReplies = Array.isArray(resp.replies) ? resp.replies : [];
@@ -6762,7 +6919,7 @@ function bindSubthreadEvents(container, rootComment, postId, initialSort) {
 }
 
 async function handleCommentLike(btn) {
-  if (!state.me) return toast('warning', 'Faça login para curtir', '');
+  if (!state.me) return promptGuestAccount('comment_like');
   const commentId = btn.dataset.commentLike;
   const liked = btn.dataset.liked === '1';
   const buttons = [...document.querySelectorAll(`[data-comment-like="${CSS.escape(String(commentId))}"]`)];
@@ -6816,7 +6973,7 @@ async function deleteRepostRecord(id){
 
 /* ── Repost de comentário (quote) ── */
 async function handleCommentSave(btn) {
-  if (!state.me) return toast('warning', 'Entre para salvar', '');
+  if (!state.me) return promptGuestAccount('comment_save');
   const commentId = btn.dataset.commentSave;
   const saved = btn.dataset.saved === '1';
   const buttons = [...document.querySelectorAll(`[data-comment-save="${CSS.escape(String(commentId))}"]`)];
@@ -6857,7 +7014,7 @@ async function handleCommentSave(btn) {
 }
 
 async function repostComment(commentId, commentContent, authorHandle, postId) {
-  if (!state.me) return toast('warning', 'Faça login para repostar', '');
+  if (!state.me) return promptGuestAccount('comment_repost');
   const quoteText = `"${String(commentContent || '').trim().slice(0, 200)}" — @${authorHandle}`;
   const repostSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>`;
   const back = document.createElement('div');
@@ -7042,6 +7199,7 @@ function updateShareSendState(){
   if(messageCount)messageCount.textContent=`${message?.value.length||0}/500`;
 }
 async function openShareDetails(details){
+  const canShareInside = Boolean(token);
   shareContext=details;
   shareTargets=[];
   shareSelected=new Map();
@@ -7049,8 +7207,11 @@ async function openShareDetails(details){
   shareSending=false;
   const shareSheet=document.querySelector('#share-modal .share-sheet');
   shareSheet?.classList.remove('is-story-share');
-  shareSheet?.classList.add('is-inside');
+  shareSheet?.classList.toggle('is-inside',canShareInside);
   shareSheet?.classList.toggle('is-story-share',details.kind==='story');
+  $$('#share-modal [data-share-inside]').forEach(node=>{node.hidden=!canShareInside||node.classList.contains('share-actions')});
+  $('#share-inside-btn')?.classList.toggle('is-locked',!canShareInside);
+  $('#share-inside-btn')?.setAttribute('aria-disabled',String(!canShareInside));
   $('#share-summary-title').textContent=details.title;
   $('#share-summary-text').textContent=details.text||'Link pronto para compartilhar.';
   $('#share-whatsapp-link').href=`https://wa.me/?text=${encodeURIComponent(`${details.title}\n${details.url}`)}`;
@@ -7078,6 +7239,7 @@ async function openShareDetails(details){
   $$('.share-filter-btn').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.shareFilter==='all'));
   updateShareSendState();
   openModal('share-modal');
+  if(!canShareInside)return;
   renderShareChatList(true);
   try{
     const [convs,groups,friends]=await Promise.all([
@@ -7249,12 +7411,12 @@ async function renderPostRoute(id){
   try{
     const[post,commentsResp]=await Promise.all([
       api(`/api/community/posts/${encodeURIComponent(id)}`),
-      api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=relevance`)
+      api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=oldest`)
     ]);
     const comments=Array.isArray(commentsResp)?commentsResp:(Array.isArray(commentsResp?.comments)?commentsResp.comments:[]);
     let commentsNextCursor=commentsResp?.next_cursor||null;
     let commentsHasMore=commentsResp?.has_more||false;
-    const commentsSort=commentsResp?.sort||'relevance';
+    const commentsSort=commentsResp?.sort||'oldest';
     const cached=findPost(id);if(cached)Object.assign(cached,post);else state.posts.unshift(post);
     state.activeThreadPost = post;
     document.title=`Post de ${post.minecraft_name||post.username||'jogador'} | Força Aliada`;
@@ -7442,9 +7604,10 @@ function bindThreadEvents(post,id){
       await api(`/api/community/posts/${encodeURIComponent(id)}/comments`,{method:'POST',body:JSON.stringify({content,media_urls})});
       ta.value='';
       clearComposerMedia('thread');
-      const commentsResp3=await api(`/api/community/posts/${encodeURIComponent(id)}/comments`);
+      const activeCommentSort=$('#comments-sort-bar .sort-btn.active')?.dataset.sort||'oldest';
+      const commentsResp3=await api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=${encodeURIComponent(activeCommentSort)}`);
       const commentsList3=Array.isArray(commentsResp3)?commentsResp3:(Array.isArray(commentsResp3?.comments)?commentsResp3.comments:[]);
-      renderThreadComments(commentsList3,id,post,commentsResp3?.next_cursor||null,commentsResp3?.has_more||false,commentsResp3?.sort||'relevance');
+      renderThreadComments(commentsList3,id,post,commentsResp3?.next_cursor||null,commentsResp3?.has_more||false,commentsResp3?.sort||activeCommentSort);
       post.comments_count=Number(post.comments_count||0)+1;
       const fp=findPost(id);if(fp)fp.comments_count=post.comments_count;
       const tc=$('.thread-count');if(tc)tc.textContent=`${num(post.comments_count)} respostas`;
@@ -7598,9 +7761,9 @@ function renderThreadComments(comments, postId, post, nextCursor, hasMore, sort 
   if (!wrap) return;
 
   const sorts = [
-    { key: 'relevance', label: 'Relevância' },
+    { key: 'oldest',    label: 'Ordem' },
     { key: 'recent',    label: 'Recentes' },
-    { key: 'oldest',    label: 'Antigos' },
+    { key: 'relevance', label: 'Destaques' },
     { key: 'top',       label: 'Top' },
   ];
   const sortBarHTML = `
@@ -7703,6 +7866,12 @@ function commentsHTML(comments, opts = {}) {
     const replyCount = Number(c.reply_count  || 0);
     const likedByMe  = Boolean(c.liked_by_me);
     const savedByMe  = Boolean(c.saved_by_me);
+    const replyToId = Number(c.reply_to_comment_id || 0);
+    const parentId = Number(c.parent_comment_id || 0);
+    const replyToName = c.reply_to_display_name || c.reply_to_minecraft_name || c.reply_to_username || '';
+    const replyContext = isSubthread && replyToId && parentId && replyToId !== parentId && replyToName
+      ? `<div class="comment-reply-context">Respondendo a <strong>@${esc(replyToName)}</strong></div>`
+      : '';
 
     const heartSVG = `<svg viewBox="0 0 24 24" fill="${likedByMe ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
 
@@ -7753,6 +7922,7 @@ function commentsHTML(comments, opts = {}) {
           <span class="handle">@${esc(handle)}</span>
           <span class="ts">· ${esc(time(c.created_at))}</span>
         </div>
+        ${replyContext}
         ${c.content ? `<p class="${del ? 'deleted' : ''}">${del ? esc(c.content) : mentionHTML(c.content)}</p>` : ''}
         ${del ? '' : commentMediaHTML(c)}
         ${interactionBar}
@@ -9342,6 +9512,11 @@ function bindEvents(){
     if(retryScheduled){e.preventDefault();retryScheduledPost(retryScheduled.dataset.retryScheduledPost).catch(err=>toast('error','Não foi possível reagendar',err.message));return}
     if(e.target.closest('#share-inside-btn')&&shareContext){
       e.preventDefault();
+      if(!token){
+        closeModal('share-modal',{immediate:true});
+        promptGuestAccount('share_inside');
+        return;
+      }
       document.querySelector('#share-modal .share-sheet')?.classList.add('is-inside');
       setTimeout(()=>document.querySelector('#share-recipient-search')?.focus(),80);
       return;
@@ -9409,7 +9584,8 @@ function bindEvents(){
       e.preventDefault();e.stopPropagation();
       const grid=commentMedia.closest('.comment-media-grid');
       const urls=[...(grid?.querySelectorAll('.comment-media-btn img')||[])].map(img=>img.src).filter(Boolean);
-      const post=state.lightboxPost||state.activeThreadPost||findPost(state.activePostId);
+      const hostCard=commentMedia.closest('.post-card');
+      const post=state.lightboxPost||state.activeThreadPost||findPost(state.activePostId)||findPost(hostCard?.dataset.recordId)||findPost(hostCard?.dataset.postId);
       if(post&&urls.length)window.openLightbox?.(post,urls,Number(commentMedia.dataset.commentMediaIndex||0));
       return;
     }
@@ -9518,7 +9694,7 @@ function bindEvents(){
         e.stopPropagation();
         const a=act.dataset.action;
         if(a==='menu'){e.stopPropagation();openPostMenu(act.closest('.more-btn'));return}
-        if(!token&&!['share','copy','open-thread'].includes(a)){location.href=loginUrlForCurrentPage();return}
+        if(!token&&!['share','copy','open-thread'].includes(a)){e.preventDefault();promptGuestAccount(a);return}
         if(a==='like'){
           const likesCountTarget=e.target.closest('[data-action-likes="show-likers"]');
           if(likesCountTarget){
@@ -9833,7 +10009,7 @@ function bindEvents(){
     if(!postId)return;
     lbComments.innerHTML='<div class="lb-comments-empty">Carregando…</div>';
     try{
-      const lbCommResp = lbCommentCache[postId] || (lbCommentCache[postId]=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments`));
+      const lbCommResp = lbCommentCache[postId] || (lbCommentCache[postId]=await api(`/api/community/posts/${encodeURIComponent(postId)}/comments?sort=oldest`));
       const data=Array.isArray(lbCommResp)?lbCommResp:(Array.isArray(lbCommResp?.comments)?lbCommResp.comments:[]);
       if(!data.length){
         lbComments.innerHTML='<div class="lb-comments-empty">Nenhuma resposta ainda.</div>';
@@ -10210,10 +10386,10 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260617a"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260705b"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
-<script src="assets/js/community-social-refinement-20260615a.js?v=20260615e"></script>
-<script src="assets/js/social-chat.js?v=chat15-20260615"></script>
+<script src="assets/js/community-social-refinement-20260615a.js?v=20260705a"></script>
+<script src="assets/js/social-chat.js?v=chat14-20260705a"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────

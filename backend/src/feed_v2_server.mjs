@@ -905,7 +905,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
 
       -- Preview dos últimos 3 comentários (filtrando bloqueios)
       LEFT JOIN LATERAL (
-        SELECT json_agg(row_to_json(rc)) AS recent_comments
+        SELECT json_agg(row_to_json(rc) ORDER BY rc.created_at ASC, rc.id ASC) AS recent_comments
         FROM (
           SELECT pc.id, pc.content, pc.media_urls, pc.created_at, pc.author_id,
                  pc.likes_count, pc.reply_count,
@@ -926,12 +926,13 @@ app.get('/api/community/feed', auth, async (req, res) => {
           LEFT JOIN user_preferences cup ON cup.user_id = cu.id
           WHERE pc.post_id = f.target_id
             AND pc.is_deleted = FALSE
+            AND pc.parent_comment_id IS NULL
             AND NOT EXISTS (
               SELECT 1 FROM user_blocks cub
               WHERE (cub.blocker_id = $1 AND cub.blocked_id = cu.id)
                  OR (cub.blocker_id = cu.id AND cub.blocked_id = $1)
             )
-          ORDER BY pc.created_at DESC
+          ORDER BY pc.created_at ASC, pc.id ASC
           LIMIT 3
         ) rc
       ) recent ON TRUE

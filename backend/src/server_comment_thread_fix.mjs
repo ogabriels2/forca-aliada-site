@@ -34,6 +34,10 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
       c.id,
       c.post_id,
       COALESCE(c.parent_comment_id, NULL) AS parent_comment_id,
+      COALESCE(c.reply_to_comment_id, NULL) AS reply_to_comment_id,
+      (SELECT ru.username FROM post_comments rc JOIN users ru ON ru.id = rc.author_id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_username,
+      (SELECT ru.minecraft_name FROM post_comments rc JOIN users ru ON ru.id = rc.author_id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_minecraft_name,
+      (SELECT COALESCE(rup.display_name, '') FROM post_comments rc JOIN users ru ON ru.id = rc.author_id LEFT JOIN user_preferences rup ON rup.user_id = ru.id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_display_name,
       CASE WHEN c.is_deleted THEN '[comentário removido]' ELSE c.content END AS content,
       CASE WHEN c.is_deleted THEN '{}'::text[] ELSE c.media_urls END AS media_urls,
       c.is_deleted,
@@ -65,6 +69,10 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
       c.id,
       c.post_id,
       COALESCE(c.parent_comment_id, NULL) AS parent_comment_id,
+      COALESCE(c.reply_to_comment_id, NULL) AS reply_to_comment_id,
+      (SELECT ru.username FROM post_comments rc JOIN users ru ON ru.id = rc.author_id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_username,
+      (SELECT ru.minecraft_name FROM post_comments rc JOIN users ru ON ru.id = rc.author_id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_minecraft_name,
+      (SELECT COALESCE(rup.display_name, '') FROM post_comments rc JOIN users ru ON ru.id = rc.author_id LEFT JOIN user_preferences rup ON rup.user_id = ru.id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_display_name,
       CASE WHEN c.is_deleted THEN '[comentário removido]' ELSE c.content END AS content,
       CASE WHEN c.is_deleted THEN '{}'::text[] ELSE c.media_urls END AS media_urls,
       c.is_deleted,
@@ -147,7 +155,7 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
   }
 
   // ─── Helper: fetch replies to a comment ─────────────────────────────────
-  async function fetchReplies(rootCommentId, { userId = null, sort = 'relevance', limit = 20, cursor = null } = {}) {
+  async function fetchReplies(rootCommentId, { userId = null, sort = 'oldest', limit = 20, cursor = null } = {}) {
     const selectSql = userId ? safeCommentSelectSql('$1') : publicCommentSelectSql();
     const baseParams = userId ? [userId, rootCommentId] : [rootCommentId];
     const rootParam = userId ? '$2' : '$1';
@@ -168,7 +176,7 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
     const params = [...baseParams, limit + 1];
     let paginationClause = '';
     if (cursor) {
-      paginationClause = `AND c.id < $${params.length + 1}`;
+      paginationClause = `AND c.id ${sort === 'oldest' ? '>' : '<'} $${params.length + 1}`;
       params.push(cursor);
     }
 
@@ -198,7 +206,7 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
   app.get('/api/public/community/comments/:id/thread', async (req, res) => {
     const commentId = parseInt(req.params.id, 10);
     const sort = ['relevance', 'recent', 'oldest', 'top'].includes(req.query.sort)
-      ? req.query.sort : 'relevance';
+      ? req.query.sort : 'oldest';
 
     if (!commentId) return res.status(400).json({ error: 'ID inválido' });
 
@@ -235,7 +243,7 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
   app.get('/api/community/comments/:id/thread', auth, async (req, res) => {
     const commentId = parseInt(req.params.id, 10);
     const sort = ['relevance', 'recent', 'oldest', 'top'].includes(req.query.sort)
-      ? req.query.sort : 'relevance';
+      ? req.query.sort : 'oldest';
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const cursor = parseInt(req.query.cursor, 10) || null;
 

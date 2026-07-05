@@ -52,7 +52,7 @@
  *    temporal_gravity = sqrt(horas_desde_criacao + 1.5) ^ 1.1
  *
  *  Modos de sort expostos pela API:
- *    ?sort=relevance   (padrão)   — score calculado acima
+ *    ?sort=relevance             — score calculado acima
  *    ?sort=recent                 — created_at DESC (mais recente primeiro)
  *    ?sort=oldest                 — created_at ASC  (cronológico, igual ao atual)
  *    ?sort=top                    — likes_count DESC (mais curtidos)
@@ -74,11 +74,16 @@ ALTER TABLE post_comments
   ADD COLUMN IF NOT EXISTS parent_comment_id INTEGER
     REFERENCES post_comments(id) ON DELETE SET NULL;
 ALTER TABLE post_comments
+  ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER
+    REFERENCES post_comments(id) ON DELETE SET NULL;
+ALTER TABLE post_comments
   ADD COLUMN IF NOT EXISTS media_urls TEXT[] NOT NULL DEFAULT '{}'::text[];
-
 CREATE INDEX IF NOT EXISTS idx_comments_parent
   ON post_comments(parent_comment_id, created_at ASC)
   WHERE parent_comment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_comments_reply_to
+  ON post_comments(reply_to_comment_id)
+  WHERE reply_to_comment_id IS NOT NULL;
 
 -- ── 2. Curtidas em comentários ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS comment_likes (
@@ -245,6 +250,10 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       c.id,
       c.post_id,
       c.parent_comment_id,
+      c.reply_to_comment_id,
+      (SELECT ru.username FROM post_comments rc JOIN users ru ON ru.id = rc.author_id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_username,
+      (SELECT ru.minecraft_name FROM post_comments rc JOIN users ru ON ru.id = rc.author_id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_minecraft_name,
+      (SELECT COALESCE(rup.display_name, '') FROM post_comments rc JOIN users ru ON ru.id = rc.author_id LEFT JOIN user_preferences rup ON rup.user_id = ru.id WHERE rc.id = c.reply_to_comment_id LIMIT 1) AS reply_to_display_name,
       CASE WHEN c.is_deleted THEN '[comentário removido]' ELSE c.content END AS content,
       CASE WHEN c.is_deleted THEN '{}'::text[] ELSE c.media_urls END AS media_urls,
       c.is_deleted,
@@ -341,7 +350,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
   //    via GET /api/community/comments/:id/thread
   //
   //  Query params:
-  //    ?sort=relevance|recent|oldest|top   (padrão: relevance)
+  //    ?sort=relevance|recent|oldest|top   (padrão: oldest)
   //    ?cursor=<id>                         (paginação keyset por id)
   //    ?limit=<n>                           (padrão: 20, max: 50)
   // ─────────────────────────────────────────────────────────────────────────
@@ -355,7 +364,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
     const limit   = clampInt(req.query.limit, 20, 1, 50);
     const cursor  = parseInt(req.query.cursor, 10) || null;
     const sort    = ['relevance', 'recent', 'oldest', 'top'].includes(req.query.sort)
-      ? req.query.sort : 'relevance';
+      ? req.query.sort : 'oldest';
 
     if (!postId) return res.status(400).json({ error: 'ID inválido' });
 
@@ -462,8 +471,10 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       );
       if (blocked.length) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Não é possível comentar neste post.' }); }
 
-      // Resolve parent_comment_id: aplana se o pai for resposta (depth=1)
+      // Resolve parent_comment_id: mantem a thread no comentario raiz, mas preserva
+      // o alvo real em reply_to_comment_id para a UI mostrar "respondendo a".
       let parentCommentId = null;
+      let replyToCommentId = null;
       let parentComment   = null;
       if (rawParentId) {
         const { rows: pRows } = await client.query(
@@ -475,14 +486,15 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
         if (parentComment) {
           // Se o pai já é uma resposta (tem parent), usamos o pai do pai (raiz)
           parentCommentId = parentComment.parent_comment_id ?? parentComment.id;
+          replyToCommentId = parentComment.id;
         }
       }
 
       const { rows } = await client.query(
-        `INSERT INTO post_comments(post_id, author_id, content, parent_comment_id, media_urls)
-         VALUES($1, $2, $3, $4, $5)
-         RETURNING id, created_at, parent_comment_id, media_urls`,
-        [postId, req.user.sub, content, parentCommentId, mediaUrls],
+        `INSERT INTO post_comments(post_id, author_id, content, parent_comment_id, reply_to_comment_id, media_urls)
+         VALUES($1, $2, $3, $4, $5, $6)
+         RETURNING id, created_at, parent_comment_id, reply_to_comment_id, media_urls`,
+        [postId, req.user.sub, content, parentCommentId, replyToCommentId, mediaUrls],
       );
       const newComment = rows[0];
 
@@ -549,6 +561,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
         id: newComment.id,
         created_at: newComment.created_at,
         parent_comment_id: newComment.parent_comment_id,
+        reply_to_comment_id: newComment.reply_to_comment_id,
         notification_created: Boolean(commentNotification),
       });
     } catch (e) {
@@ -686,7 +699,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
   //  sua sub-thread (igual ao comportamento de "ver replies" do Twitter).
   //
   //  Query params:
-  //    ?sort=relevance|recent|oldest|top
+  //    ?sort=relevance|recent|oldest|top   (padrão: oldest)
   //    ?cursor=<id>
   //    ?limit=<n>
   // ─────────────────────────────────────────────────────────────────────────
@@ -695,7 +708,7 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
     const limit     = clampInt(req.query.limit, 20, 1, 50);
     const cursor    = parseInt(req.query.cursor, 10) || null;
     const sort      = ['relevance', 'recent', 'oldest', 'top'].includes(req.query.sort)
-      ? req.query.sort : 'relevance';
+      ? req.query.sort : 'oldest';
 
     if (!commentId) return res.status(400).json({ error: 'ID inválido' });
 

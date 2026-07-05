@@ -1049,12 +1049,12 @@ function setFieldState(fieldId, state, hintText, hintType) {
   const hint   = document.getElementById('hint-' + fieldId);
   const status = document.getElementById('status-' + fieldId);
 
-  field.classList.remove('has-error', 'has-success');
-  if (state === 'error')   { field.classList.add('has-error');   status.textContent = '✕'; }
-  if (state === 'success') { field.classList.add('has-success'); status.textContent = '✓'; }
-  if (state === 'idle')    { status.textContent = ''; }
+  field?.classList.remove('has-error', 'has-success');
+  if (state === 'error')   { field?.classList.add('has-error');   if (status) status.textContent = '✕'; }
+  if (state === 'success') { field?.classList.add('has-success'); if (status) status.textContent = '✓'; }
+  if (state === 'idle' && status) status.textContent = '';
 
-  if (hintText !== undefined) {
+  if (hint && hintText !== undefined) {
     hint.textContent = hintText;
     hint.className = 'field-hint';
     if (hintText) {
