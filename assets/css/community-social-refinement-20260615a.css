@@ -2398,7 +2398,31 @@ body.social-ui-v2 #stories-shell .story-ring {
   min-height: 64px !important;
   max-width: 64px !important;
   max-height: 64px !important;
-  contain: layout paint;
+  contain: layout;
+}
+
+body.social-ui-v2 #stories-shell .story-ring {
+  overflow: visible !important;
+}
+
+body.social-ui-v2 #stories-shell .story-ring::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -5px !important;
+  z-index: 0 !important;
+  border: 3px solid transparent !important;
+  border-radius: 50% !important;
+  background: linear-gradient(45deg,#feda75 0%,#fa7e1e 22%,#d62976 48%,#962fbf 72%,#4f5bd5 100%) border-box !important;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+}
+
+body.social-ui-v2 #stories-shell .story-item.is-own .story-ring::before {
+  opacity: 1 !important;
+  background: color-mix(in srgb,var(--line-strong) 82%,var(--accent) 18%) border-box !important;
+  animation: none !important;
 }
 
 body.social-ui-v2 #stories-shell .story-ring > img,
@@ -2413,6 +2437,42 @@ body.social-ui-v2 #stories-shell .story-ring-button .story-ring > img {
   object-fit: cover !important;
   border-radius: 50% !important;
   flex: 0 0 64px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+body.social-ui-v2 .feed-story-avatar {
+  cursor: pointer;
+}
+
+body.social-ui-v2 .feed-story-avatar.has-unseen-story {
+  padding: 2px !important;
+  border: 2px solid transparent !important;
+  border-radius: 50% !important;
+  background:
+    linear-gradient(var(--surface-solid,var(--surface)),var(--surface-solid,var(--surface))) padding-box,
+    linear-gradient(45deg,#feda75 0%,#fa7e1e 22%,#d62976 48%,#962fbf 72%,#4f5bd5 100%) border-box !important;
+  box-shadow: 0 0 0 2px var(--surface-solid,var(--surface)),0 6px 16px color-mix(in srgb,var(--accent) 18%,transparent);
+}
+
+body.social-ui-v2 .feed-story-avatar.has-unseen-story:hover {
+  filter: saturate(1.08);
+}
+
+body.social-ui-v2 .comments-load-warning {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb,var(--warn,#f59e0b) 42%,var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb,var(--warn,#f59e0b) 10%,var(--surface));
+  color: var(--ink);
+  font-size: 12px;
+}
+
+body.social-ui-v2 .comments-load-warning span {
+  color: var(--ink-3);
 }
 
 @media (prefers-reduced-motion: reduce) {

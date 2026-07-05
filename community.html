@@ -3481,7 +3481,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260705b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705d">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705e">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -5475,7 +5475,7 @@ function postCardHTML(p){
         </div>
       </div>
     </div>
-    ${previewComments.length?`<div class="preview-comments">${previewComments.map(previewCommentHTML).join('')}${remainingComments>0?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver mais ${num(remainingComments)} respostas</button>`:`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver conversa completa</button>`}</div>`:''}
+    ${previewComments.length?`<div class="preview-comments">${previewComments.map(previewCommentHTML).join('')}${remainingComments>0?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver mais ${num(remainingComments)} respostas</button>`:previewComments.length>1?`<button class="preview-more-btn" data-action="open-thread"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg> Ver conversa completa</button>`:''}</div>`:''}
   </article>`;
 }
 function emptyFeed(){
@@ -7409,10 +7409,15 @@ async function renderPostRoute(id){
     <div class="skel" style="height:180px;border-radius:var(--r-lg)"></div>
   `);
   try{
-    const[post,commentsResp]=await Promise.all([
+    const [postResult, commentsResult] = await Promise.allSettled([
       api(`/api/community/posts/${encodeURIComponent(id)}`),
       api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=oldest`)
     ]);
+    if (postResult.status !== 'fulfilled') throw postResult.reason || new Error('Post indisponivel');
+    const post = postResult.value;
+    const commentsResp = commentsResult.status === 'fulfilled'
+      ? commentsResult.value
+      : { comments: [], sort: 'oldest', has_more: false, next_cursor: null, error: commentsResult.reason?.message || 'Erro ao carregar comentarios' };
     const comments=Array.isArray(commentsResp)?commentsResp:(Array.isArray(commentsResp?.comments)?commentsResp.comments:[]);
     let commentsNextCursor=commentsResp?.next_cursor||null;
     let commentsHasMore=commentsResp?.has_more||false;
@@ -7494,7 +7499,7 @@ async function renderPostRoute(id){
       </div>
       <div id="thread-comments"></div>
     `;
-    renderThreadComments(comments, id, post, commentsNextCursor, commentsHasMore, commentsSort);
+    renderThreadComments(comments, id, post, commentsNextCursor, commentsHasMore, commentsSort, commentsResp?.error || '');
     bindThreadEvents(post,id);
     // Also add likes/reposts count click handlers in the thread view
     addThreadLikersRepostersBtns(post,id);
@@ -7756,7 +7761,7 @@ async function showSocialSheet(postId,startTab='likes'){
 }
 
 /* ======================= RENDER THREAD COMMENTS with load-more ======================= */
-function renderThreadComments(comments, postId, post, nextCursor, hasMore, sort = 'oldest') {
+function renderThreadComments(comments, postId, post, nextCursor, hasMore, sort = 'oldest', loadError = '') {
   const wrap = $('#thread-comments');
   if (!wrap) return;
 
@@ -7777,6 +7782,7 @@ function renderThreadComments(comments, postId, post, nextCursor, hasMore, sort 
   const hasComments = Array.isArray(comments) && comments.length > 0;
 
   wrap.innerHTML = `
+    ${loadError ? `<div class="comments-load-warning"><strong>Respostas indisponiveis agora</strong><span>${esc(loadError)}</span></div>` : ''}
     ${sortBarHTML}
     <div class="comments-list-wrap${hasComments ? ' has-sort-bar' : ''}" id="comments-list-wrap">
       ${commentsListHTML}
@@ -9642,6 +9648,11 @@ function bindEvents(){
     if(folBtn){e.stopPropagation();toggleFollowBtn(folBtn.dataset.uid,folBtn.dataset.on==='1',folBtn);return}
     const prow=e.target.closest('.player-row,.rel-row');
     if(prow&&!e.target.closest('button')){const uid=prow.dataset.uid;const mc=prow.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
+    const feedStoryAvatar=e.target.closest('[data-feed-story-user]');
+    if(feedStoryAvatar&&!e.target.closest('button,a')){
+      const opened=window.openFeedStoryByUser?.(feedStoryAvatar.dataset.feedStoryUser);
+      if(opened){e.preventDefault();e.stopPropagation();return}
+    }
     const jp=e.target.closest('.js-profile');
     if(jp&&!e.target.closest('button')){const uid=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier=uid?`id:${uid}`:mc;if(identifier)navigateProfile(identifier);return}
 
@@ -10386,7 +10397,7 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260705b"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260705c"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
 <script src="assets/js/community-social-refinement-20260615a.js?v=20260705a"></script>
 <script src="assets/js/social-chat.js?v=chat14-20260705a"></script>

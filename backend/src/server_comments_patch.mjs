@@ -885,7 +885,69 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       });
     } catch (e) {
       console.error('[GET /api/community/posts/:id/comments upgraded]', e);
-      return res.status(500).json({ error: 'Erro ao carregar comentários' });
+      try {
+        const fallbackOrder = sort === 'recent' ? 'c.created_at DESC, c.id DESC' : 'c.created_at ASC, c.id ASC';
+        const fallbackParams = [userId, postId, limit + 1];
+        let fallbackCursorClause = '';
+        if (cursor) {
+          const dir = sort === 'oldest' ? '>' : '<';
+          fallbackCursorClause = `AND c.id ${dir} $4`;
+          fallbackParams.push(cursor);
+        }
+        const { rows } = await pool.query(`
+          SELECT
+            c.id,
+            c.post_id,
+            c.parent_comment_id,
+            NULL::integer AS reply_to_comment_id,
+            NULL::text AS reply_to_username,
+            NULL::text AS reply_to_minecraft_name,
+            NULL::text AS reply_to_display_name,
+            CASE WHEN c.is_deleted THEN '[comentario removido]' ELSE c.content END AS content,
+            CASE WHEN c.is_deleted THEN '{}'::text[] ELSE COALESCE(c.media_urls, '{}'::text[]) END AS media_urls,
+            c.is_deleted,
+            c.created_at,
+            (SELECT COUNT(*)::int FROM comment_likes cl WHERE cl.comment_id = c.id) AS likes_count,
+            (SELECT COUNT(*)::int FROM post_comments child WHERE child.parent_comment_id = c.id AND child.is_deleted = FALSE) AS reply_count,
+            EXISTS(SELECT 1 FROM comment_likes cl2 WHERE cl2.comment_id = c.id AND cl2.user_id = $1) AS liked_by_me,
+            0::int AS saves_count,
+            FALSE AS saved_by_me,
+            u.id AS author_id,
+            u.username,
+            u.minecraft_name,
+            u.photo_url,
+            FALSE AS is_platform_verified,
+            COALESCE(up.avatar_url, '') AS avatar_url,
+            COALESCE(up.display_name, '') AS display_name,
+            ${primaryIntegrationFieldsSql('u')} AS integration,
+            ${socialRankSql('u', 'pb')} AS rank
+          FROM post_comments c
+          JOIN users u ON c.author_id = u.id
+          LEFT JOIN user_preferences up ON up.user_id = u.id
+          LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+          WHERE c.post_id = $2
+            AND c.parent_comment_id IS NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM user_blocks ub
+              WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
+                 OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
+            )
+            ${fallbackCursorClause}
+          ORDER BY c.is_deleted ASC, ${fallbackOrder}
+          LIMIT $3
+        `, fallbackParams);
+        const page = rows.slice(0, limit);
+        return res.json({
+          comments: page,
+          sort,
+          next_cursor: rows.length > limit ? page[page.length - 1]?.id : null,
+          has_more: rows.length > limit,
+          degraded: true,
+        });
+      } catch (fallbackError) {
+        console.error('[GET /api/community/posts/:id/comments fallback]', fallbackError);
+        return res.status(500).json({ error: 'Erro ao carregar comentarios' });
+      }
     }
   };
 

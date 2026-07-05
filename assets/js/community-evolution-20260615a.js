@@ -12,6 +12,7 @@
   const evoQueue = [];
   const locallyViewedStories = new Set();
   let storyGroups = [];
+  let storyUsers = new Map();
   let activeStoryGroup = 0;
   let activeStoryIndex = 0;
   let storyTimer = null;
@@ -230,6 +231,7 @@
         if (!img.height) img.height = 50;
         img.decoding = 'async';
       });
+      decorateFeedStoryAvatars(card);
       const author = displayName(post);
       card.querySelector('.pa-like')?.setAttribute('aria-label', `${card.querySelector('.pa-like')?.classList.contains('is-on') ? 'Descurtir' : 'Curtir'} post de ${author}`);
       card.querySelector('.pa-comment')?.setAttribute('aria-label', `Abrir comentários do post de ${author}`);
@@ -240,6 +242,43 @@
     decorateProfilePresence();
     setTimeout(() => { decorating = false; }, 0);
   }
+
+  function rebuildStoryUsers() {
+    storyUsers = new Map();
+    storyGroups.forEach((group, groupIndex) => {
+      const first = group?.[0];
+      if (!first?.user_id) return;
+      const firstUnseen = group.findIndex(story => !story.viewed_by_me);
+      storyUsers.set(String(first.user_id), {
+        groupIndex,
+        firstUnseen,
+        hasUnseen: firstUnseen >= 0,
+      });
+    });
+  }
+
+  function decorateFeedStoryAvatars(root = document) {
+    root.querySelectorAll?.('.post-card .post-av-col img.js-profile,#thread-hero .post-layout > img.js-profile').forEach(img => {
+      const uid = img.dataset.uid || '';
+      const storyMeta = uid ? storyUsers.get(String(uid)) : null;
+      img.classList.remove('feed-story-avatar', 'has-unseen-story');
+      delete img.dataset.feedStoryUser;
+      img.removeAttribute('title');
+      if (!storyMeta) return;
+      img.classList.add('feed-story-avatar');
+      img.dataset.feedStoryUser = String(uid);
+      img.title = storyMeta.hasUnseen ? 'Ver story' : 'Rever story';
+      if (storyMeta.hasUnseen) img.classList.add('has-unseen-story');
+    });
+  }
+
+  window.openFeedStoryByUser = function openFeedStoryByUser(userId) {
+    const storyMeta = storyUsers.get(String(userId || ''));
+    if (!storyMeta) return false;
+    const startIndex = storyMeta.firstUnseen >= 0 ? storyMeta.firstUnseen : 0;
+    openStory(storyMeta.groupIndex, startIndex);
+    return true;
+  };
 
   async function decorateProfilePresence() {
     const hero = document.querySelector('#route-col .profile-hero');
@@ -281,6 +320,8 @@
     const list = document.querySelector('#stories-list');
     if (!list) return;
     if (!token) {
+      storyUsers = new Map();
+      decorateFeedStoryAvatars();
       list.innerHTML = `<button class="story-item story-action story-action-story" type="button" data-story-add><span class="story-action-circle">+</span><span class="story-label">Novo story</span></button>
         <button class="story-item story-action story-action-friend" type="button" data-social-add-friend><span class="story-action-circle">+</span><span class="story-label">Adicionar</span></button>
         <span class="social-strip-error">Entre para ver stories e amigos.</span>`;
@@ -307,6 +348,7 @@
       const unseenGroups = otherGroups.filter(group => group.some(row => !row.viewed_by_me));
       const viewedGroups = otherGroups.filter(group => group.every(row => row.viewed_by_me));
       storyGroups = [...(myGroup ? [myGroup] : []), ...unseenGroups, ...viewedGroups];
+      rebuildStoryUsers();
       const friends = Array.isArray(friendsPayload.rows) ? friendsPayload.rows : [];
       const storyUserIds = new Set(storyGroups.map(group => String(group[0]?.user_id)));
       const friendsWithoutStories = friends.filter(friend => !storyUserIds.has(String(friend.id)));
@@ -347,14 +389,19 @@
       }).join('');
       list.innerHTML = `
         ${addStory}${addFriend}${myStoryItem}${storyItems}${friendItems}`;
+      decorateFeedStoryAvatars();
       const meta = document.querySelector('#social-strip-meta');
       if (meta) meta.textContent = `${unseenGroups.length} novo${unseenGroups.length === 1 ? '' : 's'} · ${friends.length} amigo${friends.length === 1 ? '' : 's'}`;
     } catch {
+      storyUsers = new Map();
+      decorateFeedStoryAvatars();
       list.innerHTML = `<button class="story-item story-action story-action-story" type="button" data-story-add><span class="story-action-circle">+</span><span class="story-label">Novo story</span></button>
         <button class="story-item story-action story-action-friend" type="button" data-social-add-friend><span class="story-action-circle">+</span><span class="story-label">Adicionar</span></button>
         <span class="social-strip-error">Não foi possível atualizar amigos e stories.</span>`;
     } finally {
       if (!token) {
+        storyUsers = new Map();
+        decorateFeedStoryAvatars();
         const meta = document.querySelector('#social-strip-meta');
         if (meta) meta.textContent = 'Login necessario';
         const error = list.querySelector('.social-strip-error');
@@ -651,6 +698,8 @@
     if (!isOwner) {
       story.viewed_by_me = true;
       locallyViewedStories.add(String(story.id));
+      rebuildStoryUsers();
+      decorateFeedStoryAvatars();
     }
     if (isOwner) loadStoryViewerPreview(story.id);
     clearInterval(storyTimer);
