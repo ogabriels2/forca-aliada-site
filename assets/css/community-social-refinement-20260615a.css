@@ -2491,6 +2491,10 @@ body.social-ui-v2 .mobile-bottom-nav .mbtn.nav-activated {
 }
 
 @media(max-width:767px) {
+  body.social-ui-v2 #compact-social-discovery {
+    display: none !important;
+  }
+
   body.social-ui-v2 #feed-col > .col-header {
     order: -2 !important;
   }

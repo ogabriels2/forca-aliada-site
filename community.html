@@ -3481,7 +3481,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260705b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705g">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705h">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -5032,7 +5032,51 @@ function closeAllPostMenus() {
   }
   _openMenu = null;
 }
-
+let lastHomeStoriesRefreshAt=0;
+function refreshHomeStoriesIfNeeded(force=false){
+  const count=$$('#stories-list .story-item').length;
+  if(!force&&count>=2)return;
+  const now=Date.now();
+  if(now-lastHomeStoriesRefreshAt<1200)return;
+  lastHomeStoriesRefreshAt=now;
+  try{
+    const result=window.refreshCommunityStories?.();
+    if(result&&typeof result.finally==='function'){
+      result.finally(()=>requestAnimationFrame(()=>window.stabilizeCommunityFeedLayout?.())).catch?.(()=>{});
+    }
+  }catch{}
+}
+function ensureHomeFeedSurface({forceTop=false,refreshStories=false}={}){
+  const feedCol=$('#feed-col'),routeCol=$('#route-col'),stories=$('#stories-shell'),feedWrap=$('#feed-wrap'),feedList=$('#feed-list');
+  if(feedCol){
+    feedCol.style.removeProperty('display');
+    feedCol.style.removeProperty('min-height');
+  }
+  if(routeCol){
+    routeCol.classList.remove('show');
+    routeCol.style.removeProperty('display');
+    routeCol.scrollTop=0;
+  }
+  const header=feedCol?.querySelector('.col-header');
+  if(feedCol&&header&&stories&&stories.parentElement===feedCol&&stories.previousElementSibling!==header){
+    header.insertAdjacentElement('afterend',stories);
+  }
+  if(stories){
+    stories.hidden=false;
+    stories.style.removeProperty('display');
+    stories.style.removeProperty('height');
+    stories.style.removeProperty('min-height');
+  }
+  if(feedWrap){
+    feedWrap.hidden=false;
+    feedWrap.style.removeProperty('margin-top');
+    feedWrap.style.removeProperty('padding-top');
+  }
+  window.stabilizeCommunityFeedLayout?.();
+  if(forceTop) window.scrollTo({top:0,behavior:'instant'});
+  refreshHomeStoriesIfNeeded(refreshStories);
+  if(feedList&&!feedList.querySelector('.post-card')&&!state.loading) loadFeed({reset:true});
+}
 
 function showFeedUI(){
   const returningFromRoute = state.routeActive;
@@ -5045,13 +5089,15 @@ function showFeedUI(){
   document.title='Comunidade | Força Aliada';
   setRailActive(state.filter);
   setMobileNavActive('home');
-  window.stabilizeCommunityFeedLayout?.();
+  ensureHomeFeedSurface({forceTop,refreshStories:returningFromRoute||forceTop});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ensureHomeFeedSurface({forceTop,refreshStories:returningFromRoute||forceTop})));
+  setTimeout(()=>ensureHomeFeedSurface({forceTop,refreshStories:returningFromRoute||forceTop}),900);
   if(returningFromRoute){
     if(forceTop){
       clearSavedFeedScroll();
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         window.scrollTo({top:0,behavior:'instant'});
-        window.refreshCommunityStories?.();
+        ensureHomeFeedSurface({forceTop:true,refreshStories:true});
       }));
     } else {
       restoreFeedScroll();
@@ -9367,8 +9413,9 @@ function bindEvents(){
       e.preventDefault();
       setMobileNavActive('home');
       const plainHome=!state.routeActive&&isPlainCommunityHome();
+      ensureHomeFeedSurface({forceTop:plainHome&&window.scrollY<=200,refreshStories:true});
       if(plainHome&&window.scrollY<=200){_refreshFeedWithVariety();return;}
-      if(plainHome&&window.scrollY>200){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>_refreshFeedWithVariety(),350);return;}
+      if(plainHome&&window.scrollY>200){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>{ensureHomeFeedSurface({forceTop:true,refreshStories:true});_refreshFeedWithVariety();},350);return;}
       state.forceFeedTopOnNextHome = true;
       clearSavedFeedScroll();
       Router.navigate('/community',{feedTop:true});
@@ -9500,6 +9547,7 @@ function bindEvents(){
     setMobileNavActive('home');
     const isOnFeed=!state.routeActive&&isPlainCommunityHome();
     const scrolledDown=window.scrollY>200;
+    ensureHomeFeedSurface({forceTop:isOnFeed&&!scrolledDown,refreshStories:true});
 
     if(!isOnFeed){
       // Está numa rota diferente (thread, perfil) → vai para o feed
@@ -9513,9 +9561,10 @@ function bindEvents(){
     if(scrolledDown){
       // Está rolado para baixo → sobe suavemente e depois refresha com novas recomendações
       window.scrollTo({top:0,behavior:'smooth'});
-      setTimeout(()=>_refreshFeedWithVariety(),350);
+      setTimeout(()=>{ensureHomeFeedSurface({forceTop:true,refreshStories:true});_refreshFeedWithVariety();},350);
     } else {
       // Já está no topo → refresha direto com novas recomendações
+      ensureHomeFeedSurface({forceTop:true,refreshStories:true});
       _refreshFeedWithVariety();
     }
   });
