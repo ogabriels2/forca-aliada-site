@@ -695,7 +695,7 @@
     document.querySelector('#story-progress').innerHTML = group.map((_, index) =>
       `<i style="--progress:${index < storyIndex ? '100%' : '0%'}"></i>`).join('');
     api(`/api/community/stories/${encodeURIComponent(story.id)}/view`, { method: 'POST' }).catch(() => {});
-    if (!isOwner) {
+    if (!story.viewed_by_me) {
       story.viewed_by_me = true;
       locallyViewedStories.add(String(story.id));
       rebuildStoryUsers();
