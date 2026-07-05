@@ -3481,7 +3481,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 </style>
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260705b">
 <link rel="stylesheet" href="assets/css/community-social-ui-20260614a.css?v=20260614a">
-<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705e">
+<link rel="stylesheet" href="assets/css/community-social-refinement-20260615a.css?v=20260705f">
 </head>
 <body class="social-ui-v2">
 <div id="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -4296,6 +4296,7 @@ const state = {
   me: null, posts: [], filter:'all', cursor:null, hasMore:true, loading:false,
   feedEvaluationTimestamp:null,
   feedScrollY:0,
+  forceFeedTopOnNextHome:false,
   players:[], notifs:[], notifUnread:0, trendCount:0,
   notifPageRows:[], notifPageCursor:null, notifPageHasMore:true, notifPageFilter:'all', notifPageLoading:false,
   activePostId: null, activeThreadPost:null, mentionSuggestions:[], routeActive:false,
@@ -4504,6 +4505,11 @@ function rememberFeedScroll(){
 function savedFeedScroll(){
   const raw = state.feedScrollY || (() => { try { return Number(sessionStorage.getItem(FEED_SCROLL_KEY) || 0); } catch { return 0; } })();
   return Number.isFinite(Number(raw)) ? Math.max(0, Number(raw)) : 0;
+}
+function clearSavedFeedScroll(){
+  state.feedScrollY = 0;
+  try { sessionStorage.setItem(FEED_SCROLL_KEY, '0'); } catch {}
+  try { history.replaceState({ ...(history.state || {}), feedScrollY: 0, evoScrollY: 0 }, document.title); } catch {}
 }
 function restoreFeedScroll(){
   const y = savedFeedScroll();
@@ -5024,13 +5030,26 @@ function closeAllPostMenus() {
 
 function showFeedUI(){
   const returningFromRoute = state.routeActive;
+  const forceTop = state.forceFeedTopOnNextHome;
+  state.forceFeedTopOnNextHome = false;
   state.routeActive=false;
   state.activeThreadPost=null;
   const feedCol=$('#feed-col'),routeCol=$('#route-col');
   feedCol.style.display='';routeCol.classList.remove('show');routeCol.innerHTML='';
   document.title='Comunidade | Força Aliada';
   setRailActive(state.filter);
-  if(returningFromRoute) restoreFeedScroll();
+  window.stabilizeCommunityFeedLayout?.();
+  if(returningFromRoute){
+    if(forceTop){
+      clearSavedFeedScroll();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        window.scrollTo({top:0,behavior:'instant'});
+        window.refreshCommunityStories?.();
+      }));
+    } else {
+      restoreFeedScroll();
+    }
+  }
 }
 function showRouteUI(html){
   if(!state.routeActive) rememberFeedScroll();
@@ -9297,7 +9316,9 @@ function bindEvents(){
       e.preventDefault();
       if(!state.routeActive&&window.scrollY<=200){_refreshFeedWithVariety();return;}
       if(!state.routeActive&&window.scrollY>200){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>_refreshFeedWithVariety(),350);return;}
-      Router.navigate('/community');
+      state.forceFeedTopOnNextHome = true;
+      clearSavedFeedScroll();
+      Router.navigate('/community',{feedTop:true});
     });
   });
   $('#theme-btn').addEventListener('click',toggleTheme);
@@ -9428,7 +9449,9 @@ function bindEvents(){
 
     if(!isOnFeed){
       // Está numa rota diferente (thread, perfil) → vai para o feed
-      Router.navigate('/community');
+      state.forceFeedTopOnNextHome = true;
+      clearSavedFeedScroll();
+      Router.navigate('/community',{feedTop:true});
       return;
     }
 
@@ -10397,7 +10420,7 @@ boot();
 </script>
 
 <script src="assets/js/fa-design-system-20260615a.js?v=20260615a"></script>
-<script src="assets/js/community-evolution-20260615a.js?v=20260705d"></script>
+<script src="assets/js/community-evolution-20260615a.js?v=20260705e"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
 <script src="assets/js/community-social-refinement-20260615a.js?v=20260705a"></script>
 <script src="assets/js/social-chat.js?v=chat14-20260705a"></script>

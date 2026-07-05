@@ -410,6 +410,9 @@
     }
   }
 
+  window.refreshCommunityStories = loadStories;
+  window.stabilizeCommunityFeedLayout = stabilizeFeedLayout;
+
   async function createStory() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -1212,10 +1215,12 @@
 
     const originalNavigate = Router.navigate.bind(Router);
     Router.navigate = function evolutionNavigate(path, options = {}) {
+      const wantsFeedTop = Boolean(options.feedTop || state.forceFeedTopOnNextHome);
       const feedScrollY = state.routeActive
-        ? Number(state.feedScrollY || history.state?.feedScrollY || history.state?.evoScrollY || 0)
+        ? (wantsFeedTop ? 0 : Number(state.feedScrollY || history.state?.feedScrollY || history.state?.evoScrollY || 0))
         : Math.max(0, scrollY || document.documentElement.scrollTop || 0);
-      if (!state.routeActive && typeof rememberFeedScroll === 'function') rememberFeedScroll();
+      if (wantsFeedTop && typeof clearSavedFeedScroll === 'function') clearSavedFeedScroll();
+      else if (!state.routeActive && typeof rememberFeedScroll === 'function') rememberFeedScroll();
       else if (!state.routeActive) state.feedScrollY = feedScrollY;
       try { history.replaceState({ ...(history.state || {}), evoScrollY: feedScrollY, feedScrollY }, document.title); } catch {}
       const run = () => originalNavigate(path, options);

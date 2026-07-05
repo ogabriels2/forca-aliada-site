@@ -2475,6 +2475,16 @@ body.social-ui-v2 .comments-load-warning span {
   color: var(--ink-3);
 }
 
+@media(max-width:767px) {
+  body.social-ui-v2 #feed-col > .col-header {
+    order: -2 !important;
+  }
+
+  body.social-ui-v2 #feed-col > #stories-shell {
+    order: -1 !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   body.social-ui-v2 .motion-reveal,
   body.social-ui-v2 .motion-reveal.is-motion-visible {
