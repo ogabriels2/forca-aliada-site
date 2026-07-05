@@ -894,7 +894,8 @@ body.social-ui-v2 .post-layout.has-comments .post-av-connector {
   width: 2px;
   min-height: 18px;
   margin-top: 6px;
-  background: color-mix(in srgb,var(--line-strong) 78%,transparent);
+  background: color-mix(in srgb,var(--line-strong) 82%,transparent);
+  border-radius: 99px;
 }
 
 body.social-ui-v2 .preview-comments {
@@ -919,6 +920,8 @@ body.social-ui-v2 .preview-comments::before {
 }
 
 body.social-ui-v2 .preview-row {
+  --fa-preview-thread-x: 22px;
+  --fa-preview-thread-center-y: 30px;
   position: relative;
   z-index: 1;
   grid-template-columns: 46px minmax(0,1fr);
@@ -1284,6 +1287,8 @@ body.social-ui-v2 .profile-cover[data-lb-open]:focus-visible {
   }
 
   body.social-ui-v2 .preview-row {
+    --fa-preview-thread-x: 20px;
+    --fa-preview-thread-center-y: 29px;
     grid-template-columns: 42px minmax(0,1fr);
     gap: 10px;
   }
@@ -1374,25 +1379,25 @@ body.social-ui-v2 .preview-row:not(:last-of-type)::after {
   content: '';
   position: absolute;
   z-index: -1;
-  left: 22px;
+  left: var(--fa-preview-thread-x,20px);
   width: 2px;
   border-radius: 99px;
-  background: color-mix(in srgb,var(--line-strong) 76%,transparent);
+  background: color-mix(in srgb,var(--line-strong) 82%,transparent);
 }
 
 body.social-ui-v2 .preview-row::before {
-  top: -10px;
-  height: 40px;
+  top: 0;
+  height: var(--fa-preview-thread-center-y,23px);
 }
 
 body.social-ui-v2 .preview-row:first-of-type::before {
-  top: -18px;
-  height: 48px;
+  top: -1px;
+  height: calc(var(--fa-preview-thread-center-y,23px) + 1px);
 }
 
 body.social-ui-v2 .preview-row:not(:last-of-type)::after {
-  top: 30px;
-  bottom: -10px;
+  top: var(--fa-preview-thread-center-y,23px);
+  bottom: 0;
 }
 
 body.social-ui-v2 #stories-shell .story-item.is-viewed .story-ring::before {
@@ -1569,19 +1574,19 @@ body.social-ui-v2 .notif-full-row {
 
   body.social-ui-v2 .preview-row::before,
   body.social-ui-v2 .preview-row:not(:last-of-type)::after {
-    left: 19px;
+    left: var(--fa-preview-thread-x,20px);
   }
 
   body.social-ui-v2 .preview-row::before {
-    height: 39px;
+    height: var(--fa-preview-thread-center-y,29px);
   }
 
   body.social-ui-v2 .preview-row:first-of-type::before {
-    height: 47px;
+    height: calc(var(--fa-preview-thread-center-y,29px) + 1px);
   }
 
   body.social-ui-v2 .preview-row:not(:last-of-type)::after {
-    top: 29px;
+    top: var(--fa-preview-thread-center-y,29px);
   }
 
   body.social-ui-v2 .share-mode-choices {

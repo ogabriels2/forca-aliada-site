@@ -593,7 +593,6 @@ export function registerCommentUpgradeEndpoints(app, pool, auth, helpers) {
       );
       const comment = cRows[0];
       if (!comment || comment.is_deleted) return res.status(404).json({ error: 'Comentário não encontrado' });
-      if (comment.author_id === req.user.sub) return res.status(400).json({ error: 'Não é possível curtir seu próprio comentário' });
 
       await pool.query(
         `INSERT INTO comment_likes(comment_id, user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`,
