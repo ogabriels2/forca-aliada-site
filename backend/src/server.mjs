@@ -736,6 +736,14 @@ const impressionLimiter = rateLimit({
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
+const remoteRelayLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisicoes de relay remoto. Aguarde alguns instantes.' },
+});
+
 function sanitize(v)            { return String(v || '').replace(/[<>]/g, '').trim(); }
 function sanitizeText(v)        { return String(v ?? '').replace(/\u0000/g, '').replace(/\r\n?/g, '\n').trim(); }
 function generateVerificationCode() { return crypto.randomInt(100000, 1000000).toString(); }
@@ -892,6 +900,36 @@ CREATE TABLE IF NOT EXISTS app_integration_keys (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_used_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS app_remote_relay_rooms (
+  room_id VARCHAR(96) PRIMARY KEY,
+  app_key_id INTEGER REFERENCES app_integration_keys(id) ON DELETE CASCADE,
+  host_token_hash VARCHAR(64) NOT NULL,
+  host_name VARCHAR(120),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  last_host_seen_at TIMESTAMPTZ,
+  last_client_seen_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_remote_relay_rooms_expires ON app_remote_relay_rooms(expires_at);
+
+CREATE TABLE IF NOT EXISTS app_remote_relay_messages (
+  id BIGSERIAL PRIMARY KEY,
+  room_id VARCHAR(96) REFERENCES app_remote_relay_rooms(room_id) ON DELETE CASCADE,
+  target VARCHAR(16) NOT NULL CHECK (target IN ('host','client')),
+  client_id VARCHAR(96) NOT NULL DEFAULT 'default',
+  message_id VARCHAR(96) NOT NULL,
+  correlation_id VARCHAR(96),
+  kind VARCHAR(40) NOT NULL,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  delivered_at TIMESTAMPTZ,
+  UNIQUE(room_id, target, client_id, message_id)
+);
+CREATE INDEX IF NOT EXISTS idx_remote_relay_messages_pickup
+  ON app_remote_relay_messages(room_id, target, client_id, delivered_at, expires_at, id);
+CREATE INDEX IF NOT EXISTS idx_remote_relay_messages_expires ON app_remote_relay_messages(expires_at);
 
 CREATE TABLE IF NOT EXISTS whitelist_queue (
   id             SERIAL PRIMARY KEY,
@@ -3360,6 +3398,200 @@ async function validateAppKey(key) {
   return { isValid: true, appKeyId: rows[0].id, keyName: rows[0].name };
 }
 
+const REMOTE_RELAY_MAX_WAIT_MS = 25000;
+const REMOTE_RELAY_MAX_PAYLOAD_BYTES = 768 * 1024;
+const REMOTE_RELAY_ROOM_TTL_SEC = 7 * 24 * 60 * 60;
+const REMOTE_RELAY_MESSAGE_TTL_SEC = 180;
+let remoteRelayLastCleanup = 0;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function relaySafeEqual(a, b) {
+  const ab = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+}
+
+function relayHash(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+function relayIdentifier(value, label, min = 12, max = 96) {
+  const text = String(value || '').trim();
+  if (text.length < min || text.length > max || !/^[A-Za-z0-9_-]+$/.test(text)) {
+    const err = new Error(`${label} invalido.`);
+    err.status = 400;
+    throw err;
+  }
+  return text;
+}
+
+function relayText(value, max = 120) {
+  return String(value || '').trim().replace(/[<>]/g, '').slice(0, max);
+}
+
+function relayTtlSeconds(value, fallback, max) {
+  const n = Number(value || fallback);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(15, Math.min(Math.floor(n), max));
+}
+
+function relayWaitMs(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(Math.floor(n), REMOTE_RELAY_MAX_WAIT_MS));
+}
+
+function relayPayload(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    const err = new Error('Payload do relay invalido.');
+    err.status = 400;
+    throw err;
+  }
+  const raw = JSON.stringify(value);
+  if (Buffer.byteLength(raw) > REMOTE_RELAY_MAX_PAYLOAD_BYTES) {
+    const err = new Error('Payload do relay muito grande.');
+    err.status = 413;
+    throw err;
+  }
+  return value;
+}
+
+async function cleanupRemoteRelay() {
+  const now = Date.now();
+  if (now - remoteRelayLastCleanup < 30000) return;
+  remoteRelayLastCleanup = now;
+  await pool.query('DELETE FROM app_remote_relay_messages WHERE expires_at <= NOW() OR delivered_at < NOW() - INTERVAL \'5 minutes\'').catch(() => {});
+  await pool.query('DELETE FROM app_remote_relay_rooms WHERE expires_at <= NOW()').catch(() => {});
+}
+
+async function validateRemoteRelayRoom(roomId) {
+  const { rows } = await pool.query(
+    'SELECT room_id FROM app_remote_relay_rooms WHERE room_id=$1 AND expires_at > NOW()',
+    [roomId]
+  );
+  return rows[0] || null;
+}
+
+async function requireRemoteRelayHost(req, res) {
+  const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false, appKeyId: null }));
+  if (!isValid) {
+    res.status(403).json({ error: 'Chave invalida ou revogada' });
+    return null;
+  }
+
+  let roomId;
+  try {
+    roomId = relayIdentifier(req.body?.roomId, 'Sala');
+  } catch (err) {
+    res.status(err.status || 400).json({ error: err.message });
+    return null;
+  }
+  const hostToken = String(req.body?.hostToken || '');
+  if (hostToken.length < 24 || hostToken.length > 160) {
+    res.status(400).json({ error: 'Token do host invalido.' });
+    return null;
+  }
+
+  const { rows } = await pool.query(
+    `SELECT room_id, app_key_id, host_token_hash
+       FROM app_remote_relay_rooms
+      WHERE room_id=$1 AND expires_at > NOW()`,
+    [roomId]
+  );
+  const room = rows[0];
+  if (!room || !relaySafeEqual(room.host_token_hash, relayHash(hostToken))) {
+    res.status(404).json({ error: 'Sala remota indisponivel.' });
+    return null;
+  }
+  if (room.app_key_id !== null && Number(room.app_key_id) !== Number(appKeyId)) {
+    res.status(403).json({ error: 'Chave sem permissao para esta sala.' });
+    return null;
+  }
+
+  await pool.query(
+    'UPDATE app_remote_relay_rooms SET last_host_seen_at=NOW() WHERE room_id=$1',
+    [roomId]
+  ).catch(() => {});
+  return { roomId, appKeyId };
+}
+
+async function insertRelayMessage({ roomId, target, clientId, messageId, correlationId, kind, payload, ttlSeconds }) {
+  const safeRoomId = relayIdentifier(roomId, 'Sala');
+  const safeTarget = target === 'host' ? 'host' : 'client';
+  const safeClientId = relayIdentifier(clientId || 'default', 'Cliente', 1);
+  const safeMessageId = relayIdentifier(messageId, 'Mensagem', 8);
+  const safeCorrelationId = correlationId ? relayIdentifier(correlationId, 'Correlacao', 8) : null;
+  const safeKind = relayIdentifier(kind, 'Tipo', 2, 40);
+  const safePayload = relayPayload(payload);
+  const ttl = relayTtlSeconds(ttlSeconds, REMOTE_RELAY_MESSAGE_TTL_SEC, 10 * 60);
+
+  const room = await validateRemoteRelayRoom(safeRoomId);
+  if (!room) {
+    const err = new Error('Sala remota expirada ou inexistente.');
+    err.status = 404;
+    throw err;
+  }
+
+  await pool.query(
+    `INSERT INTO app_remote_relay_messages
+       (room_id, target, client_id, message_id, correlation_id, kind, payload, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NOW() + ($8::int || ' seconds')::interval)
+     ON CONFLICT (room_id, target, client_id, message_id) DO NOTHING`,
+    [safeRoomId, safeTarget, safeClientId, safeMessageId, safeCorrelationId, safeKind, JSON.stringify(safePayload), ttl]
+  );
+}
+
+async function pollRelayMessages({ roomId, target, clientId, waitMs }) {
+  const safeRoomId = relayIdentifier(roomId, 'Sala');
+  const safeWaitMs = relayWaitMs(waitMs);
+  const deadline = Date.now() + safeWaitMs;
+  const safeClientId = target === 'client'
+    ? relayIdentifier(clientId, 'Cliente', 1)
+    : null;
+
+  while (true) {
+    const params = target === 'client'
+      ? [safeRoomId, target, safeClientId]
+      : [safeRoomId, target];
+    const filter = target === 'client'
+      ? 'room_id=$1 AND target=$2 AND client_id=$3'
+      : 'room_id=$1 AND target=$2';
+    const { rows } = await pool.query(
+      `WITH picked AS (
+         SELECT id
+           FROM app_remote_relay_messages
+          WHERE ${filter}
+            AND delivered_at IS NULL
+            AND expires_at > NOW()
+          ORDER BY id ASC
+          LIMIT 50
+       )
+       UPDATE app_remote_relay_messages m
+          SET delivered_at=NOW()
+         FROM picked
+        WHERE m.id=picked.id
+        RETURNING m.client_id, m.message_id, m.correlation_id, m.kind, m.payload, m.created_at, m.expires_at`,
+      params
+    );
+    if (rows.length || Date.now() >= deadline) {
+      return rows.map(r => ({
+        clientId: r.client_id,
+        messageId: r.message_id,
+        correlationId: r.correlation_id,
+        kind: r.kind,
+        payload: r.payload,
+        createdAt: r.created_at,
+        expiresAt: r.expires_at,
+      }));
+    }
+    await sleep(Math.min(1000, Math.max(100, deadline - Date.now())));
+  }
+}
+
 /**
  * POST /api/app/heartbeat
  * Chamado pelo app a cada 10 segundos para sinalizar que está ativo.
@@ -3428,6 +3660,127 @@ app.get('/api/app/whitelist-queue', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: 'Falha ao buscar fila' });
+  }
+});
+
+app.post('/api/app/remote/relay/register', remoteRelayLimiter, async (req, res) => {
+  const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false, appKeyId: null }));
+  if (!isValid) return res.status(403).json({ error: 'Chave invalida ou revogada' });
+
+  try {
+    await cleanupRemoteRelay();
+    const roomId = relayIdentifier(req.body?.roomId, 'Sala');
+    const hostToken = String(req.body?.hostToken || '');
+    if (hostToken.length < 24 || hostToken.length > 160) {
+      return res.status(400).json({ error: 'Token do host invalido.' });
+    }
+    const hostName = relayText(req.body?.hostName, 120);
+    const ttl = relayTtlSeconds(req.body?.ttlSeconds, REMOTE_RELAY_ROOM_TTL_SEC, REMOTE_RELAY_ROOM_TTL_SEC);
+    const tokenHash = relayHash(hostToken);
+    const { rows } = await pool.query(
+      `INSERT INTO app_remote_relay_rooms
+         (room_id, app_key_id, host_token_hash, host_name, expires_at, last_host_seen_at)
+       VALUES ($1, $2, $3, $4, NOW() + ($5::int || ' seconds')::interval, NOW())
+       ON CONFLICT (room_id) DO UPDATE SET
+         app_key_id=EXCLUDED.app_key_id,
+         host_token_hash=EXCLUDED.host_token_hash,
+         host_name=EXCLUDED.host_name,
+         expires_at=EXCLUDED.expires_at,
+         last_host_seen_at=NOW()
+       WHERE app_remote_relay_rooms.host_token_hash=EXCLUDED.host_token_hash
+          OR app_remote_relay_rooms.expires_at <= NOW()
+       RETURNING room_id, expires_at`,
+      [roomId, appKeyId, tokenHash, hostName, ttl]
+    );
+    if (!rows.length) return res.status(409).json({ error: 'Sala remota ja esta em uso.' });
+    return res.json({ ok: true, roomId, expiresAt: rows[0].expires_at });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Falha ao registrar relay remoto.' });
+  }
+});
+
+app.post('/api/app/remote/relay/host-poll', remoteRelayLimiter, async (req, res) => {
+  try {
+    await cleanupRemoteRelay();
+    const host = await requireRemoteRelayHost(req, res);
+    if (!host) return;
+    const messages = await pollRelayMessages({
+      roomId: host.roomId,
+      target: 'host',
+      waitMs: req.body?.waitMs,
+    });
+    return res.json({ ok: true, messages });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Falha ao buscar mensagens remotas.' });
+  }
+});
+
+app.post('/api/app/remote/relay/host-send', remoteRelayLimiter, async (req, res) => {
+  try {
+    await cleanupRemoteRelay();
+    const host = await requireRemoteRelayHost(req, res);
+    if (!host) return;
+    await insertRelayMessage({
+      roomId: host.roomId,
+      target: 'client',
+      clientId: req.body?.clientId,
+      messageId: req.body?.messageId,
+      correlationId: req.body?.correlationId,
+      kind: req.body?.kind,
+      payload: req.body?.payload,
+      ttlSeconds: req.body?.ttlSeconds,
+    });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Falha ao enviar mensagem remota.' });
+  }
+});
+
+app.post('/api/app/remote/relay/client-send', remoteRelayLimiter, async (req, res) => {
+  try {
+    await cleanupRemoteRelay();
+    const roomId = relayIdentifier(req.body?.roomId, 'Sala');
+    await pool.query(
+      'UPDATE app_remote_relay_rooms SET last_client_seen_at=NOW() WHERE room_id=$1 AND expires_at > NOW()',
+      [roomId]
+    );
+    await insertRelayMessage({
+      roomId,
+      target: 'host',
+      clientId: req.body?.clientId,
+      messageId: req.body?.messageId,
+      correlationId: req.body?.correlationId,
+      kind: req.body?.kind,
+      payload: req.body?.payload,
+      ttlSeconds: req.body?.ttlSeconds,
+    });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Falha ao enviar mensagem remota.' });
+  }
+});
+
+app.post('/api/app/remote/relay/client-poll', remoteRelayLimiter, async (req, res) => {
+  try {
+    await cleanupRemoteRelay();
+    const roomId = relayIdentifier(req.body?.roomId, 'Sala');
+    const clientId = relayIdentifier(req.body?.clientId, 'Cliente', 1);
+    const room = await validateRemoteRelayRoom(roomId);
+    if (!room) return res.status(404).json({ error: 'Sala remota expirada ou inexistente.' });
+    await pool.query(
+      'UPDATE app_remote_relay_rooms SET last_client_seen_at=NOW() WHERE room_id=$1',
+      [roomId]
+    ).catch(() => {});
+    const messages = await pollRelayMessages({
+      roomId,
+      target: 'client',
+      clientId,
+      waitMs: req.body?.waitMs,
+    });
+    return res.json({ ok: true, messages });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Falha ao buscar mensagens remotas.' });
   }
 });
 
