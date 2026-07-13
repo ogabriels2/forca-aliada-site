@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS notification_clicks (
   clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY(notification_id,user_id)
 );
+CREATE TABLE IF NOT EXISTS whitelist_queue_attempts (
+  id BIGSERIAL PRIMARY KEY,
+  queue_id INTEGER NOT NULL REFERENCES whitelist_queue(id) ON DELETE CASCADE,
+  attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  previous_delivered_at TIMESTAMPTZ,
+  previous_delivered_by INTEGER REFERENCES app_integration_keys(id) ON DELETE SET NULL,
+  requested_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reason TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_whitelist_queue_attempts_queue ON whitelist_queue_attempts(queue_id, attempted_at DESC);
 ALTER TABLE moderation_queue ADD COLUMN IF NOT EXISTS ai_confidence FLOAT;
 `;
 
@@ -467,10 +477,10 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
     }
   });
 
-  app.get('/api/admin/players/directory', auth, requireAdmin, async (_req, res) => {
+  app.get('/api/admin/players/directory', auth, requireAdmin, async (req, res) => {
     try {
       const { rows } = await pool.query(`
-        SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
+        SELECT u.id, u.username, CASE WHEN $1='owner' THEN u.email ELSE NULL END AS email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
           COALESCE(pb.merit_total,0)::int AS merit, COALESCE(pb.capital_balance,0)::float AS capital, COALESCE(pb.rank,'ferro') AS rank,
           s.last_seen, COALESCE(s.sessions,0)::int AS sessions, COALESCE(s.total_hours,0)::float AS total_hours,
           COALESCE(p.posts,0)::int AS posts, COALESCE(c.comments,0)::int AS comments,
@@ -481,7 +491,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
         LEFT JOIN LATERAL (SELECT COUNT(*) AS posts, MAX(created_at) AS last_post FROM user_posts WHERE author_id=u.id AND repost_of_id IS NULL) p ON TRUE
         LEFT JOIN LATERAL (SELECT COUNT(*) AS comments, MAX(created_at) AS last_comment FROM post_comments WHERE author_id=u.id AND is_deleted=FALSE) c ON TRUE
         WHERE u.merged_into_user_id IS NULL ORDER BY last_activity DESC NULLS LAST
-      `);
+      `, [req.user.role]);
       jsonData(res, rows);
     } catch (error) {
       registerRouteError('players-directory', res, error);
@@ -514,6 +524,111 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
       jsonData(res, { created: rows.length });
     } catch (error) {
       registerRouteError('bulk-notify', res, error);
+    }
+  });
+
+  app.get('/api/admin/access/overview', auth, requireAdmin, async (req, res) => {
+    try {
+      const [counts, queue, manager] = await Promise.all([
+        pool.query(`
+          SELECT
+            COUNT(*) FILTER (WHERE u.is_verified = FALSE)::int AS awaiting_email,
+            COUNT(*) FILTER (WHERE u.is_verified = TRUE AND NULLIF(TRIM(COALESCE(u.minecraft_name, '')), '') IS NULL)::int AS awaiting_minecraft,
+            (SELECT COUNT(*)::int FROM whitelist_queue WHERE delivered_at IS NULL) AS queued,
+            (SELECT COUNT(*)::int FROM whitelist_queue WHERE delivered_at IS NOT NULL) AS delivered
+          FROM users u
+          WHERE u.merged_into_user_id IS NULL
+        `),
+        pool.query(`
+          SELECT q.id, q.minecraft_name, q.user_id, q.queued_at, q.delivered_at,
+            u.username, CASE WHEN $1='owner' THEN u.email ELSE NULL END AS email, u.is_verified, u.is_platform_verified,
+            k.name AS delivered_by_name,
+            (SELECT COUNT(*)::int FROM whitelist_queue_attempts a WHERE a.queue_id=q.id) AS retry_count,
+            CASE WHEN q.delivered_at IS NULL THEN 'queued' ELSE 'delivered' END AS status
+          FROM whitelist_queue q
+          LEFT JOIN users u ON u.id = q.user_id
+          LEFT JOIN app_integration_keys k ON k.id = q.delivered_by
+          ORDER BY (q.delivered_at IS NULL) DESC, COALESCE(q.delivered_at, q.queued_at) DESC
+          LIMIT 250
+        `, [req.user.role]),
+        pool.query(`
+          SELECT id, name, last_used_at
+          FROM app_integration_keys
+          ORDER BY last_used_at DESC NULLS LAST, created_at DESC
+          LIMIT 1
+        `),
+      ]);
+      jsonData(res, {
+        summary: counts.rows[0] || {},
+        queue: queue.rows,
+        manager: manager.rows[0] || null,
+        delivery_note: 'Entregue significa que o endpoint reservou o item para o Manager; não confirma resposta recebida nem aplicação no servidor.',
+      });
+    } catch (error) {
+      registerRouteError('access-overview', res, error);
+    }
+  });
+
+  app.post('/api/admin/access/whitelist', auth, requireAdmin, async (req, res) => {
+    const minecraftName = String(req.body?.minecraft_name || '').trim();
+    const userId = Number(req.body?.user_id) || null;
+    if (!/^[A-Za-z0-9_]{2,16}$/.test(minecraftName)) {
+      return res.status(400).json({ error: 'Informe um nick Java válido, com 2 a 16 letras, números ou _.', code: 'INVALID_MINECRAFT_NAME' });
+    }
+    try {
+      if (userId) {
+        const account = await pool.query('SELECT id, minecraft_name FROM users WHERE id=$1 AND merged_into_user_id IS NULL', [userId]);
+        if (!account.rows.length) return res.status(404).json({ error: 'Conta do site não encontrada.', code: 'ACCESS_USER_NOT_FOUND' });
+        const linkedName = String(account.rows[0].minecraft_name || '').trim();
+        if (!linkedName) return res.status(409).json({ error: 'A conta informada ainda não possui Minecraft vinculado.', code: 'ACCESS_ACCOUNT_NOT_LINKED' });
+        if (linkedName && linkedName.toLowerCase() !== minecraftName.toLowerCase()) {
+          return res.status(409).json({ error: `A conta informada está vinculada a ${linkedName}, não a ${minecraftName}.`, code: 'ACCESS_IDENTITY_MISMATCH' });
+        }
+      }
+      const existing = await pool.query(
+        'SELECT * FROM whitelist_queue WHERE LOWER(minecraft_name)=LOWER($1) AND delivered_at IS NULL ORDER BY id DESC LIMIT 1',
+        [minecraftName],
+      );
+      if (existing.rows.length) return jsonData(res, { ...existing.rows[0], already_queued: true });
+      const { rows } = await pool.query(
+        'INSERT INTO whitelist_queue(minecraft_name,user_id,queued_at) VALUES($1,$2,NOW()) RETURNING *',
+        [minecraftName, userId],
+      );
+      await auditFromReq?.(req, { type: 'create', severity: 'warning', message: `Entrada manual na lista de acesso: ${minecraftName}`, target_name: minecraftName, metadata: { queue_id: rows[0].id, user_id: userId } });
+      jsonData(res, rows[0]);
+    } catch (error) {
+      registerRouteError('access-whitelist-create', res, error);
+    }
+  });
+
+  app.post('/api/admin/access/whitelist/:id/requeue', auth, requireAdmin, async (req, res) => {
+    const reason = String(req.body?.reason || 'Reenvio solicitado pela staff').trim().slice(0, 500);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const current = await client.query('SELECT * FROM whitelist_queue WHERE id=$1 FOR UPDATE', [req.params.id]);
+      if (!current.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Entrada da lista de acesso não encontrada.', code: 'ACCESS_ENTRY_NOT_FOUND' });
+      }
+      await client.query(`
+        INSERT INTO whitelist_queue_attempts(queue_id,previous_delivered_at,previous_delivered_by,requested_by,reason)
+        VALUES($1,$2,$3,$4,$5)
+      `, [current.rows[0].id, current.rows[0].delivered_at, current.rows[0].delivered_by, req.user.sub, reason]);
+      const { rows } = await client.query(`
+        UPDATE whitelist_queue
+        SET queued_at=NOW(), delivered_at=NULL, delivered_by=NULL
+        WHERE id=$1
+        RETURNING *
+      `, [req.params.id]);
+      await client.query('COMMIT');
+      await auditFromReq?.(req, { type: 'update', severity: 'warning', message: `Reenvio à lista de acesso: ${rows[0].minecraft_name}`, target_name: rows[0].minecraft_name, metadata: { queue_id: rows[0].id, reason, previous_delivered_at: current.rows[0].delivered_at } });
+      jsonData(res, rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      registerRouteError('access-whitelist-requeue', res, error);
+    } finally {
+      client.release();
     }
   });
 
@@ -620,7 +735,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
   app.get('/api/admin/settings', auth, requireOwner, async (_req, res) => {
     try {
       const { rows } = await pool.query('SELECT settings, updated_at FROM admin_dashboard_settings WHERE id=1');
-      jsonData(res, { ...DASHBOARD_DEFAULTS, ...(rows[0]?.settings || {}), updated_at: rows[0]?.updated_at || null });
+      jsonData(res, { ...DASHBOARD_DEFAULTS, ...(rows[0]?.settings || {}), rank_thresholds: DASHBOARD_DEFAULTS.rank_thresholds, updated_at: rows[0]?.updated_at || null });
     } catch (error) {
       registerRouteError('settings', res, error);
     }
@@ -630,16 +745,6 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
     try {
       const current = await pool.query('SELECT settings FROM admin_dashboard_settings WHERE id=1');
       const raw = { ...DASHBOARD_DEFAULTS, ...(current.rows[0]?.settings || {}), ...(req.body || {}) };
-      const thresholdInput = raw.rank_thresholds || {};
-      const thresholds = {
-        ferro: 0,
-        ouro: clamp(thresholdInput.ouro, 150, 1, 1000000),
-        diamante: clamp(thresholdInput.diamante, 500, 2, 1000000),
-        netherite: clamp(thresholdInput.netherite, 1000, 3, 1000000),
-      };
-      if (!(thresholds.ouro < thresholds.diamante && thresholds.diamante < thresholds.netherite)) {
-        return res.status(400).json({ error: 'Os limites de rank devem ser crescentes.', code: 'INVALID_RANK_THRESHOLDS' });
-      }
       const settings = {
         ...raw,
         server_ip: String(raw.server_ip || DASHBOARD_DEFAULTS.server_ip).trim().slice(0,255),
@@ -647,27 +752,20 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
         max_players: clamp(raw.max_players, DASHBOARD_DEFAULTS.max_players, 1, 10000),
         whitelist_enabled: raw.whitelist_enabled !== false,
         maintenance_message: String(raw.maintenance_message || '').trim().slice(0,500),
-        moderation_mode: ['manual','ai','auto-remove'].includes(raw.moderation_mode) ? raw.moderation_mode : 'ai',
+        moderation_mode: ['manual','ai'].includes(raw.moderation_mode) ? raw.moderation_mode : 'ai',
         broadcast_max_per_day: clamp(raw.broadcast_max_per_day, DASHBOARD_DEFAULTS.broadcast_max_per_day, 0, 1000),
         broadcast_channels: {
           dashboard: raw.broadcast_channels?.dashboard !== false,
           push: raw.broadcast_channels?.push !== false,
           email: raw.broadcast_channels?.email === true,
         },
-        rank_thresholds: thresholds,
+        rank_thresholds: DASHBOARD_DEFAULTS.rank_thresholds,
       };
       const { rows } = await pool.query(`
         INSERT INTO admin_dashboard_settings(id,settings,updated_by,updated_at) VALUES(1,$1::jsonb,$2,NOW())
         ON CONFLICT(id) DO UPDATE SET settings=EXCLUDED.settings,updated_by=EXCLUDED.updated_by,updated_at=NOW()
         RETURNING settings,updated_at
       `, [JSON.stringify(settings), req.user.sub]);
-      await pool.query(`
-        UPDATE player_balances SET rank=CASE
-          WHEN merit_total >= $3 THEN 'netherite'
-          WHEN merit_total >= $2 THEN 'diamante'
-          WHEN merit_total >= $1 THEN 'ouro'
-          ELSE 'ferro' END, updated_at=NOW()
-      `, [thresholds.ouro, thresholds.diamante, thresholds.netherite]);
       await auditFromReq?.(req, { type: 'update', severity: 'warning', message: 'Configuracoes globais do dashboard atualizadas' });
       jsonData(res, { ...rows[0].settings, updated_at: rows[0].updated_at });
     } catch (error) {
@@ -693,8 +791,16 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
 
   app.post('/api/admin/settings/actions', auth, requireOwner, async (req, res) => {
     const action = String(req.body?.action || '');
+    if (['clear_reviewed_moderation', 'delete_inactive_accounts', 'reset_merit'].includes(action)) {
+      return res.status(423).json({
+        error: 'Esta ação crítica foi desativada até existir backup durável, preview de impacto e recuperação verificável.',
+        code: 'CRITICAL_ACTION_REQUIRES_RUNBOOK',
+      });
+    }
     const confirmed = req.body?.confirm === action.toUpperCase();
+    const reason = String(req.body?.reason || '').trim().slice(0, 500);
     if (!confirmed) return res.status(400).json({ error: `Digite ${action.toUpperCase()} para confirmar.`, code: 'CONFIRMATION_REQUIRED' });
+    if (reason.length < 8) return res.status(400).json({ error: 'Informe um motivo com pelo menos 8 caracteres.', code: 'REASON_REQUIRED' });
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -727,7 +833,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
         return res.status(400).json({ error: 'Acao invalida.', code: 'INVALID_ACTION' });
       }
       await client.query('COMMIT');
-      await auditFromReq?.(req, { type: 'delete', severity: 'critical', message: `Danger zone: ${action} (${affected} registro(s))`, metadata: { action, affected } });
+      await auditFromReq?.(req, { type: 'delete', severity: 'critical', message: `Ação crítica: ${action} (${affected} registro(s))`, metadata: { action, affected, reason } });
       jsonData(res, { ok: true, action, affected, export: req.dashboardActionExport || undefined });
     } catch (error) {
       await client.query('ROLLBACK');

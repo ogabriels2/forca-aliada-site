@@ -1700,6 +1700,21 @@ function primaryIntegrationFieldsSql(userAlias = 'u') {
   )`;
 }
 
+// Public pages need the edition and visible gamertag to render the correct
+// Minecraft identity, but must never expose the stable Xbox account ID.
+function publicIntegrationFieldsSql(userAlias = 'u') {
+  return `(
+    SELECT json_build_object(
+      'mc_edition', ui.mc_edition,
+      'xbox_gamertag', ui.xbox_gamertag
+    )
+    FROM user_integrations ui
+    WHERE ui.user_id = ${userAlias}.id
+    ORDER BY ui.is_primary DESC, ui.updated_at DESC NULLS LAST, ui.created_at DESC NULLS LAST, ui.id DESC
+    LIMIT 1
+  )`;
+}
+
 async function resolvePublishAuthor(requestUserId, requestedAuthorId, db = pool) {
   const executorId = Number(requestUserId);
   const parsedRequested = requestedAuthorId === undefined || requestedAuthorId === null || requestedAuthorId === ''
@@ -2078,7 +2093,7 @@ async function loadPublicPost(postId) {
            COALESCE(up.display_name, '') AS display_name,
            COALESCE(up.avatar_url, '') AS avatar_url,
            COALESCE(up.public_profile, TRUE) AS public_profile,
-           ${primaryIntegrationFieldsSql('u')} AS integration,
+           ${publicIntegrationFieldsSql('u')} AS integration,
            ${socialRankSql('u', 'pb')} AS rank,
            ${socialMeritSql('u', 'pb')} AS merit
     FROM user_posts p
@@ -2106,7 +2121,7 @@ async function loadPublicProfile(identifier) {
            COALESCE(up.profile_links, '[]'::jsonb) AS profile_links,
            COALESCE(up.public_profile, TRUE) AS public_profile,
            COALESCE(up.public_history, FALSE) AS public_history,
-           ${primaryIntegrationFieldsSql('u')} AS integration,
+           ${publicIntegrationFieldsSql('u')} AS integration,
            ${socialRankSql('u', 'pb')} AS rank,
            ${socialMeritSql('u', 'pb')} AS merit,
            COALESCE(pb.capital_balance, 0) AS capital,
@@ -2209,7 +2224,7 @@ app.get('/api/public/community/feed', async (req, res) => {
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
              COALESCE(up.cover_url, '') AS cover_url,
-             ${primaryIntegrationFieldsSql('u')} AS integration,
+             ${publicIntegrationFieldsSql('u')} AS integration,
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
@@ -3642,17 +3657,20 @@ app.get('/api/app/whitelist-queue', async (req, res) => {
   if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
   try {
-    const { rows: pending } = await pool.query(
-      'SELECT id, minecraft_name, queued_at FROM whitelist_queue WHERE delivered_at IS NULL ORDER BY queued_at ASC LIMIT 50'
-    );
-
-    if (pending.length > 0) {
-      const ids = pending.map(r => r.id);
-      await pool.query(
-        `UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2)`,
-        [appKeyId, ids]
-      );
-    }
+    const { rows: pending } = await pool.query(`
+      WITH picked AS (
+        SELECT id FROM whitelist_queue
+        WHERE delivered_at IS NULL
+        ORDER BY queued_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 50
+      )
+      UPDATE whitelist_queue q
+      SET delivered_at=NOW(), delivered_by=$1
+      FROM picked
+      WHERE q.id=picked.id
+      RETURNING q.id, q.minecraft_name, q.queued_at
+    `, [appKeyId]);
 
     res.json({
       ok: true,
@@ -3785,7 +3803,8 @@ app.post('/api/app/remote/relay/client-poll', remoteRelayLimiter, async (req, re
 });
 
 app.post('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
-    const name = sanitize(req.body.name || 'Força Aliada Manager PC');
+    const name = sanitize(req.body.name || 'Força Aliada Manager PC').trim().slice(0, 80);
+    if (name.length < 3) return res.status(400).json({ error: 'Informe um nome de integração com pelo menos 3 caracteres.' });
     const rawKey = 'FA-' + crypto.randomBytes(24).toString('hex');
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
     try {
@@ -3803,8 +3822,11 @@ app.get('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
 app.delete('/api/admin/app-keys/:id', auth, requireOwner, async (req, res) => {
     const id = parseInt(req.params.id);
     if (!id) return res.status(400).json({ error: 'Id inválido' });
+    const reason = sanitize(req.body?.reason || '').trim().slice(0, 500);
+    if (reason.length < 8) return res.status(400).json({ error: 'Informe o motivo da revogação.' });
     const { rows } = await pool.query('DELETE FROM app_integration_keys WHERE id=$1 RETURNING name', [id]);
-    if (rows.length) await audit({ actorId: req.user.sub, actorName: req.user.username, type: 'delete', message: `Chave de Integração revogada: "${rows[0].name}"` });
+    if (!rows.length) return res.status(404).json({ error: 'Chave de integração não encontrada.' });
+    await audit({ actorId: req.user.sub, actorName: req.user.username, type: 'delete', severity: 'warning', message: `Chave de Integração revogada: "${rows[0].name}"`, metadata: { appKeyId: id, reason } });
     res.json({ ok: true });
 });
 
@@ -3871,18 +3893,20 @@ app.post('/api/app/sync', async (req, res) => {
         }
 
         // ── Whitelist queue: fetch pending items not yet delivered ──
-        const { rows: pending } = await pool.query(
-          'SELECT id, minecraft_name FROM whitelist_queue WHERE delivered_at IS NULL ORDER BY queued_at ASC LIMIT 50'
-        );
-
-        // Mark them delivered atomically
-        if (pending.length > 0) {
-          const ids = pending.map(r => r.id);
-          await pool.query(
-            `UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2)`,
-            [appKeyId, ids]
-          );
-        }
+        const { rows: pending } = await pool.query(`
+          WITH picked AS (
+            SELECT id FROM whitelist_queue
+            WHERE delivered_at IS NULL
+            ORDER BY queued_at ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT 50
+          )
+          UPDATE whitelist_queue q
+          SET delivered_at=NOW(), delivered_by=$1
+          FROM picked
+          WHERE q.id=picked.id
+          RETURNING q.id, q.minecraft_name
+        `, [appKeyId]);
 
         res.json({
           ok: true,
@@ -9324,7 +9348,7 @@ app.post('/api/notifications/read-all', auth, async (req, res) => {
   } catch (err) { console.error('[POST /api/notifications/read-all]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
-async function enforceDashboardBroadcastLimit() {
+async function enforceDashboardBroadcastLimit(db = pool, targetAt = new Date()) {
   const settings = await getRuntimeDashboardSettings();
   if (settings.broadcast_channels?.dashboard === false) {
     const error = new Error('O canal Dashboard esta desativado nas configuracoes.');
@@ -9337,17 +9361,29 @@ async function enforceDashboardBroadcastLimit() {
     error.status = 409;
     throw error;
   }
-  const { rows } = await pool.query('SELECT COUNT(*)::int AS total FROM notifications WHERE created_at >= CURRENT_DATE');
+  await db.query(`
+    SELECT pg_advisory_xact_lock(
+      hashtext('fa-dashboard-broadcast-limit'),
+      (($1::timestamptz AT TIME ZONE 'America/Sao_Paulo')::date - DATE '2000-01-01')::int
+    )
+  `, [targetAt]);
+  const { rows } = await db.query(`
+    SELECT COUNT(*)::int AS total
+    FROM notifications
+    WHERE (COALESCE(scheduled_for, created_at) AT TIME ZONE 'America/Sao_Paulo')::date
+      = ($1::timestamptz AT TIME ZONE 'America/Sao_Paulo')::date
+  `, [targetAt]);
   if (Number(rows[0]?.total || 0) >= limit) {
-    const error = new Error(`Limite diario de ${limit} broadcasts atingido.`);
+    const targetDate = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' }).format(new Date(targetAt));
+    const error = new Error(`Limite de ${limit} avisos para ${targetDate} atingido.`);
     error.status = 429;
     throw error;
   }
 }
 
 app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
+  let client;
   try {
-    await enforceDashboardBroadcastLimit();
     const title       = sanitize(req.body?.title);
     const body        = sanitize(req.body?.body);
     const type        = ['info','event','system','social','warning'].includes(req.body?.type) ? req.body.type : 'info';
@@ -9355,23 +9391,35 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
     const audience    = ['all','role','user','minecraft'].includes(req.body?.audience) ? req.body.audience : 'all';
     const audienceVal = req.body?.audience_val ? sanitize(String(req.body.audience_val)) : null;
     const scheduledFor = req.body?.scheduled_for ? new Date(req.body.scheduled_for) : null;
-    const linkUrl = req.body?.link_url ? sanitize(String(req.body.link_url)).slice(0, 1000) : null;
+    const rawLinkUrl = req.body?.link_url ? sanitize(String(req.body.link_url)).slice(0, 1000) : '';
+    const linkUrl = rawLinkUrl ? absolutePublicUrl(rawLinkUrl) : null;
 
     if (!title || !body) return res.status(400).json({ error: 'title and body are required' });
     if (scheduledFor && Number.isNaN(scheduledFor.getTime())) return res.status(400).json({ error: 'invalid scheduled_for' });
+    if (rawLinkUrl && !linkUrl) return res.status(400).json({ error: 'O link precisa usar http ou https.' });
 
     if (audience === 'role' && !['owner','full','limited'].includes(audienceVal)) return res.status(400).json({ error: 'invalid role' });
+    client = await pool.connect();
+    await client.query('BEGIN');
+    await enforceDashboardBroadcastLimit(client, scheduledFor || new Date());
     if (audience === 'user') {
       const uid = parseInt(audienceVal);
-      if (!uid) return res.status(400).json({ error: 'invalid user id' });
-      const { rows } = await pool.query('SELECT id FROM users WHERE id=$1', [uid]);
-      if (!rows.length) return res.status(404).json({ error: 'user not found' });
+      if (!uid) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'invalid user id' });
+      }
+      const { rows } = await client.query('SELECT id FROM users WHERE id=$1', [uid]);
+      if (!rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'user not found' });
+      }
     }
 
-    const { rows } = await pool.query(
+    const { rows } = await client.query(
       `INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by,scheduled_for,link_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [title, body, type, icon, audience, audienceVal, req.user.sub, scheduledFor?.toISOString() || null, linkUrl],
     );
+    await client.query('COMMIT');
 
     await audit({
       actorId: req.user.sub, actorName: req.user.username, type: 'notify',
@@ -9380,8 +9428,11 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
 
     res.status(201).json(rows[0]);
   } catch (err) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
     console.error('[notification post error]', err);
     res.status(err.status || 500).json({ error: err.status ? err.message : 'Erro ao criar notificação' });
+  } finally {
+    client?.release();
   }
 });
 
@@ -9398,15 +9449,21 @@ app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
 app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
+  const client = await pool.connect();
   try {
-    await enforceDashboardBroadcastLimit();
-    const { rows } = await pool.query(`
+    await client.query('BEGIN');
+    await enforceDashboardBroadcastLimit(client, new Date());
+    const { rows } = await client.query(`
       INSERT INTO notifications(title,body,type,icon,audience,audience_val,created_by,scheduled_for,link_url)
       SELECT title,body,type,icon,audience,audience_val,$2,NULL,link_url
       FROM notifications WHERE id=$1
       RETURNING *
     `, [id, req.user.sub]);
-    if (!rows.length) return res.status(404).json({ error: 'not found' });
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'not found' });
+    }
+    await client.query('COMMIT');
     await auditFromReq(req, {
       actorId: req.user.sub,
       actorName: req.user.username,
@@ -9418,8 +9475,11 @@ app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, 
     });
     res.status(201).json(rows[0]);
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/admin/notifications/:id/resend]', err);
     res.status(err.status || 500).json({ error: err.status ? err.message : 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 
@@ -9567,12 +9627,19 @@ app.post('/api/admin/notes', auth, requireAdmin, async (req, res) => {
 app.delete('/api/admin/notes/:id', auth, requireAdmin, async (req, res) => {
   const noteId = parseInt(req.params.id);
   if (!noteId) return res.status(400).json({ error: 'invalid id' });
-  await pool.query('DELETE FROM player_notes WHERE id = $1', [noteId]);
+  const ownClause = req.user.role === 'owner' ? '' : 'AND author_id=$2';
+  const params = req.user.role === 'owner' ? [noteId] : [noteId, req.user.sub];
+  const { rows } = await pool.query(
+    `DELETE FROM player_notes WHERE id=$1 ${ownClause} RETURNING id, minecraft_name, author_id`,
+    params,
+  );
+  if (!rows.length) return res.status(403).json({ error: 'Apenas o autor da nota ou o dono pode excluí-la.', code: 'NOTE_DELETE_FORBIDDEN' });
   await auditFromReq(req, {
     actorId:   req.user.sub,
     actorName: req.user.username,
     type:      'delete',
     targetId:  noteId,
+    targetName: rows[0].minecraft_name,
     message:   `Nota #${noteId} excluída por ${req.user.username}`,
   });
   res.json({ ok: true });
@@ -9689,7 +9756,7 @@ app.get('/api/admin/sessions/history', auth, requireAdmin, async (req, res) => {
     );
     
     const { rows: countRows } = await pool.query(
-      `SELECT COUNT(*)::int as total ${query}`,
+      `SELECT COUNT(*)::int as total FROM player_sessions WHERE left_at IS NOT NULL${search ? ' AND LOWER(player) LIKE $1' : ''}`,
       search ? [search] : []
     );
 
@@ -9893,16 +9960,25 @@ const role          = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : '
 if (!validateUsername(username) || !validateEmail(email))
 return res.status(400).json({ error: 'invalid fields' });
 
+const client = await pool.connect();
 try {
-const { rows: before } = await pool.query(
-  'SELECT username, email, minecraft_name, role FROM users WHERE id=$1', [id]
+await client.query('BEGIN');
+await client.query('LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE');
+const { rows: before } = await client.query(
+  'SELECT username, email, minecraft_name, role FROM users WHERE id=$1 FOR UPDATE', [id]
 );
+if (!before.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'user not found' }); }
+if (before[0].role === 'owner' && role !== 'owner') {
+  if (id === Number(req.user.sub)) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'O dono não pode rebaixar a própria conta.', code: 'SELF_DEMOTION_BLOCKED' }); }
+  const { rows: owners } = await client.query("SELECT COUNT(*)::int AS total FROM users WHERE role='owner'");
+  if (Number(owners[0]?.total || 0) <= 1) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'O projeto precisa manter pelo menos um dono.', code: 'LAST_OWNER_REQUIRED' }); }
+}
 
-const result = await pool.query(
+await client.query(
 'UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5 WHERE id=$6',
 [username, email, minecraftName, photoUrl, role, id],
 );
-if (!result.rowCount) return res.status(404).json({ error: 'user not found' });
+await client.query('COMMIT');
 
 await auditFromReq(req, {
   actorId:    req.user.sub,
@@ -9921,7 +9997,10 @@ await auditFromReq(req, {
 res.json({ ok: true });
 
 } catch {
+await client.query('ROLLBACK').catch(() => {});
 res.status(409).json({ error: 'username/email already exists' });
+} finally {
+client.release();
 }
 });
 
@@ -9936,7 +10015,19 @@ const { rows: target } = await pool.query('SELECT username FROM users WHERE id=$
 if (!target.length) return res.status(404).json({ error: 'user not found' });
 
 const hash = await bcrypt.hash(newPassword, 10);
-await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, id]);
+const passwordClient = await pool.connect();
+try {
+  await passwordClient.query('BEGIN');
+  await passwordClient.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, id]);
+  await passwordClient.query('UPDATE user_sessions SET revoked=TRUE WHERE user_id=$1 AND revoked=FALSE', [id]);
+  await passwordClient.query('COMMIT');
+} catch (error) {
+  await passwordClient.query('ROLLBACK').catch(() => {});
+  console.error('[PUT /api/admin/users/:id/password]', error);
+  return res.status(500).json({ error: 'Não foi possível redefinir a senha.', code: 'PASSWORD_RESET_FAILED' });
+} finally {
+  passwordClient.release();
+}
 
 await auditFromReq(req, {
   actorId:    req.user.sub,
@@ -9954,9 +10045,29 @@ res.json({ ok: true });
 app.delete('/api/admin/users/:id', auth, requireOwner, async (req, res) => {
 const id = parseInt(req.params.id);
 if (!id) return res.status(400).json({ error: 'invalid id' });
+if (id === Number(req.user.sub)) return res.status(409).json({ error: 'Você não pode excluir a própria conta administrativa.', code: 'SELF_DELETE_BLOCKED' });
 
-const { rows } = await pool.query('SELECT username FROM users WHERE id=$1', [id]);
-if (!rows.length) return res.status(404).json({ error: 'user not found' });
+const deleteClient = await pool.connect();
+let deletedUser;
+try {
+  await deleteClient.query('BEGIN');
+  await deleteClient.query('LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE');
+  const { rows } = await deleteClient.query('SELECT username, role FROM users WHERE id=$1 FOR UPDATE', [id]);
+  if (!rows.length) { await deleteClient.query('ROLLBACK'); return res.status(404).json({ error: 'user not found' }); }
+  if (rows[0].role === 'owner') {
+    const { rows: owners } = await deleteClient.query("SELECT COUNT(*)::int AS total FROM users WHERE role='owner'");
+    if (Number(owners[0]?.total || 0) <= 1) { await deleteClient.query('ROLLBACK'); return res.status(409).json({ error: 'O projeto precisa manter pelo menos um dono.', code: 'LAST_OWNER_REQUIRED' }); }
+  }
+  deletedUser = rows[0];
+  await deleteClient.query('DELETE FROM users WHERE id=$1', [id]);
+  await deleteClient.query('COMMIT');
+} catch (error) {
+  await deleteClient.query('ROLLBACK').catch(() => {});
+  console.error('[DELETE /api/admin/users/:id]', error);
+  return res.status(500).json({ error: 'Não foi possível excluir a conta.', code: 'USER_DELETE_FAILED' });
+} finally {
+  deleteClient.release();
+}
 
 await auditFromReq(req, {
   actorId:    req.user.sub,
@@ -9964,12 +10075,10 @@ await auditFromReq(req, {
   type:       'delete',
   severity:   'critical',
   targetId:   id,
-  targetName: rows[0].username,
-  message:    `Conta DELETADA por admin (${req.user.username}): ${rows[0].username}`,
-  metadata:   { deletedUser: rows[0].username, deletedId: id },
+  targetName: deletedUser.username,
+  message:    `Conta DELETADA por admin (${req.user.username}): ${deletedUser.username}`,
+  metadata:   { deletedUser: deletedUser.username, deletedId: id, deletedRole: deletedUser.role },
 });
-
-await pool.query('DELETE FROM users WHERE id=$1', [id]);
 res.json({ ok: true });
 });
 
@@ -10041,13 +10150,7 @@ const RANK_BENEFITS = {
 };
 
 async function recalcRank(mcName, meritTotal) {
-  const settings = await getRuntimeDashboardSettings();
-  const thresholds = settings.rank_thresholds || {};
-  const rankId = meritTotal >= Number(thresholds.netherite ?? 1000) ? 'netherite'
-    : meritTotal >= Number(thresholds.diamante ?? 500) ? 'diamante'
-    : meritTotal >= Number(thresholds.ouro ?? 150) ? 'ouro'
-    : 'ferro';
-  const rank = getRankById(rankId);
+  const rank = getRankByMerit(meritTotal);
   await pool.query(`
     INSERT INTO player_balances(minecraft_name, merit_total, rank, updated_at)
     VALUES($1, $2, $3, NOW())
@@ -10230,16 +10333,36 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Limite de ±500 Mérito por transação.' });
 
   await ensureBalance(mc);
-  const { rows: cur } = await pool.query('SELECT merit_total FROM player_balances WHERE minecraft_name=$1', [mc]);
-  const currentMerit = cur[0]?.merit_total || 0;
-  const newMerit = Math.max(0, currentMerit + amount);
-
-  await pool.query(
-    'INSERT INTO merit_records(minecraft_name, amount, reason, category, awarded_by_id, awarded_by_name) VALUES($1,$2,$3,$4,$5,$6)',
-    [mc, amount, reason, category, req.user.sub, req.user.username]
-  );
-
-  const newRank = await recalcRank(mc, newMerit);
+  const client = await pool.connect();
+  let currentMerit = 0;
+  let newMerit = 0;
+  let newRank = RANKS[0];
+  try {
+    await client.query('BEGIN');
+    const { rows: cur } = await client.query('SELECT merit_total FROM player_balances WHERE minecraft_name=$1 FOR UPDATE', [mc]);
+    currentMerit = Number(cur[0]?.merit_total || 0);
+    if (currentMerit + amount < 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Débito maior que o Mérito disponível (${currentMerit}).`, code: 'INSUFFICIENT_MERIT', available: currentMerit });
+    }
+    newMerit = currentMerit + amount;
+    newRank = getRankByMerit(newMerit);
+    await client.query(
+      'INSERT INTO merit_records(minecraft_name, amount, reason, category, awarded_by_id, awarded_by_name) VALUES($1,$2,$3,$4,$5,$6)',
+      [mc, amount, reason, category, req.user.sub, req.user.username],
+    );
+    await client.query(
+      'UPDATE player_balances SET merit_total=$1, rank=$2, updated_at=NOW() WHERE minecraft_name=$3',
+      [newMerit, newRank.id, mc],
+    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[POST /api/admin/merit]', error);
+    return res.status(500).json({ error: 'Não foi possível registrar o ajuste de Mérito.', code: 'MERIT_TRANSACTION_FAILED' });
+  } finally {
+    client.release();
+  }
 
   await audit({
     actorId: req.user.sub, actorName: req.user.username,
@@ -10284,19 +10407,34 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Dados inválidos.' });
 
   await ensureBalance(mc);
-  const { rows: cur } = await pool.query('SELECT capital_balance FROM player_balances WHERE minecraft_name=$1', [mc]);
-  const currentCapital = cur[0]?.capital_balance || 0;
-  const newCapital = Math.max(0, currentCapital + amount);
-
-  await pool.query(
-    'INSERT INTO capital_records(minecraft_name, amount, type, description, created_by_id, created_by_name) VALUES($1,$2,$3,$4,$5,$6)',
-    [mc, amount, type, description, req.user.sub, req.user.username]
-  );
-
-  await pool.query(
-    'UPDATE player_balances SET capital_balance=$1, updated_at=NOW() WHERE minecraft_name=$2',
-    [newCapital, mc]
-  );
+  const client = await pool.connect();
+  let currentCapital = 0;
+  let newCapital = 0;
+  try {
+    await client.query('BEGIN');
+    const { rows: cur } = await client.query('SELECT capital_balance FROM player_balances WHERE minecraft_name=$1 FOR UPDATE', [mc]);
+    currentCapital = Number(cur[0]?.capital_balance || 0);
+    if (currentCapital + amount < 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Débito maior que o Capital disponível (${currentCapital}).`, code: 'INSUFFICIENT_CAPITAL', available: currentCapital });
+    }
+    newCapital = currentCapital + amount;
+    await client.query(
+      'INSERT INTO capital_records(minecraft_name, amount, type, description, created_by_id, created_by_name) VALUES($1,$2,$3,$4,$5,$6)',
+      [mc, amount, type, description, req.user.sub, req.user.username],
+    );
+    await client.query(
+      'UPDATE player_balances SET capital_balance=$1, updated_at=NOW() WHERE minecraft_name=$2',
+      [newCapital, mc],
+    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[POST /api/admin/capital]', error);
+    return res.status(500).json({ error: 'Não foi possível registrar o ajuste de Capital.', code: 'CAPITAL_TRANSACTION_FAILED' });
+  } finally {
+    client.release();
+  }
 
   await audit({
     actorId: req.user.sub, actorName: req.user.username,
@@ -10602,6 +10740,7 @@ app.get('/api/admin/moderation-queue', auth, requireAdmin, async (req, res) => {
 app.patch('/api/admin/moderation-queue/:id', auth, requireAdmin, async (req, res) => {
   const id     = parseInt(req.params.id, 10);
   const action = sanitize(req.body?.action || '');
+  const reason = sanitizeText(req.body?.reason || '').slice(0, 500);
   if (!id || !['approve', 'remove_content'].includes(action)) {
     return res.status(400).json({ error: 'Ação inválida. Use approve ou remove_content.' });
   }
@@ -10616,6 +10755,17 @@ app.patch('/api/admin/moderation-queue/:id', auth, requireAdmin, async (req, res
     if (!item) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Item não encontrado.' });
+    }
+    if (item.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Este item já recebeu uma decisão.', code: 'MODERATION_ALREADY_REVIEWED' });
+    }
+    if (action === 'remove_content' && ['community_upload_user', 'profile_image_user'].includes(item.content_type)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'A fila antiga não identifica o arquivo original com precisão. Abra o perfil ou a publicação e remova o alvo exato.',
+        code: 'MODERATION_TARGET_AMBIGUOUS',
+      });
     }
 
     const newStatus = action === 'approve' ? 'reviewed' : 'removed';
@@ -10658,6 +10808,7 @@ app.patch('/api/admin/moderation-queue/:id', auth, requireAdmin, async (req, res
       targetId:   item.content_id,
       targetName: item.content_type,
       message:    `Fila de moderação #${id} (${item.content_type}): ${action}`,
+      metadata:   reason ? { reason } : undefined,
     });
 
     res.json({ ok: true, status: newStatus });
@@ -10746,7 +10897,7 @@ registerChatRealtime(app, pool, auth);
 // ─────────────────────────────────────────────
 // Legacy Account Migration
 // ─────────────────────────────────────────────
-const legacyMigrationService = registerLegacyMigration(app, pool, auth, requireAdmin, auditFromReq);
+const legacyMigrationService = registerLegacyMigration(app, pool, auth, requireAdmin, requireOwner, auditFromReq);
 
 // ─────────────────────────────────────────────
 // Boot

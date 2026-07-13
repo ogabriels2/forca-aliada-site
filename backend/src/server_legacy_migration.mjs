@@ -587,7 +587,7 @@ function getIp(req) {
 // ─────────────────────────────────────────────
 // Exportação principal: registro das rotas
 // ─────────────────────────────────────────────
-export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFromReq) {
+export function registerLegacyMigration(app, pool, auth, requireAdmin, requireOwner, auditFromReq) {
 
   // ══════════════════════════════════════════════════════════════
   // GET /api/me/legacy/suggestion
@@ -1131,7 +1131,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: GET /api/admin/legacy/pending
   // Lista solicitações aguardando revisão manual
   // ══════════════════════════════════════════════════════════════
-  app.get('/api/admin/legacy/pending', auth, requireAdmin, async (req, res) => {
+  app.get('/api/admin/legacy/pending', auth, requireOwner, async (req, res) => {
     try {
       const { rows } = await pool.query(
         `SELECT am.*, u.username AS requester_username, u.minecraft_name AS requester_mc, u.email AS requester_email
@@ -1155,7 +1155,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: GET /api/admin/legacy/all
   // Lista todas as migrações
   // ══════════════════════════════════════════════════════════════
-  app.get('/api/admin/legacy/all', auth, requireAdmin, async (req, res) => {
+  app.get('/api/admin/legacy/all', auth, requireOwner, async (req, res) => {
     try {
       const { rows } = await pool.query(
         `SELECT am.*, u.username AS requester_username, u.minecraft_name AS requester_mc,
@@ -1177,7 +1177,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: POST /api/admin/legacy/:id/approve
   // Aprova solicitação de revisão manual
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/admin/legacy/:id/approve', auth, requireAdmin, async (req, res) => {
+  app.post('/api/admin/legacy/:id/approve', auth, requireOwner, async (req, res) => {
     const migrationId = Number(req.params.id);
     const notes = String(req.body?.notes || '').trim();
 
@@ -1213,7 +1213,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: POST /api/admin/legacy/:id/reject
   // Rejeita solicitação de revisão manual
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/admin/legacy/:id/reject', auth, requireAdmin, async (req, res) => {
+  app.post('/api/admin/legacy/:id/reject', auth, requireOwner, async (req, res) => {
     const migrationId = Number(req.params.id);
     const reason = String(req.body?.reason || '').trim();
     if (!reason) return res.status(400).json({ error: 'Informe o motivo da rejeição.' });
@@ -1250,7 +1250,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: POST /api/admin/legacy/preset
   // Cria preset de pré-aprovação automática (caso como Caio/Porralho)
   // ══════════════════════════════════════════════════════════════
-  app.post('/api/admin/legacy/preset', auth, requireAdmin, async (req, res) => {
+  app.post('/api/admin/legacy/preset', auth, requireOwner, async (req, res) => {
     const legacyUsername = String(req.body?.legacy_username || '').trim();
     const targetUserId   = Number(req.body?.target_user_id);
     const note           = String(req.body?.note || '').trim();
@@ -1293,7 +1293,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: GET /api/admin/legacy/presets
   // Lista todos os presets
   // ══════════════════════════════════════════════════════════════
-  app.get('/api/admin/legacy/presets', auth, requireAdmin, async (req, res) => {
+  app.get('/api/admin/legacy/presets', auth, requireOwner, async (req, res) => {
     try {
       const { rows } = await pool.query(
         `SELECT lmp.id, lmp.legacy_username, lmp.note, lmp.created_at,
@@ -1315,7 +1315,7 @@ export function registerLegacyMigration(app, pool, auth, requireAdmin, auditFrom
   // ADMIN: DELETE /api/admin/legacy/preset/:id
   // Remove preset
   // ══════════════════════════════════════════════════════════════
-  app.delete('/api/admin/legacy/preset/:id', auth, requireAdmin, async (req, res) => {
+  app.delete('/api/admin/legacy/preset/:id', auth, requireOwner, async (req, res) => {
     const presetId = Number(req.params.id);
     try {
       const { rows } = await pool.query(
