@@ -12,7 +12,7 @@
 <script defer src="assets/js/fa-pwa.js" data-fa-app="staff"></script><title>FA Staff | Força Aliada</title>
 <meta name="author" content="Força Aliada">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" integrity="sha384-e6cc9LaIG7xZ3XD5B+jtr1NhTWPQGQdRCh6xiZ+ZFUtWCpg4ycv3Sh+SkZoopvUY" crossorigin="anonymous"></script>
 
 <script>
 (function(){
@@ -1798,8 +1798,10 @@ footer { display: none; }
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
 <link rel="stylesheet" href="assets/css/dashboard-v2.css">
+<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260712a">
 </head>
 <body>
+<a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
 
 <header>
   <a href="index.html" class="brand-link">
@@ -1808,11 +1810,11 @@ footer { display: none; }
   </a>
 
   <div class="header-actions">
-    <button class="global-server-pill" id="global-server-pill" type="button" onclick="scrollToSection('server-overview')" title="Abrir servidor e ver quem está online">
+    <button class="global-server-pill" id="global-server-pill" type="button" onclick="scrollToSection('server-overview')" title="Abrir servidor e ver quem está online" aria-label="Abrir visão do servidor">
       <i></i><span id="global-server-label">Servidor</span><strong id="global-server-count">--</strong>
     </button>
     <div class="user-menu-wrapper">
-      <button class="notif-btn" id="notif-btn-toggle" onclick="toggleNotifPanel(event)" title="Notificações">
+      <button class="notif-btn" id="notif-btn-toggle" type="button" onclick="toggleNotifPanel(event)" title="Minhas notificações" aria-label="Abrir minhas notificações" aria-expanded="false" aria-controls="notif-panel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
@@ -1828,11 +1830,11 @@ footer { display: none; }
     </div>
 
     <div class="user-menu-wrapper">
-      <div class="user-btn" id="user-btn-toggle" onclick="toggleDropdown(event)">
+      <button class="user-btn" id="user-btn-toggle" type="button" onclick="toggleDropdown(event)" aria-expanded="false" aria-controls="user-dropdown-menu">
         <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
         <span id="nav-name">...</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </div>
+      </button>
       <div class="user-dropdown" id="user-dropdown-menu">
         <div class="dropdown-header">
           <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
@@ -2477,10 +2479,10 @@ footer { display: none; }
         </div>
 
         <div class="merit-tabs">
-          <button class="merit-tab active" id="mtab-grant"       onclick="switchMeritTab('grant')">🌟 Conceder Mérito</button>
-          <button class="merit-tab"        id="mtab-capital"     onclick="switchMeritTab('capital')">💰 Ajustar Capital</button>
-          <button class="merit-tab"        id="mtab-leaderboard" onclick="switchMeritTab('leaderboard')">🏆 Leaderboard</button>
-          <button class="merit-tab"        id="mtab-history"     onclick="switchMeritTab('history')">📜 Histórico</button>
+          <button class="merit-tab active" id="mtab-grant"       onclick="switchMeritTab('grant')">Registrar Mérito</button>
+          <button class="merit-tab"        id="mtab-capital"     onclick="switchMeritTab('capital')">Registrar Capital</button>
+          <button class="merit-tab"        id="mtab-leaderboard" onclick="switchMeritTab('leaderboard')">Saldos e ranks</button>
+          <button class="merit-tab"        id="mtab-history"     onclick="switchMeritTab('history')">Transações</button>
         </div>
 
         <div id="mpanel-grant">
@@ -2543,7 +2545,7 @@ footer { display: none; }
           </div>
 
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-            <button class="merit-submit-btn" id="mg-btn" onclick="submitGrantMerit()">Registrar Mérito</button>
+            <button class="merit-submit-btn" id="mg-btn" onclick="submitGrantMerit()">Revisar e registrar Mérito</button>
             <div id="mg-msg" style="font-size:13px;font-weight:500;"></div>
           </div>
         </div>
@@ -2575,7 +2577,7 @@ footer { display: none; }
             </div>
           </div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-            <button class="merit-submit-btn" id="cap-btn" onclick="submitAdjustCapital()">Ajustar Capital</button>
+            <button class="merit-submit-btn" id="cap-btn" onclick="submitAdjustCapital()">Revisar e registrar Capital</button>
             <div id="cap-msg" style="font-size:13px;font-weight:500;"></div>
           </div>
         </div>
@@ -2808,7 +2810,7 @@ footer { display: none; }
   </div>
 </footer>
 
-<div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true">
+<div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true" aria-labelledby="modal-name">
   <div class="modal-content">
     <div class="modal-header">
       <div class="modal-user-info">
@@ -3005,26 +3007,30 @@ footer { display: none; }
 <script>
 const SERVER_IP     = 'fa.ogabriels.com';
 const PROD_API_BASE = 'https://forca-aliada-site.onrender.com';
-let API_BASE        = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const IS_LOCAL_DASHBOARD = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+let API_BASE        = IS_LOCAL_DASHBOARD
   ? 'http://localhost:3000'
   : PROD_API_BASE;
-const API_FALLBACKS = Array.from(new Set([localStorage.getItem('fa_api_base'), API_BASE, PROD_API_BASE].filter(Boolean)));
+const API_FALLBACKS = IS_LOCAL_DASHBOARD ? [API_BASE, PROD_API_BASE] : [PROD_API_BASE];
 const SESSION_KEY   = 'fa_session';
 const TOKEN_KEY     = 'fa_token';
 
 async function apiFetch(path, options = {}) {
-  if (/^https?:\/\//i.test(path)) return fetch(path, options);
+  const requestOptions = {
+    ...options,
+    signal: options.signal || (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined),
+  };
+  if (/^https?:\/\//i.test(path)) return fetch(path, requestOptions);
   let lastError;
   for (const base of API_FALLBACKS) {
     try {
-      const res = await fetch(`${base}${path}`, options);
+      const res = await fetch(`${base}${path}`, requestOptions);
       if (res.status === 404 && base !== PROD_API_BASE && path.startsWith('/api/')) {
         lastError = new Error(`Endpoint não encontrado em ${base}`);
         continue;
       }
       if (res.status !== 0) {
         API_BASE = base;
-        localStorage.setItem('fa_api_base', base);
         return res;
       }
     } catch (err) {
@@ -3089,8 +3095,15 @@ let _statusPollInterval = null;
 function showToast(message, type = 'success', duration = 3500) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `<div class="toast-icon"></div><span>${message}</span>`;
+  const allowedType = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
+  toast.className = `toast ${allowedType}`;
+  toast.setAttribute('role', allowedType === 'error' ? 'alert' : 'status');
+  toast.setAttribute('aria-live', allowedType === 'error' ? 'assertive' : 'polite');
+  const icon = document.createElement('div');
+  icon.className = 'toast-icon';
+  const text = document.createElement('span');
+  text.textContent = String(message ?? '');
+  toast.append(icon, text);
   container.appendChild(toast);
   requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add('show'); }); });
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, duration);
@@ -3678,9 +3691,26 @@ function applyRoleVisibility() {
     }
   } catch (err) {
     console.error('Erro crítico no Bootstrap:', err);
-    if (document.body.style.visibility !== 'visible') {
-      document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:var(--text-primary);background:var(--bg-color);"><h2>⚠️ Erro de Conexão</h2><p>Não foi possível carregar o painel. Detalhe: ${err.message}</p><button onclick="logout()" style="padding:10px 20px;margin-top:20px;cursor:pointer;border-radius:8px;background:var(--accent);color:#fff;border:none;">Voltar ao Login</button></div>`;
-      document.body.style.visibility = 'visible';
+    if (!session?.username) {
+      const content = document.querySelector('.dashboard-content');
+      if (content) {
+        content.replaceChildren();
+        const state = document.createElement('section');
+        state.className = 'staff-access-panel';
+        state.style.margin = '48px auto';
+        state.style.maxWidth = '620px';
+        const title = document.createElement('h2');
+        title.textContent = 'Não foi possível conectar ao painel';
+        const detail = document.createElement('p');
+        detail.textContent = 'A API não respondeu dentro do tempo esperado. Nenhuma alteração foi aplicada.';
+        const retry = document.createElement('button');
+        retry.className = 'v2-btn primary';
+        retry.type = 'button';
+        retry.textContent = 'Tentar novamente';
+        retry.addEventListener('click', () => location.reload());
+        state.append(title, detail, retry);
+        content.appendChild(state);
+      }
     } else if (!_dashboardInitialized) {
       // Página visível mas dashboard não inicializado (sem cache ou role inválido):
       // tenta inicializar com o que temos no cache
@@ -3842,11 +3872,11 @@ function renderProfile() {
 // ══ Scroll auxiliar ══
 var DASHBOARD_MODULES = {
   'command-center': {
-    title: 'Centro de Comando',
-    desc: 'Prioridades, saúde da operação e sinais que exigem uma decisão agora.'
+    title: 'Visão geral',
+    desc: 'Estado atual do servidor, filas e decisões que exigem atenção.'
   },
   'community-analytics': {
-    title: 'Community Intelligence',
+    title: 'Insights da comunidade',
     desc: 'Alcance, engajamento, retenção, perfis, conteúdo e qualidade da comunidade.'
   },
   'server-overview': {
@@ -3858,20 +3888,20 @@ var DASHBOARD_MODULES = {
     desc: 'Tendências dos últimos 30 dias, jogadores mais ativos e volume de sessões.'
   },
   'admin-users-card': {
-    title: 'Jogadores & Staff',
+    title: 'Jogadores',
     desc: 'Contas cadastradas, jogadores sem cadastro, cargos, acesso e verificação.'
   },
   'merit-card': {
-    title: 'Mérito & Capital',
+    title: 'Economia',
     desc: 'Reputação, economia, leaderboard e histórico de transações da comunidade.'
   },
   'admin-notifications-card': {
-    title: 'Notificações',
+    title: 'Comunicação',
     desc: 'Central de comunicação para publicar avisos por público, cargo ou jogador.'
   },
   'moderation-card': {
     title: 'Moderação',
-    desc: 'Fila de imagens sinalizadas pela IA e denúncias de conteúdo dos utilizadores.'
+    desc: 'Pendências, decisões humanas e histórico de denúncias da comunidade.'
   },
   'audit-card': {
     title: 'Auditoria',
@@ -3882,7 +3912,7 @@ var DASHBOARD_MODULES = {
     desc: 'Chaves do Força Aliada Manager e conexão com ferramentas externas.'
   },
   'legacy-migration-card': {
-    title: 'Contas Legacy',
+    title: 'Migrações Legacy',
     desc: 'Revisão, aprovação e auditoria das solicitações de vinculação de identidades anteriores.'
   }
 };
@@ -3927,7 +3957,13 @@ function setActiveDashboardModule(id, opts = {}) {
   content?.classList.add('portal-routed');
   content?.classList.toggle('portal-integrations-active', id === 'app-keys-card');
   Object.keys(DASHBOARD_MODULES).forEach(moduleId => {
-    document.getElementById(moduleId)?.classList.toggle('dashboard-card-active', moduleId === id);
+    const module = document.getElementById(moduleId);
+    if (!module) return;
+    const isActive = moduleId === id;
+    module.classList.toggle('dashboard-card-active', isActive);
+    module.inert = !isActive;
+    if (isActive) module.removeAttribute('aria-hidden');
+    else module.setAttribute('aria-hidden', 'true');
   });
   document.querySelectorAll('[data-dashboard-target]').forEach(btn => {
     btn.classList.toggle('dashboard-nav-active', btn.dataset.dashboardTarget === id);
@@ -3966,12 +4002,16 @@ let adminNotificationsCache = [];
 
 function toggleNotifPanel(e) {
   e.stopPropagation();
-  document.getElementById('notif-panel').classList.toggle('show');
+  const panel = document.getElementById('notif-panel');
+  const open = panel.classList.toggle('show');
+  document.getElementById('notif-btn-toggle')?.setAttribute('aria-expanded', String(open));
 }
 document.addEventListener('click', () => {
   document.getElementById('notif-panel')?.classList.remove('show');
   document.getElementById('user-dropdown-menu')?.classList.remove('show');
   document.getElementById('user-btn-toggle')?.classList.remove('active');
+  document.getElementById('notif-btn-toggle')?.setAttribute('aria-expanded', 'false');
+  document.getElementById('user-btn-toggle')?.setAttribute('aria-expanded', 'false');
 });
 
 function normalizeNotification(n) {
@@ -4374,27 +4414,35 @@ async function fetchAppKeys() {
           <span>Última sincronização: <b>${used}</b></span>
         </div>
         <div class="app-key-actions">
-          <button class="btn-secondary btn-danger-outline" style="padding:8px 16px; font-size:13px; border-radius:8px;" onclick="revokeAppKey(${k.id}, '${escapeHTML(k.name)}')">Revogar Acesso</button>
+          <button class="btn-secondary btn-danger-outline" type="button" style="padding:8px 16px; font-size:13px; border-radius:8px;" data-app-key-revoke="${Number(k.id)}" data-app-key-name="${escapeHTML(k.name)}">Revogar acesso</button>
         </div>
       </div>`;
     }).join('');
+    list.querySelectorAll('[data-app-key-revoke]').forEach(button => {
+      button.addEventListener('click', () => revokeAppKey(Number(button.dataset.appKeyRevoke), button.dataset.appKeyName || 'Integração'));
+    });
   } catch (e) {
     list.innerHTML = '<div class="admin-notification-hint" style="color:var(--danger); padding:16px;">Erro ao carregar as chaves de integração do banco de dados.</div>';
   }
 }
 
-function generateAppKey() {
+async function generateAppKey() {
+  const requestedName = window.staffDialog?.text
+    ? await window.staffDialog.text({ title: 'Nomear a integração', description: 'Use um nome que identifique o computador ou a instalação. Isso facilita auditoria e revogação.', label: 'Nome da integração', required: true })
+    : `Manager ${new Date().toLocaleDateString('pt-BR')}`;
+  if (requestedName === null) return;
+  const keyName = String(requestedName || '').trim().slice(0, 80);
+  if (!keyName) return showToast('Informe um nome para a integração.', 'warning');
   requirePassword({
-    title: 'Gerar Nova Chave de Integração',
-    desc: 'O aplicativo Desktop usa essa chave para agir em nome do servidor. Insira sua senha para aprovar a geração.',
-    btnLabel: 'Gerar Chave',
+    title: 'Confirmar nova chave de integração',
+    desc: `A integração “${keyName}” poderá sincronizar dados operacionais. Confirme sua senha para continuar.`,
+    btnLabel: 'Gerar chave',
     onConfirm: async () => {
       try {
-        const d = new Date();
         const res = await apiFetch('/api/admin/app-keys', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ name: `App Manager - ${d.getDate()}/${d.getMonth()+1}` })
+          body: JSON.stringify({ name: keyName })
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -4412,18 +4460,28 @@ function generateAppKey() {
   });
 }
 
-function copyNewKey() {
+async function copyNewKey() {
   const input = document.getElementById('new-key-value');
-  input.select();
-  input.setSelectionRange(0, 99999); // Para mobile
-  document.execCommand('copy');
-  showToast('Chave copiada para a área de transferência!');
+  try {
+    await navigator.clipboard.writeText(input.value);
+    showToast('Chave copiada para a área de transferência.', 'success');
+  } catch {
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    document.execCommand('copy');
+    showToast('Chave copiada para a área de transferência.', 'success');
+  }
   
   // Esconde o painel após 15 segundos por segurança
   setTimeout(() => { document.getElementById('new-key-alert').style.display = 'none'; }, 15000);
 }
 
-function revokeAppKey(id, name) {
+async function revokeAppKey(id, name) {
+  const reason = window.staffDialog?.text
+    ? await window.staffDialog.text({ title: `Revogar ${name}`, description: 'O Manager que usa esta chave perderá o acesso imediatamente. A justificativa será registrada na Auditoria.', label: 'Motivo da revogação', required: true })
+    : 'Revogação administrativa';
+  if (reason === null) return;
+  if (String(reason).trim().length < 8) return showToast('Descreva o motivo em pelo menos 8 caracteres.', 'warning');
   requirePassword({
     title: 'Revogar Chave',
     desc: `Tem certeza que deseja revogar "${name}"? O aplicativo Desktop que estiver usando essa chave será desconectado e bloqueado imediatamente.`,
@@ -4433,7 +4491,8 @@ function revokeAppKey(id, name) {
       try {
         const res = await apiFetch(`/api/admin/app-keys/${id}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
         });
         if (!res.ok) throw new Error();
         
@@ -4629,7 +4688,12 @@ async function deletePlayerNote(playerName, noteId) {
 
 // ══ Exportação CSV ══
 function downloadCSV(filename, rows, headers) {
-  const csvContent = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+  const csvCell = value => {
+    let text = String(value ?? '');
+    if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+  const csvContent = [headers.map(csvCell).join(','), ...rows.map(r => r.map(csvCell).join(','))].join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csvContent);
   a.download = filename;
@@ -4725,8 +4789,10 @@ function getLiveDuration(enteredAtStr) { return formatTime((Date.now() - new Dat
 // ══ Dropdown Header ══
 function toggleDropdown(e) {
   e.stopPropagation();
-  document.getElementById('user-btn-toggle')?.classList.toggle('active');
-  document.getElementById('user-dropdown-menu')?.classList.toggle('show');
+  const trigger = document.getElementById('user-btn-toggle');
+  const open = document.getElementById('user-dropdown-menu')?.classList.toggle('show');
+  trigger?.classList.toggle('active', open);
+  trigger?.setAttribute('aria-expanded', String(Boolean(open)));
 }
 
 // ══ Carga de dados ══
@@ -4848,6 +4914,7 @@ function updateGlobalServerPill(serverData = null) {
   aSet('global-server-label', known ? (online ? 'Servidor online' : 'Servidor offline') : 'Servidor');
   aSet('global-server-count', known ? (online ? `${count}/${max || '∞'}` : '0 online') : '--');
   pill.title = online ? `Servidor online com ${count} de ${max || 'capacidade desconhecida'} jogadores. Abrir lista.` : 'Abrir visão do servidor e jogadores.';
+  pill.setAttribute('aria-label', online ? `Servidor online, ${count} de ${max || 'capacidade desconhecida'} jogadores. Abrir visão do servidor.` : known ? 'Servidor offline. Abrir visão do servidor.' : 'Abrir visão do servidor.');
 }
 
 function emptyStateHTML(icon, title, sub) {
@@ -6192,6 +6259,13 @@ async function loadModerationQueue(reset = true) {
   }
 }
 
+function _modSafeMediaUrl(value) {
+  try {
+    const url = new URL(String(value || ''), location.origin);
+    return url.protocol === 'https:' || (IS_LOCAL_DASHBOARD && url.protocol === 'http:') ? url.href : '';
+  } catch { return ''; }
+}
+
 function _modBuildAIItem(item) {
   const wrap = document.createElement('div');
   wrap.className = 'mod-item';
@@ -6199,8 +6273,8 @@ function _modBuildAIItem(item) {
 
   const isProfile  = item.content_type === 'profile_image_user';
   const typeLabel  = isProfile ? 'Foto de Perfil' : 'Post com Imagem';
-  const avatarSrc  = item.user_photo
-    || `https://mc-heads.net/head/${encodeURIComponent(item.user_minecraft || item.user_username || 'Steve')}/36`;
+  const avatarFallback = `https://mc-heads.net/head/${encodeURIComponent(item.user_minecraft || item.user_username || 'Steve')}/36`;
+  const avatarSrc  = _modSafeMediaUrl(item.user_photo) || avatarFallback;
   const username   = item.user_username || '—';
   const mcName     = item.user_minecraft ? ` (${item.user_minecraft})` : '';
   const timeAgo    = _modTimeAgo(item.created_at);
@@ -6211,14 +6285,14 @@ function _modBuildAIItem(item) {
 
   let imagesHtml = '';
   if (!isProfile) {
-    const urls = Array.isArray(item.post_media_urls) ? item.post_media_urls : [];
+    const urls = (Array.isArray(item.post_media_urls) ? item.post_media_urls : []).map(_modSafeMediaUrl).filter(Boolean);
     if (urls.length) imagesHtml = `<div class="mod-images">${urls.map(u =>
-      `<img src="${_esc(u)}" alt="imagem" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
+      `<button type="button" class="mod-media-button" data-mod-media="${_esc(u)}" aria-label="Abrir imagem em nova guia"><img src="${_esc(u)}" alt="Imagem sinalizada para revisão" loading="lazy" decoding="async"></button>`
     ).join('')}</div>`;
   } else {
-    const imgs = [item.profile_avatar, item.profile_cover].filter(Boolean);
+    const imgs = [item.profile_avatar, item.profile_cover].map(_modSafeMediaUrl).filter(Boolean);
     if (imgs.length) imagesHtml = `<div class="mod-images">${imgs.map(u =>
-      `<img src="${_esc(u)}" alt="foto" onclick="window.open('${_esc(u)}','_blank')" loading="lazy">`
+      `<button type="button" class="mod-media-button" data-mod-media="${_esc(u)}" aria-label="Abrir imagem em nova guia"><img src="${_esc(u)}" alt="Imagem de perfil sinalizada para revisão" loading="lazy" decoding="async"></button>`
     ).join('')}</div>`;
   }
 
@@ -6226,14 +6300,13 @@ function _modBuildAIItem(item) {
     ? `<p class="mod-item-text">${_esc(item.post_content)}</p>` : '';
 
   const actionBtns = item.status === 'pending'
-    ? `<button class="mod-btn-ok" onclick="modActionAI(${item.id},'approve',this)">✓ Aprovar</button>
-       <button class="mod-btn-rm" onclick="modActionAI(${item.id},'remove_content',this)">✕ Remover Conteúdo</button>`
+    ? `<button type="button" class="mod-btn-ok" data-mod-ai-action="approve">✓ Manter conteúdo</button>
+       <button type="button" class="mod-btn-rm" disabled title="A fila antiga identifica o usuário, mas não o arquivo exato">Remoção indisponível · alvo ambíguo</button>`
     : `<span style="font-size:12px;color:var(--ink-3);font-weight:600;">Já revisado</span>`;
 
   wrap.innerHTML = `
     <div class="mod-item-header">
-      <img class="mod-avatar" src="${avatarSrc}" alt="${_esc(username)}"
-           onerror="this.src='https://mc-heads.net/head/Steve/36'">
+      <img class="mod-avatar" src="${_esc(avatarSrc)}" alt="${_esc(username)}" width="36" height="36">
       <div class="mod-item-meta">
         <strong>${_esc(username)}${_esc(mcName)}</strong>
         <small>${_esc(typeLabel)} · ${timeAgo}</small>
@@ -6247,10 +6320,24 @@ function _modBuildAIItem(item) {
       ${postContent}
       <div class="mod-actions">${actionBtns}</div>
     </div>`;
+  wrap.querySelector('.mod-avatar')?.addEventListener('error', event => { event.currentTarget.src = 'https://mc-heads.net/head/Steve/36'; }, { once: true });
+  wrap.querySelectorAll('[data-mod-media]').forEach(button => button.addEventListener('click', () => {
+    const url = _modSafeMediaUrl(button.dataset.modMedia);
+    if (!url) return;
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (popup) popup.opener = null;
+  }));
+  wrap.querySelectorAll('[data-mod-ai-action]').forEach(button => button.addEventListener('click', () => modActionAI(item.id, button.dataset.modAiAction, button)));
   return wrap;
 }
 
 async function modActionAI(id, action, btn) {
+  let reason = '';
+  if (action === 'remove_content') {
+    const review = window.staffDialog?.moderation ? await window.staffDialog.moderation({ count: 1 }) : null;
+    if (!review) return;
+    reason = review.reason;
+  }
   const item = btn.closest('.mod-item');
   const btns = item.querySelectorAll('button');
   btns.forEach(b => b.disabled = true);
@@ -6260,7 +6347,7 @@ async function modActionAI(id, action, btn) {
     const res = await apiFetch(`/api/admin/moderation-queue/${id}`, {
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, reason }),
     });
     if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erro'); }
     showToast(action === 'approve' ? '✅ Conteúdo aprovado.' : '🗑 Conteúdo removido.');
@@ -6739,7 +6826,15 @@ async function legacyAdminSavePreset() {
 }
 
 async function legacyAdminDeletePreset(id, legacyUsername) {
-  if (!confirm(`Remover o preset para "${legacyUsername}"? O usuário não será mais pré-aprovado automaticamente.`)) return;
+  const approved = window.staffDialog?.confirm
+    ? await window.staffDialog.confirm({
+        title: `Remover pré-aprovação de ${legacyUsername}`,
+        description: 'A pessoa deixará de ser aprovada automaticamente, mas nenhuma conta ou migração concluída será apagada.',
+        confirmLabel: 'Remover pré-aprovação',
+        danger: true,
+      })
+    : false;
+  if (!approved) return;
   try {
     const res = await fetch(`${API_BASE}/api/admin/legacy/preset/${id}`, {
       method: 'DELETE',
@@ -6829,7 +6924,14 @@ function legacyAdminRenderPending() {
 }
 
 async function legacyAdminApprove(id) {
-  const notes = prompt('Notas internas (opcional):') ?? '';
+  const notes = window.staffDialog?.text
+    ? await window.staffDialog.text({
+        title: 'Aprovar solicitação de migração',
+        description: 'Revise os dados exibidos no caso antes de permitir que a pessoa escolha o modo de migração.',
+        label: 'Notas internas opcionais',
+      })
+    : null;
+  if (notes === null) return;
   try {
     const res = await fetch(`${API_BASE}/api/admin/legacy/${id}/approve`, {
       method: 'POST',
@@ -6936,7 +7038,8 @@ function legacyAdminRenderAll() {
 function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
 <script src="assets/js/dashboard-v2.js"></script>
+<script src="assets/js/dashboard-v3.js?v=20260712a"></script>
 </body>
 </html>
