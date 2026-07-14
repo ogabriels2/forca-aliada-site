@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
 <link rel="manifest" href="staff.webmanifest">
-<meta name="theme-color" content="#060c16">
+<meta name="theme-color" content="#111511">
+<meta name="color-scheme" content="light dark">
 <meta name="application-name" content="FA Staff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Staff">
@@ -1798,7 +1799,8 @@ footer { display: none; }
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
 <link rel="stylesheet" href="assets/css/dashboard-v2.css">
-<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260712a">
+<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260714e">
+<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260714e">
 </head>
 <body>
 <a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
@@ -2429,7 +2431,7 @@ footer { display: none; }
               <option value="warning">Atenção</option>
               <option value="critical">Crítico</option>
             </select>
-            <button onclick="exportAuditCSV()"
+            <button class="v2-btn audit-export-btn" onclick="exportAuditCSV()"
               style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);cursor:pointer;font-family:inherit;">⬇ Exportar CSV</button>
           </div>
         </div>
@@ -3071,7 +3073,24 @@ let communityTrendChart = null;
 let communityMixChart   = null;
 let executiveAnalytics  = null;
 let analyticsPeriodDays = 30;
-const requestedDashboardModule = new URLSearchParams(location.search).get('module');
+const dashboardRouteParams = new URLSearchParams(location.search);
+const dashboardRouteAliases = {
+  command: 'command-center',
+  server: 'server-overview',
+  access: 'dashboard-access',
+  players: 'admin-users-card',
+  merit: 'merit-card',
+  moderation: 'moderation-card',
+  notifications: 'admin-notifications-card',
+  audit: 'audit-card',
+  integrations: 'app-keys-card',
+  settings: 'dashboard-settings',
+  analytics: 'community-analytics',
+  legacy: 'legacy-migration-card',
+  tools: 'dashboard-tools',
+};
+const requestedDashboardRoute = dashboardRouteParams.get('module') || dashboardRouteParams.get('v');
+const requestedDashboardModule = dashboardRouteAliases[requestedDashboardRoute] || requestedDashboardRoute;
 let liveInterval        = null;
 let auditLogs           = [];
 let auditFilterActive   = 'all';
@@ -5590,8 +5609,8 @@ function renderRegisteredList() {
     const lastStr   = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
     const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
     const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
-    const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">Não Verificado</span>` : '';
-    const platformVerBadge = u.is_platform_verified ? `<span class="unregistered-badge" style="background:rgba(23,97,240,0.10);color:var(--blue);">✓ Verificado</span>` : '';
+    const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">E-mail pendente</span>` : '';
+    const platformVerBadge = u.is_platform_verified ? `<span class="unregistered-badge" style="background:rgba(23,97,240,0.10);color:var(--blue);">Selo da plataforma</span>` : '';
     const merit     = u.merit_total || 0;
     const capital   = u.capital_balance || 0;
     const rd        = getRankDef(merit);
@@ -5602,16 +5621,16 @@ function renderRegisteredList() {
       <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
       <div class="item-details" style="flex:1;min-width:0;">
         <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${platformVerBadge} ${meritBadge} ${capitalStr}</strong>
-        <span>${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
+        <span class="player-contact-line">${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
         <div class="li-merit-bar" title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
           <div class="li-merit-bar-fill" style="width:${pct}%;background:${rd.color};"></div>
         </div>
       </div>
-      <button onclick="event.stopPropagation();togglePlatformVerified(${u.id},${!!u.is_platform_verified})"
+      <button class="player-verify-btn" onclick="event.stopPropagation();togglePlatformVerified(${u.id},${!!u.is_platform_verified})"
         style="flex-shrink:0;padding:4px 9px;border-radius:6px;border:1px solid var(--line);font-size:11px;font-weight:700;cursor:pointer;
                background:${u.is_platform_verified?'rgba(23,97,240,0.10)':'var(--card)'};color:${u.is_platform_verified?'var(--blue)':'var(--text-secondary)'}"
         title="${u.is_platform_verified?'Revogar verificação':'Conceder verificação de plataforma'}">
-        ${u.is_platform_verified?'✓ Verificado':'✓ Verificar'}
+        ${u.is_platform_verified?'Selo ativo':'Conceder selo'}
       </button>
     </li>`;
   }).join('');
@@ -7039,7 +7058,8 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
-<script src="assets/js/dashboard-v2.js"></script>
-<script src="assets/js/dashboard-v3.js?v=20260712a"></script>
+<script src="assets/js/dashboard-v2.js?v=20260714e"></script>
+<script src="assets/js/dashboard-v3.js?v=20260714e"></script>
+<script src="assets/js/dashboard-v4.js?v=20260714e"></script>
 </body>
 </html>

@@ -1,14 +1,20 @@
-const CACHE_VERSION = 'fa-static-v24';
+const CACHE_VERSION = 'fa-static-v32';
 const STATIC_ASSETS = [
   './',
   'index.html',
   'community.html',
   'guia.html',
+  'staff-offline.html',
+  'staff.webmanifest',
   'assets/images/app-icons/favicon-32.png',
   'assets/images/app-icons/icon-192.png',
   'assets/images/fa-icon-dark.png',
   'assets/images/og-image.jpg',
   'assets/js/fa-seo.js',
+  'assets/js/dashboard-v2.js?v=20260714e',
+  'assets/js/dashboard-v2-lazy.js',
+  'assets/js/dashboard-v3.js?v=20260714e',
+  'assets/js/dashboard-v4.js?v=20260714e',
   'assets/js/fa-pwa.js',
   'assets/js/fa-design-system.js',
   'assets/js/community-evolution.js',
@@ -21,6 +27,9 @@ const STATIC_ASSETS = [
   'assets/js/community-social-refinement-20260615a.js',
   'assets/js/social-chat.js',
   'assets/css/fa-design-system.css',
+  'assets/css/dashboard-v2.css',
+  'assets/css/dashboard-v3.css?v=20260714e',
+  'assets/css/dashboard-v4.css?v=20260714e',
   'assets/css/community-evolution.css',
   'assets/css/community-evolution-20260614f.css',
   'assets/css/community-evolution-20260614h.css',
@@ -50,7 +59,10 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/share/')) return;
 
   if (request.destination === 'document') {
-    event.respondWith(fetch(request).catch(() => caches.match(request).then(hit => hit || caches.match('index.html'))));
+    const isStaff = url.pathname.endsWith('/dashboard') || url.pathname.endsWith('/dashboard.html');
+    event.respondWith(fetch(request).catch(() => isStaff
+      ? caches.match('staff-offline.html')
+      : caches.match(request).then(hit => hit || caches.match('index.html'))));
     return;
   }
 

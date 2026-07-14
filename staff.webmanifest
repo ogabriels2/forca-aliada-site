@@ -1,14 +1,17 @@
 {
   "id": "/apps/fa-staff",
-  "name": "FA Staff",
+  "name": "Força Aliada Staff",
   "short_name": "FA Staff",
-  "description": "Centro de comando, analytics e operação da staff Força Aliada.",
+  "description": "Operação, jogadores, acesso e decisões da equipe Força Aliada.",
   "lang": "pt-BR",
-  "start_url": "/dashboard.html?source=pwa",
+  "dir": "ltr",
+  "start_url": "/dashboard.html?v=command&source=pwa",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#060c16",
-  "theme_color": "#060c16",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#080a09",
+  "theme_color": "#111511",
   "categories": ["business", "productivity", "games"],
   "icons": [
     { "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -16,10 +19,10 @@
     { "src": "assets/images/app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Centro de Comando", "short_name": "Comando", "url": "/dashboard.html?v=command", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Servidor", "short_name": "Servidor", "url": "/dashboard.html?v=server", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Community Intelligence", "short_name": "Community", "url": "/dashboard.html?v=analytics", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Visão geral", "short_name": "Visão geral", "url": "/dashboard.html?v=command", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Pendências", "short_name": "Pendências", "url": "/dashboard.html?v=moderation", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Jogadores", "short_name": "Jogadores", "url": "/dashboard.html?v=players", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Moderação", "short_name": "Moderação", "url": "/dashboard.html?v=moderation", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Servidor", "short_name": "Servidor", "url": "/dashboard.html?v=server", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Acesso", "short_name": "Acesso", "url": "/dashboard.html?v=access", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

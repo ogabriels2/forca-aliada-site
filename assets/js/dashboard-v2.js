@@ -9,7 +9,7 @@
     charts: {},
     calendarDate: new Date(),
     playerDirectory: [],
-    playerSegment: 'staff',
+    playerSegment: 'all',
     playerView: localStorage.getItem('fa_dashboard_player_view') || 'list',
     playerFilters: { role: 'all', rank: 'all', verified: 'all', linked: 'all', access: 'all' },
     selectedPlayers: new Set(),
@@ -21,18 +21,19 @@
   };
 
   const VIEWS = [
-    { view: 'command', id: 'command-center', label: 'Centro de Comando', icon: 'layout-dashboard', group: 'Análise' },
-    { view: 'analytics', id: 'community-analytics', label: 'Analytics da Comunidade', icon: 'bar-chart-3', group: 'Análise' },
-    { view: 'server', id: 'server-overview', label: 'Servidor Minecraft', icon: 'server', group: 'Análise' },
-    { view: 'players', id: 'admin-users-card', label: 'Jogadores & Staff', icon: 'users', group: 'Gestão' },
-    { view: 'merit', id: 'merit-card', label: 'Mérito & Capital', icon: 'star', group: 'Gestão' },
-    { view: 'moderation', id: 'moderation-card', label: 'Moderação', icon: 'shield-alert', group: 'Gestão', badge: 'moderation' },
-    { view: 'notifications', id: 'admin-notifications-card', label: 'Broadcast & Avisos', icon: 'megaphone', group: 'Ferramentas' },
-    { view: 'legacy', id: 'legacy-migration-card', label: 'Contas Legacy', icon: 'link-2', group: 'Ferramentas', badge: 'legacy' },
-    { view: 'integrations', id: 'app-keys-card', label: 'Integrações', icon: 'plug', group: 'Ferramentas', owner: true },
+    { view: 'command', id: 'command-center', label: 'Visão geral', icon: 'layout-dashboard', group: 'Operação' },
+    { view: 'server', id: 'server-overview', label: 'Servidor', icon: 'server', group: 'Operação' },
+    { view: 'access', id: 'dashboard-access', label: 'Acesso', icon: 'key-round', group: 'Operação', badge: 'access' },
+    { view: 'players', id: 'admin-users-card', label: 'Jogadores', icon: 'users', group: 'Comunidade' },
+    { view: 'merit', id: 'merit-card', label: 'Economia', icon: 'landmark', group: 'Comunidade' },
+    { view: 'moderation', id: 'moderation-card', label: 'Moderação', icon: 'shield-alert', group: 'Comunidade', badge: 'moderation' },
+    { view: 'notifications', id: 'admin-notifications-card', label: 'Comunicação', icon: 'megaphone', group: 'Comunidade' },
     { view: 'audit', id: 'audit-card', label: 'Auditoria', icon: 'scroll-text', group: 'Sistema' },
-    { view: 'tools', id: 'dashboard-tools', label: 'Ferramentas Admin', icon: 'wrench', group: 'Sistema' },
+    { view: 'integrations', id: 'app-keys-card', label: 'Integrações', icon: 'plug', group: 'Sistema', owner: true },
     { view: 'settings', id: 'dashboard-settings', label: 'Configurações', icon: 'settings', group: 'Sistema', owner: true },
+    { view: 'analytics', id: 'community-analytics', label: 'Insights da comunidade', icon: 'bar-chart-3', group: 'Contexto', nav: false },
+    { view: 'legacy', id: 'legacy-migration-card', label: 'Migrações Legacy', icon: 'link-2', group: 'Contexto', badge: 'legacy', nav: false, owner: true },
+    { view: 'tools', id: 'dashboard-tools', label: 'Análises especializadas', icon: 'wrench', group: 'Contexto', nav: false },
   ];
   const VIEW_BY_ID = Object.fromEntries(VIEWS.map((item) => [item.id, item.view]));
   const VIEW_META = Object.fromEntries(VIEWS.map((item) => [item.view, item]));
@@ -111,7 +112,7 @@
   }
 
   function availableViews() {
-    return VIEWS.filter((item) => !item.owner || isOwner()).filter((item) => document.getElementById(item.id));
+    return VIEWS.filter((item) => item.nav !== false).filter((item) => !item.owner || isOwner()).filter((item) => document.getElementById(item.id));
   }
 
   function createV2Modules() {
@@ -143,7 +144,7 @@
 
     DASHBOARD_MODULES['dashboard-tools'] = { title: 'Ferramentas Admin', desc: 'Calendário, economia, retenção, churn e inteligência operacional.' };
     DASHBOARD_MODULES['dashboard-settings'] = { title: 'Configurações', desc: 'Parâmetros globais, exportações e controles avançados do sistema.' };
-    DASHBOARD_MODULES['admin-notifications-card'] = { title: 'Broadcast & Avisos', desc: 'Crie, visualize, agende e acompanhe comunicações para a comunidade.' };
+    DASHBOARD_MODULES['admin-notifications-card'] = { title: 'Central de comunicação', desc: 'Crie, agende e acompanhe avisos com público, destino e prévia definidos.' };
   }
 
   function buildSidebar() {
@@ -178,6 +179,7 @@
     trigger.type = 'button';
     trigger.id = 'v2-cmd-trigger';
     trigger.className = 'v2-cmd-trigger';
+    trigger.setAttribute('aria-label', 'Abrir busca e navegação do painel');
     trigger.innerHTML = `${icon('search')}<span>Buscar ou navegar...</span><kbd>Ctrl K</kbd>`;
     header.insertBefore(trigger, header.querySelector('.header-actions') || header.lastElementChild);
 
@@ -194,13 +196,13 @@
     nav.className = 'v2-mobile-nav';
     nav.setAttribute('aria-label', 'Navegação principal');
     const main = [
-      ['command', 'layout-dashboard', 'Início'],
-      ['analytics', 'bar-chart-3', 'Analytics'],
-      ['players', 'users', 'Players'],
-      ['moderation', 'shield-alert', 'Moderação'],
+      ['command', 'layout-dashboard', 'Visão geral'],
+      ['server', 'server', 'Servidor'],
+      ['players', 'users', 'Jogadores'],
+      ['moderation', 'shield-alert', 'Atenção'],
     ];
     nav.innerHTML = main.map(([view, ico, label]) => `<button class="v2-mobile-item" data-v2-view="${view}">${icon(ico)}<span>${label}</span>${view === 'moderation' ? '<b class="v2-nav-badge" data-v2-badge="moderation" hidden>0</b>' : ''}</button>`).join('')
-      + `<button class="v2-mobile-item" data-v2-more>${icon('grid-2x2')}<span>Mais</span></button>`;
+      + `<button class="v2-mobile-item" data-v2-more aria-expanded="false" aria-controls="v2-mobile-menu">${icon('grid-2x2')}<span>Mais</span></button>`;
     document.body.appendChild(nav);
     const menu = document.createElement('div');
     menu.id = 'v2-mobile-menu';
@@ -230,11 +232,11 @@
     const q = query.toLocaleLowerCase('pt-BR').trim();
     const modules = availableViews().filter((item) => !q || item.label.toLocaleLowerCase('pt-BR').includes(q));
     const actions = [
-      { label: 'Conceder mérito a um player', icon: 'star', view: 'merit' },
-      { label: 'Novo aviso para a comunidade', icon: 'megaphone', view: 'notifications' },
+      { label: 'Registrar ajuste econômico', icon: 'landmark', view: 'merit' },
+      { label: 'Criar aviso para a comunidade', icon: 'megaphone', view: 'notifications' },
       { label: 'Ver denúncias pendentes', icon: 'flag', view: 'moderation' },
-      { label: 'Abrir calendário editorial', icon: 'calendar-days', view: 'tools', tool: 'calendar' },
-      { label: 'Monitorar economia', icon: 'landmark', view: 'tools', tool: 'economy' },
+      { label: 'Revisar lista de acesso', icon: 'key-round', view: 'access' },
+      { label: 'Abrir insights da comunidade', icon: 'bar-chart-3', view: 'analytics' },
     ].filter((item) => !q || item.label.toLocaleLowerCase('pt-BR').includes(q));
     const players = q.length >= 2 ? (state.playerDirectory.length ? state.playerDirectory : globalAdminUsers || [])
       .filter((player) => [player.username, player.minecraft_name, player.email, player.id].some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(q)))
@@ -258,7 +260,12 @@
   }
 
   function updateNavigation() {
-    document.querySelectorAll('[data-v2-view]').forEach((item) => item.classList.toggle('active', item.dataset.v2View === state.view));
+    document.querySelectorAll('[data-v2-view]').forEach((item) => {
+      const active = item.dataset.v2View === state.view;
+      item.classList.toggle('active', active);
+      if (active) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
     document.getElementById('v2-mobile-menu')?.classList.remove('active');
     renderPageActions();
   }
@@ -266,11 +273,9 @@
   function renderPageActions() {
     const actions = document.getElementById('v2-page-actions');
     if (!actions) return;
-    const analytic = ['command', 'analytics', 'server', 'merit', 'audit'].includes(state.view);
-    const listExport = ['analytics', 'server', 'players', 'merit', 'moderation', 'notifications', 'audit'].includes(state.view);
+    const analytic = ['command', 'analytics'].includes(state.view);
     actions.innerHTML = `
       ${analytic ? `<button class="v2-btn" data-v2-compare>${icon('git-compare-arrows')} Comparar períodos</button>` : ''}
-      ${listExport ? `<button class="v2-btn" data-v2-export-view>${icon('download')} CSV</button>` : ''}
       <button class="v2-btn" data-v2-refresh>${icon('refresh-cw')} Atualizar</button>`;
     refreshIcons();
   }
@@ -294,6 +299,7 @@
     if (view === 'command') renderCommandOverview();
     if (view === 'analytics') loadCommunityEnhancements();
     if (view === 'server') loadServerIntelligence();
+    if (view === 'access') window.staffAccessWorkspace?.load?.();
     if (view === 'players') loadPlayerDirectory();
     if (view === 'merit') loadMeritOverview();
     if (view === 'notifications') loadNotificationWorkspace();
@@ -320,9 +326,9 @@
     const alerts = [];
     if (num(summary.pending_reports)) alerts.push({ tone: 'var(--red)', title: `${summary.pending_reports} denúncia(s) pendente(s)`, body: 'Revise o conteúdo denunciado pela comunidade.', view: 'moderation' });
     if (num(summary.pending_moderation)) alerts.push({ tone: 'var(--amber)', title: `${summary.pending_moderation} item(ns) na fila da IA`, body: 'A fila aguarda uma decisão da staff.', view: 'moderation' });
-    if (num(summary.failed_scheduled_posts)) alerts.push({ tone: 'var(--red)', title: `${summary.failed_scheduled_posts} agendamento(s) falharam`, body: 'Reagende os posts no calendário editorial.', view: 'tools', tool: 'calendar' });
-    if (num(summary.unverified_users)) alerts.push({ tone: 'var(--accent)', title: `${summary.unverified_users} conta(s) não verificadas`, body: 'Acompanhe o onboarding de novos membros.', view: 'players' });
-    if (!alerts.length) alerts.push({ tone: 'var(--green)', title: 'Operação em dia', body: 'Nenhuma pendência crítica neste momento.', view: 'analytics' });
+    if (num(summary.failed_scheduled_posts)) alerts.push({ tone: 'var(--red)', title: `${summary.failed_scheduled_posts} agendamento(s) falharam`, body: 'Revise as comunicações e publicações agendadas.', view: 'notifications' });
+    if (num(summary.unverified_users)) alerts.push({ tone: 'var(--accent)', title: `${summary.unverified_users} conta(s) aguardam verificação`, body: 'Acompanhe o onboarding e a lista de acesso.', view: 'access' });
+    if (!alerts.length) alerts.push({ tone: 'var(--green)', title: 'Operação em dia', body: 'Nenhuma pendência crítica neste momento.', view: 'server' });
     return alerts.slice(0, 3);
   }
 
@@ -344,39 +350,40 @@
     const s = data.summary || {};
     const server = data.server || {};
     const wauDelta = percentDelta(s.wau, Math.max(0, num(s.previous_active_users)));
-    const health = Math.max(0, Math.round(100 - num(s.pending_reports) * 3 - num(s.pending_moderation) * 2 - num(s.failed_scheduled_posts) * 4 - (num(s.retention_rate) < 45 ? 12 : 0)));
+    const pendingActions = num(s.pending_reports) + num(s.pending_moderation) + num(s.failed_scheduled_posts) + num(s.unverified_users);
     const preview = typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW;
     const online = preview || (typeof globalApiData !== 'undefined' && globalApiData?.online);
     const onlineCount = preview ? 18 : (typeof globalHistData !== 'undefined' ? num(globalHistData?.onlinePlayers?.length) : 0);
     const max = typeof globalApiData !== 'undefined' ? num(globalApiData?.players?.max || 80) : 80;
     const alerts = commandAlerts(s);
     const kpis = [
-      ['Usuários ativos', s.active_users, s.previous_active_users, 'var(--chart-1)', `${data.period?.days || 30} dias`],
-      ['Engajamento', `${num(s.engagement_rate).toFixed(1)}%`, null, 'var(--chart-2)', 'por impressão'],
-      ['Retenção', `${num(s.retention_rate).toFixed(1)}%`, null, 'var(--chart-3)', 'base que retornou'],
-      ['Horas de jogo', `${num(s.play_hours).toFixed(0)}h`, null, 'var(--chart-4)', `${compact(s.unique_players)} players`],
-      ['Posts', s.posts, s.previous_posts, 'var(--chart-6)', 'originais'],
-      ['Mensagens', s.messages, null, 'var(--chart-5)', 'privadas e grupos'],
+      ['Jogadores online', onlineCount, null, 'var(--chart-5)', `capacidade ${max}`],
+      ['Uptime', `${num(server.uptime_pct).toFixed(1)}%`, null, 'var(--chart-2)', `${data.period?.days || 30} dias`],
+      ['Ações pendentes', pendingActions, null, pendingActions ? 'var(--chart-4)' : 'var(--chart-5)', pendingActions ? 'requerem triagem' : 'fila em dia'],
+      ['Jogadores ativos', s.unique_players, null, 'var(--chart-1)', `${data.period?.days || 30} dias`],
+      ['Horas de jogo', `${num(s.play_hours).toFixed(0)}h`, null, 'var(--chart-3)', `${compact(s.unique_players)} jogadores`],
     ];
     root.innerHTML = `
-      <div class="v2-north-star">
-        <article class="v2-north-card v2-north-main">
-          <div class="v2-label">North Star Metric</div>
-          <div class="v2-north-value">${compact(s.wau)}</div>
-          <div class="v2-north-name">Usuários Ativos Semanais</div>
-          <span class="v2-delta ${wauDelta.direction}">${wauDelta.direction === 'up' ? '↑' : wauDelta.direction === 'down' ? '↓' : '→'} ${Math.abs(wauDelta.value).toFixed(1)}% vs referência anterior</span>
-        </article>
-        <article class="v2-north-card">
-          <div class="v2-label">Health Score</div>
-          <div class="v2-health-score">${health}<small>/100</small></div>
-          <div class="v2-north-name">${health >= 85 ? 'Operação saudável' : health >= 65 ? 'Atenção necessária' : 'Intervenção prioritária'}</div>
-          <div class="v2-health-bar"><i style="--value:${health}%;--tone:${health >= 85 ? 'var(--green)' : health >= 65 ? 'var(--amber)' : 'var(--red)'}"></i></div>
-        </article>
-        <article class="v2-north-card">
+      <div class="v2-north-star staff-signal-grid">
+        <article class="v2-north-card staff-signal ${online ? 'is-healthy' : 'is-critical'}">
           <div class="v2-label">Servidor Minecraft</div>
-          <div class="v2-server-live" style="color:${online ? 'var(--green)' : 'var(--red)'}"><i></i>${online ? 'Online agora' : 'Offline / verificando'}</div>
-          <div class="v2-server-count">${onlineCount}<small style="font-size:13px;color:var(--ink-3)">/${max}</small></div>
-          <div class="v2-north-name">${pct(server.uptime_pct)} uptime no período</div>
+          <div class="v2-server-live"><i></i>${online ? 'Saudável' : 'Sem confirmação'}</div>
+          <div class="v2-north-name">${onlineCount}/${max} online · ${pct(server.uptime_pct)} uptime</div>
+        </article>
+        <article class="v2-north-card staff-signal ${pendingActions ? 'is-warning' : 'is-healthy'}">
+          <div class="v2-label">Fila operacional</div>
+          <div class="v2-north-value">${compact(pendingActions)}</div>
+          <div class="v2-north-name">${pendingActions ? 'decisões ou verificações pendentes' : 'nenhuma ação crítica'}</div>
+        </article>
+        <article class="v2-north-card staff-signal is-healthy">
+          <div class="v2-label">API e dados</div>
+          <div class="v2-server-live"><i></i>Conectada</div>
+          <div class="v2-north-name">Leitura consolidada de ${data.period?.days || 30} dias</div>
+        </article>
+        <article class="v2-north-card staff-signal ${num(s.unverified_users) ? 'is-warning' : 'is-healthy'}">
+          <div class="v2-label">Onboarding e acesso</div>
+          <div class="v2-north-value">${compact(s.unverified_users)}</div>
+          <div class="v2-north-name">contas aguardando verificação</div>
         </article>
       </div>
       <div class="v2-kpi-strip">${kpis.map(([label, value, previous, tone, context]) => `
@@ -388,7 +395,7 @@
         <section class="v2-panel span-2"><div class="v2-section-head"><div><h3>Fila de atenção</h3><p>Máximo de três sinais, cada um com ação próxima.</p></div></div>
           <div class="v2-alert-list" style="margin-top:12px">${alerts.map((alert) => `<article class="v2-alert" style="--tone:${alert.tone}"><div><strong>${alert.title}</strong><small>${alert.body}</small></div><button class="v2-btn" data-v2-alert-view="${alert.view}" data-v2-alert-tool="${alert.tool || ''}">Resolver</button></article>`).join('')}</div>
         </section>
-        <section class="v2-panel"><div class="v2-section-head"><div><h3>Economia FA</h3><p>Visão rápida da circulação.</p></div><button class="v2-btn" data-v2-action-view="tools" data-v2-action-tool="economy">${icon('arrow-up-right')}</button></div>
+        <section class="v2-panel"><div class="v2-section-head"><div><h3>Economia FA</h3><p>Visão rápida da circulação.</p></div><button class="v2-btn" data-v2-action-view="merit">${icon('arrow-up-right')} Abrir economia</button></div>
           <div class="v2-grid two" style="margin-top:14px"><div><div class="v2-label">Mérito</div><div class="v2-kpi-value">${compact(s.total_merit)}</div></div><div><div class="v2-label">Capital</div><div class="v2-kpi-value">${compact(s.total_capital)}</div></div></div>
         </section>
       </div>`;
@@ -574,6 +581,13 @@
     renderCalendar();
   }
 
+  function calendarKey(value) {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+  }
+
   function renderCalendar() {
     const root = document.getElementById('v2-calendar-root');
     if (!root) return;
@@ -588,8 +602,8 @@
       <div class="v2-calendar-head"><button class="v2-btn" data-v2-calendar-step="-1">${icon('chevron-left')}</button><div class="v2-calendar-title">${current.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div><button class="v2-btn" data-v2-calendar-step="1">${icon('chevron-right')}</button></div>
       <div class="v2-calendar">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((day) => `<div class="v2-calendar-label">${day}</div>`).join('')}
       ${days.map((day) => {
-        const key = day.toISOString().slice(0, 10);
-        const dayPosts = posts.filter((post) => String(post.publish_at).slice(0, 10) === key);
+        const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+        const dayPosts = posts.filter((post) => calendarKey(post.publish_at) === key);
         const today = new Date().toDateString() === day.toDateString();
         return `<button class="v2-calendar-day ${day.getMonth() !== month ? 'muted' : ''} ${today ? 'today' : ''}" data-v2-calendar-day="${key}"><span class="v2-calendar-day-number">${day.getDate()}</span><span class="v2-calendar-dots">${dayPosts.slice(0, 8).map((post) => `<i class="v2-calendar-dot ${post.status}"></i>`).join('')}</span></button>`;
       }).join('')}</div>`;
@@ -598,7 +612,7 @@
 
   function showCalendarDay(key) {
     const detail = document.getElementById('v2-calendar-detail');
-    const posts = (state.toolData.calendar || []).filter((post) => String(post.publish_at).slice(0, 10) === key);
+    const posts = (state.toolData.calendar || []).filter((post) => calendarKey(post.publish_at) === key);
     detail.innerHTML = posts.map((post) => `<article class="v2-feed-row"><span class="v2-score" style="--tone:${post.status === 'failed' ? 'var(--red)' : post.status === 'published' ? 'var(--green)' : 'var(--accent)'}">${icon(post.media_urls?.length ? 'image' : 'text')}</span><div><strong>${esc(String(post.content || 'Post agendado').slice(0, 90))}</strong><small>${esc(post.display_name || post.minecraft_name || post.username)} · ${dateTime(post.publish_at)} · ${esc(post.status)}</small></div>${post.status === 'failed' ? `<button class="v2-btn" data-v2-retry-post="${post.id}">Reagendar</button>` : ''}</article>`).join('') || '<div class="v2-empty">Nenhum post agendado neste dia.</div>';
     refreshIcons();
   }
@@ -669,15 +683,15 @@
       const spenders = sumByPlayer((row) => row.kind === 'capital' && num(row.amount) < 0);
       root.innerHTML = `
         <div class="v2-section-head"><div><h2>Economia da Força Aliada</h2><p>Distribuição, velocidade e progressão de mérito e capital.</p></div><button class="v2-btn" data-v2-action-view="tools" data-v2-action-tool="economy">${icon('arrow-up-right')} Abrir monitor completo</button></div>
-        <div class="v2-kpi-strip">${[['Mérito total',compact(s.total_merit),'var(--amber)'],['Capital total',money(s.total_capital),'var(--green)'],['Índice Gini',num(s.gini_index).toFixed(2),'var(--purple)'],['Velocidade/dia',num(s.transactions_per_day_7d).toFixed(1),'var(--accent)']].map(([label,value,tone]) => `<article class="v2-kpi-card" style="--tone:${tone}"><div class="v2-kpi-label">${label}</div><div class="v2-kpi-value">${value}</div><div class="v2-kpi-context">economia consolidada</div></article>`).join('')}</div>
-        <section class="v2-panel"><div class="v2-section-head"><div><h3>Podium de mérito</h3><p>Top 3 com variação da última semana.</p></div></div><div class="v2-podium">${(data.leaders || []).slice(0,3).map((row,index) => `<article class="v2-podium-card pos-${index+1}"><span class="v2-podium-rank">${index+1}</span><img loading="lazy" src="https://minotar.net/helm/${encodeURIComponent(row.minecraft_name || 'Steve')}/72.png"><strong>${esc(row.minecraft_name)}</strong><span>${compact(row.merit_total)} mérito</span><small class="${num(row.weekly_delta) >= 0 ? 'up' : 'down'}">${num(row.weekly_delta) >= 0 ? '+' : ''}${row.weekly_delta} na semana</small></article>`).join('')}</div></section>
+        <div class="v2-kpi-strip">${[['Mérito emitido',compact(s.total_merit),'saldo acumulado','var(--amber)'],['Capital em circulação',money(s.total_capital),'saldo atual','var(--green)'],['Concentração (Gini)',num(s.gini_index).toFixed(2),'0 equilibrado · 1 concentrado','var(--purple)'],['Transações por dia',num(s.transactions_per_day_7d).toFixed(1),'média móvel de 7 dias','var(--accent)']].map(([label,value,context,tone]) => `<article class="v2-kpi-card" style="--tone:${tone}"><div class="v2-kpi-label">${label}</div><div class="v2-kpi-value">${value}</div><div class="v2-kpi-context">${context}</div></article>`).join('')}</div>
+        <section class="v2-panel"><div class="v2-section-head"><div><h3>Pódio de Mérito</h3><p>Três maiores saldos e a variação dos últimos sete dias.</p></div></div><div class="v2-podium">${(data.leaders || []).slice(0,3).map((row,index) => `<article class="v2-podium-card pos-${index+1}"><span class="v2-podium-rank">${index+1}</span><img loading="lazy" src="https://minotar.net/helm/${encodeURIComponent(row.minecraft_name || 'Steve')}/72.png"><strong>${esc(row.minecraft_name)}</strong><span>${compact(row.merit_total)} mérito</span><small class="${num(row.weekly_delta) >= 0 ? 'up' : 'down'}">${num(row.weekly_delta) >= 0 ? '+' : ''}${row.weekly_delta} na semana</small></article>`).join('')}</div></section>
         <div class="v2-grid two">
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Merit Velocity</h3><p>Transações de mérito nos últimos dias.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-merit-velocity-chart"></canvas></div></section>
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Distribuição por rank</h3><p>Média de mérito e capital disponível no tooltip.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-rank-distribution-chart"></canvas></div></section>
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Ritmo do Mérito</h3><p>Quantidade e saldo das transações nos últimos dias.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-merit-velocity-chart"></canvas></div></section>
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Distribuição por progressão</h3><p>Médias de Mérito e Capital por rank.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-rank-distribution-chart"></canvas></div></section>
         </div>
         <div class="v2-grid two">
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Top earners</h3><p>Mais mérito recebido no recorte recente.</p></div></div><div class="v2-performance-list">${earners.map(([name,value]) => `<article class="v2-performance-row"><strong>${esc(name)}</strong><span class="v2-delta up">+${compact(value)}</span></article>`).join('') || '<div class="v2-empty">Sem créditos recentes.</div>'}</div></section>
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Top spenders</h3><p>Maior uso de capital no recorte recente.</p></div></div><div class="v2-performance-list">${spenders.map(([name,value]) => `<article class="v2-performance-row"><strong>${esc(name)}</strong><span class="v2-delta down">-${money(value)}</span></article>`).join('') || '<div class="v2-empty">Sem débitos recentes.</div>'}</div></section>
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Quem mais recebeu Mérito</h3><p>Maiores concessões no recorte recente.</p></div></div><div class="v2-performance-list">${earners.map(([name,value]) => `<article class="v2-performance-row"><strong>${esc(name)}</strong><span class="v2-delta up">+${compact(value)}</span></article>`).join('') || '<div class="v2-empty">Sem créditos recentes.</div>'}</div></section>
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Quem mais usou Capital</h3><p>Maiores débitos no recorte recente.</p></div></div><div class="v2-performance-list">${spenders.map(([name,value]) => `<article class="v2-performance-row"><strong>${esc(name)}</strong><span class="v2-delta down">-${money(value)}</span></article>`).join('') || '<div class="v2-empty">Sem débitos recentes.</div>'}</div></section>
         </div>`;
       renderMeritOverviewCharts(data);
       refreshIcons();
@@ -751,32 +765,25 @@
     body.innerHTML = '<div class="v2-loading">Carregando configurações...</div>';
     try {
       const settings = await api('/api/admin/settings');
-      body.innerHTML = `${toolHeader('Configurações do Dashboard', 'Controles globais e parâmetros operacionais.', `<button class="v2-btn primary" data-v2-save-settings>${icon('save')} Salvar alterações</button>`)}
+      body.innerHTML = `${toolHeader('Configurações operacionais', 'Parâmetros globais reservados ao dono do projeto.', `<button class="v2-btn primary" data-v2-save-settings>${icon('save')} Salvar alterações</button>`)}
         <div class="v2-settings-grid">
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Servidor</h3><p>Endereço, capacidade e manutenção.</p></div></div><div class="v2-form-grid" style="margin-top:13px">
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Servidor</h3><p>Metadados operacionais exibidos no painel e nas integrações.</p></div></div><div class="v2-form-grid" style="margin-top:13px">
             ${settingField('server_ip','IP do servidor',settings.server_ip)}
             ${settingField('server_port','Porta',settings.server_port,'number')}
-            ${settingField('max_players','Máximo de players',settings.max_players,'number')}
-            ${settingSelect('whitelist_enabled','Whitelist',settings.whitelist_enabled,[['true','Ativada'],['false','Desativada']])}
+            ${settingField('max_players','Capacidade exibida',settings.max_players,'number')}
+            ${settingSelect('whitelist_enabled','Política da lista de acesso',settings.whitelist_enabled,[['true','Aceitar novos envios'],['false','Pausar novos envios']])}
             ${settingField('maintenance_message','Mensagem de manutenção',settings.maintenance_message,'textarea','full')}
           </div></section>
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Moderação e Broadcast</h3><p>Limites e comportamento padrão.</p></div></div><div class="v2-form-grid" style="margin-top:13px">
-            ${settingSelect('moderation_mode','Modo de moderação',settings.moderation_mode,[['manual','Manual'],['ai','IA assistida'],['auto-remove','Remoção automática']])}
-            ${settingField('broadcast_max_per_day','Broadcasts por dia',settings.broadcast_max_per_day,'number')}
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Moderação e comunicação</h3><p>Limites de segurança e canais disponíveis.</p></div></div><div class="v2-form-grid" style="margin-top:13px">
+            ${settingSelect('moderation_mode','Modo de moderação',settings.moderation_mode,[['manual','Revisão manual'],['ai','Triagem assistida por IA']])}
+            ${settingField('broadcast_max_per_day','Avisos por data de entrega',settings.broadcast_max_per_day,'number')}
             ${settingSelect('channel_dashboard','Canal Dashboard',settings.broadcast_channels?.dashboard,[['true','Ativo'],['false','Inativo']])}
             ${settingSelect('channel_push','Canal Push',settings.broadcast_channels?.push,[['true','Ativo'],['false','Inativo']])}
             ${settingSelect('channel_email','Canal E-mail',settings.broadcast_channels?.email,[['true','Ativo'],['false','Inativo']])}
           </div></section>
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Thresholds de Rank</h3><p>Limites de mérito para progressão.</p></div></div><div class="v2-form-grid" style="margin-top:13px">
-            ${['ferro','ouro','diamante','netherite'].map((rank) => settingField(`rank_${rank}`,rank,settings.rank_thresholds?.[rank] ?? 0,'number')).join('')}
-          </div></section>
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Exportação de dados</h3><p>Dumps completos em JSON para auditoria externa.</p></div></div><div class="v2-page-actions" style="margin-top:13px">${['audit','merit','sessions','users'].map((kind) => `<button class="v2-btn" data-v2-export-kind="${kind}">${icon('download')} ${kind}</button>`).join('')}</div></section>
-          <section class="v2-panel v2-danger-zone span-full"><div class="v2-section-head"><div><h3 style="color:var(--red)">Danger Zone</h3><p>Ações irreversíveis exigem digitar o nome exato da ação.</p></div></div><div class="v2-page-actions" style="margin-top:13px">
-            <button class="v2-btn danger" data-v2-danger-action="clear_reviewed_moderation">Limpar moderação revisada</button>
-            <label class="v2-field" style="min-width:150px"><span>Inatividade (meses)</span><input id="v2-setting-inactive_months" type="number" min="6" max="60" value="12"></label>
-            <button class="v2-btn danger" data-v2-danger-action="delete_inactive_accounts">Exportar + excluir inativos</button>
-            <button class="v2-btn danger" data-v2-danger-action="reset_merit">Resetar mérito</button>
-          </div></section>
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Progressão de ranks</h3><p>Os limites são uma regra única do projeto: Ferro 0, Ouro 150, Diamante 500 e Netherite 1000. Alterações exigem migração versionada e testes de contrato.</p></div></div></section>
+          <section class="v2-panel"><div class="v2-section-head"><div><h3>Exportação de dados</h3><p>Arquivos JSON completos; trate-os como dados restritos e armazene-os com segurança.</p></div></div><div class="v2-page-actions" style="margin-top:13px">${[['audit','Auditoria'],['merit','Mérito'],['sessions','Sessões'],['users','Contas']].map(([kind,label]) => `<button class="v2-btn" data-v2-export-kind="${kind}">${icon('download')} ${label}</button>`).join('')}</div></section>
+          <section class="v2-panel v2-danger-zone span-full"><div class="v2-section-head"><div><h3 style="color:var(--red)">Ações críticas</h3><p>Operações destrutivas foram retiradas do navegador até existir backup durável, preview de impacto, reautenticação e recuperação verificável.</p></div></div><div class="staff-honesty-note" style="margin-top:13px">Para mudanças sistêmicas, exporte os dados acima e siga o runbook operacional com aprovação do dono. O painel não apaga trilhas de auditoria, contas ou saldos.</div></section>
         </div>`;
       state.toolData.settings = settings;
       refreshIcons();
@@ -808,18 +815,20 @@
         push: get('channel_push') === 'true',
         email: get('channel_email') === 'true',
       },
-      rank_thresholds: Object.fromEntries(['ferro','ouro','diamante','netherite'].map((rank) => [rank, num(get(`rank_${rank}`))])),
     };
     await api('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     showToast('Configurações salvas.', 'success');
+    document.dispatchEvent(new CustomEvent('staff:settings-saved'));
   }
 
   async function dangerAction(action) {
-    const confirmation = prompt(`Esta ação é irreversível. Digite ${action.toUpperCase()} para confirmar.`);
-    if (confirmation !== action.toUpperCase()) return;
-    navigator.vibrate?.([40,30,80]);
     const months = num(document.getElementById('v2-setting-inactive_months')?.value) || 12;
-    const result = await api('/api/admin/settings/actions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, confirm: confirmation, months }) });
+    const review = window.staffDialog?.critical
+      ? await window.staffDialog.critical({ action, months })
+      : { confirmation: prompt(`Esta ação é irreversível. Digite ${action.toUpperCase()} para confirmar.`), reason: 'Confirmação administrativa legada', months };
+    if (!review || review.confirmation !== action.toUpperCase()) return;
+    navigator.vibrate?.([40,30,80]);
+    const result = await api('/api/admin/settings/actions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, confirm: review.confirmation, reason: review.reason, months: review.months || months }) });
     if (action === 'delete_inactive_accounts' && result.export?.length) downloadJSON(`fa-contas-inativas-${new Date().toISOString().slice(0,10)}.json`, result.export);
     showToast(`${result.affected} registro(s) alterados.`, 'success');
   }
@@ -839,7 +848,12 @@
   }
 
   function downloadCSV(filename, headers, rows) {
-    const csv = [headers, ...rows].map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csvCell = value => {
+      let text = String(value ?? '');
+      if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
@@ -891,19 +905,19 @@
     toolbar.id = 'v2-player-toolbar';
     toolbar.className = 'v2-player-toolbar';
     toolbar.innerHTML = `
-      <div class="v2-player-tabs">${[['staff','Staff cadastrada'],['all','Todos os players'],['unregistered','Sem cadastro'],['inactive','Inativos (30d+)'],['new','Novos (7d)']].map(([key,label]) => `<button class="v2-player-tab ${key === state.playerSegment ? 'active' : ''}" data-v2-player-segment="${key}">${label}</button>`).join('')}</div>
+      <div class="v2-player-tabs">${[['all','Todos os jogadores'],['staff','Equipe'],['unregistered','Sem cadastro'],['inactive','Sem atividade há 30d'],['new','Entraram nos últimos 7d']].map(([key,label]) => `<button class="v2-player-tab ${key === state.playerSegment ? 'active' : ''}" data-v2-player-segment="${key}">${label}</button>`).join('')}</div>
       <select data-v2-player-filter="access"><option value="all">Qualquer acesso</option><option value="today">Online hoje</option><option value="week">Última semana</option><option value="month">Último mês</option><option value="never">Nunca</option></select>
       <select data-v2-player-filter="verified"><option value="all">Verificação: todas</option><option value="yes">Verificados</option><option value="no">Não verificados</option></select>
       <select data-v2-player-filter="linked"><option value="all">Minecraft: todos</option><option value="yes">Com Minecraft</option><option value="no">Sem Minecraft</option></select>
-      <select data-v2-player-filter="role"><option value="all">Role: todas</option><option value="limited">Limited</option><option value="full">Full</option><option value="owner">Owner</option></select>
-      <button class="v2-btn" data-v2-player-view="list">${icon('list')}</button><button class="v2-btn" data-v2-player-view="cards">${icon('layout-grid')}</button>`;
-    toolbar.querySelector('.v2-player-tabs')?.insertAdjacentHTML('afterend', `<button class="v2-btn v2-filter-toggle" data-v2-filter-toggle>${icon('sliders-horizontal')} Filtros</button>`);
+      <select data-v2-player-filter="role"><option value="all">Permissão: todas</option><option value="limited">Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select>
+      <button class="v2-btn" type="button" data-v2-player-view="list" aria-label="Exibir como lista" title="Exibir como lista">${icon('list')}</button><button class="v2-btn" type="button" data-v2-player-view="cards" aria-label="Exibir como cartões" title="Exibir como cartões">${icon('layout-grid')}</button>`;
+    toolbar.querySelector('.v2-player-tabs')?.insertAdjacentHTML('afterend', `<button class="v2-btn" data-v2-action-view="analytics">${icon('bar-chart-3')} Insights</button><button class="v2-btn" data-v2-action-view="tools" data-v2-action-tool="churn">${icon('radar')} Risco de afastamento</button><button class="v2-btn v2-filter-toggle" data-v2-filter-toggle>${icon('sliders-horizontal')} Filtros</button>`);
     toolbar.querySelector('[data-v2-player-filter="role"]')?.insertAdjacentHTML('afterend', '<select data-v2-player-filter="rank"><option value="all">Rank: todos</option><option value="ferro">Ferro</option><option value="ouro">Ouro</option><option value="diamante">Diamante</option><option value="netherite">Netherite</option></select>');
     tabs.parentNode.insertBefore(toolbar, tabs);
     const bulk = document.createElement('div');
     bulk.id = 'v2-bulk-bar';
     bulk.className = 'v2-bulk-bar';
-    bulk.innerHTML = `<strong><span id="v2-bulk-count">0</span> selecionado(s)</strong><button class="v2-btn" data-v2-bulk-notify>${icon('send')} Enviar aviso</button><button class="v2-btn" data-v2-bulk-export>${icon('download')} Exportar</button><button class="v2-btn" data-v2-bulk-verify>${icon('badge-check')} Verificar</button><button class="v2-btn" data-v2-bulk-clear>${icon('x')} Limpar</button>`;
+    bulk.innerHTML = `<strong><span id="v2-bulk-count">0</span> selecionado(s)</strong><button class="v2-btn" data-v2-bulk-notify>${icon('send')} Enviar aviso</button><button class="v2-btn" data-v2-bulk-export>${icon('download')} Exportar</button><button class="v2-btn" data-v2-bulk-verify>${icon('badge-check')} Conceder selo da plataforma</button><button class="v2-btn" data-v2-bulk-clear>${icon('x')} Limpar</button>`;
     card.appendChild(bulk);
     refreshIcons();
   }
@@ -1037,17 +1051,23 @@
   }
 
   async function bulkNotify() {
-    const title = prompt('Título do aviso para os players selecionados:');
-    if (!title) return;
-    const body = prompt('Mensagem do aviso:');
-    if (!body) return;
+    const message = window.staffDialog?.notification
+      ? await window.staffDialog.notification({ count: state.selectedPlayers.size })
+      : null;
+    if (!message?.title || !message?.body) return;
+    const { title, body } = message;
     await api('/api/admin/users/bulk-notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...state.selectedPlayers], title, body, type: 'info', icon: 'bell' }) });
     showToast('Aviso enviado aos players selecionados.', 'success');
   }
 
   function exportSelectedPlayers() {
     const rows = selectedDirectory();
-    const csv = [['id','username','email','minecraft','role','rank','merit','last_activity'], ...rows.map((row) => [row.id,row.username,row.email,row.minecraft_name,row.role,row.rank,row.merit,row.last_activity])].map((row) => row.map((value) => `"${String(value ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const csvCell = value => {
+      let text = String(value ?? '');
+      if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = [['id','username','email','minecraft','role','rank','merit','last_activity'], ...rows.map((row) => [row.id,row.username,row.email,row.minecraft_name,row.role,row.rank,row.merit,row.last_activity])].map((row) => row.map(csvCell).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
@@ -1080,24 +1100,24 @@
     const card = document.getElementById('admin-notifications-card');
     const form = card?.querySelector('.admin-notification-form');
     if (!card || !form || document.getElementById('v2-notification-extras')) return;
-    card.querySelector('h3').innerHTML = 'Broadcast &amp; Avisos <span>Comunicação acionável, com preview, templates e agendamento</span>';
+    card.querySelector('h3').innerHTML = 'Comunicação <span>Avisos com público, prévia, modelos e agendamento</span>';
     const extras = document.createElement('div');
     extras.id = 'v2-notification-extras';
     extras.innerHTML = `
       <div class="v2-editor-toolbar"><button type="button" data-v2-format="**" title="Negrito">B</button><button type="button" data-v2-format="_" title="Itálico"><i>I</i></button><button type="button" data-v2-format="[]" title="Link">${icon('link')}</button><button type="button" data-v2-format="emoji" title="Emoji">${icon('smile')}</button></div>
-      <div class="admin-notification-grid"><input type="datetime-local" id="v2-notif-scheduled" aria-label="Agendar para"><input type="url" id="v2-notif-link" placeholder="Link opcional"></div>
+      <div class="admin-notification-grid"><input type="datetime-local" id="v2-notif-scheduled" aria-label="Agendar para"><input type="url" id="v2-notif-link" placeholder="Link opcional (https://)" aria-label="Link opcional do aviso"></div>
       <div class="v2-template-list" id="v2-template-list"></div>`;
     const textarea = document.getElementById('notif-body-input');
     textarea.parentNode.insertBefore(extras, textarea.nextSibling);
     const preview = document.createElement('aside');
     preview.className = 'v2-notif-preview';
     preview.id = 'v2-notif-preview';
-    preview.innerHTML = '<div class="v2-label">Preview real</div><div id="v2-notif-preview-card" style="margin-top:12px"></div>';
+    preview.innerHTML = '<div class="v2-label">Prévia na central</div><div id="v2-notif-preview-card" style="margin-top:12px"></div>';
     const workspace = document.createElement('div');
     workspace.className = 'v2-notification-workspace';
     form.parentNode.insertBefore(workspace, form);
     workspace.append(form, preview);
-    ['notif-title-input','notif-body-input','notif-type-input','notif-icon-input','v2-notif-link'].forEach((id) => document.getElementById(id)?.addEventListener('input', renderNotificationPreview));
+    ['notif-title-input','notif-body-input','notif-type-input','notif-icon-input','v2-notif-link','v2-notif-scheduled'].forEach((id) => document.getElementById(id)?.addEventListener('input', renderNotificationPreview));
     refreshIcons();
   }
 
@@ -1107,6 +1127,9 @@
     const title = document.getElementById('notif-title-input')?.value || 'Título do aviso';
     const body = document.getElementById('notif-body-input')?.value || 'A mensagem aparecerá aqui conforme você digita.';
     const type = document.getElementById('notif-type-input')?.value || 'info';
+    const isScheduled = Boolean(document.getElementById('v2-notif-scheduled')?.value);
+    const submit = document.getElementById('notif-submit-btn');
+    if (submit && !submit.disabled) submit.textContent = isScheduled ? 'Agendar aviso' : 'Enviar aviso';
     target.innerHTML = `<article class="v2-notif-preview-card"><span class="v2-score" style="--tone:${type === 'warning' ? 'var(--amber)' : type === 'event' ? 'var(--purple)' : 'var(--accent)'}">${icon(type === 'event' ? 'calendar-days' : type === 'warning' ? 'triangle-alert' : 'bell')}</span><div><strong>${esc(title)}</strong><p>${esc(body).replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/_(.*?)_/g,'<i>$1</i>').replace(/\n/g,'<br>')}</p></div></article>`;
     refreshIcons();
   }
@@ -1126,6 +1149,12 @@
 
   async function submitV2Notification(event) {
     event.preventDefault();
+    const localSchedule = document.getElementById('v2-notif-scheduled')?.value || '';
+    const scheduleDate = localSchedule ? new Date(localSchedule) : null;
+    if (scheduleDate && Number.isNaN(scheduleDate.getTime())) {
+      showToast('Informe uma data e hora válidas.', 'error');
+      return;
+    }
     const payload = {
       title: document.getElementById('notif-title-input').value.trim(),
       body: document.getElementById('notif-body-input').value.trim(),
@@ -1133,7 +1162,8 @@
       icon: document.getElementById('notif-icon-input').value.trim() || 'bell',
       audience: document.getElementById('notif-audience-input').value,
       audience_val: document.getElementById('notif-audience-value-input').value.trim(),
-      scheduled_for: document.getElementById('v2-notif-scheduled')?.value || null,
+      scheduled_for: scheduleDate ? scheduleDate.toISOString() : null,
+      schedule_timezone: 'America/Sao_Paulo',
       link_url: document.getElementById('v2-notif-link')?.value.trim() || null,
     };
     const button = document.getElementById('notif-submit-btn');
@@ -1150,7 +1180,7 @@
       showToast(error.message, 'error');
     } finally {
       button.disabled = false;
-      button.textContent = 'Publicar notificação';
+      button.textContent = 'Enviar aviso';
     }
   }
 
@@ -1259,9 +1289,14 @@
     overview.id = 'v2-moderation-overview';
     overview.className = 'v2-section';
     card.insertBefore(overview, card.querySelector('.mod-tabs-bar'));
+    const history = document.createElement('section');
+    history.id = 'v2-moderation-history';
+    history.className = 'v2-section';
+    history.setAttribute('aria-label', 'Histórico da moderação');
+    card.appendChild(history);
     const toolbar = document.createElement('div');
     toolbar.className = 'v2-player-toolbar';
-    toolbar.innerHTML = `<label style="color:var(--ink-3);font-size:10px;font-weight:800">Confiança IA ≥ <span id="v2-confidence-label">0%</span></label><input type="range" id="v2-confidence" min="0" max="100" value="0"><button class="v2-btn" data-v2-mod-bulk="approve">${icon('check')} Aprovar selecionados</button><button class="v2-btn danger" data-v2-mod-bulk="remove_content">${icon('trash-2')} Remover selecionados</button>`;
+    toolbar.innerHTML = `<label style="color:var(--ink-3);font-size:10px;font-weight:800">Confiança IA ≥ <span id="v2-confidence-label">80%</span></label><input type="range" id="v2-confidence" min="70" max="100" value="80"><span class="v2-safety-note">IA auxilia a triagem; a decisão continua humana. Remoções ficam indisponíveis quando o item original não é identificável com precisão.</span><button class="v2-btn" data-v2-mod-bulk="approve">${icon('check')} Manter conteúdos selecionados</button>`;
     card.querySelector('#mod-panel-ai')?.prepend(toolbar);
     refreshIcons();
   }
@@ -1271,7 +1306,8 @@
     try {
       const data = await api('/api/admin/analytics/moderation-overview?days=14');
       const s = data.summary || {};
-      document.getElementById('v2-moderation-overview').innerHTML = `<div class="v2-kpi-strip">${[['Pendentes',num(s.pending_ai)+num(s.pending_reports),'var(--red)'],['Aprovados',s.approved,'var(--green)'],['Removidos',s.removed,'var(--amber)'],['Tempo médio',`${num(s.avg_response_hours).toFixed(1)}h`,'var(--accent)']].map(([label,value,tone]) => `<article class="v2-kpi-card" style="--tone:${tone}"><div class="v2-kpi-label">${label}</div><div class="v2-kpi-value">${value}</div><div class="v2-kpi-context">visão da quinzena</div></article>`).join('')}</div><section class="v2-panel"><div class="v2-section-head"><div><h3>Histórico de decisões</h3><p>Volume de denúncias por dia para identificar incidentes.</p></div></div><div class="v2-chart-wrap small"><canvas id="v2-moderation-chart"></canvas></div></section>`;
+      document.getElementById('v2-moderation-overview').innerHTML = `<div class="v2-kpi-strip">${[['Pendentes',num(s.pending_ai)+num(s.pending_reports),'exigem decisão humana','var(--red)'],['Mantidos',s.approved,'últimos 14 dias','var(--green)'],['Removidos',s.removed,'últimos 14 dias','var(--amber)'],['Tempo para decidir',`${num(s.avg_response_hours).toFixed(1)}h`,'média da quinzena','var(--accent)']].map(([label,value,context,tone]) => `<article class="v2-kpi-card" style="--tone:${tone}"><div class="v2-kpi-label">${label}</div><div class="v2-kpi-value">${value}</div><div class="v2-kpi-context">${context}</div></article>`).join('')}</div>`;
+      document.getElementById('v2-moderation-history').innerHTML = `<section class="v2-panel"><div class="v2-section-head"><div><h3>Histórico de decisões</h3><p>Volume de denúncias por dia para identificar incidentes.</p></div></div><div class="v2-chart-wrap small"><canvas id="v2-moderation-chart"></canvas></div></section>`;
       if (window.Chart) {
         destroyChart('moderation');
         state.charts.moderation = new Chart(document.getElementById('v2-moderation-chart'), {
@@ -1288,6 +1324,7 @@
   function enhanceModerationItem(item, row) {
     if (!item || item.querySelector('.v2-select-box')) return item;
     item.dataset.v2Confidence = num(row?.ai_confidence || .5) * 100;
+    item.dataset.v2ModerationId = num(row?.id);
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'v2-select-box';
@@ -1307,8 +1344,16 @@
   async function bulkModeration(action) {
     const ids = [...state.selectedModeration];
     if (!ids.length) return showToast('Selecione itens da fila.', 'warning');
+    let reason = '';
+    if (action === 'remove_content') {
+      const review = window.staffDialog?.moderation
+        ? await window.staffDialog.moderation({ count: ids.length })
+        : null;
+      if (!review) return;
+      reason = review.reason;
+    }
     navigator.vibrate?.(action === 'remove_content' ? [40,30,80] : 20);
-    await Promise.all(ids.map((id) => api(`/api/admin/moderation-queue/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })));
+    await Promise.all(ids.map((id) => api(`/api/admin/moderation-queue/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, reason }) })));
     state.selectedModeration.clear();
     showToast(`${ids.length} item(ns) revisados.`, 'success');
     loadModerationQueue(true);
@@ -1456,26 +1501,46 @@
   }
 
   function setupSwipeToClose() {
-    let startY = 0;
+    let gesture = null;
     document.addEventListener('touchstart', (event) => {
-      if (event.target.closest('.modal-content')) startY = event.changedTouches[0].clientY;
+      const header = event.target.closest('.modal-content .modal-header');
+      if (!header || window.innerWidth > 900) return;
+      const touch = event.changedTouches[0];
+      gesture = { x: touch.clientX, y: touch.clientY };
     }, { passive: true });
     document.addEventListener('touchend', (event) => {
-      if (startY && event.changedTouches[0].clientY - startY > 120) closeModal?.();
-      startY = 0;
+      if (!gesture) return;
+      const touch = event.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - gesture.x);
+      const deltaY = touch.clientY - gesture.y;
+      if (deltaY > 120 && deltaX < 70) closeModal?.();
+      gesture = null;
     }, { passive: true });
   }
 
   function setupPullToRefresh() {
     let startY = 0;
+    let startX = 0;
     let pulling = false;
     const content = document.querySelector('.dashboard-content');
     content?.addEventListener('touchstart', (event) => {
-      const active = document.querySelector('.dashboard-card-active');
-      if ((active?.scrollTop || 0) <= 0) { startY = event.touches[0].clientY; pulling = true; }
+      const blocked = event.target.closest('input,textarea,select,[contenteditable],dialog,.modal-overlay,.v2-mobile-menu,.v2-player-tabs,.v2-template-list');
+      if (blocked || content.scrollTop > 0 || window.innerWidth > 900) return;
+      startY = event.touches[0].clientY;
+      startX = event.touches[0].clientX;
+      pulling = true;
+    }, { passive: true });
+    content?.addEventListener('touchmove', (event) => {
+      if (!pulling) return;
+      const deltaY = event.touches[0].clientY - startY;
+      const deltaX = Math.abs(event.touches[0].clientX - startX);
+      document.body.classList.toggle('v2-pull-ready', deltaY > 76 && deltaX < 54 && content.scrollTop <= 0);
     }, { passive: true });
     content?.addEventListener('touchend', (event) => {
-      if (pulling && event.changedTouches[0].clientY - startY > 100) {
+      const deltaY = event.changedTouches[0].clientY - startY;
+      const deltaX = Math.abs(event.changedTouches[0].clientX - startX);
+      document.body.classList.remove('v2-pull-ready');
+      if (pulling && deltaY > 100 && deltaX < 70 && content.scrollTop <= 0) {
         navigator.vibrate?.(15);
         refreshActiveView();
       }
@@ -1502,7 +1567,12 @@
       if (viewButton) { event.preventDefault(); navigate(viewButton.dataset.v2View); document.getElementById('v2-command-dialog')?.close(); return; }
       if (event.target.closest('[data-v2-logout]')) return logout();
       if (event.target.closest('#v2-cmd-trigger')) return openCommandPalette();
-      if (event.target.closest('[data-v2-more]')) return document.getElementById('v2-mobile-menu')?.classList.toggle('active');
+      if (event.target.closest('[data-v2-more]')) {
+        const trigger = event.target.closest('[data-v2-more]');
+        const open = document.getElementById('v2-mobile-menu')?.classList.toggle('active');
+        trigger.setAttribute('aria-expanded', String(Boolean(open)));
+        return;
+      }
       const actionView = event.target.closest('[data-v2-action-view]');
       if (actionView) { const tool = actionView.dataset.v2ActionTool; if (tool) state.tool = tool; navigate(actionView.dataset.v2ActionView); document.getElementById('v2-command-dialog')?.close(); return; }
       const alert = event.target.closest('[data-v2-alert-view]');
@@ -1573,7 +1643,15 @@
       if (event.target.id === 'v2-confidence') {
         const threshold = num(event.target.value);
         document.getElementById('v2-confidence-label').textContent = `${threshold}%`;
-        document.querySelectorAll('#mod-list-ai .mod-item').forEach((item) => item.style.display = num(item.dataset.v2Confidence) >= threshold ? '' : 'none');
+        document.querySelectorAll('#mod-list-ai .mod-item').forEach((item) => {
+          const visible = num(item.dataset.v2Confidence) >= threshold;
+          item.style.display = visible ? '' : 'none';
+          if (!visible) {
+            const checkbox = item.querySelector('.v2-select-box');
+            if (checkbox?.checked) checkbox.checked = false;
+            state.selectedModeration.delete(num(item.dataset.v2ModerationId));
+          }
+        });
       }
       if (event.target.id === 'v2-server-compare') {
         renderUptimeTimeline(state.toolData.serverUptime || []);
@@ -1584,6 +1662,12 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && document.getElementById('v2-command-dialog')?.open) {
         document.getElementById('v2-command-dialog').close();
+        return;
+      }
+      if (event.key === 'Escape' && document.getElementById('v2-mobile-menu')?.classList.contains('active')) {
+        document.getElementById('v2-mobile-menu').classList.remove('active');
+        document.querySelector('[data-v2-more]')?.setAttribute('aria-expanded', 'false');
+        document.querySelector('[data-v2-more]')?.focus();
         return;
       }
       if (event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); openCommandPalette(); }
@@ -1675,9 +1759,12 @@
     setInterval(() => { updateBadges(); lazyImages(); if (state.view === 'command') renderCommandOverview(); if (state.view === 'server') renderServerFeed(); }, 3000);
     setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      if (state.view === 'server') { loadData?.(); loadServerIntelligence(); }
-      if (state.view === 'command' || state.view === 'analytics') loadExecutiveAnalytics?.(true);
-    }, 30000);
+      if (state.view === 'server') loadServerIntelligence();
+    }, 60000);
+    setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (state.view === 'command' || state.view === 'analytics') loadExecutiveAnalytics?.(false);
+    }, 300000);
     new MutationObserver(() => setupChartDefaults()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
