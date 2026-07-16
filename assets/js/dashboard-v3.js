@@ -26,6 +26,10 @@
   const dateTime = value => value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
   async function adminApi(path, options = {}) {
+    const method = String(options.method || 'GET').toUpperCase();
+    if (!navigator.onLine && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      throw new Error('Esta altera\u00e7\u00e3o exige conex\u00e3o. Reconecte-se e tente novamente.');
+    }
     if (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW) return previewAdminApi(path, options);
     const response = await apiFetch(path, {
       ...options,
@@ -61,6 +65,9 @@
     dialog = document.createElement('dialog');
     dialog.id = 'staff-action-dialog';
     dialog.className = 'staff-dialog';
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'staff-dialog-title');
+    dialog.setAttribute('aria-describedby', 'staff-dialog-description');
     dialog.innerHTML = `
       <form id="staff-action-form" novalidate>
         <header class="staff-dialog-head">
@@ -99,6 +106,7 @@
       };
       const cancel = () => finish(null);
       $$('[data-staff-dialog-cancel]', dialog).forEach(button => { button.onclick = cancel; });
+      dialog.onclick = event => { if (event.target === dialog) cancel(); };
       dialog.oncancel = event => { event.preventDefault(); cancel(); };
       form.onsubmit = event => {
         event.preventDefault();
@@ -115,7 +123,7 @@
         }
       };
       dialog.showModal();
-      requestAnimationFrame(() => $('input, textarea, select, button', body)?.focus());
+      requestAnimationFrame(() => ($('input, textarea, select, button', body) || confirmButton).focus());
     });
   }
 
@@ -293,7 +301,7 @@
   }
 
   function managerState(manager) {
-    const serverState = typeof globalApiData !== 'undefined' ? globalApiData : null;
+    const serverState = typeof globalHealthData !== 'undefined' ? globalHealthData : null;
     if (serverState?.app_connected) {
       return { tone: 'live', label: 'Manager conectado', detail: `Heartbeat confirmado ${relativeTime(serverState.app_last_seen)}${manager?.name ? ` · chave ${manager.name}` : ''}` };
     }
@@ -451,21 +459,41 @@
     };
   }
 
+  function setSettingsDirty(dirty) {
+    state.settingsDirty = Boolean(dirty);
+    if (!state.settingsDirty) {
+      $('#staff-settings-dirty')?.remove();
+      return;
+    }
+    let marker = $('#staff-settings-dirty');
+    if (!marker) {
+      marker = document.createElement('span');
+      marker.id = 'staff-settings-dirty';
+      marker.className = 'staff-settings-dirty';
+      marker.textContent = 'Altera\u00e7\u00f5es n\u00e3o salvas';
+      $('#v2-settings-body .v2-section-head')?.appendChild(marker);
+    }
+  }
+
+  function requestSettingsLeave() {
+    if (!state.settingsDirty) return true;
+    const discard = window.confirm('Existem altera\u00e7\u00f5es n\u00e3o salvas em Configura\u00e7\u00f5es. Deseja descart\u00e1-las e sair?');
+    if (discard) setSettingsDirty(false);
+    return discard;
+  }
+
+  window.staffSettingsGuard = {
+    isDirty: () => state.settingsDirty,
+    requestLeave: requestSettingsLeave,
+  };
+
   function setupSettingsDirtyState() {
     const body = $('#v2-settings-body');
     if (!body || body.dataset.staffDirtyBound) return;
     body.dataset.staffDirtyBound = '1';
     body.addEventListener('input', event => {
       if (!event.target.matches('input,select,textarea')) return;
-      state.settingsDirty = true;
-      let marker = $('#staff-settings-dirty');
-      if (!marker) {
-        marker = document.createElement('span');
-        marker.id = 'staff-settings-dirty';
-        marker.className = 'staff-settings-dirty';
-        marker.textContent = 'Alterações não salvas';
-        $('#v2-settings-body .v2-section-head')?.appendChild(marker);
-      }
+      setSettingsDirty(true);
     });
     window.addEventListener('beforeunload', event => {
       if (!state.settingsDirty) return;
@@ -473,8 +501,7 @@
       event.returnValue = '';
     });
     document.addEventListener('staff:settings-saved', () => {
-      state.settingsDirty = false;
-      $('#staff-settings-dirty')?.remove();
+      setSettingsDirty(false);
     });
   }
 

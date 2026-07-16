@@ -18,6 +18,8 @@
     comparisonDays: { primary: 30, compare: 30 },
     auditTimeline: false,
     lazyRuntime: null,
+    navigationReady: false,
+    scrollByView: new Map(),
   };
 
   const VIEWS = [
@@ -36,7 +38,11 @@
     { view: 'tools', id: 'dashboard-tools', label: 'Análises especializadas', icon: 'wrench', group: 'Contexto', nav: false },
   ];
   const VIEW_BY_ID = Object.fromEntries(VIEWS.map((item) => [item.id, item.view]));
+  VIEW_BY_ID['stats-card'] = 'server';
   const VIEW_META = Object.fromEntries(VIEWS.map((item) => [item.view, item]));
+  const VALID_TOOLS = new Set(['activity', 'calendar', 'economy', 'churn', 'social', 'staff']);
+  let commandReturnFocus = null;
+  let navigationRole = null;
   const isOwner = () => typeof session !== 'undefined' && session?.role === 'owner';
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   const num = (value) => Number(value || 0);
@@ -56,6 +62,10 @@
   };
 
   async function api(path, options = {}) {
+    const method = String(options.method || 'GET').toUpperCase();
+    if (!navigator.onLine && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      throw new Error('Esta altera\u00e7\u00e3o exige conex\u00e3o. Reconecte-se e tente novamente.');
+    }
     if (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW) return previewApi(path);
     const response = await apiFetch(path, { ...options, headers: authHeaders(options.headers || {}) });
     const payload = await response.json().catch(() => ({}));
@@ -111,8 +121,14 @@
     return { ok: true, affected: 0 };
   }
 
+  function authorizedViews({ navigationOnly = true } = {}) {
+    return VIEWS.filter((item) => !navigationOnly || item.nav !== false)
+      .filter((item) => !item.owner || isOwner())
+      .filter((item) => document.getElementById(item.id));
+  }
+
   function availableViews() {
-    return VIEWS.filter((item) => item.nav !== false).filter((item) => !item.owner || isOwner()).filter((item) => document.getElementById(item.id));
+    return authorizedViews({ navigationOnly: true });
   }
 
   function createV2Modules() {
@@ -207,7 +223,7 @@
     const menu = document.createElement('div');
     menu.id = 'v2-mobile-menu';
     menu.className = 'v2-mobile-menu';
-    menu.innerHTML = availableViews().filter((item) => !main.some(([view]) => view === item.view)).map((item) => `<button class="v2-nav-item" data-v2-view="${item.view}">${icon(item.icon)}<span>${item.label}</span></button>`).join('');
+    menu.innerHTML = authorizedViews({ navigationOnly: false }).filter((item) => !main.some(([view]) => view === item.view)).map((item) => `<button class="v2-nav-item" data-v2-view="${item.view}">${icon(item.icon)}<span>${item.label}</span></button>`).join('');
     document.body.appendChild(menu);
   }
 
@@ -216,12 +232,21 @@
     const dialog = document.createElement('dialog');
     dialog.id = 'v2-command-dialog';
     dialog.className = 'v2-command-dialog';
+    dialog.setAttribute('aria-labelledby', 'v2-command-title');
+    dialog.setAttribute('aria-describedby', 'v2-command-description');
     dialog.innerHTML = `
+      <h2 id="v2-command-title" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Busca e navega\u00e7\u00e3o</h2>
+      <p id="v2-command-description" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Encontre jogadores, a\u00e7\u00f5es e m\u00f3dulos administrativos.</p>
       <div class="v2-command-search">${icon('search')}<input id="v2-command-input" autocomplete="off" placeholder="Buscar no dashboard..."><kbd class="cmd-key">Esc</kbd></div>
       <div class="v2-command-results" id="v2-command-results"></div>`;
     document.body.appendChild(dialog);
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener('close', () => {
+      const target = commandReturnFocus;
+      commandReturnFocus = null;
+      if (target instanceof HTMLElement && target.isConnected) target.focus({ preventScroll: true });
     });
     document.getElementById('v2-command-input').addEventListener('input', (event) => renderCommandResults(event.target.value));
   }
@@ -230,7 +255,7 @@
     const target = document.getElementById('v2-command-results');
     if (!target) return;
     const q = query.toLocaleLowerCase('pt-BR').trim();
-    const modules = availableViews().filter((item) => !q || item.label.toLocaleLowerCase('pt-BR').includes(q));
+    const modules = authorizedViews({ navigationOnly: false }).filter((item) => !q || item.label.toLocaleLowerCase('pt-BR').includes(q));
     const actions = [
       { label: 'Registrar ajuste econômico', icon: 'landmark', view: 'merit' },
       { label: 'Criar aviso para a comunidade', icon: 'megaphone', view: 'notifications' },
@@ -253,8 +278,9 @@
     const dialog = document.getElementById('v2-command-dialog');
     const input = document.getElementById('v2-command-input');
     if (!dialog) return;
+    if (!dialog.open) commandReturnFocus = document.activeElement;
     renderCommandResults('');
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
     input.value = '';
     setTimeout(() => input.focus(), 30);
   }
@@ -266,7 +292,25 @@
       if (active) item.setAttribute('aria-current', 'page');
       else item.removeAttribute('aria-current');
     });
-    document.getElementById('v2-mobile-menu')?.classList.remove('active');
+    const menu = document.getElementById('v2-mobile-menu');
+    if (menu?.classList.contains('active')) {
+      if (window.staffMobileMenu?.close) window.staffMobileMenu.close({ consumeHistory: true, returnFocus: false });
+      else {
+        menu.classList.remove('active');
+        menu.setAttribute('aria-hidden', 'true');
+        menu.inert = true;
+        document.querySelector('[data-v2-more]')?.setAttribute('aria-expanded', 'false');
+        document.body.classList.remove('v4-more-open');
+      }
+    }
+    const alerts = document.getElementById('alerts-card');
+    if (alerts) {
+      const relevant = ['command', 'server', 'access', 'players'].includes(state.view);
+      alerts.hidden = !relevant;
+      alerts.inert = !relevant;
+      if (relevant) alerts.removeAttribute('aria-hidden');
+      else alerts.setAttribute('aria-hidden', 'true');
+    }
     renderPageActions();
   }
 
@@ -280,19 +324,55 @@
     refreshIcons();
   }
 
+  function readScrollPosition() {
+    const content = document.querySelector('.dashboard-content');
+    return { page: Math.max(0, window.scrollY || 0), content: Math.max(0, content?.scrollTop || 0) };
+  }
+
+  function restoreScrollPosition(view, reset = false) {
+    const saved = reset ? null : state.scrollByView.get(view);
+    const position = saved || { page: 0, content: 0 };
+    const apply = () => {
+      window.scrollTo({ top: position.page, left: 0, behavior: 'auto' });
+      document.querySelector('.dashboard-content')?.scrollTo({ top: position.content, left: 0, behavior: 'auto' });
+    };
+    requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(apply);
+    });
+  }
+
+  function syncUrlToView(view, { replace = true } = {}) {
+    const url = new URL(location.href);
+    url.searchParams.delete('module');
+    url.searchParams.set('v', view);
+    if (view === 'tools') url.searchParams.set('tool', state.tool);
+    else url.searchParams.delete('tool');
+    history[replace ? 'replaceState' : 'pushState']({ view, tool: view === 'tools' ? state.tool : undefined }, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
   function navigate(view, options = {}) {
     if (!VIEW_META[view] || (VIEW_META[view].owner && !isOwner())) view = 'command';
+    const leavingCurrentView = state.navigationReady && view !== state.view;
+    if (leavingCurrentView && !options.force && window.staffSettingsGuard?.requestLeave && !window.staffSettingsGuard.requestLeave()) {
+      if (options.fromPopState) syncUrlToView(state.view, { replace: false });
+      return false;
+    }
+    if (document.getElementById('v2-mobile-menu')?.classList.contains('active')) {
+      window.staffMobileMenu?.close?.({ consumeHistory: true, returnFocus: false });
+    }
+    if (leavingCurrentView) state.scrollByView.set(state.view, readScrollPosition());
     const id = VIEW_META[view].id;
     state.view = view;
     setActiveDashboardModule(id, { scroll: false, behavior: 'auto' });
     const eyebrow = document.querySelector('.portal-eyebrow');
     if (eyebrow) eyebrow.textContent = VIEW_META[view].group;
-    const url = new URL(location.href);
-    url.searchParams.delete('module');
-    url.searchParams.set('v', view);
-    history[options.replace ? 'replaceState' : 'pushState']({ view }, '', `${url.pathname}${url.search}${url.hash}`);
+    syncUrlToView(view, { replace: Boolean(options.replace) });
     updateNavigation();
     loadView(view);
+    restoreScrollPosition(view, Boolean(options.resetScroll));
+    state.navigationReady = true;
+    return true;
   }
 
   function loadView(view) {
@@ -469,7 +549,7 @@
     container.className = 'heatmap-shell';
     container.innerHTML = `<div class="heatmap">
       <div class="heatmap-header"><span></span>${Array.from({ length: 24 }, (_, hour) => `<span class="heatmap-hlabel">${hour % 3 === 0 ? `${hour}h` : ''}</span>`).join('')}</div>
-      ${days.map((day, dayIndex) => `<div class="heatmap-row"><span class="heatmap-dlabel">${day}</span>${grid[dayIndex].map((value, hour) => `<span class="heatmap-cell" style="--intensity:${Math.round(value / max * 100)}%" title="${day}, ${hour}h: ${value}"></span>`).join('')}</div>`).join('')}
+      ${days.map((day, dayIndex) => `<div class="heatmap-row"><span class="heatmap-dlabel">${day}</span>${grid[dayIndex].map((value, hour) => `<span class="heatmap-cell" tabindex="0" role="img" aria-label="${day}, ${hour} horas: ${value} jogador${value === 1 ? '' : 'es'}" style="--intensity:${Math.round(value / max * 100)}%" title="${day}, ${hour}h: ${value}"></span>`).join('')}</div>`).join('')}
     </div>`;
   }
 
@@ -551,7 +631,9 @@
   }
 
   async function activateTool(tool) {
+    if (!VALID_TOOLS.has(tool) || (tool === 'staff' && !isOwner())) tool = 'activity';
     state.tool = tool;
+    if (state.view === 'tools' && state.navigationReady) syncUrlToView('tools', { replace: true });
     document.querySelectorAll('[data-v2-tool]').forEach((button) => button.classList.toggle('active', button.dataset.v2Tool === tool));
     const body = document.getElementById('v2-tools-body');
     if (!body) return;
@@ -1092,7 +1174,10 @@
       <button class="v2-command-item" data-v2-player="${user.id}" data-v2-player-name="${esc(user.minecraft_name || user.username)}">${icon('user-round')}<span>Abrir perfil</span></button>
       <button class="v2-command-item" data-v2-action-view="merit">${icon('star')}<span>Conceder mérito</span></button>
       <button class="v2-command-item" data-v2-quick-notify="${user.id}">${icon('send')}<span>Enviar aviso</span></button>`;
-    dialog.showModal();
+    if (!dialog.open) {
+      commandReturnFocus = document.activeElement;
+      dialog.showModal();
+    }
     refreshIcons();
   }
 
@@ -1217,28 +1302,58 @@
     if (!card || document.getElementById('v2-server-intelligence')) return;
     const section = document.createElement('section');
     section.id = 'v2-server-intelligence';
-    section.className = 'v2-grid two';
+    section.className = 'v2-grid two v2-server-intelligence';
     section.innerHTML = `
+      <div class="server-intelligence-heading span-2"><div><span class="cc-kicker">Diagnóstico</span><h3>Comportamento e disponibilidade</h3><p>Leitura visual do uso, estabilidade e presença no período.</p></div><label class="v2-btn"><input type="checkbox" id="v2-server-compare"> Comparar com período anterior</label></div>
       <article class="v2-panel"><div class="v2-section-head"><div><h3>Atividade 7×24</h3><p>Intensidade de sessões por horário.</p></div></div><div id="v2-server-heatmap" class="v2-loading">Carregando...</div></article>
-      <article class="v2-panel"><div class="v2-section-head"><div><h3>Live Activity Feed</h3><p>Entradas e saídas mais recentes.</p></div></div><div id="v2-server-feed" class="v2-feed"></div></article>
-      <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Linha do tempo de uptime</h3><p>Disponibilidade horária nos últimos 30 dias.</p></div><label class="v2-btn"><input type="checkbox" id="v2-server-compare"> Comparar período anterior</label></div><div id="v2-uptime-timeline" style="margin-top:14px"></div></article>
-      <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Player presence</h3><p>Players únicos, pico simultâneo e comparação anterior.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-server-presence-chart"></canvas></div></article>`;
-    card.insertBefore(section, card.querySelector('.dashboard-grid') || card.children[2]);
+      <article class="v2-panel"><div class="v2-section-head"><div><h3>Atividade recente</h3><p>Entradas e saídas mais recentes.</p></div></div><div id="v2-server-feed" class="v2-feed"></div></article>
+      <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Linha do tempo de uptime</h3><p>Disponibilidade horária nos últimos 30 dias.</p></div></div><div id="v2-uptime-timeline" style="margin-top:14px"></div></article>
+      <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Presença de jogadores</h3><p>Jogadores únicos, pico simultâneo e comparação anterior.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-server-presence-chart" role="img" aria-label="Gráfico de presença de jogadores por dia">Gráfico de presença de jogadores por dia.</canvas></div></article>`;
+    const anchor = card.querySelector('.server-activity-section');
+    if (anchor) card.insertBefore(section, anchor);
+    else card.insertBefore(section, card.querySelector('.dashboard-grid') || card.children[2]);
   }
 
   async function loadServerIntelligence() {
     injectServerIntelligence();
-    try {
-      const [heatmap, uptime, presence] = await Promise.all([api('/api/admin/server/activity-heatmap?days=30'), api('/api/admin/server/uptime-timeline?days=60'), api('/api/admin/server/presence?days=28')]);
-      state.toolData.serverUptime = uptime;
-      state.toolData.serverPresence = presence;
-      renderActivityHeatmap('v2-server-heatmap', heatmap);
-      renderUptimeTimeline(uptime);
-      renderServerFeed();
-      renderServerPresence(presence);
-    } catch (error) {
-      console.warn('[dashboard-v2 server]', error);
+    renderServerFeed();
+    const [heatmapResult, uptimeResult, presenceResult] = await Promise.allSettled([
+      api('/api/admin/server/activity-heatmap?days=30'),
+      api('/api/admin/server/uptime-timeline?days=60'),
+      api('/api/admin/server/presence?days=28'),
+    ]);
+    const panelState = (target, message) => {
+      if (!target) return;
+      target.innerHTML = `<div class="v2-empty v2-server-panel-state">${esc(message)}<div style="margin-top:12px"><button class="v2-btn" data-v2-refresh>${icon('refresh-cw')} Tentar novamente</button></div></div>`;
+    };
+
+    if (heatmapResult.status === 'fulfilled' && Array.isArray(heatmapResult.value) && heatmapResult.value.length) {
+      renderActivityHeatmap('v2-server-heatmap', heatmapResult.value);
+    } else {
+      panelState(document.getElementById('v2-server-heatmap'), heatmapResult.status === 'rejected' ? 'Não foi possível carregar a atividade por horário.' : 'Ainda não há atividade suficiente neste período.');
     }
+
+    if (uptimeResult.status === 'fulfilled' && Array.isArray(uptimeResult.value)) {
+      state.toolData.serverUptime = uptimeResult.value;
+      renderUptimeTimeline(uptimeResult.value);
+    } else {
+      panelState(document.getElementById('v2-uptime-timeline'), 'Não foi possível carregar a disponibilidade do período.');
+    }
+
+    const presenceCanvas = document.getElementById('v2-server-presence-chart');
+    const presenceWrap = presenceCanvas?.closest('.v2-chart-wrap');
+    presenceWrap?.querySelector('.v2-server-panel-state')?.remove();
+    if (presenceResult.status === 'fulfilled' && Array.isArray(presenceResult.value) && presenceResult.value.length) {
+      state.toolData.serverPresence = presenceResult.value;
+      if (presenceCanvas) presenceCanvas.hidden = false;
+      renderServerPresence(presenceResult.value);
+    } else {
+      if (presenceCanvas) presenceCanvas.hidden = true;
+      presenceWrap?.insertAdjacentHTML('beforeend', `<div class="v2-empty v2-server-panel-state">${presenceResult.status === 'rejected' ? 'Não foi possível carregar a presença de jogadores.' : 'Ainda não há presença registrada neste período.'}<div style="margin-top:12px"><button class="v2-btn" data-v2-refresh>${icon('refresh-cw')} Tentar novamente</button></div></div>`);
+    }
+
+    window.faStaffSyncCharts?.();
+    refreshIcons();
   }
 
   function renderUptimeTimeline(rows) {
@@ -1263,7 +1378,7 @@
       type: 'bar',
       data: { labels: current.map((row) => dateOnly(row.key)), datasets: [
         { type: 'bar', label: 'Pico simultâneo', data: current.map((row) => row.peak), backgroundColor: 'rgba(23,97,240,.18)', borderRadius: 7 },
-        { type: 'line', label: 'Players únicos', data: current.map((row) => row.unique), borderColor: '#1761f0', tension: .35 },
+        { type: 'line', label: 'Jogadores únicos', data: current.map((row) => row.unique), borderColor: '#1761f0', tension: .35 },
         ...(compare ? [{ type: 'line', label: 'Únicos · período anterior', data: previous.map((row) => row.unique), borderColor: '#7b8ca5', borderDash: [5,4], tension: .35 }] : []),
       ] },
       options: { responsive: true, maintainAspectRatio: false },
@@ -1275,11 +1390,27 @@
     if (!target) return;
     const history = typeof globalHistData !== 'undefined' ? globalHistData?.history || [] : [];
     const online = typeof globalHistData !== 'undefined' ? globalHistData?.onlinePlayers || [] : [];
+    const activeSessions = typeof globalHistData !== 'undefined' ? globalHistData?.activeSessions || {} : {};
+    const sessionFor = (name) => {
+      const key = Object.keys(activeSessions).find((candidate) => candidate.toLocaleLowerCase('pt-BR') === String(name || '').toLocaleLowerCase('pt-BR'));
+      return key ? activeSessions[key] : null;
+    };
     const entries = [
-      ...online.slice(0,5).map((player) => ({ player: player.player || player.name || player, type: 'online', at: player.enteredAt || player.entered_at || new Date() })),
+      ...online.slice(0,5).map((player) => {
+        const name = player?.player || player?.name || player;
+        const session = typeof player === 'object' ? player : sessionFor(name);
+        return { player: name, type: 'online', at: session?.enteredAt || session?.entered_at || null };
+      }),
       ...history.slice(0,8).map((player) => ({ player: player.player, type: 'offline', at: player.leftAt || player.left_at })),
-    ].sort((a,b) => new Date(b.at) - new Date(a.at)).slice(0,10);
-    target.innerHTML = entries.map((entry) => `<button class="v2-feed-row" data-v2-player-name="${esc(entry.player)}" style="width:100%;cursor:pointer;text-align:left"><span class="${entry.type === 'online' ? 'status-online' : 'status-offline'}" style="width:8px;height:8px;border-radius:50%"></span><div><strong>${esc(entry.player)}</strong><small>${entry.type === 'online' ? 'entrou no servidor' : 'saiu do servidor'} · ${dateTime(entry.at)}</small></div></button>`).join('') || '<div class="v2-empty">Nenhum evento recente.</div>';
+    ].filter((entry) => entry.player)
+      .sort((a,b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0))
+      .slice(0,10);
+    target.innerHTML = entries.map((entry) => {
+      const detail = entry.type === 'online'
+        ? (entry.at ? `entrou no servidor · ${dateTime(entry.at)}` : 'está online agora · horário de entrada indisponível')
+        : `saiu do servidor · ${dateTime(entry.at)}`;
+      return `<button class="v2-feed-row" data-v2-player-name="${esc(entry.player)}" style="width:100%;cursor:pointer;text-align:left"><span class="${entry.type === 'online' ? 'status-online' : 'status-offline'}" style="width:8px;height:8px;border-radius:50%"></span><div><strong>${esc(entry.player)}</strong><small>${detail}</small></div></button>`;
+    }).join('') || '<div class="v2-empty">Nenhum evento recente.</div>';
   }
 
   function injectModerationEnhancements() {
@@ -1471,19 +1602,22 @@
 
   function setupChartDefaults() {
     if (!window.Chart) return;
-    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const ink = dark ? '#a8bacc' : '#3d4f68';
-    const grid = dark ? 'rgba(255,255,255,.07)' : 'rgba(11,21,36,.07)';
-    Chart.defaults.font.family = "'DM Mono', monospace";
-    Chart.defaults.font.size = 10;
+    const styles = getComputedStyle(document.documentElement);
+    const token = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+    const ink = token('--staff-muted', '#59695e');
+    const strong = token('--staff-ink', '#172019');
+    const grid = token('--staff-line', 'rgba(23,32,25,.12)');
+    const surface = token('--staff-surface-raised', '#fff');
+    Chart.defaults.font.family = token('--ff', "'Plus Jakarta Sans', system-ui, sans-serif");
+    Chart.defaults.font.size = 12;
     Chart.defaults.color = ink;
     Chart.defaults.borderColor = grid;
-    Chart.defaults.plugins.tooltip.backgroundColor = dark ? '#1a2540' : '#fff';
-    Chart.defaults.plugins.tooltip.borderColor = dark ? 'rgba(255,255,255,.12)' : 'rgba(11,21,36,.1)';
+    Chart.defaults.plugins.tooltip.backgroundColor = surface;
+    Chart.defaults.plugins.tooltip.borderColor = grid;
     Chart.defaults.plugins.tooltip.borderWidth = 1;
-    Chart.defaults.plugins.tooltip.titleColor = dark ? '#eef3ff' : '#0b1524';
+    Chart.defaults.plugins.tooltip.titleColor = strong;
     Chart.defaults.plugins.tooltip.bodyColor = ink;
-    Chart.defaults.plugins.tooltip.cornerRadius = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 12;
     Chart.defaults.plugins.tooltip.padding = 12;
   }
 
@@ -1492,7 +1626,7 @@
       if (!image.loading) image.loading = 'lazy';
       if (!image.decoding) image.decoding = 'async';
     });
-    document.querySelectorAll('.v2-empty,.empty-state').forEach((empty) => {
+    document.querySelectorAll('.v2-empty[data-v2-retryable],.empty-state[data-v2-retryable]').forEach((empty) => {
       if (empty.closest('dialog') || empty.querySelector('button,a') || empty.dataset.v2Cta) return;
       empty.dataset.v2Cta = '1';
       empty.insertAdjacentHTML('beforeend', `<div style="margin-top:12px"><button class="v2-btn" data-v2-refresh>${icon('refresh-cw')} Tentar novamente</button></div>`);
@@ -1557,26 +1691,51 @@
     if (state.view === 'audit') { fetchAuditLogs?.(); loadAuditOverview(); }
     if (state.view === 'notifications') { loadAdminNotifications?.(); loadNotificationWorkspace(); }
     if (state.view === 'tools') activateTool(state.tool);
-    if (state.view === 'settings') loadSettings();
+    if (state.view === 'settings') {
+      if (window.staffSettingsGuard?.requestLeave && !window.staffSettingsGuard.requestLeave()) return;
+      loadSettings();
+    }
     showToast('Dashboard atualizado.', 'success');
   }
 
   function bindEvents() {
     document.addEventListener('click', async (event) => {
       const viewButton = event.target.closest('[data-v2-view]');
-      if (viewButton) { event.preventDefault(); navigate(viewButton.dataset.v2View); document.getElementById('v2-command-dialog')?.close(); return; }
+      if (viewButton) {
+        event.preventDefault();
+        const navigated = navigate(viewButton.dataset.v2View);
+        if (navigated !== false) document.getElementById('v2-command-dialog')?.close();
+        return;
+      }
       if (event.target.closest('[data-v2-logout]')) return logout();
       if (event.target.closest('#v2-cmd-trigger')) return openCommandPalette();
       if (event.target.closest('[data-v2-more]')) {
         const trigger = event.target.closest('[data-v2-more]');
+        if (window.staffMobileMenu?.toggle) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          window.staffMobileMenu.toggle();
+          return;
+        }
         const open = document.getElementById('v2-mobile-menu')?.classList.toggle('active');
         trigger.setAttribute('aria-expanded', String(Boolean(open)));
         return;
       }
       const actionView = event.target.closest('[data-v2-action-view]');
-      if (actionView) { const tool = actionView.dataset.v2ActionTool; if (tool) state.tool = tool; navigate(actionView.dataset.v2ActionView); document.getElementById('v2-command-dialog')?.close(); return; }
+      if (actionView) {
+        const tool = actionView.dataset.v2ActionTool;
+        if (tool && VALID_TOOLS.has(tool) && (tool !== 'staff' || isOwner())) state.tool = tool;
+        const navigated = navigate(actionView.dataset.v2ActionView);
+        if (navigated !== false) document.getElementById('v2-command-dialog')?.close();
+        return;
+      }
       const alert = event.target.closest('[data-v2-alert-view]');
-      if (alert) { if (alert.dataset.v2AlertTool) state.tool = alert.dataset.v2AlertTool; navigate(alert.dataset.v2AlertView); return; }
+      if (alert) {
+        const tool = alert.dataset.v2AlertTool;
+        if (tool && VALID_TOOLS.has(tool) && (tool !== 'staff' || isOwner())) state.tool = tool;
+        navigate(alert.dataset.v2AlertView);
+        return;
+      }
       const player = event.target.closest('[data-v2-player-name]');
       if (player && !event.target.closest('[data-v2-churn-player]')) { document.getElementById('v2-command-dialog')?.close(); return openPlayerProfile(player.dataset.v2PlayerName, num(player.dataset.v2Player) || null); }
       const community = event.target.closest('[data-v2-community-pane]');
@@ -1665,9 +1824,14 @@
         return;
       }
       if (event.key === 'Escape' && document.getElementById('v2-mobile-menu')?.classList.contains('active')) {
-        document.getElementById('v2-mobile-menu').classList.remove('active');
-        document.querySelector('[data-v2-more]')?.setAttribute('aria-expanded', 'false');
-        document.querySelector('[data-v2-more]')?.focus();
+        if (window.staffMobileMenu?.close) window.staffMobileMenu.close();
+        else {
+          document.getElementById('v2-mobile-menu').classList.remove('active');
+          document.getElementById('v2-mobile-menu').setAttribute('aria-hidden', 'true');
+          document.getElementById('v2-mobile-menu').inert = true;
+          document.querySelector('[data-v2-more]')?.setAttribute('aria-expanded', 'false');
+          document.querySelector('[data-v2-more]')?.focus();
+        }
         return;
       }
       if (event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); openCommandPalette(); }
@@ -1676,7 +1840,42 @@
         if (view) navigate(view);
       }
     });
-    window.addEventListener('popstate', (event) => navigate(event.state?.view || new URL(location.href).searchParams.get('v') || 'command', { replace: true }));
+    window.addEventListener('popstate', (event) => {
+      const url = new URL(location.href);
+      const tool = event.state?.tool || url.searchParams.get('tool');
+      if (VALID_TOOLS.has(tool) && (tool !== 'staff' || isOwner())) state.tool = tool;
+      navigate(event.state?.view || url.searchParams.get('v') || 'command', { replace: true, fromPopState: true });
+    });
+  }
+
+  function rebuildNavigationForRole(force = false) {
+    const role = typeof session !== 'undefined' ? (session?.role || 'unknown') : 'unknown';
+    if (!force && role === navigationRole) return false;
+    navigationRole = role;
+
+    window.staffMobileMenu?.close?.({ consumeHistory: true, returnFocus: false });
+    document.querySelector('.sidebar-profile .v2-nav')?.remove();
+    document.querySelector('.sidebar-profile .v2-sidebar-footer')?.remove();
+    document.getElementById('v2-mobile-nav')?.remove();
+    document.getElementById('v2-mobile-menu')?.remove();
+    document.querySelectorAll('.v4-sheet-scrim').forEach((scrim) => scrim.remove());
+
+    const settings = document.getElementById('dashboard-settings');
+    if (settings) settings.style.display = isOwner() ? '' : 'none';
+    const tabs = document.getElementById('v2-tool-tabs');
+    const staffTab = tabs?.querySelector('[data-v2-tool="staff"]');
+    if (tabs && isOwner() && !staffTab) tabs.insertAdjacentHTML('beforeend', `<button class="v2-subtab" data-v2-tool="staff">${icon('badge-check')} Desempenho da Staff</button>`);
+    if (!isOwner() && staffTab) staffTab.remove();
+    if (!isOwner() && state.tool === 'staff') state.tool = 'activity';
+
+    buildSidebar();
+    buildMobileNavigation();
+    updateNavigation();
+    refreshIcons();
+    document.dispatchEvent(new CustomEvent('staff:navigation-rebuilt', { detail: { role } }));
+
+    if (VIEW_META[state.view]?.owner && !isOwner()) navigate('command', { replace: true, force: true, resetScroll: true });
+    return true;
   }
 
   function patchExistingFunctions() {
@@ -1728,17 +1927,14 @@
   }
 
   function updateBadges() {
-    const moderation = num(document.getElementById('mod-nav-badge')?.textContent);
     const legacy = num(document.getElementById('legacy-nav-pending-badge')?.textContent);
-    document.querySelectorAll('[data-v2-badge="moderation"]').forEach((badge) => { badge.textContent = moderation; badge.hidden = !moderation; });
     document.querySelectorAll('[data-v2-badge="legacy"]').forEach((badge) => { badge.textContent = legacy; badge.hidden = !legacy; });
   }
 
   function boot() {
     createV2Modules();
-    buildSidebar();
+    rebuildNavigationForRole(true);
     buildTopbar();
-    buildMobileNavigation();
     buildCommandPalette();
     setupCommunityTabs();
     injectPlayerToolbar();
@@ -1754,9 +1950,12 @@
     setupPullToRefresh();
     lazyImages();
     refreshIcons();
-    const initial = new URL(location.href).searchParams.get('v') || VIEW_BY_ID[new URL(location.href).searchParams.get('module')] || 'command';
+    const initialUrl = new URL(location.href);
+    const initialTool = initialUrl.searchParams.get('tool');
+    if (VALID_TOOLS.has(initialTool) && (initialTool !== 'staff' || isOwner())) state.tool = initialTool;
+    const initial = initialUrl.searchParams.get('v') || VIEW_BY_ID[initialUrl.searchParams.get('module')] || 'command';
     navigate(initial, { replace: true });
-    setInterval(() => { updateBadges(); lazyImages(); if (state.view === 'command') renderCommandOverview(); if (state.view === 'server') renderServerFeed(); }, 3000);
+    setInterval(() => { rebuildNavigationForRole(); updateBadges(); lazyImages(); if (state.view === 'command') renderCommandOverview(); if (state.view === 'server') renderServerFeed(); }, 3000);
     setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       if (state.view === 'server') loadServerIntelligence();

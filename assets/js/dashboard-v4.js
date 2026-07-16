@@ -6,9 +6,21 @@
   const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
   const themeMeta = qs('meta[name="theme-color"]');
   const mobileBreakpoint = window.matchMedia('(max-width: 900px)');
+  const primaryMobileViews = new Set(['command', 'moderation', 'players', 'server']);
+  const mutatingSelector = [
+    '[data-staff-add-access]', '[data-staff-requeue]', '[data-v2-save-settings]',
+    '[data-v2-mod-bulk]', '[data-v2-danger-action]', '[data-v2-bulk-verify]',
+    '[data-v2-bulk-notify]', '[data-v2-retry-post]', '[data-v2-save-template]',
+    '[data-v2-quick-notify]', '[data-v2-churn-player]', '.merit-submit-btn',
+    '#notif-submit-btn', '#btn-create-account', '#confirm-pw-submit-btn',
+    '[data-notification-read]', '#lp-save-btn', '[data-legacy-delete-id]',
+    '[data-legacy-action="approve"]', '[data-legacy-action="confirm-reject"]',
+  ].join(',');
   let moreHistoryEntry = false;
+  let moreReturnFocus = null;
   let onlineTimer = 0;
   let updateFrame = 0;
+  let themeSaveRevision = 0;
 
   const quickActions = {
     command: { label: 'Buscar', icon: 'search', run: () => qs('#v2-cmd-trigger')?.click() },
@@ -21,7 +33,7 @@
     },
     players: {
       label: 'Buscar', icon: 'user-search', run: () => {
-        const input = qs('#v2-player-toolbar input[type="search"], #v2-player-toolbar input');
+        const input = qs('#admin-search') || qs('#v2-player-toolbar input[type="search"], #v2-player-toolbar input');
         input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => input?.focus(), 260);
       },
@@ -72,8 +84,35 @@
   function toggleTheme() {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     localStorage.setItem('fa_theme', next);
+    localStorage.setItem('fa_theme_pending', next);
     document.documentElement.setAttribute('data-theme', next);
     document.dispatchEvent(new CustomEvent('staff:theme-change', { detail: { theme: next } }));
+    persistThemePreference(next);
+  }
+
+  async function persistThemePreference(theme) {
+    const revision = ++themeSaveRevision;
+    const authToken = localStorage.getItem('fa_token');
+    if (!authToken || !navigator.onLine || (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW)) return;
+    try {
+      const currentResponse = await apiFetch('/api/me/preferences', { headers: { Authorization: `Bearer ${authToken}` } });
+      const currentPayload = currentResponse.ok ? await currentResponse.json().catch(() => ({})) : {};
+      if (revision !== themeSaveRevision) return;
+      const current = currentPayload?.data || currentPayload || {};
+      const response = await apiFetch('/api/me/preferences', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...current, theme }),
+      });
+      if (!response.ok) throw new Error(`Prefer\u00eancia n\u00e3o salva (${response.status}).`);
+      if (revision === themeSaveRevision) {
+        setTimeout(() => {
+          if (revision === themeSaveRevision && localStorage.getItem('fa_theme_pending') === theme) localStorage.removeItem('fa_theme_pending');
+        }, 4000);
+      }
+    } catch (error) {
+      console.warn('[staff theme preference]', error);
+    }
   }
 
   function syncCharts() {
@@ -116,6 +155,8 @@
     });
   }
 
+  window.faStaffSyncCharts = syncCharts;
+
   function addHeaderEnhancements() {
     const header = qs('body > header');
     const actions = qs('.header-actions', header);
@@ -157,6 +198,48 @@
     updateConnectionState(false);
   }
 
+  function isInlineMutation(element) {
+    const handler = element?.getAttribute?.('onclick') || '';
+    return /(?:mark(?:All)?NotifRead|submitAdminNotification|generateAppKey|revokeAppKey|saveAdminUser|executeAdminDelete|submitCreateAccount|submitModal(?:Merit|Capital)|submit(?:GrantMerit|AdjustCapital)|addPlayerNote|deletePlayerNote|togglePlatformVerified|resendAdminNotification|modAction(?:AI|Report)|legacyAdmin(?:SavePreset|DeletePreset|Approve|ConfirmReject)|confirmPwSubmit)/i.test(handler);
+  }
+
+  function mutationControl(target) {
+    const explicit = target?.closest?.(mutatingSelector);
+    if (explicit) return explicit;
+    const inline = target?.closest?.('[onclick]');
+    return isInlineMutation(inline) ? inline : null;
+  }
+
+  function mutationControls() {
+    const controls = new Set(qsa(mutatingSelector));
+    qsa('[onclick]').filter(isInlineMutation).forEach(control => controls.add(control));
+    return [...controls];
+  }
+
+  function announceOfflineMutation() {
+    const message = 'Esta altera\u00e7\u00e3o exige conex\u00e3o. Reconecte-se e tente novamente.';
+    if (typeof showToast === 'function') showToast(message, 'warning');
+    else {
+      const banner = qs('#v4-connection-banner');
+      if (banner) banner.textContent = message;
+    }
+  }
+
+  function installOfflineApiGuard() {
+    const original = window.apiFetch;
+    if (typeof original !== 'function' || original.__staffOfflineGuard) return;
+    const guarded = function staffOfflineApiFetch(path, options = {}) {
+      const method = String(options.method || 'GET').toUpperCase();
+      if (!navigator.onLine && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        return Promise.reject(new Error('Esta altera\u00e7\u00e3o exige conex\u00e3o. Reconecte-se e tente novamente.'));
+      }
+      return original.apply(this, arguments);
+    };
+    guarded.__staffOfflineGuard = true;
+    guarded.__staffOfflineOriginal = original;
+    window.apiFetch = guarded;
+  }
+
   function updateConnectionState(announce = true) {
     const online = navigator.onLine;
     const banner = qs('#v4-connection-banner');
@@ -166,17 +249,18 @@
       ? 'Conexão restabelecida. Os dados podem ser atualizados.'
       : 'Offline · consulta preservada; alterações críticas estão bloqueadas.';
 
-    const critical = '[data-staff-add-access],[data-staff-requeue],[data-v2-save-settings],[data-v2-mod-bulk],[data-v2-danger-action],.merit-submit-btn';
     if (!online) {
-      qsa(critical).forEach(control => {
-        if (control.disabled) return;
-        control.disabled = true;
+      mutationControls().forEach(control => {
+        if (control.disabled || control.getAttribute('aria-disabled') === 'true') return;
+        if ('disabled' in control) control.disabled = true;
+        else control.setAttribute('aria-disabled', 'true');
         control.dataset.v4OfflineDisabled = '1';
         control.setAttribute('aria-description', 'Indisponível enquanto o dispositivo está offline.');
       });
     } else {
       qsa('[data-v4-offline-disabled]').forEach(control => {
-        control.disabled = false;
+        if ('disabled' in control) control.disabled = false;
+        control.removeAttribute('aria-disabled');
         delete control.dataset.v4OfflineDisabled;
         control.removeAttribute('aria-description');
       });
@@ -214,6 +298,7 @@
       menu.setAttribute('aria-modal', 'true');
       menu.setAttribute('aria-labelledby', 'v4-more-title');
       menu.setAttribute('aria-hidden', 'true');
+      menu.inert = true;
 
       const existing = qsa(':scope > [data-v2-view]', menu);
       const byView = new Map(existing.map(button => [button.dataset.v2View, button]));
@@ -257,6 +342,9 @@
       scrim.className = 'v4-sheet-scrim';
       scrim.dataset.v4MoreClose = '1';
       scrim.setAttribute('aria-label', 'Fechar menu de ferramentas');
+      scrim.setAttribute('aria-hidden', 'true');
+      scrim.tabIndex = -1;
+      scrim.inert = true;
       document.body.insertBefore(scrim, menu);
     }
 
@@ -273,14 +361,36 @@
     return true;
   }
 
-  function setMoreOpen(open, { fromHistory = false, pushHistory = true } = {}) {
+  function setBackgroundInert(open) {
+    qsa('body > header, body > .main-content').forEach(element => {
+      if (open) {
+        if (element.inert) return;
+        element.dataset.v4MoreInert = '1';
+        element.inert = true;
+      } else if (element.dataset.v4MoreInert) {
+        element.inert = false;
+        delete element.dataset.v4MoreInert;
+      }
+    });
+  }
+
+  function setMoreOpen(open, { fromHistory = false, pushHistory = true, consumeHistory = false, returnFocus = true } = {}) {
     const menu = qs('#v2-mobile-menu');
     const trigger = qs('[data-v2-more]');
     if (!menu || !trigger) return;
+    const scrim = qs('.v4-sheet-scrim');
+    const wasOpen = menu.classList.contains('active');
+    if (open && !wasOpen) moreReturnFocus = document.activeElement;
     menu.classList.toggle('active', open);
     menu.setAttribute('aria-hidden', String(!open));
+    menu.inert = !open;
     trigger.setAttribute('aria-expanded', String(open));
     document.body.classList.toggle('v4-more-open', open);
+    if (scrim) {
+      scrim.inert = !open;
+      scrim.setAttribute('aria-hidden', String(!open));
+    }
+    setBackgroundInert(open);
 
     if (open) {
       if (pushHistory && !moreHistoryEntry) {
@@ -289,31 +399,38 @@
       }
       setTimeout(() => qs('[data-v4-more-close]', menu)?.focus(), 50);
     } else {
-      if (moreHistoryEntry && !fromHistory) history.back();
+      if (moreHistoryEntry && consumeHistory) {
+        const nextState = { ...(history.state || {}) };
+        delete nextState.v4More;
+        history.replaceState(nextState, '', location.href);
+      } else if (moreHistoryEntry && !fromHistory) history.back();
       moreHistoryEntry = false;
-      if (!fromHistory) trigger.focus({ preventScroll: true });
+      if (returnFocus && !fromHistory) {
+        const target = moreReturnFocus instanceof HTMLElement && moreReturnFocus.isConnected ? moreReturnFocus : trigger;
+        target.focus({ preventScroll: true });
+      }
+      moreReturnFocus = null;
     }
+    updateActiveChrome();
   }
 
-  function pendingCount() {
-    const number = selector => Number(String(qs(selector)?.textContent || '0').replace(/\D/g, '')) || 0;
-    const operationalQueue = qsa('.staff-signal').find(card => /fila operacional/i.test(qs('.v2-label', card)?.textContent || ''));
-    const consolidated = Number(String(qs('.v2-north-value', operationalQueue)?.textContent || '0').replace(/\D/g, '')) || 0;
-    if (consolidated) return consolidated;
-    const moderationCard = qsa('#moderation-card .v2-kpi-card').find(card => /pendentes/i.test(qs('.v2-kpi-label', card)?.textContent || ''));
-    const moderation = Number(String(qs('.v2-kpi-value', moderationCard)?.textContent || '0').replace(/\D/g, '')) || number('#mod-nav-badge');
-    return moderation + number('#legacy-nav-pending-badge') + number('#staff-access-queued');
-  }
+  window.staffMobileMenu = {
+    open: () => setMoreOpen(true),
+    close: options => setMoreOpen(false, options),
+    toggle: () => setMoreOpen(!qs('#v2-mobile-menu')?.classList.contains('active')),
+    isOpen: () => Boolean(qs('#v2-mobile-menu')?.classList.contains('active')),
+  };
 
   function updatePendingBadge() {
     const button = qs('#v2-mobile-nav [data-v2-view="moderation"]');
-    const badge = qs('[data-v2-badge="moderation"]', button);
-    if (!button || !badge) return;
-    const total = pendingCount();
+    if (!button) return;
+    const total = Number(String(qs('#mod-nav-badge')?.textContent || '0').replace(/\D/g, '')) || 0;
     const display = total > 9 ? '9+' : String(total);
-    if (badge.textContent !== display) badge.textContent = display;
-    if (badge.hidden !== (total === 0)) badge.hidden = total === 0;
-    button.setAttribute('aria-label', total ? `Pendências, ${total} itens exigem atenção` : 'Pendências, nenhuma ação no momento');
+    qsa('[data-v2-badge="moderation"]').forEach(badge => {
+      if (badge.textContent !== display) badge.textContent = display;
+      if (badge.hidden !== (total === 0)) badge.hidden = total === 0;
+    });
+    button.setAttribute('aria-label', total ? `Pendências de moderação, ${total} casos` : 'Pendências de moderação, nenhuma no momento');
   }
 
   function updateActiveChrome() {
@@ -321,6 +438,14 @@
     const title = qs('#portal-active-title')?.textContent?.trim() || 'FA Staff';
     const mobileTitle = qs('#v4-mobile-title');
     if (mobileTitle && mobileTitle.textContent !== title) mobileTitle.textContent = title;
+    const more = qs('#v2-mobile-nav [data-v2-more]');
+    if (more) {
+      const secondaryRoute = !primaryMobileViews.has(view);
+      const open = Boolean(qs('#v2-mobile-menu.active'));
+      more.classList.toggle('active', secondaryRoute || open);
+      if (secondaryRoute) more.setAttribute('aria-current', 'page');
+      else more.removeAttribute('aria-current');
+    }
 
     const quick = qs('#v4-quick-action');
     const config = quickActions[view];
@@ -346,7 +471,39 @@
     });
   }
 
+  function syncVisualViewport() {
+    const viewport = window.visualViewport;
+    const height = Math.max(320, Math.round(viewport?.height || window.innerHeight));
+    const offsetTop = Math.max(0, Math.round(viewport?.offsetTop || 0));
+    document.documentElement.style.setProperty('--staff-visual-height', `${height}px`);
+    document.documentElement.style.setProperty('--staff-visual-offset-top', `${offsetTop}px`);
+    qs('.main-content')?.style.setProperty('height', 'var(--staff-visual-height)', 'important');
+    qs('.dashboard-layout')?.style.setProperty('height', 'calc(var(--staff-visual-height) - var(--staff-header-h))', 'important');
+    qs('.dashboard-content')?.style.setProperty('height', 'calc(var(--staff-visual-height) - var(--staff-header-h))', 'important');
+  }
+
   function bindInteractions() {
+    document.addEventListener('click', event => {
+      if (!navigator.onLine && mutationControl(event.target)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        announceOfflineMutation();
+        return;
+      }
+      const bottomDestination = event.target.closest('#v2-mobile-nav [data-v2-view], #v2-mobile-menu [data-v2-view]');
+      if (bottomDestination && qs('#v2-mobile-menu.active')) {
+        setMoreOpen(false, { consumeHistory: true, returnFocus: false });
+      }
+    }, true);
+    document.addEventListener('submit', event => {
+      const submitter = event.submitter || qs('button[type="submit"],input[type="submit"]', event.target);
+      const mutationForm = event.target.matches?.('#staff-action-form,.admin-notification-form');
+      if (navigator.onLine || (!mutationForm && !mutationControl(submitter))) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      announceOfflineMutation();
+    }, true);
+
     document.addEventListener('click', event => {
       const themeButton = event.target.closest('[data-v4-theme-toggle]');
       if (themeButton) {
@@ -361,11 +518,10 @@
       }
       const more = event.target.closest('[data-v2-more]');
       if (more) {
-        setTimeout(() => setMoreOpen(qs('#v2-mobile-menu')?.classList.contains('active'), { pushHistory: true }), 0);
+        event.preventDefault();
+        window.staffMobileMenu.toggle();
         return;
       }
-      const menuView = event.target.closest('#v2-mobile-menu [data-v2-view]');
-      if (menuView) setMoreOpen(false, { fromHistory: true, pushHistory: false });
       const quick = event.target.closest('[data-v4-quick-action]');
       if (quick) quickActions[quick.dataset.v4ActionView]?.run();
     });
@@ -390,23 +546,41 @@
     window.addEventListener('popstate', () => {
       if (qs('#v2-mobile-menu.active')) setMoreOpen(false, { fromHistory: true, pushHistory: false });
     });
-    window.addEventListener('online', () => updateConnectionState(true));
+    window.addEventListener('online', () => {
+      updateConnectionState(true);
+      const pendingTheme = localStorage.getItem('fa_theme_pending');
+      if (pendingTheme) persistThemePreference(pendingTheme);
+    });
     window.addEventListener('offline', () => updateConnectionState(true));
     mobileBreakpoint.addEventListener?.('change', () => {
-      if (!mobileBreakpoint.matches && qs('#v2-mobile-menu.active')) setMoreOpen(false, { fromHistory: true, pushHistory: false });
+      if (!mobileBreakpoint.matches && qs('#v2-mobile-menu.active')) setMoreOpen(false, { consumeHistory: true, returnFocus: false });
       updateActiveChrome();
+    });
+    document.addEventListener('staff:navigation-rebuilt', () => {
+      moreHistoryEntry = false;
+      moreReturnFocus = null;
+      enhanceMobileNavigation();
+      updateConnectionState(false);
     });
 
     const content = qs('.dashboard-content');
     content?.addEventListener('scroll', () => document.body.classList.toggle('v4-scrolled', content.scrollTop > 20), { passive: true });
-    window.visualViewport?.addEventListener('resize', () => {
-      document.documentElement.style.setProperty('--staff-visual-height', `${window.visualViewport.height}px`);
-    }, { passive: true });
+    window.visualViewport?.addEventListener('resize', syncVisualViewport, { passive: true });
+    window.visualViewport?.addEventListener('scroll', syncVisualViewport, { passive: true });
+    window.addEventListener('resize', syncVisualViewport, { passive: true });
+    window.addEventListener('orientationchange', syncVisualViewport, { passive: true });
+    syncVisualViewport();
   }
 
   function observeInterface() {
     new MutationObserver(mutations => {
-      if (mutations.some(mutation => mutation.type === 'attributes' && mutation.target === document.documentElement)) applyThemeVisuals();
+      if (!mutations.some(mutation => mutation.type === 'attributes' && mutation.target === document.documentElement)) return;
+      const pendingTheme = localStorage.getItem('fa_theme_pending');
+      if ((pendingTheme === 'light' || pendingTheme === 'dark') && document.documentElement.getAttribute('data-theme') !== pendingTheme) {
+        document.documentElement.setAttribute('data-theme', pendingTheme);
+        return;
+      }
+      applyThemeVisuals();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     new MutationObserver(scheduleChromeUpdate).observe(document.body, {
@@ -419,6 +593,13 @@
   }
 
   function boot() {
+    installOfflineApiGuard();
+    const pendingTheme = localStorage.getItem('fa_theme_pending');
+    if (pendingTheme === 'light' || pendingTheme === 'dark') {
+      localStorage.setItem('fa_theme', pendingTheme);
+      document.documentElement.setAttribute('data-theme', pendingTheme);
+      persistThemePreference(pendingTheme);
+    }
     addHeaderEnhancements();
     addStatusElements();
     bindInteractions();
@@ -436,7 +617,6 @@
       applyThemeVisuals();
       updateConnectionState(false);
     }, 900);
-    setInterval(updatePendingBadge, 3200);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 140), { once: true });

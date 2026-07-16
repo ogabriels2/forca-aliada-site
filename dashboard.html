@@ -1798,9 +1798,9 @@ footer { display: none; }
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
-<link rel="stylesheet" href="assets/css/dashboard-v2.css">
-<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260714e">
-<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260714e">
+<link rel="stylesheet" href="assets/css/dashboard-v2.css?v=20260716a">
+<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260716a">
+<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260716a">
 </head>
 <body>
 <a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
@@ -1816,29 +1816,29 @@ footer { display: none; }
       <i></i><span id="global-server-label">Servidor</span><strong id="global-server-count">--</strong>
     </button>
     <div class="user-menu-wrapper">
-      <button class="notif-btn" id="notif-btn-toggle" type="button" onclick="toggleNotifPanel(event)" title="Minhas notificações" aria-label="Abrir minhas notificações" aria-expanded="false" aria-controls="notif-panel">
+      <button class="notif-btn" id="notif-btn-toggle" type="button" onclick="toggleNotifPanel(event)" title="Minhas notificações" aria-label="Abrir minhas notificações" aria-haspopup="dialog" aria-expanded="false" aria-controls="notif-panel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="notif-badge hidden" id="notif-badge">0</span>
       </button>
-      <div class="notif-panel" id="notif-panel">
+      <div class="notif-panel" id="notif-panel" role="dialog" aria-modal="false" aria-labelledby="notif-panel-title" aria-hidden="true" tabindex="-1">
         <div class="notif-panel-header">
-          <h4>Notificações</h4>
-          <button class="notif-mark-read" onclick="markAllNotifRead()">Marcar tudo como lido</button>
+          <h4 id="notif-panel-title">Notificações</h4>
+          <button class="notif-mark-read" type="button" onclick="markAllNotifRead()">Marcar tudo como lido</button>
         </div>
-        <div class="notif-list" id="notif-list">
+        <div class="notif-list" id="notif-list" aria-live="polite">
           <div class="notif-empty">Nenhuma notificação no momento.</div>
         </div>
       </div>
     </div>
 
     <div class="user-menu-wrapper">
-      <button class="user-btn" id="user-btn-toggle" type="button" onclick="toggleDropdown(event)" aria-expanded="false" aria-controls="user-dropdown-menu">
+      <button class="user-btn" id="user-btn-toggle" type="button" onclick="toggleDropdown(event)" aria-haspopup="menu" aria-expanded="false" aria-controls="user-dropdown-menu">
         <img id="nav-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
         <span id="nav-name">...</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      <div class="user-dropdown" id="user-dropdown-menu">
-        <div class="dropdown-header">
+      <div class="user-dropdown" id="user-dropdown-menu" role="menu" aria-label="Menu da conta" aria-hidden="true">
+        <div class="dropdown-header" role="presentation">
           <img id="drop-photo" src="https://minotar.net/helm/Steve/100.png" alt="Avatar" width="100" height="100">
           <div class="dropdown-header-info">
             <strong id="drop-name">Usuário</strong>
@@ -1846,11 +1846,11 @@ footer { display: none; }
           </div>
         </div>
         <div class="dropdown-divider"></div>
-        <a href="account.html" class="dropdown-item">
+        <a href="account.html" class="dropdown-item" role="menuitem">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Minha Conta
         </a>
         <div class="dropdown-divider"></div>
-        <button class="dropdown-item danger" onclick="logout()">
+        <button class="dropdown-item danger" type="button" role="menuitem" onclick="logout()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Sair da Conta
         </button>
       </div>
@@ -2163,7 +2163,10 @@ footer { display: none; }
       </div>
 
       <div class="card" id="server-overview">
-        <h3>Visão Geral do Servidor <span>Atualizado: <b id="meta">agora</b></span></h3>
+        <div class="server-overview-meta" aria-live="polite">
+          <span class="cc-kicker">Monitoramento ao vivo</span>
+          <span class="server-update-status">Atualizado <b id="meta">agora</b></span>
+        </div>
         <div style="margin-bottom:12px;" id="app-source-indicator"></div>
         <nav class="context-shortcuts" aria-label="Atalhos do servidor">
           <button class="context-shortcut" type="button" onclick="scrollToSection('stats-card')">Estatísticas históricas</button>
@@ -2171,16 +2174,15 @@ footer { display: none; }
           <button class="context-shortcut" type="button" onclick="scrollToSection('merit-card')">Mérito & capital</button>
           <button class="context-shortcut" type="button" onclick="scrollToSection('app-keys-card')">Integração Manager</button>
         </nav>
-        <section class="cc-panel" id="server-period-panel">
-          <div class="cc-panel-head"><div><span class="cc-kicker">Inteligência do período</span><h3>Disponibilidade e recorrência</h3></div><span class="cc-meta-chip" id="server-period-label">30 dias</span></div>
-          <div class="ci-quality-strip" id="server-period-kpis"></div>
-        </section>
-
+        <section class="server-runtime-section" aria-labelledby="server-runtime-title">
+          <div class="server-section-heading">
+            <div><span class="cc-kicker">Agora</span><h3 id="server-runtime-title">Estado atual</h3><p>Condição, capacidade e saúde operacional do servidor.</p></div>
+          </div>
         <div class="dashboard-grid">
           <div class="mini-card"><h4>Status</h4><div class="value" style="display:flex;align-items:center;gap:8px;"><span class="status-dot" id="server-dot"></span><span id="server-status">...</span></div></div>
           <div class="mini-card"><h4>Jogadores Online</h4><div class="value" id="online-count">-/-</div></div>
-          <div class="mini-card"><h4>IP do Servidor</h4><div class="value" style="font-size:16px;">fa.ogabriels.com</div></div>
-          <div class="mini-card"><h4>Versão</h4><div class="value" id="server-version" style="font-size:16px;">-</div></div>
+          <div class="mini-card server-meta-card"><h4>IP do Servidor</h4><div class="value">fa.ogabriels.com</div></div>
+          <div class="mini-card server-meta-card"><h4>Versão</h4><div class="value" id="server-version">-</div></div>
         </div>
 
         <div class="server-health-grid" id="server-health-grid" style="margin-top:4px;">
@@ -2206,11 +2208,18 @@ footer { display: none; }
             <div class="h-sub">por sessão (hoje)</div>
           </div>
         </div>
+        </section>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-          <h3 style="margin:0;font-size:16px;">Análise de Atividade</h3>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-            <select id="chart-range" onchange="onRangeChange()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
+        <section class="cc-panel" id="server-period-panel">
+          <div class="cc-panel-head"><div><span class="cc-kicker">Inteligência do período</span><h3>Disponibilidade e recorrência</h3></div><span class="cc-meta-chip" id="server-period-label">30 dias</span></div>
+          <div class="ci-quality-strip" id="server-period-kpis"></div>
+        </section>
+
+        <section class="server-activity-section" aria-labelledby="server-activity-title">
+        <div class="server-section-heading server-activity-heading" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <div><span class="cc-kicker">Histórico operacional</span><h3 id="server-activity-title" style="margin:0;font-size:16px;">Análise de atividade</h3><p>Tempo jogado e presença no período selecionado.</p></div>
+          <div class="server-chart-controls" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <select id="chart-range" aria-label="Período do gráfico" onchange="onRangeChange()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
               <option value="1h">Última 1 hora</option>
               <option value="6h">Últimas 6 horas</option>
               <option value="24h" selected>Últimas 24h</option>
@@ -2218,7 +2227,7 @@ footer { display: none; }
               <option value="30d">Últimos 30 dias</option>
               <option value="custom">Personalizado...</option>
             </select>
-            <select id="chart-grouping" onchange="updateActivityChart()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
+            <select id="chart-grouping" aria-label="Agrupamento do gráfico" onchange="updateActivityChart()" style="padding:6px 10px;font-size:13px;border-radius:8px;width:auto;">
               <option value="1m">Por 1 Minuto</option>
               <option value="5m">Por 5 Minutos</option>
               <option value="15m">Por 15 Minutos</option>
@@ -2233,17 +2242,21 @@ footer { display: none; }
         </div>
 
         <div id="custom-time-controls" style="display:none;gap:12px;margin-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12px;color:var(--text-secondary);">Início:</span><input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;"></div>
-          <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:12px;color:var(--text-secondary);">Fim:</span><input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;"></div>
+          <div style="display:flex;align-items:center;gap:6px;"><label for="custom-start" style="font-size:12px;color:var(--text-secondary);">Início:</label><input type="datetime-local" id="custom-start" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;"></div>
+          <div style="display:flex;align-items:center;gap:6px;"><label for="custom-end" style="font-size:12px;color:var(--text-secondary);">Fim:</label><input type="datetime-local" id="custom-end" onchange="updateActivityChart()" style="padding:6px;font-size:12px;border-radius:6px;width:auto;"></div>
         </div>
 
         <div class="chart-toolbar" id="chart-toolbar">
           <div id="chart-focus-indicator" style="display:none;"></div>
           <span class="chart-tip"><kbd>2×clique</kbd> na legenda = isolar &nbsp;·&nbsp; <kbd>1×clique</kbd> = ocultar</span>
         </div>
-        <div class="chart-container"><canvas id="activityChart"></canvas></div>
+        <div class="chart-container"><canvas id="activityChart" role="img" aria-label="Gráfico de tempo jogado por jogador no período">Gráfico de tempo jogado por jogador no período.</canvas></div>
+        </section>
 
-        <h3 style="margin-top:8px;margin-bottom:8px;font-size:16px;">Buscar Jogador</h3>
+        <section class="server-roster-section" aria-labelledby="server-roster-title">
+        <div class="server-section-heading">
+          <div><span class="cc-kicker">Presença</span><h3 id="server-roster-title">Jogadores no servidor</h3><p>Quem está conectado agora e as sessões encerradas mais recentemente.</p></div>
+        </div>
         <div class="filter-bar" id="dashboard-filters" style="display:none;">
           <input type="text" id="search-player" placeholder="Nome do jogador..." oninput="applyFilters()">
           <input type="date" id="search-date" onchange="applyFilters()">
@@ -2254,15 +2267,22 @@ footer { display: none; }
           </select>
         </div>
 
-        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Conectados Agora</h4>
+        <div class="server-roster-grid">
+        <article class="server-roster-panel">
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Conectados agora</h4>
         <ul id="online" style="margin-bottom:24px;">
           <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
         </ul>
+        </article>
 
-        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Últimos Desconectados</h4>
+        <article class="server-roster-panel">
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text-secondary);text-transform:uppercase;">Últimos desconectados</h4>
         <ul id="history">
           <li class="list-item"><div style="display:flex;align-items:center;gap:12px;width:100%"><div class="skeleton-circle"></div><div style="flex:1"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div></div></li>
         </ul>
+        </article>
+        </div>
+        </section>
       </div>
 
       <div class="card" id="stats-card">
@@ -2812,7 +2832,7 @@ footer { display: none; }
   </div>
 </footer>
 
-<div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true" aria-labelledby="modal-name">
+<div class="modal-overlay" id="player-modal" onclick="closeModalOutside(event)" role="dialog" aria-modal="true" aria-labelledby="modal-name" tabindex="-1">
   <div class="modal-content">
     <div class="modal-header">
       <div class="modal-user-info">
@@ -2987,14 +3007,14 @@ footer { display: none; }
     </div></div>
 </div>
 
-<div class="confirm-pw-overlay" id="confirm-pw-overlay" onclick="confirmPwOverlayClick(event)">
-  <div class="confirm-pw-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-pw-title">
+<div class="confirm-pw-overlay" id="confirm-pw-overlay" aria-hidden="true" onclick="confirmPwOverlayClick(event)">
+  <div class="confirm-pw-sheet" role="dialog" aria-modal="true" aria-labelledby="confirm-pw-title" aria-describedby="confirm-pw-desc" tabindex="-1">
     <div class="confirm-pw-icon" id="confirm-pw-icon">🔒</div>
     <h4 id="confirm-pw-title">Confirmar identidade</h4>
     <p id="confirm-pw-desc">Digite sua senha para continuar.</p>
     <div class="pw-field-wrap">
       <input type="password" id="confirm-pw-input" placeholder="Sua senha atual" onkeydown="if(event.key==='Enter')confirmPwSubmit()">
-      <button class="pw-toggle-btn" type="button" onclick="toggleConfirmPwVisibility()"><svg id="pw-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button class="pw-toggle-btn" id="confirm-pw-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false" onclick="toggleConfirmPwVisibility()"><svg id="pw-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div>
     <div class="confirm-pw-error-msg" id="confirm-pw-error"></div>
     <div class="confirm-pw-actions">
@@ -3106,6 +3126,8 @@ let modalHistoryData    = [];
 let modalSortConfig     = { key: 'date', asc: false };
 let currentEditingAdminId = null;
 let currentModalPlayerName = null;
+let playerModalReturnFocus = null;
+let confirmPwReturnFocus = null;
 let adminSortState      = { key: 'name', asc: true };
 let topPlayersMode      = 'hours';
 let _statusPollInterval = null;
@@ -4017,42 +4039,92 @@ setTimeout(() => {
 // ══ Notificações ══
 let notifList = [];
 let notifUnread = 0;
+let notifLoadError = '';
 let adminNotificationsCache = [];
+
+function closeHeaderPopovers({ restoreFocus = false } = {}) {
+  const notifPanel = document.getElementById('notif-panel');
+  const userMenu = document.getElementById('user-dropdown-menu');
+  const notifTrigger = document.getElementById('notif-btn-toggle');
+  const userTrigger = document.getElementById('user-btn-toggle');
+  const notifWasOpen = Boolean(notifPanel?.classList.contains('show'));
+  const userWasOpen = Boolean(userMenu?.classList.contains('show'));
+  notifPanel?.classList.remove('show');
+  userMenu?.classList.remove('show');
+  userTrigger?.classList.remove('active');
+  notifPanel?.setAttribute('aria-hidden', 'true');
+  userMenu?.setAttribute('aria-hidden', 'true');
+  notifTrigger?.setAttribute('aria-expanded', 'false');
+  userTrigger?.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) {
+    if (notifWasOpen) notifTrigger?.focus();
+    else if (userWasOpen) userTrigger?.focus();
+  }
+}
 
 function toggleNotifPanel(e) {
   e.stopPropagation();
   const panel = document.getElementById('notif-panel');
-  const open = panel.classList.toggle('show');
-  document.getElementById('notif-btn-toggle')?.setAttribute('aria-expanded', String(open));
+  const trigger = document.getElementById('notif-btn-toggle');
+  const shouldOpen = !panel?.classList.contains('show');
+  closeHeaderPopovers();
+  if (!panel || !shouldOpen) return;
+  panel.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+  trigger?.setAttribute('aria-expanded', 'true');
 }
-document.addEventListener('click', () => {
-  document.getElementById('notif-panel')?.classList.remove('show');
-  document.getElementById('user-dropdown-menu')?.classList.remove('show');
-  document.getElementById('user-btn-toggle')?.classList.remove('active');
-  document.getElementById('notif-btn-toggle')?.setAttribute('aria-expanded', 'false');
-  document.getElementById('user-btn-toggle')?.setAttribute('aria-expanded', 'false');
+document.addEventListener('click', () => closeHeaderPopovers());
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  if (document.getElementById('notif-panel')?.classList.contains('show')
+      || document.getElementById('user-dropdown-menu')?.classList.contains('show')) {
+    event.preventDefault();
+    closeHeaderPopovers({ restoreFocus: true });
+  }
 });
 
+function safeNotificationUrl(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(String(value), document.baseURI);
+    const secure = url.protocol === 'https:';
+    const localHttp = url.protocol === 'http:' && location.protocol === 'http:' && url.origin === location.origin;
+    if ((!secure && !localHttp) || url.username || url.password) return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}
+
 function normalizeNotification(n) {
+  const allowedTypes = new Set(['info', 'warning', 'danger', 'success', 'event', 'system', 'social']);
+  const type = allowedTypes.has(String(n.type || '').toLowerCase()) ? String(n.type).toLowerCase() : 'info';
+  const parsedTime = new Date(n.created_at || n.time || Date.now());
   return {
     id: n.id,
     icon: n.icon || '🔔',
-    type: n.type || 'info',
+    type,
     title: n.title || 'Notificação',
     body: n.body || '',
+    linkUrl: safeNotificationUrl(n.link_url),
     unread: !(n.is_read || n.read),
-    time: new Date(n.created_at || n.time || Date.now()),
+    time: Number.isNaN(parsedTime.getTime()) ? new Date() : parsedTime,
     audience: n.audience || 'all',
     audienceVal: n.audience_val || ''
   };
 }
 
 async function loadNotifications() {
+  const list = document.getElementById('notif-list');
+  list?.setAttribute('aria-busy', 'true');
   try {
     const res = await apiFetch(`/api/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (res.status === 401 || res.status === 403) return; // token expirado — o liveInterval vai deslogar
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    notifList = (await res.json()).map(normalizeNotification);
+    const payload = await res.json();
+    if (!Array.isArray(payload)) throw new Error('Formato de resposta inválido');
+    notifList = payload.map(normalizeNotification);
+    notifLoadError = '';
 
     // Tenta buscar contagem precisa do servidor; usa contagem local como fallback
     try {
@@ -4065,6 +4137,9 @@ async function loadNotifications() {
     console.error('[notifications]', err);
     notifList = [];
     notifUnread = 0;
+    notifLoadError = 'Não foi possível carregar suas notificações.';
+  } finally {
+    list?.removeAttribute('aria-busy');
   }
   updateNotifBadge();
   renderNotifPanel();
@@ -4087,38 +4162,65 @@ function updateNotifBadge() {
 
 async function markAllNotifRead() {
   try {
-    await apiFetch(`/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-  } catch (err) { console.error('[notifications]', err); }
-  loadNotifications();
+    const res = await apiFetch(`/api/notifications/read-all`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await loadNotifications();
+  } catch (err) {
+    console.error('[notifications]', err);
+    showToast('Não foi possível marcar as notificações como lidas.', 'error');
+  }
 }
 
 async function markNotifRead(id) {
   const notif = notifList.find(n => String(n.id) === String(id));
   if (!notif || !notif.unread) return;
   if (!String(id).startsWith('local-')) {
-    try { await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }
-    catch (err) { console.error('[notifications]', err); }
+    try {
+      const res = await apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error('[notifications]', err);
+      showToast('Não foi possível marcar esta notificação como lida.', 'error');
+      return;
+    }
   }
-  loadNotifications();
+  await loadNotifications();
 }
 
 function renderNotifPanel() {
   const list = document.getElementById('notif-list');
   if (!list) return;
+  if (notifLoadError) {
+    list.innerHTML = `<div class="notif-empty" role="alert">${escapeHTML(notifLoadError)}<br><button type="button" class="v2-btn" onclick="loadNotifications()" style="margin-top:10px">Tentar novamente</button></div>`;
+    return;
+  }
   if (!notifList.length) { list.innerHTML = '<div class="notif-empty">Nenhuma notificação no momento.</div>'; return; }
 
   list.innerHTML = notifList.slice(0, 20).map(n => {
     const timeStr = formatNotifTime(n.time);
-    return `<div class="notif-item ${n.unread ? 'unread' : ''}" onclick="markNotifRead('${String(n.id).replace(/'/g, '&#39;')}')">
+    const id = escapeHTML(String(n.id ?? ''));
+    const actions = `${n.unread ? `<button type="button" class="notif-mark-read" data-notification-read="${id}" style="margin-top:6px">Marcar como lida</button>` : ''}
+      ${n.linkUrl ? `<a class="notif-mark-read" href="${escapeHTML(n.linkUrl)}" target="_blank" rel="noopener noreferrer" data-notification-link="${id}" style="display:inline-block;margin-top:6px;text-decoration:none">Abrir aviso</a>` : ''}`;
+    return `<div class="notif-item ${n.unread ? 'unread' : ''}">
       <div class="notif-icon ${n.type}">${escapeHTML(n.icon)}</div>
       <div class="notif-content" style="flex:1;">
         <strong>${escapeHTML(n.title)}</strong>
         <span>${escapeHTML(n.body)}</span>
-        <span class="notif-time">${timeStr}</span>
+        <span class="notif-time">${escapeHTML(timeStr)}</span>
+        ${actions}
       </div>
       ${n.unread ? '<div class="notif-unread-dot"></div>' : ''}
     </div>`;
   }).join('');
+  list.querySelectorAll('[data-notification-read]').forEach(button => {
+    button.addEventListener('click', () => markNotifRead(button.dataset.notificationRead));
+  });
+  list.querySelectorAll('[data-notification-link]').forEach(link => {
+    link.addEventListener('click', event => {
+      event.stopPropagation();
+      markNotifRead(link.dataset.notificationLink);
+    });
+  });
 }
 
 function formatNotifTime(d) {
@@ -4743,6 +4845,7 @@ let _confirmPwCallback  = null;
 let _confirmPwDestructive = false;
 
 function requirePassword({ title, desc, btnLabel = 'Confirmar', destructive = false, onConfirm }) {
+  confirmPwReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   _confirmPwCallback = onConfirm; _confirmPwDestructive = destructive;
   document.getElementById('confirm-pw-title').textContent = title;
   document.getElementById('confirm-pw-desc').textContent  = desc;
@@ -4754,20 +4857,50 @@ function requirePassword({ title, desc, btnLabel = 'Confirmar', destructive = fa
   icon.textContent = destructive ? '⚠️' : '🔒';
   const input = document.getElementById('confirm-pw-input');
   input.value = ''; input.type = 'password'; input.classList.remove('pw-error');
+  const toggleBtn = document.getElementById('confirm-pw-toggle');
+  toggleBtn.setAttribute('aria-label', 'Mostrar senha');
+  toggleBtn.setAttribute('aria-pressed', 'false');
   document.getElementById('confirm-pw-error').textContent = '';
   submitBtn.disabled = false;
   document.getElementById('pw-eye-icon').innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
   document.getElementById('confirm-pw-overlay').classList.add('active');
+  document.getElementById('confirm-pw-overlay').setAttribute('aria-hidden', 'false');
   setTimeout(() => input.focus(), 120);
 }
 
-function closeConfirmPw() { document.getElementById('confirm-pw-overlay').classList.remove('active'); _confirmPwCallback = null; }
+function closeConfirmPw() {
+  document.getElementById('confirm-pw-overlay').classList.remove('active');
+  document.getElementById('confirm-pw-overlay').setAttribute('aria-hidden', 'true');
+  _confirmPwCallback = null;
+  const returnFocus = confirmPwReturnFocus;
+  confirmPwReturnFocus = null;
+  if (returnFocus?.isConnected) requestAnimationFrame(() => returnFocus.focus());
+}
 function confirmPwOverlayClick(e) { if (e.target.id === 'confirm-pw-overlay') closeConfirmPw(); }
+document.addEventListener('keydown', event => {
+  const overlay = document.getElementById('confirm-pw-overlay');
+  if (!overlay?.classList.contains('active')) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeConfirmPw();
+    return;
+  }
+  if (event.key === 'Tab') {
+    const focusable = [...overlay.querySelectorAll('input,button,[href],[tabindex]:not([tabindex="-1"])')].filter(element => !element.disabled && element.getClientRects().length);
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
 
 function toggleConfirmPwVisibility() {
   const input = document.getElementById('confirm-pw-input');
   const isHidden = input.type === 'password';
   input.type = isHidden ? 'text' : 'password';
+  const toggleBtn = document.getElementById('confirm-pw-toggle');
+  toggleBtn.setAttribute('aria-label', isHidden ? 'Ocultar senha' : 'Mostrar senha');
+  toggleBtn.setAttribute('aria-pressed', String(isHidden));
   document.getElementById('pw-eye-icon').innerHTML = isHidden
     ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
     : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
@@ -4809,9 +4942,14 @@ function getLiveDuration(enteredAtStr) { return formatTime((Date.now() - new Dat
 function toggleDropdown(e) {
   e.stopPropagation();
   const trigger = document.getElementById('user-btn-toggle');
-  const open = document.getElementById('user-dropdown-menu')?.classList.toggle('show');
-  trigger?.classList.toggle('active', open);
-  trigger?.setAttribute('aria-expanded', String(Boolean(open)));
+  const menu = document.getElementById('user-dropdown-menu');
+  const shouldOpen = !menu?.classList.contains('show');
+  closeHeaderPopovers();
+  if (!menu || !shouldOpen) return;
+  menu.classList.add('show');
+  menu.setAttribute('aria-hidden', 'false');
+  trigger?.classList.add('active');
+  trigger?.setAttribute('aria-expanded', 'true');
 }
 
 // ══ Carga de dados ══
@@ -4887,34 +5025,29 @@ function renderDashboard() {
 
   const appEl = document.getElementById('app-source-indicator');
   if (appEl) {
+    appEl.className = 'server-source-indicator';
     if (appConnected) {
       const keyName = globalHealthData?.app_last_seen
         ? ` · Último sinal: ${new Date(globalHealthData.app_last_seen).toLocaleTimeString('pt-BR')}`
         : '';
-      appEl.innerHTML = `<span title="Força Aliada Manager conectado — dados em tempo real via App${keyName}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;border:1px solid rgba(52,199,89,0.3);"><span style="width:6px;height:6px;border-radius:50%;background:#34c759;display:inline-block;animation:pulse-dot 1.5s infinite;"></span>📡 App conectado</span>`;
+      appEl.innerHTML = `<span class="server-source-chip is-app" title="Força Aliada Manager conectado — dados em tempo real via App${keyName}"><span class="server-source-dot" aria-hidden="true"></span><span>App conectado</span></span>`;
     } else {
       // Modo nuvem — distingue entre: servidor detectado online externamente vs offline
       const mcOnline = globalApiData?.online ?? false;
-      let cloudLabel, cloudColor, cloudBg, cloudBorder;
+      let cloudLabel, cloudClass;
       if (mcState?.state === 'offline' && mcState?.set_by === 'app_signal') {
         // App sinalizou offline e ainda está no período de lockout
         cloudLabel  = '☁️ Modo Nuvem · Servidor desligado';
-        cloudColor  = '#8e8e93';
-        cloudBg     = 'rgba(142,142,147,0.10)';
-        cloudBorder = 'rgba(142,142,147,0.25)';
+        cloudClass  = 'is-offline';
       } else if (mcOnline) {
         // Servidor online detectado em modo nuvem (ligado externamente, sem app)
         cloudLabel  = '☁️ Modo Nuvem · Online detectado';
-        cloudColor  = '#0071e3';
-        cloudBg     = 'rgba(0,113,227,0.10)';
-        cloudBorder = 'rgba(0,113,227,0.25)';
+        cloudClass  = 'is-cloud-online';
       } else {
         cloudLabel  = '☁️ Modo Nuvem';
-        cloudColor  = '#0071e3';
-        cloudBg     = 'rgba(0,113,227,0.08)';
-        cloudBorder = 'rgba(0,113,227,0.20)';
+        cloudClass  = 'is-cloud';
       }
-      appEl.innerHTML = `<span title="${_buildCloudTooltip(statusSrc, mcState)}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:980px;background:${cloudBg};color:${cloudColor};border:1px solid ${cloudBorder};">${cloudLabel}</span>`;
+      appEl.innerHTML = `<span class="server-source-chip ${cloudClass}" title="${escapeHTML(_buildCloudTooltip(statusSrc, mcState))}">${cloudLabel}</span>`;
     }
   }
 
@@ -4940,12 +5073,59 @@ function emptyStateHTML(icon, title, sub) {
   return `<li style="list-style:none;"><div class="empty-state"><div class="empty-icon">${icon}</div><strong>${title}</strong><span>${sub}</span></div></li>`;
 }
 
+function normalizeSessionOrigin(source) {
+  const raw = typeof source === 'object' && source
+    ? (source.origin ?? source.source ?? source.capture_source ?? '')
+    : source;
+  const value = String(raw || '').trim().toLowerCase();
+  if (['app', 'manager', 'desktop'].includes(value)) return 'app';
+  if (['site', 'web', 'ping', 'cloud'].includes(value)) return 'site';
+  if (value === 'mixed') return 'mixed';
+  return 'unknown';
+}
+
+function sessionOriginBadge(source) {
+  const origin = normalizeSessionOrigin(source);
+  const badge = {
+    app: ['📡 App', 'Detectado pelo Força Aliada Manager', 'rgba(52,199,89,0.12)', '#1a7f37', 'rgba(52,199,89,0.3)'],
+    site: ['☁️ Site', 'Detectado pelo site via ping', 'rgba(0,113,227,0.10)', '#0071e3', 'rgba(0,113,227,0.2)'],
+    mixed: ['↔️ Mista', 'Sessões registradas pelo App e pelo site', 'rgba(245,158,11,0.12)', '#a16207', 'rgba(245,158,11,0.3)'],
+    unknown: ['Fonte não informada', 'A origem desta sessão não foi informada pela API', 'rgba(142,142,147,0.10)', '#6b7280', 'rgba(142,142,147,0.25)'],
+  }[origin];
+  return `<span title="${badge[1]}" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:${badge[2]};color:${badge[3]};margin-left:5px;border:1px solid ${badge[4]};">${badge[0]}</span>`;
+}
+
+function sessionOriginIcon(source) {
+  const origin = normalizeSessionOrigin(source);
+  const meta = {
+    app: ['💻', 'Registrado via App Desktop'],
+    site: ['☁️', 'Registrado via Site (ping)'],
+    mixed: ['↔️', 'Registrado por App e Site'],
+    unknown: ['?', 'Origem não informada pela API'],
+  }[origin];
+  return `<span title="${meta[1]}" style="font-size:10px;margin-left:4px;">${meta[0]}</span>`;
+}
+
+function bindPlayerProfileItems(root) {
+  root?.querySelectorAll('[data-player-profile]').forEach(item => {
+    const open = () => openPlayerProfile(item.dataset.playerProfile);
+    item.addEventListener('click', open);
+    item.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      open();
+    });
+  });
+}
+
 function applyFilters() {
   if (!globalHistData) return;
   const nameFilter     = document.getElementById('search-player').value.toLowerCase().trim();
   const dateFilter     = document.getElementById('search-date').value;
   const durationFilter = parseInt(document.getElementById('search-duration').value) || 0;
-  const livePlayers    = globalHistData.onlinePlayers || [];
+  const livePlayers    = Array.isArray(globalHistData.onlinePlayers)
+    ? globalHistData.onlinePlayers.map(String).filter(Boolean)
+    : [];
   const activeSess     = globalHistData.activeSessions || {};
   const hasData        = livePlayers.length > 0 || (globalHistData.history && globalHistData.history.length > 0);
   document.getElementById('dashboard-filters').style.display = hasData ? 'grid' : 'none';
@@ -4964,27 +5144,38 @@ function applyFilters() {
     ? filteredLive.map(pName => {
         const sData = activeSess[Object.keys(activeSess).find(k => k.toLowerCase() === pName.toLowerCase())];
         const timeInfo = sData ? `Entrou ${getLiveEntryText(sData.enteredAt)} (Ao vivo: ${getLiveDuration(sData.enteredAt)})` : 'Conectando...';
-        const origin = sData?.origin || 'site';
-        const originBadge = origin === 'app'
-          ? `<span title="Detectado pelo Força Aliada Manager" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;margin-left:6px;border:1px solid rgba(52,199,89,0.3);">📡 App</span>`
-          : `<span title="Detectado pelo site via ping" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:980px;background:rgba(0,113,227,0.10);color:#0071e3;margin-left:6px;border:1px solid rgba(0,113,227,0.2);">☁️ Site</span>`;
-        return `<li class="list-item" onclick="openPlayerProfile('${pName}')"><img src="https://minotar.net/helm/${pName}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head"><div class="item-details"><strong>${pName}${originBadge}</strong><span>${timeInfo}</span></div><span class="status-dot"></span></li>`;
+        const originBadge = sessionOriginBadge(sData);
+        const safeName = escapeHTML(pName);
+        return `<li class="list-item" data-player-profile="${safeName}" tabindex="0" role="button" aria-label="Abrir perfil de ${safeName}"><img src="https://minotar.net/helm/${encodeURIComponent(pName)}/48.png" onerror="this.src='https://minotar.net/helm/Steve/48.png'" class="mc-head" alt=""><div class="item-details"><strong>${safeName}${originBadge}</strong><span>${escapeHTML(timeInfo)}</span></div><span class="status-dot"></span></li>`;
       }).join('')
     : emptyStateHTML('🎮', 'Nenhum jogador online', (nameFilter || durationFilter > 0) ? 'Nenhum resultado para os filtros atuais.' : 'O servidor está vazio no momento.');
 
-  let offlineHistory = (globalHistData.history || []).filter(h => !livePlayers.map(n => n.toLowerCase()).includes(h.player.toLowerCase()) && (h.leftAt || h.left_at));
+  bindPlayerProfileItems(onlineUl);
+
+  const livePlayerKeys = new Set(livePlayers.map(n => n.toLowerCase()));
+  let offlineHistory = (Array.isArray(globalHistData.history) ? globalHistData.history : [])
+    .filter(h => h?.player && !livePlayerKeys.has(String(h.player).toLowerCase()) && (h.leftAt || h.left_at));
   const playerDayMap = new Map();
   offlineHistory.sort((a, b) => new Date(b.leftAt || b.left_at) - new Date(a.leftAt || a.left_at));
   for (const h of offlineHistory) {
-    const k = h.player.toLowerCase(); const lAt = h.leftAt || h.left_at;
-    if (!playerDayMap.has(k)) playerDayMap.set(k, { player: h.player, leftAt: lAt, dayRef: new Date(lAt).toDateString(), totalHoursDay: 0, sessionsToday: 0 });
+    const player = String(h.player);
+    const k = player.toLowerCase(); const lAt = h.leftAt || h.left_at;
+    if (!playerDayMap.has(k)) playerDayMap.set(k, { player, leftAt: lAt, dayRef: new Date(lAt).toDateString(), totalHoursDay: 0, sessionsToday: 0, origins: new Set() });
     const entry = playerDayMap.get(k);
-    if (new Date(lAt).toDateString() === entry.dayRef) { entry.totalHoursDay += (h.hoursOnline || h.duration_hours || 0); entry.sessionsToday++; }
+    if (new Date(lAt).toDateString() === entry.dayRef) {
+      entry.totalHoursDay += Number(h.hoursOnline || h.duration_hours || 0) || 0;
+      entry.sessionsToday++;
+      const origin = normalizeSessionOrigin(h);
+      if (origin !== 'unknown') entry.origins.add(origin);
+    }
   }
 
-  let filteredOff = [...playerDayMap.values()];
+  let filteredOff = [...playerDayMap.values()].map(entry => ({
+    ...entry,
+    origin: entry.origins.size > 1 ? 'mixed' : (entry.origins.values().next().value || 'unknown'),
+  }));
   if (nameFilter) filteredOff = filteredOff.filter(e => e.player.toLowerCase().includes(nameFilter));
-  if (dateFilter) filteredOff = filteredOff.filter(e => e.leftAt.startsWith(dateFilter));
+  if (dateFilter) filteredOff = filteredOff.filter(e => String(e.leftAt).startsWith(dateFilter));
   if (durationFilter > 0) filteredOff = filteredOff.filter(e => e.totalHoursDay >= durationFilter);
 
   const histUl = document.getElementById('history');
@@ -4993,13 +5184,13 @@ function applyFilters() {
         const leftDate = new Date(e.leftAt), isToday = leftDate.toDateString() === new Date().toDateString(), isYesterday = leftDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
         const dLabel = isToday ? 'hoje' : isYesterday ? 'ontem' : leftDate.toLocaleDateString('pt-BR');
         const sessLabel = e.sessionsToday > 1 ? ` em ${e.sessionsToday} sessões` : '';
-        const origin = e.origin || 'site';
-        const originBadge = origin === 'app'
-          ? `<span title="Detectado pelo Força Aliada Manager" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:rgba(52,199,89,0.12);color:#1a7f37;margin-left:5px;border:1px solid rgba(52,199,89,0.3);">📡 App</span>`
-          : `<span title="Detectado pelo site via ping" style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:980px;background:rgba(0,113,227,0.10);color:#0071e3;margin-left:5px;border:1px solid rgba(0,113,227,0.2);">☁️ Site</span>`;
-        return `<li class="list-item" onclick="openPlayerProfile('${e.player}')"><img src="https://minotar.net/helm/${e.player}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;"><div class="item-details"><strong>${e.player}${originBadge}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${dLabel}</span></div></li>`;
+        const originBadge = sessionOriginBadge(e.origin);
+        const player = String(e.player);
+        const safeName = escapeHTML(player);
+        return `<li class="list-item" data-player-profile="${safeName}" tabindex="0" role="button" aria-label="Abrir perfil de ${safeName}"><img src="https://minotar.net/helm/${encodeURIComponent(player)}/32.png" onerror="this.src='https://minotar.net/helm/Steve/32.png'" class="mc-head" style="width:32px;height:32px;" alt=""><div class="item-details"><strong>${safeName}${originBadge}</strong><span style="font-size:12px;">${formatTime(e.totalHoursDay)}${sessLabel} · saiu ${escapeHTML(dLabel)}</span></div></li>`;
       }).join('')
     : emptyStateHTML('📋', 'Nenhum registro encontrado', (nameFilter || dateFilter || durationFilter > 0) ? 'Tente ajustar os filtros.' : 'Nenhum jogador desconectado recentemente.');
+  bindPlayerProfileItems(histUl);
 }
 
 // ══ Gráfico ══
@@ -5082,8 +5273,17 @@ function updateActivityChart() {
       if (oEnd > oStart) { players.add(s.player); if (!buckets.get(key)[s.player]) buckets.get(key)[s.player] = 0; buckets.get(key)[s.player] += (oEnd - oStart); }
     }
   }
-  const labels     = [...buckets.keys()].map(k => { const d = new Date(k); return isDay ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); });
-  const playerList = [...players];
+  const labels = [...buckets.keys()].map(k => { const d = new Date(k); return isDay ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); });
+  const bucketValues = [...buckets.values()];
+  const rankedPlayers = [...players].sort((a, b) => bucketValues.reduce((sum, bucket) => sum + (bucket[b] || 0) - (bucket[a] || 0), 0));
+  if (chartFocusedPlayer && !rankedPlayers.includes(chartFocusedPlayer)) chartFocusedPlayer = null;
+  let playerList = rankedPlayers.slice(0, 8);
+  if (chartFocusedPlayer && !playerList.includes(chartFocusedPlayer)) playerList = [chartFocusedPlayer, ...playerList.slice(0, 7)];
+  const hiddenSeriesCount = Math.max(0, rankedPlayers.length - playerList.length);
+  const chartTip = document.querySelector('#chart-toolbar .chart-tip');
+  if (chartTip) chartTip.innerHTML = playerList.length
+    ? `<kbd>2× clique</kbd> isola uma linha &nbsp;·&nbsp; <kbd>1× clique</kbd> oculta${hiddenSeriesCount ? ` &nbsp;·&nbsp; exibindo os 8 mais ativos de ${rankedPlayers.length}` : ''}`
+    : 'Nenhuma atividade registrada neste período.';
   const datasets   = playerList.map(p => {
     const color = playerColor(p); const isFocused = chartFocusedPlayer === p; const isDeemphasized = chartFocusedPlayer && !isFocused;
     return { label: p, data: [...buckets.values()].map(b => (b[p] || 0) / divider), borderColor: color, backgroundColor: color + '18', borderWidth: isFocused ? 3 : 2, tension: 0.4, fill: false, hidden: isDeemphasized, pointBackgroundColor: color, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 3, pointHoverRadius: 6 };
@@ -5109,15 +5309,22 @@ function updateActivityChart() {
   };
 
   if (chartInstance) chartInstance.destroy();
+  const activityChartStyles = getComputedStyle(document.documentElement);
+  const activityChartToken = (name, fallback) => activityChartStyles.getPropertyValue(name).trim() || fallback;
+  const activityInk = activityChartToken('--staff-ink', '#172019');
+  const activityMuted = activityChartToken('--staff-muted', '#59695e');
+  const activityGrid = activityChartToken('--staff-line', 'rgba(23,32,25,.12)');
+  const activitySurface = activityChartToken('--staff-surface-raised', '#ffffff');
+  const activityFaded = document.documentElement.getAttribute('data-theme') === 'dark' ? '#7f8b82' : '#9aa39c';
   chartInstance = new Chart(document.getElementById('activityChart').getContext('2d'), {
     type: 'line', data: { labels, datasets }, plugins: [dblClickLegendPlugin],
     options: {
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, animation: { duration: 300 },
       plugins: {
         legend: {
-          display: playerList.length > 0 && playerList.length <= 12,
-          labels: { boxWidth: 12, boxHeight: 12, borderRadius: 4, useBorderRadius: true, font: { size: 12 }, padding: 16, color: '#1d1d1f',
-            generateLabels(chart) { return Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { if (chartFocusedPlayer && item.text !== chartFocusedPlayer) item.fontColor = '#ccc'; return item; }); }
+          display: playerList.length > 0,
+          labels: { boxWidth: 12, boxHeight: 12, borderRadius: 4, useBorderRadius: true, font: { size: 12, weight: '600' }, padding: 16, color: activityInk,
+            generateLabels(chart) { return Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { if (chartFocusedPlayer && item.text !== chartFocusedPlayer) { item.fontColor = activityFaded; item.color = activityFaded; } return item; }); }
           },
           onClick(e, legendItem, legend) {
             const index = legendItem.datasetIndex, meta = legend.chart.getDatasetMeta(index);
@@ -5127,14 +5334,14 @@ function updateActivityChart() {
           }
         },
         tooltip: {
-          backgroundColor: 'rgba(255,255,255,0.96)', titleColor: '#1d1d1f', bodyColor: '#86868b', borderColor: 'rgba(0,0,0,0.08)', borderWidth: 1, padding: 12, boxPadding: 4, cornerRadius: 10, boxWidth: 10, boxHeight: 10,
+          backgroundColor: activitySurface, titleColor: activityInk, bodyColor: activityMuted, borderColor: activityGrid, borderWidth: 1, padding: 12, boxPadding: 4, cornerRadius: 12, boxWidth: 10, boxHeight: 10,
           filter: ti => ti.raw > 0,
           callbacks: { title: ctx2 => ctx2[0]?.label || '', label: ctx2 => ` ${ctx2.dataset.label}: ${formatTime(isDay ? ctx2.raw : (ctx2.raw / 60))}`, footer: ctx2 => ctx2.length > 0 ? `${ctx2.length} jogador(es) online neste intervalo` : '' }
         }
       },
       scales: {
-        x: { grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#86868b' }, border: { display: false } },
-        y: { beginAtZero: true, title: { display: true, text: isDay ? 'Horas Jogadas' : 'Minutos Jogados', font: { size: 11 }, color: '#86868b' }, ticks: { stepSize: isDay ? 1 : 15, font: { size: 11 }, color: '#86868b' }, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, border: { display: false } }
+        x: { grid: { color: activityGrid, drawBorder: false }, ticks: { maxTicksLimit: 10, font: { size: 11, weight: '600' }, color: activityMuted }, border: { display: false } },
+        y: { beginAtZero: true, title: { display: true, text: isDay ? 'Horas Jogadas' : 'Minutos Jogados', font: { size: 11, weight: '600' }, color: activityMuted }, ticks: { stepSize: isDay ? 1 : 15, font: { size: 11, weight: '600' }, color: activityMuted }, grid: { color: activityGrid, drawBorder: false }, border: { display: false } }
       },
       onClick(e, elements, chart) {
         const nearest = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
@@ -5149,12 +5356,14 @@ function updateActivityChart() {
       }
     }
   });
+  window.faStaffSyncCharts?.();
   updateChartFocusIndicator();
 }
 
 // ══ Modal de Perfil do Jogador ══
 async function openPlayerProfile(playerName, siteAccountId = null) {
   currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId;
+  playerModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   let displayMcName = playerName;
   if (siteAccountId) { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
 
@@ -5168,17 +5377,25 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   document.getElementById('staff-profile-insights-grid').innerHTML = '';
   document.getElementById('stats-grid').innerHTML = `<div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div><div class="stat-box skeleton" style="height:82px;"></div>`;
   document.getElementById('modal-table-wrapper').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;"><div class="skeleton-line" style="height:18px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:100%;border-radius:6px;"></div><div class="skeleton-line" style="height:40px;width:80%;border-radius:6px;"></div></div>`;
-  document.getElementById('player-modal').classList.add('active'); document.body.style.overflow = 'hidden';
+  const playerModal = document.getElementById('player-modal');
+  playerModal.classList.add('active'); document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => playerModal.querySelector('.close-modal')?.focus());
 
   // Carrega notas compartilhadas do backend imediatamente
   renderPlayerNotes(displayMcName);
 
   const [historyData] = await Promise.all([
-    apiFetch(`/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()).catch(() => [])
+    apiFetch(`/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(async response => {
+        if (!response.ok) return [];
+        const payload = await response.json().catch(() => []);
+        return Array.isArray(payload) ? payload : [];
+      })
+      .catch(() => [])
   ]);
-  modalHistoryData = historyData;
+  modalHistoryData = Array.isArray(historyData) ? historyData : [];
   const chartBtn = document.getElementById('modal-chart-btn');
-  if (chartBtn) chartBtn.style.display = historyData.length > 0 ? 'inline-block' : 'none';
+  if (chartBtn) chartBtn.style.display = modalHistoryData.length > 0 ? 'inline-block' : 'none';
 
   // Busca por ID (com coerção de tipo para garantir compatibilidade string/number do pg)
   // Se não encontrar por ID, tenta por minecraft_name como fallback robusto
@@ -5355,8 +5572,8 @@ function renderModalTable() {
     if (weekKey !== lastWeekKey) { lastWeekKey = weekKey; separator = `<tr class="week-separator-row"><td colspan="3"><div class="week-separator"><span>${getWeekLabel(eAt)}</span></div></td></tr>`; }
     const d = new Date(eAt), l = new Date(lAt);
     
-    // Etiqueta de Origem: 💻 = App de PC, ☁️ = Site
-    const originBadge = h.origin === 'app' ? '<span title="Registrado via App Desktop" style="font-size:10px; margin-left:4px;">💻</span>' : '<span title="Registrado via Site (Ping)" style="font-size:10px; margin-left:4px;">☁️</span>';
+    // Preserva a origem real; registros antigos sem origem não são rotulados como Site.
+    const originBadge = sessionOriginIcon(h);
     
     return separator + `<tr><td><strong>${d.toLocaleDateString('pt-BR')}</strong>${originBadge}<br><span style="font-size:12px;color:var(--text-secondary)">${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td><td>${l.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td><td>${formatTime(h.duration_hours||h.hoursOnline||0)}</td></tr>`;
   }).join('');
@@ -5666,8 +5883,31 @@ function renderUnregisteredList() {
 }
 
 // ══ Fechar modal ══
-function closeModal() { document.getElementById('player-modal').classList.remove('active'); document.body.style.overflow = ''; currentModalPlayerName = null; }
+function closeModal() {
+  document.getElementById('player-modal').classList.remove('active');
+  document.body.style.overflow = '';
+  currentModalPlayerName = null;
+  const returnFocus = playerModalReturnFocus;
+  playerModalReturnFocus = null;
+  if (returnFocus?.isConnected) requestAnimationFrame(() => returnFocus.focus());
+}
 function closeModalOutside(e) { if (e.target.id === 'player-modal') closeModal(); }
+document.addEventListener('keydown', event => {
+  const modal = document.getElementById('player-modal');
+  if (!modal?.classList.contains('active')) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeModal();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = [...modal.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter(element => element.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
 
 // ══ Logout ══
 function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
@@ -6454,8 +6694,9 @@ function _modBuildReportItem(item) {
   // Imagens do post
   let imagesHtml = '';
   if (Array.isArray(item.content_media_urls) && item.content_media_urls.length) {
-    imagesHtml = `<div class="mod-images">${item.content_media_urls.slice(0,4).map(u =>
-      `<img src="${_esc(u)}" alt="mídia" onclick="window.open('${_esc(u)}','_blank')" loading="lazy" style="cursor:pointer;">`
+    const safeUrls = item.content_media_urls.slice(0, 4).map(_modSafeMediaUrl).filter(Boolean);
+    if (safeUrls.length) imagesHtml = `<div class="mod-images">${safeUrls.map(u =>
+      `<button type="button" class="mod-media-button" data-mod-media="${_esc(u)}" aria-label="Abrir mídia denunciada em nova guia"><img src="${_esc(u)}" alt="Mídia denunciada" loading="lazy" decoding="async"></button>`
     ).join('')}</div>`;
   }
 
@@ -6502,29 +6743,25 @@ function _modBuildReportItem(item) {
       ${descText}
       <div class="mod-actions">${actionBtns}</div>
     </div>`;
+  wrap.querySelectorAll('[data-mod-media]').forEach(button => button.addEventListener('click', () => {
+    const url = _modSafeMediaUrl(button.dataset.modMedia);
+    if (!url) return;
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (popup) popup.opener = null;
+  }));
   return wrap;
 }
 async function modActionReport(id, action, btn) {
   // Confirmação antes de ações destrutivas
   if (action === 'remove_content') {
-    const ok = await new Promise(res => {
-      const d = document.createElement('div');
-      d.className = 'backdrop show';
-      d.innerHTML = `<div class="sheet sheet-sm" role="dialog" aria-modal="true">
-        <div class="confirm-body">
-          <h2>Remover conteúdo</h2>
-          <p>O conteúdo será removido permanentemente e a ação ficará registrada na auditoria. Confirmar?</p>
-        </div>
-        <div class="confirm-footer">
-          <button class="btn btn-ghost" data-no>Cancelar</button>
-          <button class="btn btn-danger" data-yes>Remover</button>
-        </div>
-      </div>`;
-      d.querySelector('[data-yes]').onclick = () => { d.remove(); res(true); };
-      d.querySelector('[data-no]').onclick  = () => { d.remove(); res(false); };
-      d.addEventListener('click', e => { if (e.target === d) { d.remove(); res(false); } });
-      document.body.appendChild(d);
-    });
+    const ok = window.staffDialog?.confirm
+      ? await window.staffDialog.confirm({
+          title: 'Remover conteúdo',
+          description: 'O conteúdo será removido permanentemente e a decisão ficará registrada na Auditoria.',
+          confirmLabel: 'Remover conteúdo',
+          danger: true,
+        })
+      : window.confirm('Remover permanentemente este conteúdo?');
     if (!ok) return;
   }
   const item = btn.closest('.mod-item');
@@ -6610,28 +6847,16 @@ function _esc(str) {
 async function togglePlatformVerified(userId, currentlyVerified) {
   const grant = !currentlyVerified;
   const action = grant ? 'Conceder' : 'Revogar';
-  const ok = await new Promise(res => {
-    const d = document.createElement('div');
-    d.className = 'backdrop show';
-    d.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true" style="max-width:380px;">
-      <div class="modal-header"><h2>${action} verificação de plataforma</h2></div>
-      <div class="modal-body" style="padding:16px;">
-        <p style="color:var(--text-secondary);font-size:13.5px;line-height:1.5;">
-          ${grant
-            ? 'Isso concederá o <strong>selo ✓ de verificação</strong> visível para todos na comunidade. Use apenas para jogadores ou criadores notáveis.'
-            : 'Isso removerá o <strong>selo ✓ de verificação</strong> deste utilizador. O selo deixará de aparecer publicamente.'}
-        </p>
-      </div>
-      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;">
-        <button class="btn-secondary" data-no>Cancelar</button>
-        <button class="${grant?'btn-primary':'btn-danger'}" data-yes>${action}</button>
-      </div>
-    </div>`;
-    d.querySelector('[data-yes]').onclick = () => { d.remove(); res(true); };
-    d.querySelector('[data-no]').onclick  = () => { d.remove(); res(false); };
-    d.addEventListener('click', e => { if (e.target === d) { d.remove(); res(false); } });
-    document.body.appendChild(d);
-  });
+  const ok = window.staffDialog?.confirm
+    ? await window.staffDialog.confirm({
+        title: `${action} verificação de plataforma`,
+        description: grant
+          ? 'O selo ficará visível publicamente. Conceda-o apenas a jogadores ou criadores cuja identidade foi revisada.'
+          : 'O selo deixará de aparecer publicamente para este utilizador.',
+        confirmLabel: action,
+        danger: !grant,
+      })
+    : window.confirm(`${action} a verificação de plataforma?`);
   if (!ok) return;
   try {
     const res = await apiFetch(`/api/admin/users/${userId}/verified`, {
@@ -6644,7 +6869,7 @@ async function togglePlatformVerified(userId, currentlyVerified) {
     // Update local data and re-render
     const u = globalAdminUsers.find(u => u.id === userId);
     if (u) u.is_platform_verified = grant;
-    renderAdminUsers();
+    renderAdminTab();
   } catch (e) {
     showToast('Erro: ' + e.message, 'error');
   }
@@ -6664,6 +6889,44 @@ const legacyAdmin = {
   selectedUserRow: null,
   searchTimer: null,
 };
+
+async function legacyAdminRequest(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) },
+  });
+  let data = {};
+  try { data = await res.json(); } catch { /* respostas vazias ou não JSON */ }
+  if (!res.ok) throw new Error(data.error || `A API respondeu com erro ${res.status}.`);
+  return data;
+}
+
+function legacyAdminLoading(message) {
+  return `<div class="empty-state" role="status"><div class="empty-icon">⏳</div><strong>${esc(message)}</strong><p>Aguarde enquanto consultamos o servidor.</p></div>`;
+}
+
+function legacyAdminLoadError(title, error, retryAction) {
+  return `<div class="empty-state" role="alert"><div class="empty-icon">⚠️</div><strong>${esc(title)}</strong><p>${esc(error?.message || 'Tente novamente em instantes.')}</p><button type="button" class="btn-secondary" data-legacy-retry="${esc(retryAction)}">Tentar novamente</button></div>`;
+}
+
+document.addEventListener('click', event => {
+  const retry = event.target.closest('[data-legacy-retry]');
+  if (!retry) return;
+  const actions = {
+    presets: legacyAdminLoadPresets,
+    pending: legacyAdminLoadPending,
+    all: legacyAdminLoadAll,
+  };
+  actions[retry.dataset.legacyRetry]?.();
+});
+
+function legacyAdminDate(value, withTime = false) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Data não informada';
+  return date.toLocaleString('pt-BR', withTime
+    ? { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+    : { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 function legacyAdminInit() {
   legacyAdminLoadPresets();
@@ -6690,13 +6953,10 @@ function legacyAdminSwitchTab(tab) {
 
 async function legacyAdminLoadPresets() {
   const list = document.getElementById('legacy-presets-list');
+  if (list) list.innerHTML = legacyAdminLoading('Carregando pré-aprovações…');
   try {
-    const res = await fetch(`${API_BASE}/api/admin/legacy/presets`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro ao carregar presets');
-    legacyAdmin.presets = data.presets || [];
+    const data = await legacyAdminRequest('/api/admin/legacy/presets');
+    legacyAdmin.presets = Array.isArray(data.presets) ? data.presets : [];
     const badge = document.getElementById('legacy-presets-count');
     if (badge) {
       badge.textContent = legacyAdmin.presets.length;
@@ -6704,7 +6964,8 @@ async function legacyAdminLoadPresets() {
     }
     legacyAdminRenderPresets();
   } catch (e) {
-    if (list) list.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px;">${e.message}</p>`;
+    console.error('[legacy presets]', e);
+    if (list) list.innerHTML = legacyAdminLoadError('Não foi possível carregar as pré-aprovações.', e, 'presets');
   }
 }
 
@@ -6729,13 +6990,16 @@ function legacyAdminRenderPresets() {
           ${p.target_mc ? `<span style="font-size:12px;color:var(--text-secondary);">(${esc(p.target_mc)})</span>` : ''}
         </div>
         ${p.note ? `<p style="margin:3px 0 0;font-size:12px;color:var(--text-secondary);">${esc(p.note)}</p>` : ''}
-        <p style="margin:2px 0 0;font-size:11px;color:var(--text-secondary);">Criado por ${esc(p.created_by_name || '—')} • ${new Date(p.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'short',year:'numeric'})}</p>
+        <p style="margin:2px 0 0;font-size:11px;color:var(--text-secondary);">Criado por ${esc(p.created_by_name || '—')} • ${esc(legacyAdminDate(p.created_at))}</p>
       </div>
-      <button onclick="legacyAdminDeletePreset(${p.id}, '${esc(p.legacy_username)}')"
+      <button type="button" data-legacy-delete-id="${esc(p.id)}" data-legacy-delete-name="${esc(p.legacy_username)}"
               style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:18px;line-height:1;padding:4px 8px;border-radius:6px;flex-shrink:0;"
               title="Remover preset">🗑</button>
     </div>
   `).join('');
+  list.querySelectorAll('[data-legacy-delete-id]').forEach(button => {
+    button.addEventListener('click', () => legacyAdminDeletePreset(button.dataset.legacyDeleteId, button.dataset.legacyDeleteName));
+  });
 }
 
 function legacyAdminUserSearch() {
@@ -6746,20 +7010,21 @@ function legacyAdminUserSearch() {
     return;
   }
   legacyAdmin.searchTimer = setTimeout(async () => {
+    const resultsEl = document.getElementById('lp-user-results');
+    if (resultsEl) {
+      resultsEl.innerHTML = '<p role="status" style="padding:12px;font-size:13px;color:var(--text-secondary);margin:0;">Buscando usuários…</p>';
+      resultsEl.style.display = 'block';
+    }
     try {
-      const res = await fetch(`${API_BASE}/api/admin/users?search=${encodeURIComponent(q)}&limit=8`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      const users = data.users || data.staff || [];
-      const resultsEl = document.getElementById('lp-user-results');
+      const data = await legacyAdminRequest(`/api/admin/users?search=${encodeURIComponent(q)}&limit=8`);
+      const users = Array.isArray(data.users) ? data.users : (Array.isArray(data.staff) ? data.staff : []);
       if (!users.length) {
         resultsEl.innerHTML = '<p style="padding:12px;font-size:13px;color:var(--text-secondary);margin:0;">Nenhum usuário encontrado.</p>';
         resultsEl.style.display = 'block';
         return;
       }
       resultsEl.innerHTML = users.map(u => `
-        <div onclick="legacyAdminSelectUser(${u.id}, '${esc(u.username)}', '${esc(u.minecraft_name || '')}', '${esc(u.minecraft_name || 'Steve')}')"
+        <div data-legacy-user-id="${esc(u.id)}" data-legacy-username="${esc(u.username)}" data-legacy-mc-name="${esc(u.minecraft_name || '')}" data-legacy-avatar="${esc(u.minecraft_name || 'Steve')}" role="button" tabindex="0"
              style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .15s;"
              onmouseover="this.style.background='var(--accent-light,rgba(23,97,240,.07))'" onmouseout="this.style.background=''">
           <img src="https://minotar.net/helm/${encodeURIComponent(u.minecraft_name || 'Steve')}/36.png"
@@ -6773,8 +7038,21 @@ function legacyAdminUserSearch() {
         </div>
       `).join('');
       resultsEl.style.display = 'block';
+      resultsEl.querySelectorAll('[data-legacy-user-id]').forEach(row => {
+        const select = () => legacyAdminSelectUser(row.dataset.legacyUserId, row.dataset.legacyUsername, row.dataset.legacyMcName, row.dataset.legacyAvatar);
+        row.addEventListener('click', select);
+        row.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          select();
+        });
+      });
     } catch (e) {
       console.error('[legacyAdminUserSearch]', e);
+      if (resultsEl) {
+        resultsEl.innerHTML = `<p role="alert" style="padding:12px;font-size:13px;color:var(--danger);margin:0;">Não foi possível buscar usuários. ${esc(e.message)}</p>`;
+        resultsEl.style.display = 'block';
+      }
     }
   }, 320);
 }
@@ -6855,7 +7133,7 @@ async function legacyAdminDeletePreset(id, legacyUsername) {
     : false;
   if (!approved) return;
   try {
-    const res = await fetch(`${API_BASE}/api/admin/legacy/preset/${id}`, {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/preset/${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -6872,13 +7150,10 @@ async function legacyAdminDeletePreset(id, legacyUsername) {
 
 async function legacyAdminLoadPending() {
   const list = document.getElementById('legacy-pending-list');
+  if (list) list.innerHTML = legacyAdminLoading('Carregando solicitações pendentes…');
   try {
-    const res = await fetch(`${API_BASE}/api/admin/legacy/pending`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro');
-    legacyAdmin.pending = data.migrations || [];
+    const data = await legacyAdminRequest('/api/admin/legacy/pending');
+    legacyAdmin.pending = Array.isArray(data.migrations) ? data.migrations : [];
 
     const badge = document.getElementById('legacy-pending-count');
     const navBadge = document.getElementById('legacy-nav-pending-badge');
@@ -6888,7 +7163,8 @@ async function legacyAdminLoadPending() {
     });
     legacyAdminRenderPending();
   } catch (e) {
-    if (list) list.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px;">${e.message}</p>`;
+    console.error('[legacy pending]', e);
+    if (list) list.innerHTML = legacyAdminLoadError('Não foi possível carregar as solicitações pendentes.', e, 'pending');
   }
 }
 
@@ -6899,8 +7175,10 @@ function legacyAdminRenderPending() {
     list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><strong>Nenhuma solicitação pendente</strong></div>';
     return;
   }
-  list.innerHTML = legacyAdmin.pending.map(m => `
-    <div id="legacy-pending-item-${m.id}" style="border:1px solid var(--line);border-radius:13px;padding:16px;margin-bottom:10px;background:var(--bg,#fff);">
+  list.innerHTML = legacyAdmin.pending.map(m => {
+    const id = esc(String(m.id ?? ''));
+    return `
+    <div id="legacy-pending-item-${id}" style="border:1px solid var(--line);border-radius:13px;padding:16px;margin-bottom:10px;background:var(--bg,#fff);">
       <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
         <img src="https://minotar.net/helm/${encodeURIComponent(m.requester_mc || 'Steve')}/46.png"
              onerror="this.src='https://minotar.net/helm/Steve/46.png'"
@@ -6912,7 +7190,7 @@ function legacyAdminRenderPending() {
             ${esc(m.requester_username)}
             ${m.requester_mc ? `<span style="font-size:12px;font-weight:500;color:var(--text-secondary);">(${esc(m.requester_mc)})</span>` : ''}
           </p>
-          <p style="margin:0 0 3px;font-size:12px;color:var(--text-secondary);">Solicitado em ${new Date(m.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
+          <p style="margin:0 0 3px;font-size:12px;color:var(--text-secondary);">Solicitado em ${esc(legacyAdminDate(m.created_at, true))}</p>
           ${m.preview ? `
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
             <span style="font-size:12px;background:var(--accent-light,rgba(23,97,240,.08));color:var(--accent);padding:3px 9px;border-radius:20px;font-weight:700;">⚔️ ${m.preview.merit || 0} méritos</span>
@@ -6921,25 +7199,37 @@ function legacyAdminRenderPending() {
           </div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
-          <button onclick="legacyAdminApprove(${m.id})"
+          <button type="button" data-legacy-action="approve" data-legacy-id="${id}"
                   style="background:rgba(52,199,89,.1);border:1px solid var(--success);color:var(--success);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">
             ✓ Aprovar
           </button>
-          <button onclick="legacyAdminReject(${m.id})"
+          <button type="button" data-legacy-action="reject" data-legacy-id="${id}"
                   style="background:rgba(255,59,48,.07);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">
             ✗ Rejeitar
           </button>
         </div>
       </div>
-      <div id="legacy-pending-reject-form-${m.id}" style="display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
-        <input type="text" id="legacy-reject-reason-${m.id}" class="form-input" placeholder="Motivo da rejeição (obrigatório)" style="width:100%;margin-bottom:8px;">
+      <div id="legacy-pending-reject-form-${id}" style="display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
+        <input type="text" id="legacy-reject-reason-${id}" class="form-input" placeholder="Motivo da rejeição (obrigatório)" style="width:100%;margin-bottom:8px;">
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button onclick="document.getElementById('legacy-pending-reject-form-${m.id}').style.display='none'" class="btn-secondary" style="padding:8px 14px;font-size:13px;">Cancelar</button>
-          <button onclick="legacyAdminConfirmReject(${m.id})" class="btn-danger" style="padding:8px 16px;font-size:13px;font-weight:700;">Confirmar Rejeição</button>
+          <button type="button" data-legacy-action="cancel-reject" data-legacy-id="${id}" class="btn-secondary" style="padding:8px 14px;font-size:13px;">Cancelar</button>
+          <button type="button" data-legacy-action="confirm-reject" data-legacy-id="${id}" class="btn-danger" style="padding:8px 16px;font-size:13px;font-weight:700;">Confirmar Rejeição</button>
         </div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
+  list.querySelectorAll('[data-legacy-action]').forEach(button => {
+    button.addEventListener('click', () => {
+      const { legacyAction: action, legacyId: id } = button.dataset;
+      if (action === 'approve') legacyAdminApprove(id);
+      else if (action === 'reject') legacyAdminReject(id);
+      else if (action === 'confirm-reject') legacyAdminConfirmReject(id);
+      else if (action === 'cancel-reject') {
+        const form = document.getElementById(`legacy-pending-reject-form-${id}`);
+        if (form) form.style.display = 'none';
+      }
+    });
+  });
 }
 
 async function legacyAdminApprove(id) {
@@ -6952,7 +7242,7 @@ async function legacyAdminApprove(id) {
     : null;
   if (notes === null) return;
   try {
-    const res = await fetch(`${API_BASE}/api/admin/legacy/${id}/approve`, {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/${encodeURIComponent(id)}/approve`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes }),
@@ -6974,7 +7264,7 @@ async function legacyAdminConfirmReject(id) {
   const reason = document.getElementById(`legacy-reject-reason-${id}`)?.value?.trim();
   if (!reason) { showToast('Informe o motivo da rejeição.', 'error'); return; }
   try {
-    const res = await fetch(`${API_BASE}/api/admin/legacy/${id}/reject`, {
+    const res = await fetch(`${API_BASE}/api/admin/legacy/${encodeURIComponent(id)}/reject`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason }),
@@ -6991,17 +7281,14 @@ async function legacyAdminConfirmReject(id) {
 
 async function legacyAdminLoadAll() {
   const list = document.getElementById('legacy-all-list');
-  if (list) list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><strong>Carregando...</strong></div>';
+  if (list) list.innerHTML = legacyAdminLoading('Carregando histórico de migrações…');
   try {
-    const res = await fetch(`${API_BASE}/api/admin/legacy/all`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro');
-    legacyAdmin.all = data.migrations || [];
+    const data = await legacyAdminRequest('/api/admin/legacy/all');
+    legacyAdmin.all = Array.isArray(data.migrations) ? data.migrations : [];
     legacyAdminRenderAll();
   } catch (e) {
-    if (list) list.innerHTML = `<p style="color:var(--danger);font-size:13px;padding:12px;">${e.message}</p>`;
+    console.error('[legacy all]', e);
+    if (list) list.innerHTML = legacyAdminLoadError('Não foi possível carregar o histórico de migrações.', e, 'all');
   }
 }
 
@@ -7032,8 +7319,10 @@ function legacyAdminRenderAll() {
     return;
   }
   list.innerHTML = items.map(m => {
-    const st = LEGACY_STATUS_LABELS[m.status] || { label: m.status, color: 'var(--text-secondary)' };
-    const mode = m.migration_mode ? LEGACY_MODE_LABELS[m.migration_mode] || m.migration_mode : '—';
+    const rawStatus = String(m.status || 'Não informado');
+    const st = LEGACY_STATUS_LABELS[rawStatus] || { label: rawStatus, color: 'var(--text-secondary)' };
+    const rawMode = String(m.migration_mode || '');
+    const mode = rawMode ? LEGACY_MODE_LABELS[rawMode] || rawMode : '—';
     return `
     <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--line);border-radius:11px;margin-bottom:7px;background:var(--bg,#fff);flex-wrap:wrap;">
       <div style="flex:1;min-width:180px;">
@@ -7043,11 +7332,11 @@ function legacyAdminRenderAll() {
           ${esc(m.requester_username || '#' + m.user_id)}
           ${m.requester_mc ? `<span style="font-size:11px;font-weight:500;color:var(--text-secondary);">(${esc(m.requester_mc)})</span>` : ''}
         </p>
-        <p style="margin:0;font-size:11px;color:var(--text-secondary);">${new Date(m.created_at).toLocaleString('pt-BR', {day:'2-digit',month:'short',year:'numeric'})}</p>
+        <p style="margin:0;font-size:11px;color:var(--text-secondary);">${esc(legacyAdminDate(m.created_at))}</p>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${st.color};color:${st.color};background:${st.color}18;">${st.label}</span>
-        ${m.migration_mode ? `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg-2);color:var(--text-secondary);">${mode}</span>` : ''}
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${st.color};color:${st.color};background:${st.color}18;">${esc(st.label)}</span>
+        ${rawMode ? `<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg-2);color:var(--text-secondary);">${esc(mode)}</span>` : ''}
         <span style="font-size:11px;font-weight:600;color:var(--text-secondary);padding:3px 8px;border-radius:20px;background:var(--bg-2);">${esc(m.verification_tier || '—')}</span>
       </div>
     </div>
@@ -7058,8 +7347,8 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
-<script src="assets/js/dashboard-v2.js?v=20260714e"></script>
-<script src="assets/js/dashboard-v3.js?v=20260714e"></script>
-<script src="assets/js/dashboard-v4.js?v=20260714e"></script>
+<script src="assets/js/dashboard-v2.js?v=20260716a"></script>
+<script src="assets/js/dashboard-v3.js?v=20260716a"></script>
+<script src="assets/js/dashboard-v4.js?v=20260716a"></script>
 </body>
 </html>

@@ -44,7 +44,7 @@
 }
 
 html { background: var(--staff-bg); }
-body { visibility: visible !important; background: var(--staff-bg) !important; color: var(--staff-ink) !important; }
+body { background: var(--staff-bg) !important; color: var(--staff-ink) !important; }
 body::before { display: none !important; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid var(--staff-amber) !important; outline-offset: 3px !important; }
