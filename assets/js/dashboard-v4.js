@@ -6,7 +6,7 @@
   const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
   const themeMeta = qs('meta[name="theme-color"]');
   const mobileBreakpoint = window.matchMedia('(max-width: 900px)');
-  const primaryMobileViews = new Set(['command', 'moderation', 'players', 'server']);
+  const primaryMobileViews = new Set(['command', 'moderation', 'social', 'server']);
   const mutatingSelector = [
     '[data-staff-add-access]', '[data-staff-requeue]', '[data-v2-save-settings]',
     '[data-v2-mod-bulk]', '[data-v2-danger-action]', '[data-v2-bulk-verify]',
@@ -22,6 +22,8 @@
   let onlineTimer = 0;
   let updateFrame = 0;
   let themeSaveRevision = 0;
+  let queuedThemePreference = null;
+  let themeWriteRun = null;
   const observerMode = () => typeof isObserverSession === 'function' ? isObserverSession() : (typeof session !== 'undefined' && session?.role === 'observer');
 
   const quickActions = {
@@ -86,6 +88,7 @@
 
   function toggleTheme() {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('fa_theme_revision', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
     localStorage.setItem('fa_theme', next);
     localStorage.setItem('fa_theme_pending', next);
     document.documentElement.setAttribute('data-theme', next);
@@ -93,29 +96,48 @@
     persistThemePreference(next);
   }
 
-  async function persistThemePreference(theme) {
-    const revision = ++themeSaveRevision;
-    const authToken = localStorage.getItem('fa_token');
-    if (!authToken || !navigator.onLine || observerMode() || (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW)) return;
-    try {
-      const currentResponse = await apiFetch('/api/me/preferences', { headers: { Authorization: `Bearer ${authToken}` } });
-      const currentPayload = currentResponse.ok ? await currentResponse.json().catch(() => ({})) : {};
-      if (revision !== themeSaveRevision) return;
-      const current = currentPayload?.data || currentPayload || {};
-      const response = await apiFetch('/api/me/preferences', {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...current, theme }),
-      });
-      if (!response.ok) throw new Error(`Prefer\u00eancia n\u00e3o salva (${response.status}).`);
-      if (revision === themeSaveRevision) {
-        setTimeout(() => {
-          if (revision === themeSaveRevision && localStorage.getItem('fa_theme_pending') === theme) localStorage.removeItem('fa_theme_pending');
-        }, 4000);
+  function persistThemePreference(theme) {
+    if (!['light', 'dark'].includes(theme)) return Promise.resolve();
+    queuedThemePreference = theme;
+    if (themeWriteRun) return themeWriteRun;
+
+    themeWriteRun = (async () => {
+      while (queuedThemePreference) {
+        const desiredTheme = queuedThemePreference;
+        queuedThemePreference = null;
+        const revision = ++themeSaveRevision;
+        const localRevision = localStorage.getItem('fa_theme_revision') || '';
+        const authToken = localStorage.getItem('fa_token');
+        if (!authToken || observerMode() || (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW)) {
+          if (!queuedThemePreference && localStorage.getItem('fa_theme_pending') === desiredTheme) {
+            localStorage.removeItem('fa_theme_pending');
+          }
+          continue;
+        }
+        if (!navigator.onLine) break;
+        try {
+          const response = await apiFetch('/api/me/preferences', {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme: desiredTheme }),
+          });
+          if (!response.ok) throw new Error(`Prefer\u00eancia n\u00e3o salva (${response.status}).`);
+          if (!queuedThemePreference
+            && revision === themeSaveRevision
+            && (localStorage.getItem('fa_theme_revision') || '') === localRevision
+            && localStorage.getItem('fa_theme') === desiredTheme
+            && localStorage.getItem('fa_theme_pending') === desiredTheme) {
+            localStorage.removeItem('fa_theme_pending');
+          }
+        } catch (error) {
+          console.warn('[staff theme preference]', error);
+        }
       }
-    } catch (error) {
-      console.warn('[staff theme preference]', error);
-    }
+    })().finally(() => {
+      themeWriteRun = null;
+      if (queuedThemePreference && navigator.onLine) persistThemePreference(queuedThemePreference);
+    });
+    return themeWriteRun;
   }
 
   function syncCharts() {
@@ -179,6 +201,16 @@
   }
 
   window.faStaffSyncCharts = syncCharts;
+
+  let chartResizeTimer = 0;
+  function resizeChartsAfterLayout() {
+    clearTimeout(chartResizeTimer);
+    chartResizeTimer = setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+      Object.values(window.Chart?.instances || {}).forEach(chart => {
+        try { chart.resize(); } catch (_) { /* chart may be disposing */ }
+      });
+    })), 90);
+  }
 
   function addHeaderEnhancements() {
     const header = qs('body > header');
@@ -387,7 +419,7 @@
       menu.appendChild(head);
 
       const groups = [
-        ['Operação e comunidade', ['access', 'merit', 'notifications']],
+        ['Operação e comunidade', ['players', 'access', 'merit', 'notifications']],
         ['Controle e rastreabilidade', ['audit', 'integrations', 'settings']],
         ['Análises e contexto', ['analytics', 'tools', 'legacy']],
       ];
@@ -642,9 +674,17 @@
       if (pendingTheme) persistThemePreference(pendingTheme);
     });
     window.addEventListener('offline', () => updateConnectionState(true));
+    window.addEventListener('storage', event => {
+      if (event.key !== 'fa_theme' || !['light', 'dark', 'auto'].includes(event.newValue)) return;
+      const next = event.newValue === 'auto'
+        ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : event.newValue;
+      document.documentElement.setAttribute('data-theme', next);
+    });
     mobileBreakpoint.addEventListener?.('change', () => {
       if (!mobileBreakpoint.matches && qs('#v2-mobile-menu.active')) setMoreOpen(false, { consumeHistory: true, returnFocus: false });
       updateActiveChrome();
+      resizeChartsAfterLayout();
     });
     document.addEventListener('staff:navigation-rebuilt', () => {
       moreHistoryEntry = false;
@@ -655,10 +695,10 @@
 
     const content = qs('.dashboard-content');
     content?.addEventListener('scroll', () => document.body.classList.toggle('v4-scrolled', content.scrollTop > 20), { passive: true });
-    window.visualViewport?.addEventListener('resize', syncVisualViewport, { passive: true });
+    window.visualViewport?.addEventListener('resize', () => { syncVisualViewport(); resizeChartsAfterLayout(); }, { passive: true });
     window.visualViewport?.addEventListener('scroll', syncVisualViewport, { passive: true });
-    window.addEventListener('resize', syncVisualViewport, { passive: true });
-    window.addEventListener('orientationchange', syncVisualViewport, { passive: true });
+    window.addEventListener('resize', () => { syncVisualViewport(); resizeChartsAfterLayout(); }, { passive: true });
+    window.addEventListener('orientationchange', () => { syncVisualViewport(); resizeChartsAfterLayout(); }, { passive: true });
     syncVisualViewport();
   }
 

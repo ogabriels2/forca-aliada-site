@@ -174,6 +174,8 @@
         if (isMe) {
           msg.username = state.me?.username;
           msg.minecraft_name = state.me?.minecraft_name;
+          msg.avatar_url = state.me?.avatar_url || state.me?.profile_photo_url || '';
+          msg.photo_url = state.me?.photo_url || '';
         }
         state.messages.push(msg);
         state.messages = dedupeMessages(state.messages);
@@ -380,6 +382,16 @@
   const handleOf = p => p?.username || p?.other_username || nameOf(p);
   const groupNameOf = g => g?.name || 'Grupo';
   const skin = (name, size=50) => `https://minotar.net/helm/${encodeURIComponent((name||'Steve').trim()||'Steve')}/${size}.png`;
+  const safeProfilePhoto = value => {
+    try {
+      const parsed = new URL(String(value || ''), location.href);
+      const localHttp = location.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(parsed.hostname);
+      return parsed.protocol === 'https:' || localHttp ? parsed.href : '';
+    } catch { return ''; }
+  };
+  const avatarOf = (person, size=50) => safeProfilePhoto(
+    person?.profile_photo_url || person?.avatar_url || person?.other_avatar_url || person?.photo_url || person?.other_photo_url,
+  ) || skin(nameOf(person), size);
   const rel = value => {
     if (!value) return '';
     const diff = Math.max(0, (Date.now() - new Date(value).getTime()) / 1000);
@@ -1017,7 +1029,7 @@
       const verified = conv.is_platform_verified ? `<span class="fa-chat-verified" title="Verificado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>` : '';
       return `
         <button class="fa-chat-row ${conv.unread_count?'is-unread':''}" type="button" data-chat-conv="${esc(conv.id)}">
-          <img src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'">
+          <img src="${avatarOf(conv,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin(name,50)}'">
           <span class="fa-chat-row-meta"><strong>${esc(name)}${verified}</strong><small>${esc(preview)}</small></span>
           ${conv.unread_count ? `<span class="fa-chat-pill">${esc(conv.unread_count)}</span>` : `<small>${esc(rel(conv.last_message_at||conv.conversation_last_message_at))}</small>`}
         </button>`;
@@ -1082,7 +1094,7 @@
         <div class="fa-chat-member-list">
           ${state.loadingFriends && !rows.length ? loadingRows() : rows.length ? rows.map(p => {
             const name = nameOf(p), checked = selected.has(String(p.id));
-            return `<button class="fa-chat-member ${checked?'is-selected':''}" type="button" data-chat-member-toggle="${esc(p.id)}"><img src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'"><span><strong>${esc(name)}</strong><small>@${esc(handleOf(p))}</small></span><i>${checked?'✓':'+'}</i></button>`;
+            return `<button class="fa-chat-member ${checked?'is-selected':''}" type="button" data-chat-member-toggle="${esc(p.id)}"><img src="${avatarOf(p,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin(name,50)}'"><span><strong>${esc(name)}</strong><small>@${esc(handleOf(p))}</small></span><i>${checked?'✓':'+'}</i></button>`;
           }).join('') : '<div class="fa-chat-empty"><strong>Ninguém encontrado</strong>Busque amigos ou perfis públicos.</div>'}
         </div>
         <button class="fa-chat-create" type="submit" ${state.busy||!state.groupName.trim()||!selected.size?'disabled':''}>Criar grupo</button>
@@ -1102,7 +1114,7 @@
     return `
       <button class="fa-chat-friend" type="button" data-chat-user="${esc(person.id)}" data-chat-name="${esc(name)}">
         <span class="fa-chat-av-wrap">
-          <img src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'">
+          <img src="${avatarOf(person,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin(name,50)}'">
           ${person.is_online ? '<span class="fa-chat-online-dot"></span>' : ''}
         </span>
         <span class="fa-chat-friend-meta"><strong>${esc(name)}${verified}</strong><small>${esc(meta)}</small></span>
@@ -1127,7 +1139,7 @@
           <button class="fa-chat-icon-btn" type="button" data-chat-back aria-label="Voltar">${icons.back}</button>
           ${isGroup
             ? `<span class="fa-chat-peer-av fa-chat-group-av">${icons.group}</span>`
-            : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${skin(name,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'"/>${onlineDot}</span>`
+            : `<span class="fa-chat-av-wrap fa-chat-av-wrap--peer"><img class="fa-chat-peer-av" src="${avatarOf(conv,50)}" alt="${esc(name)}" onerror="this.onerror=null;this.src='${skin(name,50)}'"/>${onlineDot}</span>`
           }
           <div><strong>${esc(name)}${verified}</strong><small>${isGroup?`${Number(conv.member_count||0)} membros`:`@${esc(handleOf(conv))}${isOnline?' · online':conv.is_friend?' · amigo':''}`}</small></div>
           ${isGroup ? '' : `<button class="fa-chat-icon-btn" type="button" data-chat-profile="${esc(conv.other_id)}" aria-label="Ver perfil">${icons.user}</button>`}
@@ -1576,7 +1588,7 @@
       return `
         <button class="fa-chat-social-card fa-chat-social-card--comment" type="button" data-chat-open-post="${esc(comment.post_id || post.id || '')}">
           <span class="fa-chat-social-card-brand">Forca Aliada · comentario</span>
-          <span class="fa-chat-social-card-author"><img src="${skin(comment.minecraft_name || comment.username || 'Steve', 50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(comment.username || comment.minecraft_name || 'jogador')}</small></span>
+          <span class="fa-chat-social-card-author"><img src="${avatarOf(comment,50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(comment.username || comment.minecraft_name || 'jogador')}</small></span>
           <span class="fa-chat-social-card-text">${esc(comment.content || 'Comentario da comunidade')}</span>
           <span class="fa-chat-social-card-context">${esc(String(post.content || 'Abrir conversa completa').slice(0, 120))}</span>
         </button>`;
@@ -1590,7 +1602,7 @@
       <button class="fa-chat-social-card ${media.length ? 'has-media' : 'no-media'}" type="button" data-chat-open-post="${esc(post.id || '')}">
         <span class="fa-chat-social-card-main">
           <span class="fa-chat-social-card-brand">Forca Aliada · postagem</span>
-          <span class="fa-chat-social-card-author"><img src="${skin(post.minecraft_name || post.username || 'Steve', 50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(post.username || post.minecraft_name || 'jogador')}</small></span>
+          <span class="fa-chat-social-card-author"><img src="${avatarOf(post,50)}" alt=""><strong>${esc(author)}</strong><small>@${esc(post.username || post.minecraft_name || 'jogador')}</small></span>
           ${post.content ? `<span class="fa-chat-social-card-text">${esc(post.content)}</span>` : ''}
         </span>
         ${mediaHTML}
@@ -1739,7 +1751,7 @@
     const failAlert = message.client_status==='failed' ? `<button class="fa-chat-fail-alert" data-chat-retry="${esc(message.id)}" title="Tentar reenviar">⚠</button>` : '';
     const showAvatar = !isMe;
     const avatarHTML = showAvatar
-      ? `<img class="fa-chat-bubble-av" src="${skin(sender,50)}" alt="${esc(sender)}" onerror="this.onerror=null;this.src='${skin('Steve',50)}'" style="visibility:${isGroupFirst?'visible':'hidden'}">`
+      ? `<img class="fa-chat-bubble-av" src="${avatarOf(message,50)}" alt="${esc(sender)}" onerror="this.onerror=null;this.src='${skin(sender,50)}'" style="visibility:${isGroupFirst?'visible':'hidden'}">`
       : `<span class="fa-chat-bubble-av-spacer"></span>`;
     const showName = state.currentKind==='group' && !isMe && isGroupFirst;
     const nameHTML = showName ? `<span class="fa-chat-bubble-name">${esc(sender)}</span>` : '';
@@ -2743,6 +2755,8 @@
       created_at: new Date().toISOString(),
       username: currentMe?.username,
       minecraft_name: currentMe?.minecraft_name,
+      avatar_url: currentMe?.avatar_url || currentMe?.profile_photo_url || '',
+      photo_url: currentMe?.photo_url || '',
       attachments: attachments.map(att => ({ ...att, file: undefined })),
       _localAttachments: attachments,
       client_ref: tempId,
@@ -2773,6 +2787,8 @@
         ...msg,
         username: currentMe?.username,
         minecraft_name: currentMe?.minecraft_name,
+        avatar_url: currentMe?.avatar_url || currentMe?.profile_photo_url || '',
+        photo_url: currentMe?.photo_url || '',
         reply_to: optimistic.reply_to,
       };
 

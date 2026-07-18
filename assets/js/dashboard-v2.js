@@ -27,6 +27,7 @@
     { view: 'server', id: 'server-overview', label: 'Servidor', icon: 'server', group: 'Operação' },
     { view: 'access', id: 'dashboard-access', label: 'Acesso', icon: 'key-round', group: 'Operação', badge: 'access', scope: 'infrastructure' },
     { view: 'players', id: 'admin-users-card', label: 'Jogadores', icon: 'users', group: 'Comunidade' },
+    { view: 'social', id: 'social-admin-card', label: 'Rede social', icon: 'messages-square', group: 'Comunidade', scope: 'private_activity' },
     { view: 'merit', id: 'merit-card', label: 'Economia', icon: 'landmark', group: 'Comunidade', scope: 'economy_private' },
     { view: 'moderation', id: 'moderation-card', label: 'Moderação', icon: 'shield-alert', group: 'Comunidade', badge: 'moderation', scope: 'moderation_private' },
     { view: 'notifications', id: 'admin-notifications-card', label: 'Comunicação', icon: 'megaphone', group: 'Comunidade', scope: 'staff_operations' },
@@ -223,7 +224,7 @@
     const main = [
       ['command', 'layout-dashboard', 'Visão geral'],
       ['server', 'server', 'Servidor'],
-      ['players', 'users', 'Jogadores'],
+      ['social', 'messages-square', 'Rede social'],
       ['moderation', 'shield-alert', 'Atenção'],
     ].filter(([view]) => canAccessView(VIEW_META[view]));
     nav.style.setProperty('--v2-mobile-count', String(main.length + 1));
@@ -270,6 +271,7 @@
       { label: 'Registrar ajuste econômico', icon: 'landmark', view: 'merit' },
       { label: 'Criar aviso para a comunidade', icon: 'megaphone', view: 'notifications' },
       { label: 'Ver denúncias pendentes', icon: 'flag', view: 'moderation' },
+      { label: 'Gerenciar rede social', icon: 'messages-square', view: 'social' },
       { label: 'Revisar lista de acesso', icon: 'key-round', view: 'access' },
       { label: 'Abrir insights da comunidade', icon: 'bar-chart-3', view: 'analytics' },
     ].filter((item) => !q || item.label.toLocaleLowerCase('pt-BR').includes(q));
@@ -391,6 +393,7 @@
     if (view === 'server') loadServerIntelligence();
     if (view === 'access') window.staffAccessWorkspace?.load?.();
     if (view === 'players') loadPlayerDirectory();
+    if (view === 'social') window.staffSocialWorkspace?.load?.();
     if (view === 'merit') loadMeritOverview();
     if (view === 'notifications') loadNotificationWorkspace();
     if (view === 'moderation') loadModerationOverview();
@@ -563,7 +566,7 @@
     rows.forEach((row) => { grid[num(row.day_of_week)][num(row.hour_of_day)] = num(row[valueKey]); });
     const max = Math.max(1, ...rows.map((row) => num(row[valueKey])));
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    container.className = 'heatmap-shell';
+    container.className = 'heatmap-shell mobile-scroll-affordance';
     container.innerHTML = `<div class="heatmap">
       <div class="heatmap-header"><span></span>${Array.from({ length: 24 }, (_, hour) => `<span class="heatmap-hlabel">${hour % 3 === 0 ? `${hour}h` : ''}</span>`).join('')}</div>
       ${days.map((day, dayIndex) => `<div class="heatmap-row"><span class="heatmap-dlabel">${day}</span>${grid[dayIndex].map((value, hour) => `<span class="heatmap-cell" tabindex="0" role="img" aria-label="${day}, ${hour} horas: ${value} jogador${value === 1 ? '' : 'es'}" style="--intensity:${Math.round(value / max * 100)}%" title="${day}, ${hour}h: ${value}"></span>`).join('')}</div>`).join('')}
@@ -1325,9 +1328,9 @@
     section.className = 'v2-grid two v2-server-intelligence';
     section.innerHTML = `
       <div class="server-intelligence-heading span-2"><div><span class="cc-kicker">Diagnóstico</span><h3>Comportamento e disponibilidade</h3><p>Leitura visual do uso, estabilidade e presença no período.</p></div><label class="v2-btn"><input type="checkbox" id="v2-server-compare"> Comparar com período anterior</label></div>
-      <article class="v2-panel"><div class="v2-section-head"><div><h3>Atividade 7×24</h3><p>Intensidade de sessões por horário.</p></div></div><div id="v2-server-heatmap" class="v2-loading">Carregando...</div></article>
+      <article class="v2-panel"><div class="v2-section-head"><div><h3>Atividade 7×24</h3><p>Intensidade de sessões por horário. No celular, deslize para ver todas as horas.</p></div></div><div id="v2-server-heatmap" class="v2-loading mobile-scroll-affordance" tabindex="0" aria-label="Mapa de atividade por horário; deslize horizontalmente para ver tudo">Carregando...</div></article>
       <article class="v2-panel"><div class="v2-section-head"><div><h3>Atividade recente</h3><p>Entradas e saídas mais recentes.</p></div></div><div id="v2-server-feed" class="v2-feed"></div></article>
-      <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Linha do tempo de uptime</h3><p>Disponibilidade horária nos últimos 30 dias.</p></div></div><div id="v2-uptime-timeline" style="margin-top:14px"></div></article>
+      <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Linha do tempo de uptime</h3><p>Disponibilidade horária nos últimos 30 dias. Deslize para explorar.</p></div></div><div id="v2-uptime-timeline" class="mobile-scroll-affordance" tabindex="0" aria-label="Linha do tempo de uptime; deslize horizontalmente" style="margin-top:14px"></div></article>
       <article class="v2-panel span-2"><div class="v2-section-head"><div><h3>Presença de jogadores</h3><p>Jogadores únicos, pico simultâneo e comparação anterior.</p></div></div><div class="v2-chart-wrap"><canvas id="v2-server-presence-chart" role="img" aria-label="Gráfico de presença de jogadores por dia">Gráfico de presença de jogadores por dia.</canvas></div></article>`;
     const anchor = card.querySelector('.server-activity-section');
     if (anchor) card.insertBefore(section, anchor);
@@ -1706,6 +1709,7 @@
     if (state.view === 'command' || state.view === 'analytics') loadExecutiveAnalytics?.(true);
     if (state.view === 'server') { loadData?.(); loadServerIntelligence(); }
     if (state.view === 'players') loadPlayerDirectory();
+    if (state.view === 'social') window.staffSocialWorkspace?.load?.({ force: true });
     if (state.view === 'merit') loadMeritOverview();
     if (state.view === 'moderation') { modRefresh?.(); loadModerationOverview(); }
     if (state.view === 'audit') { fetchAuditLogs?.(); loadAuditOverview(); }
@@ -1854,9 +1858,10 @@
         }
         return;
       }
-      if (event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); openCommandPalette(); }
-      if (/^[1-9]$/.test(event.key) && !/input|textarea|select/i.test(event.target.tagName)) {
-        const view = availableViews()[num(event.key) - 1]?.view;
+      const pressedKey = String(event.key || '');
+      if (pressedKey.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); openCommandPalette(); }
+      if (/^[1-9]$/.test(pressedKey) && !/input|textarea|select/i.test(event.target.tagName)) {
+        const view = availableViews()[num(pressedKey) - 1]?.view;
         if (view) navigate(view);
       }
     });

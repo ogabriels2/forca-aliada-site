@@ -27,14 +27,18 @@
   function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
   function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'dark')); }
 
-  apply();
+  apply(localStorage.getItem('fa_theme_pending') || localStorage.getItem(key) || 'dark');
 
   if (token) {
     const syncTheme = () => {
+      const revision = localStorage.getItem('fa_theme_revision') || '';
+      if (localStorage.getItem('fa_theme_pending')) return;
       fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
         .then(r => r.ok ? r.json() : null)
         .then(p => {
-          if (p && p.theme) {
+          if (p?.theme
+            && !localStorage.getItem('fa_theme_pending')
+            && (localStorage.getItem('fa_theme_revision') || '') === revision) {
             localStorage.setItem(key, p.theme);
             apply(p.theme);
           }
@@ -44,6 +48,9 @@
   }
 
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'dark'));
+  addEventListener('storage', event => {
+    if (event.key === key && event.newValue) apply(event.newValue);
+  });
 })();
 </script>
 <style>
@@ -2918,6 +2925,9 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY = 'fa_token';
 const THEME_KEY = 'fa_theme';
+const THEME_PENDING_KEY = 'fa_theme_pending';
+const THEME_REVISION_KEY = 'fa_theme_revision';
+const DEFAULT_PROFILE_IMAGE = 'assets/images/app-icons/icon-192.png';
 
 let session = null;
 const token = localStorage.getItem(TOKEN_KEY);
@@ -2944,6 +2954,7 @@ let currentNotifFilter = 'all';
 let notifCache = [];
 let socialNotifCache = [];
 let prefsSaveTimer = null;
+let accountThemeWriteQueue = Promise.resolve();
 let xboxFriendsState = { friends: [], selected: new Set(), totalXbox: 0, warnings: [] };
 let initialTabApplied = false;
 
@@ -2982,6 +2993,82 @@ function formatRelativeTime(value) {
   if (diff < 172800) return 'Ontem';
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
+function safeProfileImageUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw, window.location.origin);
+    const allowed = url.protocol === 'https:' || (window.location.protocol === 'http:' && url.protocol === 'http:');
+    return allowed ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+function isDefaultProfileImage(value) {
+  if (!value) return false;
+  try {
+    const path = new URL(value, window.location.origin).pathname.toLowerCase().replace(/\/{2,}/g, '/');
+    return [
+      '/assets/images/fa-icon-dark.png',
+      '/assets/images/app-icons/icon-192.png',
+      '/assets/images/logo.jpg',
+      '/assets/images/logo.jpeg',
+      '/logo.jpg',
+      '/logo.jpeg'
+    ].includes(path);
+  } catch {
+    return false;
+  }
+}
+function profileImageCandidates(source = {}, size = 100) {
+  const avatarUrl = safeProfileImageUrl(source.avatarUrl || source.avatar_url);
+  const photoUrl = safeProfileImageUrl(source.photoUrl || source.photo_url);
+  const minecraftName = String(source.minecraftName || source.minecraft_name || '').trim();
+  const customImages = [avatarUrl, photoUrl].filter(url => url && !isDefaultProfileImage(url));
+  const defaultImages = [avatarUrl, photoUrl].filter(url => url && isDefaultProfileImage(url));
+  const minecraftImage = minecraftName
+    ? `https://minotar.net/helm/${encodeURIComponent(minecraftName)}/${size}.png`
+    : '';
+  return [...new Set([...customImages, minecraftImage, ...defaultImages, DEFAULT_PROFILE_IMAGE].filter(Boolean))];
+}
+function setProfileImage(image, source, size = 100) {
+  if (!image) return;
+  const candidates = profileImageCandidates(source, size);
+  let index = 0;
+  image.onerror = () => {
+    index += 1;
+    if (index >= candidates.length) {
+      image.onerror = null;
+      return;
+    }
+    image.src = candidates[index];
+  };
+  image.src = candidates[0];
+}
+function profileDisplayName(source = {}) {
+  return String(
+    source.displayName
+    || source.display_name
+    || source.username
+    || source.minecraftName
+    || source.minecraft_name
+    || 'Conta Força Aliada'
+  ).trim();
+}
+function buildSessionFromApi(me = {}) {
+  return {
+    id: me.id,
+    username: String(me.username || ''),
+    email: String(me.email || ''),
+    minecraftName: String(me.minecraft_name || ''),
+    displayName: String(me.display_name || ''),
+    avatarUrl: String(me.avatar_url || ''),
+    photoUrl: String(me.photo_url || ''),
+    role: String(me.role || ''),
+    createdAt: me.created_at,
+    isVerified: me.is_verified !== false
+  };
+}
 function prefsFromUI() {
   return {
     email_server: document.getElementById('pref-email-server')?.checked ?? true,
@@ -3010,7 +3097,7 @@ function applyPrefsToUI(p = {}) {
   const historySecurity = document.getElementById('pref-public-history-security');
   if (profileSecurity && p.public_profile !== undefined) profileSecurity.checked = Boolean(p.public_profile);
   if (historySecurity && p.public_history !== undefined) historySecurity.checked = Boolean(p.public_history);
-  if (p.theme) applyTheme(p.theme);
+  if (p.theme && !localStorage.getItem(THEME_PENDING_KEY)) applyTheme(p.theme);
   else applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 }
 
@@ -3025,43 +3112,77 @@ function applyTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
 }
 async function saveThemePreference(newTheme) {
-  localStorage.setItem(THEME_KEY, newTheme);
-  document.documentElement.setAttribute('data-theme', newTheme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : newTheme);
-
   const token = localStorage.getItem(TOKEN_KEY);
-  if (token) {
-    await fetch(`${API_BASE}/api/me/preferences`, {
+  if (!token) {
+    if (localStorage.getItem(THEME_PENDING_KEY) === newTheme) localStorage.removeItem(THEME_PENDING_KEY);
+    return;
+  }
+  const revision = localStorage.getItem(THEME_REVISION_KEY) || '';
+  const write = accountThemeWriteQueue.catch(() => {}).then(async () => {
+    const response = await fetch(`${API_BASE}/api/me/preferences`, {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme: newTheme })
     });
-  }
+    if (!response.ok) throw new Error(`Preferência não salva (${response.status}).`);
+    if ((localStorage.getItem(THEME_REVISION_KEY) || '') === revision
+      && localStorage.getItem(THEME_KEY) === newTheme
+      && localStorage.getItem(THEME_PENDING_KEY) === newTheme) {
+      localStorage.removeItem(THEME_PENDING_KEY);
+    }
+  });
+  accountThemeWriteQueue = write;
+  return write;
 }
 function setTheme(t) {
+  const revision = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  localStorage.setItem(THEME_REVISION_KEY, revision);
+  localStorage.setItem(THEME_PENDING_KEY, t);
   applyTheme(t);
   saveThemePreference(t)
-    .then(() => showToast('success', 'Tema atualizado', `Tema ${({light:'claro',dark:'escuro',auto:'automático'})[t]} ativado.`))
+    .then(() => {
+      if ((localStorage.getItem(THEME_REVISION_KEY) || '') === revision) {
+        showToast('success', 'Tema atualizado', `Tema ${({light:'claro',dark:'escuro',auto:'automático'})[t]} ativado.`);
+      }
+    })
     .catch(err => {
       console.error('[theme preferences]', err);
       showToast('error', 'Tema não salvo', 'Não foi possível salvar o tema no servidor.');
     });
 }
+addEventListener('online', () => {
+  const pending = localStorage.getItem(THEME_PENDING_KEY);
+  if (pending && ['light','dark','auto'].includes(pending)) saveThemePreference(pending).catch(() => {});
+});
+queueMicrotask(() => {
+  const pending = localStorage.getItem(THEME_PENDING_KEY);
+  if (navigator.onLine && pending && ['light','dark','auto'].includes(pending)) saveThemePreference(pending).catch(() => {});
+});
 
 async function syncThemePreference() {
+  const revision = localStorage.getItem(THEME_REVISION_KEY) || '';
+  if (localStorage.getItem(THEME_PENDING_KEY)) return;
   try {
     const res = await fetch(`${API_BASE}/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return;
     const prefs = await res.json();
-    if (prefs.theme) applyTheme(prefs.theme);
+    if (prefs.theme
+      && !localStorage.getItem(THEME_PENDING_KEY)
+      && (localStorage.getItem(THEME_REVISION_KEY) || '') === revision) applyTheme(prefs.theme);
   } catch (err) { console.error('[theme preferences]', err); }
 }
 
 // ── PREFS ──────────────────────────────────────────────────────
 async function loadPrefs() {
+  const revision = localStorage.getItem(THEME_REVISION_KEY) || '';
   try {
     const res = await fetch(`${API_BASE}/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) throw new Error('Preferências indisponíveis');
     const prefs = await res.json();
+    if (localStorage.getItem(THEME_PENDING_KEY)
+      || (localStorage.getItem(THEME_REVISION_KEY) || '') !== revision) {
+      prefs.theme = localStorage.getItem(THEME_KEY) || 'dark';
+    }
     applyPrefsToUI(prefs);
   } catch (err) {
     console.error('[prefs]', err);
@@ -3834,7 +3955,7 @@ function applyInitialTabFromUrl() {
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
 
     const me = await res.json();
-    session = { id: me.id, username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, createdAt: me.created_at, isVerified: me.is_verified !== false };
+    session = buildSessionFromApi(me);
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     await syncThemePreference();
 
@@ -3866,20 +3987,19 @@ if (new URLSearchParams(window.location.search).get('tab') || window.location.ha
 }
 
 function renderData(options = {}) {
-  const mcName = session.minecraftName || 'Steve';
-  const skinUrl = `https://minotar.net/helm/${encodeURIComponent(mcName)}/100.png`;
+  const displayName = profileDisplayName(session);
 
   // Remove skeletons
   document.getElementById('name-skel')?.remove();
   document.getElementById('since-skel')?.remove();
 
-  document.getElementById('nav-name').textContent = session.username;
-  document.getElementById('nav-photo').src = skinUrl;
-  document.getElementById('drop-name').textContent = session.username;
+  document.getElementById('nav-name').textContent = displayName;
+  setProfileImage(document.getElementById('nav-photo'), session, 100);
+  document.getElementById('drop-name').textContent = displayName;
   document.getElementById('drop-email').textContent = session.email || 'Sem e-mail';
-  document.getElementById('drop-photo').src = skinUrl;
-  document.getElementById('main-name').textContent = session.username;
-  document.getElementById('main-photo').src = skinUrl;
+  setProfileImage(document.getElementById('drop-photo'), session, 100);
+  document.getElementById('main-name').textContent = displayName;
+  setProfileImage(document.getElementById('main-photo'), session, 100);
 
   if (session.createdAt) {
     const d = new Date(session.createdAt);
@@ -4420,14 +4540,7 @@ async function refreshSessionFromServer() {
     });
     if (!res.ok) return;
     const me = await res.json();
-    session = {
-      username: me.username,
-      email: me.email,
-      minecraftName: me.minecraft_name,
-      role: me.role,
-      createdAt: me.created_at,
-      isVerified: me.is_verified !== false
-    };
+    session = buildSessionFromApi(me);
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     renderData({ suppressMinecraftToast: true });
   } catch (_) {}
@@ -5943,6 +6056,6 @@ async function legacyReverse(migrationId) {
 
 </script>
 <script src="assets/js/fa-design-system.js?v=design-20260614b"></script>
-<script src="assets/js/social-chat.js?v=chat15-20260615" defer></script>
+<script src="assets/js/social-chat.js?v=chat16-20260718" defer></script>
 </body>
 </html>

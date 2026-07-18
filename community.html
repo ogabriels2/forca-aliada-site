@@ -64,15 +64,27 @@ body.guest-mode #inline-composer { display:none!important; }
     ? 'http://localhost:3000' : 'https://forca-aliada-site.onrender.com';
   const effective = t => (t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'light';
   const apply = t => document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'dark'));
-  apply();
+  apply(localStorage.getItem('fa_theme_pending') || localStorage.getItem(key) || 'dark');
   if (token) {
     const sync = () => {
+      const revision = localStorage.getItem('fa_theme_revision') || '';
+      if (localStorage.getItem('fa_theme_pending')) return;
       fetch(`${base}/api/me/preferences`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : null).then(p => { if (p?.theme) { localStorage.setItem(key, p.theme); apply(p.theme); } }).catch(() => {});
+        .then(r => r.ok ? r.json() : null).then(p => {
+          if (p?.theme
+            && !localStorage.getItem('fa_theme_pending')
+            && (localStorage.getItem('fa_theme_revision') || '') === revision) {
+            localStorage.setItem(key, p.theme);
+            apply(p.theme);
+          }
+        }).catch(() => {});
     };
     (typeof requestIdleCallback === 'function') ? requestIdleCallback(sync, { timeout: 2500 }) : setTimeout(sync, 500);
   }
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => apply(localStorage.getItem(key) || 'dark'));
+  addEventListener('storage', event => {
+    if (event.key === key && event.newValue) apply(event.newValue);
+  });
 })();
 </script>
 <style>
@@ -2797,6 +2809,19 @@ body::after{
   transition:background var(--t-fast);
 }
 .ep-avatar-zone:hover .ep-av-overlay{background:rgba(0,0,0,.46)}
+.ep-avatar-history{padding:12px 16px 0;display:grid;gap:8px}
+.ep-avatar-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ep-avatar-history-head strong{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+.ep-avatar-history-head small{font-size:10px;color:var(--ink-3)}
+.ep-avatar-history-list{display:flex;gap:8px;max-width:100%;padding:2px 2px 7px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin}
+.ep-avatar-history-item{position:relative;display:grid;flex:0 0 76px;gap:5px;scroll-snap-align:start}
+.ep-avatar-history-item>button:first-child{position:relative;width:76px;height:76px;padding:0;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-soft)}
+.ep-avatar-history-item>button:first-child:hover{border-color:var(--accent)}
+.ep-avatar-history-item.is-current>button:first-child{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ep-avatar-history-item img{width:100%;height:100%;object-fit:cover}
+.ep-avatar-history-current{position:absolute;right:4px;bottom:4px;padding:3px 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:8px;font-weight:850}
+.ep-avatar-history-remove{min-height:25px;border-radius:7px;background:var(--danger-soft);color:var(--danger);font-size:9px;font-weight:750}
+.ep-avatar-history-empty{padding:10px;border:1px dashed var(--line);border-radius:9px;color:var(--ink-3);font-size:10px;line-height:1.45}
 .ep-name-block{
   display:flex;align-items:flex-end;gap:10px;
   padding:10px 16px 14px 96px;
@@ -4240,7 +4265,9 @@ const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
 const API_BASE = window.FA_API_BASE || STORED_API || (IS_LOCAL ? LOCAL_API : PROD);
 const API_BASES = [...new Set((IS_LOCAL ? [API_BASE, LOCAL_API, PROD] : [window.FA_API_BASE || PROD, PROD]).filter(Boolean))];
 const TK_KEY = 'fa_token', THEME_KEY = 'fa_theme';
+const THEME_PENDING_KEY = 'fa_theme_pending', THEME_REVISION_KEY = 'fa_theme_revision';
 const token = localStorage.getItem(TK_KEY);
+let communityThemeWriteQueue = Promise.resolve();
 function currentAuthNextPath(){
   const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'') || 'community';
   try {
@@ -4321,18 +4348,35 @@ const ImpressionTracker = (() => {
     sessionStorage.setItem(SEED_KEY, _seed);
   }
   const _buf = new Map();
-  function _get(postId) {
-    const k = String(postId);
-    if (!_buf.has(k)) _buf.set(k, { post_id: Number(postId), dwell_ms: 0, max_reaction: 0, _start: null });
+  function _currentSurface() {
+    if (state.activePostId) return 'direct';
+    if (state.searchQuery) return 'search';
+    if (state.hashtag) return 'discover';
+    if (state.routeActive) return 'profile';
+    if (state.filter === 'following') return 'following';
+    if (state.filter === 'trending') return 'trending';
+    return 'recommended';
+  }
+  function _get(postId, surface = _currentSurface()) {
+    const k = `${Number(postId)}:${surface}`;
+    if (!_buf.has(k)) _buf.set(k, { post_id: Number(postId), surface, dwell_ms: 0, max_reaction: 0, _start: null });
     return _buf.get(k);
   }
-  function _onVis(postId, visible) {
-    const imp = _get(postId);
+  function _onVis(postId, visible, element) {
+    const surface = visible
+      ? _currentSurface()
+      : (element?.dataset?.impressionSurface || _currentSurface());
+    if (visible && element?.dataset) element.dataset.impressionSurface = surface;
+    const imp = _get(postId, surface);
     if (visible) { if (imp._start === null) imp._start = Date.now(); }
-    else if (imp._start !== null) { imp.dwell_ms += Date.now() - imp._start; imp._start = null; }
+    else if (imp._start !== null) {
+      imp.dwell_ms += Date.now() - imp._start;
+      imp._start = null;
+      if (element?.dataset) delete element.dataset.impressionSurface;
+    }
   }
   function recordReaction(postId, reaction) {
-    const imp = _get(postId);
+    const imp = _get(postId, _currentSurface());
     imp.max_reaction = Math.max(imp.max_reaction, reaction);
     if (reaction >= 2 && imp.dwell_ms < 2000) imp.dwell_ms = Math.max(imp.dwell_ms, 2001);
   }
@@ -4346,18 +4390,18 @@ const ImpressionTracker = (() => {
     if (!token) return;
     if (!_buf.size) return;
     _snapshotActive();
-    const activeIds = [..._buf.entries()]
+    const activeEntries = [..._buf.entries()]
       .filter(([, imp]) => imp._start !== null)
-      .map(([id]) => id);
+      .map(([key, imp]) => [key, imp.post_id, imp.surface]);
     const payload = [..._buf.values()]
       .filter(i => i.dwell_ms > 0 || i.max_reaction > 0)
-      .map(({ post_id, dwell_ms, max_reaction }) => ({ post_id, dwell_ms: Math.round(dwell_ms), max_reaction }));
+      .map(({ post_id, surface, dwell_ms, max_reaction }) => ({ post_id, surface, dwell_ms: Math.round(dwell_ms), max_reaction }));
     if (!payload.length) return;
     try {
       await api('/api/community/feed/impressions', { method: 'POST', body: JSON.stringify({ impressions: payload }) });
       _buf.clear();
       const now = Date.now();
-      activeIds.forEach(id => _buf.set(id, { post_id: Number(id), dwell_ms: 0, max_reaction: 0, _start: now }));
+      activeEntries.forEach(([key, postId, surface]) => _buf.set(key, { post_id: postId, surface, dwell_ms: 0, max_reaction: 0, _start: now }));
     }
     catch (e) { console.warn('[ImpressionTracker] flush error:', e.message); }
   }
@@ -4365,7 +4409,7 @@ const ImpressionTracker = (() => {
   function reObserve() {
     if (!_obs) {
       _obs = new IntersectionObserver(entries => {
-        for (const en of entries) { const id = en.target.dataset?.postId; if (id) _onVis(id, en.isIntersecting); }
+        for (const en of entries) { const id = en.target.dataset?.postId; if (id) _onVis(id, en.isIntersecting, en.target); }
       }, { threshold: 0.4 });
     }
     document.querySelectorAll('.post-card[data-post-id]').forEach(card => { try { _obs.observe(card); } catch (_) {} });
@@ -4448,8 +4492,9 @@ const safeProfileImageUrl = v => {
   const raw=String(v||'').trim();
   if(!raw) return '';
   try{
-    const url=new URL(raw);
-    return ['http:','https:'].includes(url.protocol)?url.href:'';
+    const url=new URL(raw,location.href);
+    const localHttp=location.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname);
+    return url.protocol==='https:'||localHttp?url.href:'';
   }catch{return ''}
 };
 const displayName = p => String(p?.display_name || p?.minecraft_name || p?.player || p?.username || 'Jogador').trim();
@@ -4631,7 +4676,28 @@ function removeToast(el){el.classList.add('leaving');setTimeout(()=>el.remove(),
 
 /* ======================= THEME ======================= */
 function applyTheme(t){document.documentElement.setAttribute('data-theme',t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light')}
-function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme')||'dark';const next=cur==='dark'?'light':'dark';localStorage.setItem(THEME_KEY,next);applyTheme(next);updateThemeIcon(next);api('/api/me/preferences').then(prefs=>api('/api/me/preferences',{method:'PUT',body:JSON.stringify({...prefs,theme:next})})).catch(()=>{})}
+function persistCommunityTheme(next,revision){
+  if(!token){if(localStorage.getItem(THEME_PENDING_KEY)===next)localStorage.removeItem(THEME_PENDING_KEY);return Promise.resolve()}
+  const write=communityThemeWriteQueue.catch(()=>{}).then(()=>api('/api/me/preferences',{method:'PUT',body:JSON.stringify({theme:next})})).then(()=>{
+    if((localStorage.getItem(THEME_REVISION_KEY)||'')===revision&&localStorage.getItem(THEME_KEY)===next&&localStorage.getItem(THEME_PENDING_KEY)===next)localStorage.removeItem(THEME_PENDING_KEY);
+  });
+  communityThemeWriteQueue=write;
+  return write;
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'dark';
+  const next=cur==='dark'?'light':'dark';
+  const revision=`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  localStorage.setItem(THEME_REVISION_KEY,revision);
+  localStorage.setItem(THEME_KEY,next);
+  localStorage.setItem(THEME_PENDING_KEY,next);
+  applyTheme(next);updateThemeIcon(next);
+  persistCommunityTheme(next,revision).catch(err=>console.warn('[community theme preference]',err));
+}
+addEventListener('online',()=>{
+  const pending=localStorage.getItem(THEME_PENDING_KEY);
+  if(pending&&['light','dark','auto'].includes(pending))persistCommunityTheme(pending,localStorage.getItem(THEME_REVISION_KEY)||'').catch(()=>{});
+});
 function updateThemeIcon(t){
   const icon=$('#theme-icon');if(!icon)return;
   icon.innerHTML=t==='dark'
@@ -8320,7 +8386,11 @@ async function renderProfileRoute(identifier){
 
 async function openCommunityProfileEditor(){
   try{
-    const prefs=await api('/api/me/preferences');
+    const [prefs,historyPayload]=await Promise.all([
+      api('/api/me/preferences'),
+      api('/api/me/profile-images').catch(()=>({items:[]})),
+    ]);
+    let avatarHistory=Array.isArray(historyPayload?.items)?historyPayload.items:[];
     const prof=state.profileData?.profile||state.me||{};
     const back=document.createElement('div');
     back.className='backdrop show';
@@ -8365,6 +8435,21 @@ async function openCommunityProfileEditor(){
       });
     }
 
+    function renderAvatarHistory(){
+      const list=back.querySelector('#ep-avatar-history-list');
+      const count=back.querySelector('#ep-avatar-history-count');
+      if(!list)return;
+      if(count)count.textContent=avatarHistory.length?`${avatarHistory.length} salva${avatarHistory.length===1?'':'s'} · troca imediata`:'Privado · troca imediata';
+      list.innerHTML=avatarHistory.length?avatarHistory.map(item=>`
+        <div class="ep-avatar-history-item ${item.is_current?'is-current':''}" data-avatar-history-id="${esc(item.id)}">
+          <button type="button" data-avatar-history-use="${esc(item.id)}" title="${item.is_current?'Foto atual':'Usar esta foto novamente'}" aria-label="${item.is_current?'Foto de perfil atual':'Usar foto anterior'}">
+            <img src="${esc(safeProfileImageUrl(item.url)||avatar(prof,76))}" alt="" loading="lazy">
+            ${item.is_current?'<span class="ep-avatar-history-current">Atual</span>':''}
+          </button>
+          ${item.is_current?'':`<button class="ep-avatar-history-remove" type="button" data-avatar-history-remove="${esc(item.id)}">Remover</button>`}
+        </div>`).join(''):'<div class="ep-avatar-history-empty">Quando você salvar uma nova foto, ela ficará disponível aqui para reutilização.</div>';
+    }
+
     back.innerHTML=`<div class="sheet sheet-md" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title" style="max-height:min(88vh,780px)">
       <div class="sheet-header">
         <h2 id="edit-profile-title">Editar perfil</h2>
@@ -8392,6 +8477,12 @@ async function openCommunityProfileEditor(){
         </div>
         <input type="file" id="ep-avatar-input" accept="image/*" hidden>
         <input type="file" id="ep-cover-input" accept="image/*" hidden>
+
+        <section class="ep-avatar-history" aria-labelledby="ep-avatar-history-title">
+          <div class="ep-avatar-history-head"><strong id="ep-avatar-history-title">Fotos anteriores</strong><small id="ep-avatar-history-count"></small></div>
+          <p style="margin:0;color:var(--ink-3);font-size:11.5px;line-height:1.45">Escolher uma foto aqui altera o avatar imediatamente; “Cancelar” descarta apenas os outros campos.</p>
+          <div class="ep-avatar-history-list" id="ep-avatar-history-list"></div>
+        </section>
 
         <!-- CAMPOS -->
         <div style="padding:0 16px 16px;display:grid;gap:13px">
@@ -8457,8 +8548,46 @@ async function openCommunityProfileEditor(){
 
     // links editor — initial render + add button
     renderEditLinks();
+    renderAvatarHistory();
     back.querySelector('#ep-add-link')?.addEventListener('click',()=>{
       if(editLinks.length<5){editLinks.push({label:'',url:''});renderEditLinks();}
+    });
+
+    back.addEventListener('click',async e=>{
+      const use=e.target.closest('[data-avatar-history-use]');
+      if(use){
+        const selected=avatarHistory.find(item=>String(item.id)===String(use.dataset.avatarHistoryUse));
+        if(!selected||selected.is_current)return;
+        use.disabled=true;
+        try{
+          const result=await api(`/api/me/profile-images/${encodeURIComponent(selected.id)}/activate`,{method:'PATCH'});
+          avatarHistory=avatarHistory.map(item=>({...item,is_current:String(item.id)===String(selected.id)}));
+          prefs.avatar_url=result?.item?.url||selected.url;
+          Object.assign(state.me||{}, {avatar_url:prefs.avatar_url});
+          if(state.profileData?.profile&&Number(state.profileData.profile.id)===Number(state.me?.id)) state.profileData.profile.avatar_url=prefs.avatar_url;
+          const previewAvatar=back.querySelector('#edit-preview-avatar');
+          if(previewAvatar)previewAvatar.src=prefs.avatar_url;
+          if(pendingAvatar){URL.revokeObjectURL(pendingAvatar.objectUrl);pendingAvatar=null;}
+          renderAvatarHistory();
+          await loadMe().catch(()=>{});
+          if(state.profileIdentifier) renderProfileRoute(state.profileIdentifier).catch(()=>{});
+          toast('success','Foto restaurada','Ela agora é sua foto padrão em todo o site.');
+        }catch(err){use.disabled=false;toast('error','Não foi possível trocar a foto',err.message);}
+        return;
+      }
+      const remove=e.target.closest('[data-avatar-history-remove]');
+      if(remove){
+        const item=avatarHistory.find(entry=>String(entry.id)===String(remove.dataset.avatarHistoryRemove));
+        if(!item||item.is_current)return;
+        if(!confirm('Remover esta foto do seu histórico?'))return;
+        remove.disabled=true;
+        try{
+          await api(`/api/me/profile-images/${encodeURIComponent(item.id)}`,{method:'DELETE'});
+          avatarHistory=avatarHistory.filter(entry=>String(entry.id)!==String(item.id));
+          renderAvatarHistory();
+          toast('success','Foto removida','A foto antiga foi excluída do histórico.');
+        }catch(err){remove.disabled=false;toast('error','Não foi possível remover',err.message);}
+      }
     });
 
     // preview updater (for text fields only)
@@ -9473,6 +9602,7 @@ function bindEvents(){
         if(type==='modal'&&!$('#post-modal').classList.contains('show')) openModal('post-modal');
       });
     }
+
   });
   $('#quick-comment-ta')?.addEventListener('input',e=>{
     const btn=$('#quick-comment-publish');
@@ -10528,7 +10658,7 @@ boot();
 <script src="assets/js/community-evolution-20260615a.js?v=20260705f"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
 <script src="assets/js/community-social-refinement-20260615a.js?v=20260705a"></script>
-<script src="assets/js/social-chat.js?v=chat14-20260705a"></script>
+<script src="assets/js/social-chat.js?v=chat16-20260718"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────

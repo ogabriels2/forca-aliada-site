@@ -63,6 +63,18 @@ import {
   emitCommunityEvent,
   registerCommunityEvolution,
 } from './community_evolution.mjs';
+import {
+  PROFILE_MEDIA_HISTORY_SCHEMA_SQL,
+  recordProfileAvatarUpload,
+  registerProfileMediaHistory,
+} from './profile_media_history.mjs';
+import {
+  ADMIN_SOCIAL_SCHEMA_SQL,
+  PROFILE_VIEW_DAILY_UPSERT_SQL,
+  registerAdminSocialRoutes,
+  socialDeliveryFactorSql,
+  socialDeliveryRestrictionJoinSql,
+} from './admin_social.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -1537,6 +1549,8 @@ await pool.query(featureSchemaSql);
   await pool.query(commentUpgradeSchemaSql); // Comment upgrade: parent_comment_id, comment_likes, likes_count, reply_count, triggers
   await pool.query(DASHBOARD_V2_SCHEMA_SQL); // Staff dashboard v2: settings, templates and scheduled broadcasts
   await pool.query(COMMUNITY_EVOLUTION_SCHEMA_SQL); // Community evolution: stories, reactions, image polls and grouped notifications
+  await pool.query(PROFILE_MEDIA_HISTORY_SCHEMA_SQL); // Canonical avatar + private profile-photo history
+  await pool.query(ADMIN_SOCIAL_SCHEMA_SQL); // Staff social console, daily metrics and delivery controls
 
   // Audit schema — executado no boot, não lazily
   for (const statement of AUDIT_SCHEMA_STATEMENTS) {
@@ -1706,6 +1720,8 @@ function observerCan(user, permission) {
 
 function observerScopeForRequest(req) {
   const path = String(req.path || req.originalUrl || '').toLowerCase();
+  if (/\/admin\/community\/restrictions(?:\/|$)/.test(path)) return 'moderation_private';
+  if (/\/admin\/community(?:\/|$)/.test(path)) return 'private_activity';
   if (/\/(?:merit|capital|leaderboard|players-with-balances)(?:\/|$)|economy-overview/.test(path)) return 'economy_private';
   if (/\/(?:reports|moderation-queue)(?:\/|$)|moderation-overview|\/notes(?:\/|$)/.test(path)) return 'moderation_private';
   if (/\/audit(?:\/|$)|audit-overview/.test(path)) return 'audit_security';
@@ -1737,8 +1753,8 @@ function redactObserverPayload(payload, permissions, seen = new WeakSet()) {
 
   const alwaysSecret = /(?:password|passwd|secret|token|authorization|cookie|hash|relay_room|refresh_token|access_token|confirm_token|verification_code|reset_code)/i;
   const identity = /^(?:email|provider_email|profile_links|xbox_xuid|mc_uuid|legacy_username|alias_username|legacy_data_snapshot)$/i;
-  const activity = /^(?:last_activity|last_seen|last_seen_at|first_seen|entered_at|left_at|duration_hours|total_hours|avg_session_hours|session_history|sessions|last_social_at|last_server_at|last_social_activity|risk_score|followers|following|messages)$/i;
-  const moderation = /^(?:reporter_id|reporter_username|reporter_photo|reporter_email|internal_notes|note_text)$/i;
+  const activity = /^(?:last_activity|last_activity_at|last_seen|last_seen_at|first_seen|entered_at|left_at|duration_hours|total_hours|avg_session_hours|session_history|sessions|last_social_at|last_server_at|last_social_activity|risk_score|followers|following|messages|impressions|unique_viewers|viewers|profile_views|avg_dwell_ms|total_dwell_ms|engagement_rate|followers_gained|followers_lost)$/i;
+  const moderation = /^(?:reporter_id|reporter_username|reporter_photo|reporter_email|internal_notes|note_text|restriction_id|restriction_level|delivery_factor|restriction_surfaces|restriction_reason_code|reason_detail|revoke_reason)$/i;
   const economy = /^(?:merit|merit_total|capital|capital_balance|amount|weekly_delta|rank|rank_label|next_rank|newmerit|newcapital|new_total|new_balance|prevmerit|prevcapital)$/i;
   const auditSecurity = /^(?:ip|request_ip|user_agent|request_ua|session_id|metadata|city|region|country|isp)$/i;
   const infrastructure = /^(?:integration|manager|server_ip|server_port|host|database|observer_permissions|app_connected|app_last_seen|mc_state|cloud_mode|maintenance_message|whitelist_enabled)$/i;
@@ -2192,7 +2208,7 @@ async function loadPublicPost(postId) {
     SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at,
            (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
            (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
-           (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+           (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count,
            u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role, u.is_platform_verified,
            COALESCE(up.display_name, '') AS display_name,
            COALESCE(up.avatar_url, '') AS avatar_url,
@@ -2206,6 +2222,7 @@ async function loadPublicPost(postId) {
     LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
     WHERE p.id = $1
       AND p.repost_of_id IS NULL
+      AND COALESCE(p.moderation_status,'active')='active'
       AND COALESCE(up.public_profile, TRUE) = TRUE
     LIMIT 1
   `, [id]);
@@ -2234,7 +2251,7 @@ async function loadPublicProfile(identifier) {
            (SELECT COUNT(*) FROM user_follows f1
             JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
             WHERE f1.follower_id = u.id)::int AS friends_count,
-           (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id AND repost_of_id IS NULL)::int AS posts_count
+           (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id AND repost_of_id IS NULL AND COALESCE(moderation_status,'active')='active')::int AS posts_count
     FROM users u
     LEFT JOIN user_preferences up ON up.user_id = u.id
     LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
@@ -2250,10 +2267,11 @@ async function loadPublicProfile(identifier) {
       SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
              (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
-             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count
+             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count
       FROM user_posts p
       WHERE p.author_id = $1
         AND p.repost_of_id IS NULL
+        AND COALESCE(p.moderation_status,'active')='active'
       ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC
       LIMIT 12
     `, [profile.id]),
@@ -2307,6 +2325,9 @@ app.get('/api/public/community/feed', async (req, res) => {
   const conditions = [
     'p.repost_of_id IS NULL',
     'COALESCE(up.public_profile, TRUE) = TRUE',
+    "COALESCE(p.moderation_status, 'active') = 'active'",
+    `${socialDeliveryFactorSql('delivery_control')} > 0`,
+    `(MOD(ABS(hashtext('public:' || p.id::text)::bigint),10000)::double precision < ${socialDeliveryFactorSql('delivery_control')} * 10000)`,
   ];
   if (cursor) {
     params.push(cursor);
@@ -2333,7 +2354,7 @@ app.get('/api/public/community/feed', async (req, res) => {
              ${socialMeritSql('u', 'pb')} AS merit,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE)::int AS comments_count,
-             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count,
              (SELECT COUNT(*) FROM post_saves ps WHERE ps.post_id = p.id)::int AS saves_count,
              FALSE AS liked_by_me, FALSE AS reposted_by_me, FALSE AS saved_by_me,
              '[]'::json AS recent_comments, NULL::json AS poll
@@ -2341,12 +2362,15 @@ app.get('/api/public/community/feed', async (req, res) => {
       JOIN users u ON p.author_id = u.id
       LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
+      ${socialDeliveryRestrictionJoinSql({ postAlias: 'p', originalPostAlias: null, viewerExpression: 'NULL', surfaceExpression: "'public_feed'", alias: 'delivery_control' })}
       WHERE ${conditions.join(' AND ')}
-      ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
+      ORDER BY ${socialDeliveryFactorSql('delivery_control')} DESC, p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
       LIMIT $1
     `, params);
     const lastId = rows.at(-1)?.id || null;
-    res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=1800');
+    // O resultado depende de restrições de entrega que podem mudar a qualquer
+    // momento; não sirva uma versão stale depois de uma ação de moderação.
+    res.set('Cache-Control', 'no-store');
     res.json({
       posts: rows,
       next_cursor: rows.length === limit && lastId ? { score: 0, id: lastId } : null,
@@ -2393,7 +2417,17 @@ app.get('/share/post/:id', async (req, res) => {
       LEFT JOIN user_preferences up ON up.user_id = u.id
       WHERE p.id <> $1
         AND p.repost_of_id IS NULL
+        AND COALESCE(p.moderation_status,'active')='active'
         AND COALESCE(up.public_profile, TRUE) = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM community_delivery_restrictions r
+          WHERE r.status='active'
+            AND r.starts_at <= NOW()
+            AND (r.ends_at IS NULL OR r.ends_at > NOW())
+            AND 'public_feed'=ANY(r.surfaces)
+            AND ((r.target_type='post' AND r.target_post_id=p.id)
+              OR (r.target_type='profile' AND r.target_user_id=p.author_id))
+        )
         AND (array_length(p.media_urls, 1) > 0 OR length(trim(COALESCE(p.content, ''))) >= 40)
       ORDER BY ((SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) +
                 (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.is_deleted = FALSE) * 2) DESC,
@@ -2544,7 +2578,17 @@ app.get('/robots.txt', (req, res) => {
 const SITEMAP_POST_PAGE_SIZE = 5000;
 const PUBLIC_POST_QUALITY_SQL = `
   p.repost_of_id IS NULL
+  AND COALESCE(p.moderation_status,'active')='active'
   AND COALESCE(up.public_profile, TRUE) = TRUE
+  AND NOT EXISTS (
+    SELECT 1 FROM community_delivery_restrictions r
+    WHERE r.status='active'
+      AND r.starts_at <= NOW()
+      AND (r.ends_at IS NULL OR r.ends_at > NOW())
+      AND 'sitemap'=ANY(r.surfaces)
+      AND ((r.target_type='post' AND r.target_post_id=p.id)
+        OR (r.target_type='profile' AND r.target_user_id=p.author_id))
+  )
   AND (
     array_length(p.media_urls, 1) > 0
     OR length(trim(COALESCE(p.content, ''))) >= 40
@@ -2611,6 +2655,15 @@ app.get('/sitemap-profiles.xml', async (req, res) => {
       FROM users u
       LEFT JOIN user_preferences up ON up.user_id = u.id
       WHERE COALESCE(up.public_profile, TRUE) = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM community_delivery_restrictions r
+          WHERE r.status='active'
+            AND r.starts_at <= NOW()
+            AND (r.ends_at IS NULL OR r.ends_at > NOW())
+            AND 'sitemap'=ANY(r.surfaces)
+            AND r.target_type='profile'
+            AND r.target_user_id=u.id
+        )
       ORDER BY updated_at DESC
       LIMIT 50000
     `);
@@ -2741,10 +2794,27 @@ async function notifyProfileSubscribers({
      FROM user_follows f
      LEFT JOIN profile_notification_preferences p
        ON p.subscriber_id=f.follower_id AND p.creator_id=f.following_id
+     LEFT JOIN LATERAL (
+       SELECT MIN(r.delivery_factor)::double precision AS delivery_factor
+       FROM community_delivery_restrictions r
+       WHERE r.status='active'
+         AND r.starts_at <= NOW()
+         AND (r.ends_at IS NULL OR r.ends_at > NOW())
+         AND 'notifications'=ANY(r.surfaces)
+         AND (
+           (r.target_type='profile' AND r.target_user_id=$1)
+           OR (r.target_type='post' AND r.target_post_id=$3::integer)
+         )
+     ) delivery_control ON TRUE
      WHERE f.following_id=$1
        AND COALESCE(p.level,'off') <> 'off'
-       AND ($2::boolean = FALSE OR COALESCE(p.level,'off') = 'all')`,
-    [creator, Boolean(allOnly)],
+       AND ($2::boolean = FALSE OR COALESCE(p.level,'off') = 'all')
+       AND COALESCE(delivery_control.delivery_factor,1.0) > 0
+       AND MOD(
+         ABS(hashtext(f.follower_id::text || ':' || COALESCE($3::text,'profile') || ':' || CURRENT_DATE::text)::bigint),
+         10000
+       )::double precision < COALESCE(delivery_control.delivery_factor,1.0) * 10000`,
+    [creator, Boolean(allOnly), entityType === 'post' ? Number(entityId) || null : null],
   );
   return Promise.allSettled(rows.map(row => createSocialNotification({
     recipientId: row.recipient_id,
@@ -2754,6 +2824,31 @@ async function notifyProfileSubscribers({
     entityId,
     previewText,
   })));
+}
+
+async function shouldBroadcastCommunityPost(postId) {
+  const id = Number(postId);
+  if (!id) return false;
+  try {
+    const { rows } = await pool.query(`
+      SELECT ${socialDeliveryFactorSql('delivery_control')} AS delivery_factor
+      FROM user_posts p
+      ${socialDeliveryRestrictionJoinSql({
+        postAlias: 'p',
+        originalPostAlias: null,
+        viewerExpression: 'NULL',
+        surfaceExpression: "'recommended'",
+        alias: 'delivery_control',
+      })}
+      WHERE p.id=$1
+        AND COALESCE(p.moderation_status,'active')='active'
+      LIMIT 1
+    `, [id]);
+    return Number(rows[0]?.delivery_factor || 0) > 0;
+  } catch (error) {
+    console.warn('[community broadcast policy skipped]', error?.message || error);
+    return false;
+  }
 }
 
 let optionalTxSeq = 0;
@@ -2796,6 +2891,7 @@ function directConversationSelect(extraWhere = '') {
            other_u.username AS other_username,
            other_u.minecraft_name AS other_minecraft_name,
            other_u.photo_url AS other_photo_url,
+           COALESCE(other_up.avatar_url, '') AS other_avatar_url,
            other_u.is_platform_verified,
            ${socialRankSql('other_u', 'pb')} AS other_rank,
            COALESCE(pb.merit_total, 0) AS other_merit,
@@ -2810,6 +2906,7 @@ function directConversationSelect(extraWhere = '') {
            COALESCE(unread.count, 0)::int AS unread_count
     FROM direct_conversations c
     JOIN users other_u ON other_u.id = CASE WHEN c.participant_a = $1 THEN c.participant_b ELSE c.participant_a END
+    LEFT JOIN user_preferences other_up ON other_up.user_id = other_u.id
     LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(other_u.minecraft_name)
     LEFT JOIN LATERAL (
       SELECT id, body, attachments, sender_id, created_at
@@ -2891,6 +2988,19 @@ req.user.observer_permissions = normalizeObserverPermissions(rows[0].observer_pe
 installObserverResponseGuard(req, res);
 next();
 } catch { res.status(401).json({ error: 'invalid token' }); }
+}
+
+async function chatSenderPresentation(userId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT u.username, u.minecraft_name, u.photo_url,
+            COALESCE(up.avatar_url,'') AS avatar_url
+     FROM users u
+     LEFT JOIN user_preferences up ON up.user_id=u.id
+     WHERE u.id=$1
+     LIMIT 1`,
+    [userId],
+  );
+  return rows[0] || {};
 }
 
 function requireAdmin(req, res, next) {
@@ -5742,7 +5852,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
              (SELECT COUNT(*) FROM user_follows f1
               JOIN user_follows f2 ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
               WHERE f1.follower_id = u.id)::int AS friends_count,
-             (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id)::int AS posts_count,
+             (SELECT COUNT(*) FROM user_posts WHERE author_id = u.id AND COALESCE(moderation_status,'active')='active')::int AS posts_count,
              EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id) AS is_following,
              CASE
                WHEN EXISTS(SELECT 1 FROM user_follows WHERE follower_id=$1 AND following_id=u.id)
@@ -5770,6 +5880,11 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
       return res.status(403).json({ error: 'Este perfil e privado.' });
     }
 
+    if (Number(profile.id) !== Number(req.user.sub)) {
+      await pool.query(PROFILE_VIEW_DAILY_UPSERT_SQL, [req.user.sub, profile.id, 'profile'])
+        .catch(error => console.warn('[profile view analytics skipped]', error?.message || error));
+    }
+
     const profileUserId = profile.id;
     const mcName = profile.minecraft_name || profile.username;
     const canSeeHistory = Boolean(profile.public_history) || Number(profile.id) === Number(req.user.sub);
@@ -5779,13 +5894,14 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
         SELECT p.id, p.content, p.media_urls, p.created_at, p.updated_at, p.edit_count, p.is_pinned,
                p.created_by_user_id,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
-               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
                EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me,
-               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '') AS reposted_by_me
+               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '' AND COALESCE(rp.moderation_status,'active')='active') AS reposted_by_me
         FROM user_posts p
         WHERE p.author_id=$2
           AND p.repost_of_id IS NULL
+          AND COALESCE(p.moderation_status,'active')='active'
         ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.created_at DESC
         LIMIT 12
       `, [req.user.sub, profileUserId]),
@@ -5800,10 +5916,10 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
                ${socialRankSql('au', 'pb')} AS rank,
                ${socialMeritSql('au', 'pb')} AS merit,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id)::int AS likes_count,
-               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id)::int AS reposts_count,
+               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = p.id AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)::int AS comments_count,
                EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id=p.id AND pl.user_id=$1) AS liked_by_me,
-               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '') AS reposted_by_me
+               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id=p.id AND rp.author_id=$1 AND rp.content = '' AND COALESCE(rp.moderation_status,'active')='active') AS reposted_by_me
         FROM post_comments pc
          JOIN user_posts p ON p.id = pc.post_id
          JOIN users au ON au.id = p.author_id
@@ -5811,6 +5927,7 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
          LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(au.minecraft_name)
         WHERE pc.author_id = $2
           AND pc.is_deleted = FALSE
+          AND COALESCE(p.moderation_status,'active')='active'
           AND NOT EXISTS (
             SELECT 1 FROM user_blocks ub
             WHERE (ub.blocker_id = $1 AND ub.blocked_id = au.id)
@@ -5835,10 +5952,10 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
                 ${socialRankSql('ou', 'opb')} AS repost_original_rank,
                ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
                (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
-               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
+               (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count,
                (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
                EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
-               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me
+               EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '' AND COALESCE(rp.moderation_status,'active')='active') AS reposted_by_me
         FROM user_posts p
          JOIN user_posts op ON op.id = p.repost_of_id
          JOIN users ou ON ou.id = op.author_id
@@ -5846,6 +5963,8 @@ app.get('/api/community/player/:identifier/full-profile', auth, async (req, res)
          LEFT JOIN player_balances opb ON LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
         WHERE p.author_id = $2
           AND p.repost_of_id IS NOT NULL
+          AND COALESCE(p.moderation_status,'active')='active'
+          AND COALESCE(op.moderation_status,'active')='active'
         ORDER BY p.created_at DESC
         LIMIT 20
       `, [req.user.sub, profileUserId]),
@@ -6326,7 +6445,7 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
              dm.client_ref,
              dm.reply_to_message_id,
              dm.is_deleted, dm.created_at, dm.edited_at,
-             u.username, u.minecraft_name, u.photo_url,
+             u.username, u.minecraft_name, u.photo_url, COALESCE(up.avatar_url, '') AS avatar_url,
              CASE WHEN reply.id IS NULL THEN NULL ELSE jsonb_build_object(
                'id', reply.id,
                'sender_id', reply.sender_id,
@@ -6338,6 +6457,7 @@ app.get('/api/me/conversations/:id/messages', auth, async (req, res) => {
              COALESCE(my_reactions.items, '[]'::jsonb) AS my_reactions
       FROM direct_messages dm
       JOIN users u ON u.id = dm.sender_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN direct_messages reply ON reply.id = dm.reply_to_message_id
       LEFT JOIN users reply_sender ON reply_sender.id = reply.sender_id
       LEFT JOIN LATERAL (
@@ -6468,15 +6588,17 @@ app.post('/api/me/conversations/:id/messages', auth, async (req, res) => {
       return null;
     });
 
-    // ── SSE fan-out: push instantâneo para o peer (e outras abas do remetente)
-    notifyNewMessage('direct', conversationId, {
+    const senderPresentation = await chatSenderPresentation(req.user.sub);
+    const responseMessage = {
       ...rows[0],
       reply_to: replyPreview,
-      username: req.user.username,
-      minecraft_name: req.user.minecraft_name,
-    });
+      ...senderPresentation,
+    };
 
-    res.status(201).json({ ...rows[0], reply_to: replyPreview, notification_created: Boolean(messageNotification) });
+    // ── SSE fan-out: push instantâneo para o peer (e outras abas do remetente)
+    notifyNewMessage('direct', conversationId, responseMessage);
+
+    res.status(201).json({ ...responseMessage, notification_created: Boolean(messageNotification) });
   } catch (e) {
     if (!committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/me/conversations/:id/messages]', e);
@@ -6622,7 +6744,7 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
              msg.client_ref,
              msg.reply_to_message_id,
              msg.created_at, msg.edited_at, msg.is_deleted,
-             u.username, u.minecraft_name, u.photo_url,
+             u.username, u.minecraft_name, u.photo_url, COALESCE(up.avatar_url, '') AS avatar_url,
              CASE WHEN reply.id IS NULL THEN NULL ELSE jsonb_build_object(
                'id', reply.id,
                'sender_id', reply.sender_id,
@@ -6634,6 +6756,7 @@ app.get('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
              COALESCE(my_reactions.items, '[]'::jsonb) AS my_reactions
       FROM chat_group_messages msg
       JOIN users u ON u.id = msg.sender_id
+      LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN chat_group_messages reply ON reply.id = msg.reply_to_message_id
       LEFT JOIN users reply_sender ON reply_sender.id = reply.sender_id
       LEFT JOIN LATERAL (
@@ -6709,14 +6832,15 @@ app.post('/api/me/group-conversations/:id/messages', auth, async (req, res) => {
     await client.query('UPDATE chat_groups SET last_message_at=NOW() WHERE id=$1', [groupId]);
     await client.query('UPDATE chat_group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2', [groupId, req.user.sub]);
     await client.query('COMMIT');
-    // ── SSE fan-out: push instantâneo para membros do grupo
-    notifyNewMessage('group', groupId, {
+    const senderPresentation = await chatSenderPresentation(req.user.sub);
+    const responseMessage = {
       ...rows[0],
       reply_to: replyPreview,
-      username: req.user.username,
-      minecraft_name: req.user.minecraft_name,
-    });
-    res.status(201).json({ ...rows[0], reply_to: replyPreview });
+      ...senderPresentation,
+    };
+    // ── SSE fan-out: push instantâneo para membros do grupo
+    notifyNewMessage('group', groupId, responseMessage);
+    res.status(201).json(responseMessage);
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/me/group-conversations/:id/messages]', e);
@@ -6881,9 +7005,16 @@ app.get('/api/community/trending-hashtags', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT LOWER(tag_match[1]) AS tag, COUNT(*)::int AS count
-      FROM user_posts,
+      FROM user_posts p,
            regexp_matches(content, '#([a-zA-Z0-9_À-ÿ]{2,32})', 'g') AS tag_match
       WHERE created_at > NOW() - INTERVAL '14 days'
+        AND COALESCE(p.moderation_status,'active')='active'
+        AND NOT EXISTS (
+          SELECT 1 FROM community_delivery_restrictions r
+          WHERE r.status='active' AND r.starts_at<=NOW() AND (r.ends_at IS NULL OR r.ends_at>NOW())
+            AND 'trending'=ANY(r.surfaces) AND r.delivery_factor=0
+            AND ((r.target_type='post' AND r.target_post_id=p.id) OR (r.target_type='profile' AND r.target_user_id=p.author_id))
+        )
       GROUP BY LOWER(tag_match[1])
       ORDER BY count DESC, tag ASC
       LIMIT 5
@@ -7296,7 +7427,7 @@ app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async
     // ─────────────────────────────────────────────────────────────────────────
 
     const folder = process.env.CLOUDINARY_PROFILE_FOLDER || 'forca-aliada/profile-images';
-    const url = await new Promise((resolve, reject) => {
+    const uploaded = await new Promise((resolve, reject) => {
       let settled = false;
       const done = u => { if (!settled) { settled = true; resolve(u); } };
       const fail = e => { if (!settled) { settled = true; reject(e); } };
@@ -7324,11 +7455,33 @@ app.post('/api/upload', auth, uploadLimiter, profileImageUploadMiddleware, async
         clearTimeout(timeout);
         if (err) return fail(err);
         if (!result?.secure_url) return fail(new Error('Cloudinary não retornou URL.'));
-        done(result.secure_url);
+        done(result);
       });
       stream.on?.('error', e => { clearTimeout(timeout); fail(e); });
       stream.end(req.file.buffer);
     });
+    const url = uploaded.secure_url;
+    if (req.query.type === 'avatar') {
+      try {
+        await recordProfileAvatarUpload(pool, {
+          userId: req.user.sub,
+          avatarUrl: url,
+          provider: 'cloudinary',
+          providerPublicId: uploaded.public_id,
+          width: uploaded.width,
+          height: uploaded.height,
+          bytes: uploaded.bytes,
+          format: uploaded.format,
+          source: 'community_upload',
+          metadata: { managed_asset: true, uploaded_by: Number(req.user.sub) },
+        });
+      } catch (historyError) {
+        if (uploaded.public_id) {
+          await cloudinary.uploader.destroy(uploaded.public_id, { resource_type: 'image', invalidate: true }).catch(() => {});
+        }
+        throw historyError;
+      }
+    }
     res.status(201).json({ url, flagged: modResult.verdict === 'suspicious' });
   } catch (e) {
     console.error('[POST /api/upload]', e);
@@ -7464,11 +7617,13 @@ app.post('/api/community/posts', auth, postLimiter, async (req, res) => {
       },
     });
     await client.query('COMMIT');
-    emitCommunityEvent('new-post', {
-      postId: Number(newPost.id),
-      authorId: Number(publishIdentity.authorId),
-      createdAt: newPost.created_at,
-    });
+    if (await shouldBroadcastCommunityPost(newPost.id)) {
+      emitCommunityEvent('new-post', {
+        postId: Number(newPost.id),
+        authorId: Number(publishIdentity.authorId),
+        createdAt: newPost.created_at,
+      });
+    }
     notifyProfileSubscribers({
       creatorId: publishIdentity.authorId,
       type: 'creator_post',
@@ -7652,11 +7807,13 @@ async function publishDueScheduledPosts() {
           notificationId: null,
           type: 'scheduled_post_published',
         });
-        emitCommunityEvent('new-post', {
-          postId: Number(postId),
-          authorId: Number(scheduled.author_id),
-          createdAt: scheduled.publish_at,
-        });
+        if (await shouldBroadcastCommunityPost(postId)) {
+          emitCommunityEvent('new-post', {
+            postId: Number(postId),
+            authorId: Number(scheduled.author_id),
+            createdAt: scheduled.publish_at,
+          });
+        }
         notifyProfileSubscribers({
           creatorId: scheduled.author_id,
           type: 'creator_post',
@@ -7685,9 +7842,11 @@ async function publishDueScheduledPosts() {
 app.get('/api/community/posts', auth, async (req, res) => {
   const limit = clampInt(req.query.limit, 20, 1, 50);
   const filter = req.query.filter || 'all';
+  if (!['all','following','saved','trending'].includes(filter)) return res.status(400).json({ error: 'Filtro invalido.' });
   const cursor = parseInt(req.query.cursor, 10) || null;
   const search = req.query.search ? `%${sanitize(req.query.search).toLowerCase()}%` : null;
   const hashtag = req.query.hashtag ? sanitize(req.query.hashtag).replace(/^#/, '').toLowerCase() : null;
+  const deliverySurface = search ? 'search' : filter === 'following' ? 'following' : filter === 'trending' ? 'trending' : 'recommended';
   const params = [req.user.sub, limit];
   const conditions = [
     `NOT EXISTS (
@@ -7695,6 +7854,10 @@ app.get('/api/community/posts', auth, async (req, res) => {
       WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
          OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
     )`,
+    `COALESCE(p.moderation_status,'active')='active'`,
+    `(op.id IS NULL OR COALESCE(op.moderation_status,'active')='active')`,
+    `${socialDeliveryFactorSql('delivery_control')} > 0`,
+    `(p.author_id=$1 OR MOD(ABS(hashtext($1::text || ':' || p.id::text)::bigint),10000)::double precision < ${socialDeliveryFactorSql('delivery_control')} * 10000)`,
     `NOT EXISTS (
       SELECT 1 FROM user_blocks oub
       WHERE ou.id IS NOT NULL
@@ -7749,7 +7912,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
              ${socialRankSql('ou', 'opb')} AS repost_original_rank,
              ${socialMeritSql('ou', 'opb')} AS repost_original_merit,
              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id))::int AS likes_count,
-             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id))::int AS reposts_count,
+             (SELECT COUNT(*) FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND COALESCE(rp.moderation_status,'active')='active')::int AS reposts_count,
              u.id AS author_id, u.username, u.minecraft_name, u.photo_url, u.role,
              COALESCE(up.display_name, '') AS display_name,
              COALESCE(up.avatar_url, '') AS avatar_url,
@@ -7758,7 +7921,7 @@ app.get('/api/community/posts', auth, async (req, res) => {
              ${socialRankSql('u', 'pb')} AS rank,
              ${socialMeritSql('u', 'pb')} AS merit,
              EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = COALESCE(p.repost_of_id, p.id) AND pl.user_id = $1) AS liked_by_me,
-             EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '') AS reposted_by_me,
+             EXISTS(SELECT 1 FROM user_posts rp WHERE rp.repost_of_id = COALESCE(p.repost_of_id, p.id) AND rp.author_id = $1 AND rp.content = '' AND COALESCE(rp.moderation_status,'active')='active') AS reposted_by_me,
              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = COALESCE(p.repost_of_id, p.id) AND pc.is_deleted = FALSE)::int AS comments_count,
              COALESCE((
                SELECT json_agg(row_to_json(rc) ORDER BY rc.created_at ASC, rc.id ASC)
@@ -7816,8 +7979,9 @@ app.get('/api/community/posts', auth, async (req, res) => {
       LEFT JOIN users ou ON ou.id = op.author_id
       LEFT JOIN user_preferences oup ON oup.user_id = ou.id
       LEFT JOIN player_balances opb ON LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
+      ${socialDeliveryRestrictionJoinSql({ postAlias: 'p', originalPostAlias: 'op', viewerExpression: '$1', surfaceExpression: `'${deliverySurface}'`, alias: 'delivery_control' })}
       ${whereClause}
-      ORDER BY p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
+      ORDER BY ${socialDeliveryFactorSql('delivery_control')} DESC, p.is_pinned DESC, p.pinned_at DESC NULLS LAST, p.id DESC
       LIMIT $2
     `, params);
     const hasMore = rows.length === limit;
@@ -7877,6 +8041,7 @@ app.get('/api/community/posts/:id', auth, async (req, res) => {
       LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE p.id = $2
+        AND COALESCE(p.moderation_status,'active')='active'
         AND NOT EXISTS (
           SELECT 1 FROM user_blocks ub
           WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
@@ -7904,9 +8069,10 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   if (quote.length > 280) return res.status(400).json({ error: 'Repost excede 280 caracteres.' });
 
-  const client = await pool.connect();
+  let client;
   let committed = false;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     const publishIdentity = await resolvePublishAuthor(req.user.sub, req.body?.publish_as_user_id, client);
     const { rows: targetRows } = await client.query(
@@ -7917,6 +8083,8 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
        JOIN user_posts target ON target.id = COALESCE(p.repost_of_id, p.id)
        JOIN users u ON u.id = target.author_id
        WHERE p.id = $2
+         AND COALESCE(p.moderation_status,'active')='active'
+         AND COALESCE(target.moderation_status,'active')='active'
          AND NOT EXISTS (
            SELECT 1 FROM user_blocks ub
            WHERE (ub.blocker_id=$1 AND ub.blocked_id=u.id)
@@ -7970,11 +8138,11 @@ app.post('/api/community/posts/:id/repost', auth, async (req, res) => {
     }).catch(err => console.warn('[subscriber repost notification skipped]', err?.message || err));
     res.status(201).json({ ok: true, repost: rows[0], notification_created: Boolean(repostNotification) });
   } catch (e) {
-    if (!committed) await client.query('ROLLBACK').catch(() => {});
+    if (client && !committed) await client.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/repost]', e);
     res.status(e.status || 500).json({ error: e.status ? e.message : 'Erro ao repostar.' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -8048,14 +8216,16 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   if ((!content && !mediaUrls.length) || content.length > 280) return res.status(400).json({ error: 'Comentario invalido' });
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     const { rows: postRows } = await client.query(
       `SELECT p.author_id, p.content, u.minecraft_name, u.username
        FROM user_posts p
        JOIN users u ON u.id = p.author_id
        WHERE p.id=$1
+         AND COALESCE(p.moderation_status,'active')='active'
        LIMIT 1`,
       [postId],
     );
@@ -8141,11 +8311,11 @@ app.post('/api/community/posts/:id/comments', auth, async (req, res) => {
       notification_created: Boolean(commentNotification),
     });
   } catch (e) {
-    await client.query('ROLLBACK');
+    await client?.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/comments]', e);
     res.status(500).json({ error: 'Erro ao comentar' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -8300,10 +8470,14 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
-    const { rows: postRows } = await client.query('SELECT author_id, content FROM user_posts WHERE id=$1 LIMIT 1', [postId]);
+    const { rows: postRows } = await client.query(
+      "SELECT author_id, content FROM user_posts WHERE id=$1 AND COALESCE(moderation_status,'active')='active' LIMIT 1",
+      [postId],
+    );
     const post = postRows[0];
     if (!post) {
       await client.query('ROLLBACK');
@@ -8341,11 +8515,11 @@ app.post('/api/community/posts/:id/like', auth, async (req, res) => {
     }
     res.json({ ok: true, created: rowCount > 0, notification_created: Boolean(notification) });
   } catch (e) {
-    await client.query('ROLLBACK');
+    await client?.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/like]', e);
     res.status(500).json({ error: 'Erro ao curtir' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -8432,6 +8606,7 @@ app.get('/api/community/posts/:id/reposters', auth, async (req, res) => {
       LEFT JOIN user_preferences up ON up.user_id = u.id
       LEFT JOIN player_balances  pb ON LOWER(pb.minecraft_name) = LOWER(u.minecraft_name)
       WHERE rp.repost_of_id = $2
+        AND COALESCE(rp.moderation_status,'active')='active'
         ${cursorClause}
         AND NOT EXISTS (
           SELECT 1 FROM user_blocks ub
@@ -8531,8 +8706,11 @@ app.delete('/api/community/posts/:id', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   try {
     const { rows } = await pool.query(
-      `DELETE FROM user_posts p
+      `UPDATE user_posts p
+       SET moderation_status='removed', removed_at=NOW(), removed_by=$2,
+           removal_reason='deleted_by_author'
        WHERE p.id=$1
+         AND COALESCE(p.moderation_status,'active')='active'
          AND (
            p.author_id=$2
            OR (
@@ -8596,6 +8774,7 @@ app.get('/api/community/polls', auth, async (req, res) => {
       JOIN users u ON u.id = p.author_id
       JOIN post_polls pp ON pp.post_id = p.id
       WHERE p.id = ANY($2::int[])
+        AND COALESCE(p.moderation_status,'active')='active'
         AND NOT EXISTS (
           SELECT 1 FROM user_blocks ub
           WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
@@ -8614,12 +8793,18 @@ app.post('/api/community/posts/:id/poll/vote', auth, async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   const optionId = parseInt(req.body?.option_id, 10);
   if (!postId || !optionId) return res.status(400).json({ error: 'Dados invalidos' });
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     // Get poll
     const { rows: pollRows } = await client.query(
-      'SELECT id, ends_at FROM post_polls WHERE post_id=$1 LIMIT 1', [postId]
+      `SELECT pp.id, pp.ends_at
+       FROM post_polls pp
+       JOIN user_posts p ON p.id=pp.post_id
+       WHERE pp.post_id=$1 AND COALESCE(p.moderation_status,'active')='active'
+       LIMIT 1`,
+      [postId],
     );
     if (!pollRows.length) {
       await client.query('ROLLBACK');
@@ -8669,11 +8854,11 @@ app.post('/api/community/posts/:id/poll/vote', auth, async (req, res) => {
       }
     });
   } catch (e) {
-    await client.query('ROLLBACK');
+    await client?.query('ROLLBACK').catch(() => {});
     console.error('[POST /api/community/posts/:id/poll/vote]', e);
     res.status(500).json({ error: 'Erro ao votar' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8826,7 +9011,15 @@ app.patch('/api/admin/reports/:id', auth, requireAdmin, async (req, res) => {
     if (action === 'dismiss') status = 'dismissed';
     if (action === 'remove_content') {
       status = 'reviewed_removed';
-      if (report.content_type === 'post') await client.query('DELETE FROM user_posts WHERE id=$1', [report.content_id]);
+      if (report.content_type === 'post') {
+        await client.query(
+          `UPDATE user_posts
+           SET moderation_status='removed', removed_at=NOW(), removed_by=$2,
+               removal_reason='removed_after_report'
+           WHERE id=$1`,
+          [report.content_id, req.user.sub],
+        );
+      }
       if (report.content_type === 'comment') {
         await client.query('UPDATE post_comments SET is_deleted=TRUE, deleted_at=NOW() WHERE id=$1', [report.content_id]);
       }
@@ -8903,11 +9096,14 @@ app.delete('/api/admin/posts/:id', auth, requireAdmin, async (req, res) => {
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
   try {
     const { rows } = await pool.query(`
-      DELETE FROM user_posts p
-      USING users u
+      UPDATE user_posts p
+      SET moderation_status='removed', removed_at=NOW(), removed_by=$2,
+          removal_reason=$3
+      FROM users u
       WHERE p.id=$1 AND u.id=p.author_id
+        AND COALESCE(p.moderation_status,'active')='active'
       RETURNING p.id, u.id AS author_id, u.username, u.minecraft_name
-    `, [postId]);
+    `, [postId, req.user.sub, reason]);
     if (!rows.length) return res.status(404).json({ error: 'Post nao encontrado' });
     const targetName = rows[0].minecraft_name || rows[0].username;
     await auditFromReq(req, {
@@ -9331,9 +9527,22 @@ function normalizePreferences(input = {}) {
   return prefs;
 }
 
-async function ensureUserPreferences(userId, overrides = {}) {
+async function ensureUserPreferences(userId, overrides = {}, db = pool, { overwrite = false } = {}) {
+  if (!overwrite) {
+    await db.query(
+      'INSERT INTO user_preferences(user_id) VALUES($1) ON CONFLICT(user_id) DO NOTHING',
+      [userId],
+    );
+    const { rows } = await db.query(
+      `SELECT email_server,email_events,email_community,public_profile,show_online,public_history,
+              theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at
+       FROM user_preferences WHERE user_id=$1`,
+      [userId],
+    );
+    return rows[0];
+  }
   const prefs = normalizePreferences(overrides);
-  const { rows } = await pool.query(
+  const { rows } = await db.query(
     `INSERT INTO user_preferences(user_id,email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at)
      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())
      ON CONFLICT(user_id) DO UPDATE SET
@@ -9358,31 +9567,125 @@ async function ensureUserPreferences(userId, overrides = {}) {
 }
 
 app.get('/api/me/preferences', auth, async (req, res) => {
-  const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at FROM user_preferences WHERE user_id=$1',
-    [req.user.sub],
-  );
-  if (rows.length) return res.json(normalizePreferences(rows[0]));
-  const prefs = await ensureUserPreferences(req.user.sub);
-  res.json(normalizePreferences(prefs));
+  try {
+    const { rows } = await pool.query(
+      'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links,updated_at FROM user_preferences WHERE user_id=$1',
+      [req.user.sub],
+    );
+    if (rows.length) return res.json(normalizePreferences(rows[0]));
+    const prefs = await ensureUserPreferences(req.user.sub);
+    res.json(normalizePreferences(prefs));
+  } catch (error) {
+    console.error('[GET /api/me/preferences]', error);
+    res.status(500).json({ error: 'Nao foi possivel carregar as preferencias.' });
+  }
 });
 
 app.put('/api/me/preferences', auth, async (req, res) => {
-  const { rows } = await pool.query(
-    'SELECT email_server,email_events,email_community,public_profile,show_online,public_history,theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links FROM user_preferences WHERE user_id=$1',
-    [req.user.sub],
-  );
-  const prefs = await ensureUserPreferences(req.user.sub, { ...(rows[0] || {}), ...(req.body || {}) });
-  await audit({
-    actorId: req.user.sub,
-    actorName: req.user.username,
-    type: 'update',
-    targetId: req.user.sub,
-    targetName: req.user.username,
-    message: 'Preferências da conta atualizadas',
-    metadata: { preferences: normalizePreferences(prefs) },
-  });
-  res.json(normalizePreferences(prefs));
+  const hasRequestedAvatar = Object.prototype.hasOwnProperty.call(req.body || {}, 'avatar_url');
+  const requestedAvatar = hasRequestedAvatar
+    ? String(req.body.avatar_url || '').trim()
+    : null;
+  if (requestedAvatar) {
+    try {
+      const parsedAvatar = new URL(requestedAvatar);
+      if (parsedAvatar.protocol !== 'https:' || parsedAvatar.hostname.toLowerCase() !== 'res.cloudinary.com') {
+        return res.status(400).json({ error: 'Use uma foto enviada pelo editor de perfil.', code: 'PROFILE_MEDIA_UNTRUSTED_URL' });
+      }
+    } catch {
+      return res.status(400).json({ error: 'A URL da foto de perfil é inválida.', code: 'PROFILE_MEDIA_INVALID_URL' });
+    }
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+    await client.query(
+      'INSERT INTO user_preferences(user_id) VALUES($1) ON CONFLICT(user_id) DO NOTHING',
+      [req.user.sub],
+    );
+    const { rows } = await client.query(
+      `SELECT email_server,email_events,email_community,public_profile,show_online,public_history,
+              theme,bio,display_name,avatar_url,cover_url,profile_layout,profile_links
+       FROM user_preferences WHERE user_id=$1 FOR UPDATE`,
+      [req.user.sub],
+    );
+    const previous = rows[0] || {};
+
+    let ownedAvatarId = null;
+    if (requestedAvatar) {
+      const ownedAvatar = await client.query(
+        `SELECT id FROM profile_media_history
+         WHERE user_id=$1 AND media_kind='avatar' AND media_url=$2
+         LIMIT 1 FOR UPDATE`,
+        [req.user.sub, requestedAvatar],
+      );
+      if (!ownedAvatar.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Use uma foto enviada pelo seu editor de perfil.', code: 'PROFILE_MEDIA_NOT_OWNED' });
+      }
+      ownedAvatarId = ownedAvatar.rows[0].id;
+    }
+
+    const preferenceChanges = { ...(req.body || {}) };
+    delete preferenceChanges.avatar_url;
+    const prefs = await ensureUserPreferences(
+      req.user.sub,
+      { ...previous, ...preferenceChanges },
+      client,
+      { overwrite: true },
+    );
+
+    if (requestedAvatar && ownedAvatarId) {
+      await client.query(
+        `UPDATE profile_media_history
+         SET is_current=FALSE
+         WHERE user_id=$1 AND media_kind='avatar' AND is_current=TRUE AND id<>$2`,
+        [req.user.sub, ownedAvatarId],
+      );
+      await client.query(
+        `UPDATE profile_media_history
+         SET is_current=TRUE, selected_at=NOW()
+         WHERE user_id=$1 AND media_kind='avatar' AND id=$2`,
+        [req.user.sub, ownedAvatarId],
+      );
+      await client.query(
+        'UPDATE user_preferences SET avatar_url=$2, updated_at=NOW() WHERE user_id=$1',
+        [req.user.sub, requestedAvatar],
+      );
+      prefs.avatar_url = requestedAvatar;
+    } else if (hasRequestedAvatar && !requestedAvatar) {
+      await client.query(
+        'UPDATE user_preferences SET avatar_url=\'\', updated_at=NOW() WHERE user_id=$1',
+        [req.user.sub],
+      );
+      await client.query(
+        "UPDATE profile_media_history SET is_current=FALSE WHERE user_id=$1 AND media_kind='avatar' AND is_current=TRUE",
+        [req.user.sub],
+      );
+      prefs.avatar_url = '';
+    }
+
+    await client.query('COMMIT');
+    const normalized = normalizePreferences(prefs);
+    await audit({
+      actorId: req.user.sub,
+      actorName: req.user.username,
+      type: 'update',
+      targetId: req.user.sub,
+      targetName: req.user.username,
+      message: 'Preferências da conta atualizadas',
+      metadata: { preferences: normalized },
+    }).catch(error => console.warn('[preferences audit skipped]', error?.message || error));
+    res.json(normalized);
+  } catch (error) {
+    await client?.query('ROLLBACK').catch(() => {});
+    console.error('[PUT /api/me/preferences]', error);
+    res.status(500).json({ error: 'Nao foi possivel salvar as preferencias.' });
+  } finally {
+    client?.release();
+  }
 });
 
 // ─────────────────────────────────────────────
@@ -9575,8 +9878,9 @@ app.get('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
 app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).json({ error: 'invalid id' });
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     await enforceDashboardBroadcastLimit(client, new Date());
     const { rows } = await client.query(`
@@ -9605,7 +9909,7 @@ app.post('/api/admin/notifications/:id/resend', auth, requireAdmin, async (req, 
     console.error('[POST /api/admin/notifications/:id/resend]', err);
     res.status(err.status || 500).json({ error: err.status ? err.message : 'Internal server error' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -9817,6 +10121,7 @@ res.json({ ok: true });
 
 registerAdminAnalytics(app, pool, auth, requireAdmin);
 registerAdminDashboardV2(app, pool, auth, requireAdmin, requireOwner, auditFromReq);
+registerAdminSocialRoutes(app, pool, auth, requireAdmin, requireOwner, auditFromReq);
 
 app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
   try {
@@ -9929,10 +10234,13 @@ app.get('/api/admin/users', auth, requireAdmin, async (req, res) => {
 try {
   const { rows } = await pool.query(`
     SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.observer_permissions, u.created_at,
+      COALESCE(up.avatar_url, '') AS avatar_url,
+      COALESCE(up.display_name, '') AS display_name,
       COALESCE(pb.merit_total, 0)     AS merit_total,
       COALESCE(pb.capital_balance, 0) AS capital_balance,
       COALESCE(pb.rank, 'ferro')      AS rank
     FROM users u
+    LEFT JOIN user_preferences up ON up.user_id = u.id
     LEFT JOIN player_balances pb ON pb.minecraft_name = LOWER(u.minecraft_name)
     ORDER BY u.id DESC
   `);
@@ -9975,8 +10283,8 @@ app.get('/api/admin/users/:id/insights', auth, requireAdmin, async (req, res) =>
       `, [id]),
       pool.query(`
         SELECT
-          (SELECT COUNT(*)::int FROM user_posts WHERE author_id=$1 AND repost_of_id IS NULL) AS posts,
-          (SELECT COUNT(*)::int FROM user_posts WHERE author_id=$1 AND repost_of_id IS NOT NULL) AS reposts,
+          (SELECT COUNT(*)::int FROM user_posts WHERE author_id=$1 AND repost_of_id IS NULL AND COALESCE(moderation_status,'active')='active') AS posts,
+          (SELECT COUNT(*)::int FROM user_posts WHERE author_id=$1 AND repost_of_id IS NOT NULL AND COALESCE(moderation_status,'active')='active') AS reposts,
           (SELECT COUNT(*)::int FROM post_comments WHERE author_id=$1 AND is_deleted=FALSE) AS comments,
           (SELECT COUNT(*)::int FROM post_likes WHERE user_id=$1) AS likes_given,
           (SELECT COUNT(*)::int FROM post_saves WHERE user_id=$1) AS saves,
@@ -10515,7 +10823,7 @@ app.post('/api/admin/merit', auth, requireAdmin, async (req, res) => {
     console.error('[POST /api/admin/merit]', error);
     return res.status(500).json({ error: 'Não foi possível registrar o ajuste de Mérito.', code: 'MERIT_TRANSACTION_FAILED' });
   } finally {
-    client.release();
+    client?.release();
   }
 
   await audit({
@@ -10587,7 +10895,7 @@ app.post('/api/admin/capital', auth, requireAdmin, async (req, res) => {
     console.error('[POST /api/admin/capital]', error);
     return res.status(500).json({ error: 'Não foi possível registrar o ajuste de Capital.', code: 'CAPITAL_TRANSACTION_FAILED' });
   } finally {
-    client.release();
+    client?.release();
   }
 
   await audit({
@@ -10943,6 +11251,10 @@ app.patch('/api/admin/moderation-queue/:id', auth, requireAdmin, async (req, res
           SET avatar_url = '', cover_url = ''
           WHERE user_id = $1
         `, [item.content_id]);
+        await client.query(
+          "UPDATE profile_media_history SET is_current=FALSE WHERE user_id=$1 AND media_kind='avatar'",
+          [item.content_id],
+        );
       }
     }
 
@@ -10986,6 +11298,14 @@ registerCommunityEvolution(app, pool, auth, {
   requireAdmin,
   createSocialNotification,
   notifyProfileSubscribers,
+});
+
+registerProfileMediaHistory(app, pool, auth, {
+  auditFromReq,
+  deleteStoredMedia: async ({ provider, providerPublicId }) => {
+    if (provider !== 'cloudinary' || !providerPublicId || !cloudinaryIsConfigured()) return;
+    await cloudinary.uploader.destroy(providerPublicId, { resource_type: 'image', invalidate: true });
+  },
 });
 
 app.get('/api/community/player/:targetId/notification-preference', auth, async (req, res) => {
