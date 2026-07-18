@@ -1,3 +1,9 @@
+import {
+  POST_IMPRESSION_DAILY_UPSERT_SQL,
+  socialDeliveryFactorSql,
+  socialDeliveryRestrictionJoinSql,
+} from './admin_social.mjs';
+
 // =============================================================================
 // FORCA ALIADA — FEED ALGORITHM v2
 // =============================================================================
@@ -273,15 +279,45 @@ app.post('/api/community/feed/impressions', auth, impressionLimiter, async (req,
   const raw = Array.isArray(req.body?.impressions) ? req.body.impressions : [];
   if (!raw.length) return res.json({ ok: true, recorded: 0 });
 
-  // Valida e sanitiza
-  const impressions = raw
+  const validSurfaces = new Set([
+    'recommended', 'following', 'trending', 'discover', 'search',
+    'public_feed', 'profile', 'direct',
+  ]);
+  const surfaceAliases = new Map([
+    ['all', 'recommended'],
+    ['feed', 'recommended'],
+    ['home', 'recommended'],
+    ['public', 'public_feed'],
+  ]);
+  const normalizeSurface = value => {
+    const candidate = String(value ?? '').trim().toLowerCase().replaceAll('-', '_');
+    const normalized = surfaceAliases.get(candidate) || candidate;
+    return validSurfaces.has(normalized) ? normalized : 'recommended';
+  };
+
+  // Valida, sanitiza e consolida o lote. Uma renderização não pode
+  // inflar view_count repetindo o mesmo post na mesma superfície do payload.
+  const deduplicated = new Map();
+  raw
     .filter(imp => Number.isInteger(Number(imp.post_id)) && Number(imp.post_id) > 0)
     .slice(0, 100) // máximo 100 por batch
-    .map(imp => ({
-      post_id:      Number(imp.post_id),
-      dwell_ms:     Math.max(0, Math.min(300_000, Number(imp.dwell_ms) || 0)), // máx 5min
-      max_reaction: Math.max(0, Math.min(5,       Number(imp.max_reaction) || 0)),
-    }));
+    .forEach(imp => {
+      const postId = Number(imp.post_id);
+      const surface = normalizeSurface(imp.surface ?? req.body?.surface);
+      const key = `${postId}:${surface}`;
+      const dwellMs = Math.max(0, Math.min(300_000, Number(imp.dwell_ms) || 0));
+      const previous = deduplicated.get(key);
+      const totalDwellMs = Math.min(300_000, Number(previous?.dwell_ms || 0) + dwellMs);
+      deduplicated.set(key, {
+        post_id: postId,
+        dwell_ms: totalDwellMs,
+        // Reações explícitas são inferidas pelos endpoints reais. O cliente
+        // só declara exposição; uma pausa longa vira sinal passivo nível 1.
+        max_reaction: totalDwellMs >= 8_000 ? 1 : 0,
+        surface,
+      });
+    });
+  const impressions = [...deduplicated.values()];
 
   if (!impressions.length) return res.json({ ok: true, recorded: 0 });
 
@@ -290,7 +326,27 @@ app.post('/api/community/feed/impressions', auth, impressionLimiter, async (req,
   try {
     await client.query('BEGIN');
 
+    const postIds = [...new Set(impressions.map(imp => imp.post_id))];
+    const { rows: postContextRows } = await client.query(`
+      SELECT p.id,
+             EXISTS(SELECT 1 FROM user_follows f WHERE f.follower_id=$1 AND f.following_id=p.author_id) AS viewer_was_follower
+      FROM user_posts p
+      LEFT JOIN user_posts op ON op.id=p.repost_of_id
+      WHERE p.id = ANY($2::int[])
+        AND COALESCE(p.moderation_status,'active')='active'
+        AND (op.id IS NULL OR COALESCE(op.moderation_status,'active')='active')
+    `, [userId, postIds]);
+    const postContext = new Map(postContextRows.map(row => [Number(row.id), row]));
+    let recorded = 0;
+
     for (const imp of impressions) {
+      const context = postContext.get(imp.post_id);
+      if (!context) continue;
+      const { rows: previousRows } = await client.query(
+        'SELECT total_dwell_ms FROM post_impressions WHERE user_id=$1 AND post_id=$2 FOR UPDATE',
+        [userId, imp.post_id],
+      );
+      const previousDwell = Number(previousRows[0]?.total_dwell_ms || 0);
       // Upsert: atualiza se já existe, senão insere
       await client.query(`
         INSERT INTO post_impressions
@@ -303,10 +359,20 @@ app.post('/api/community/feed/impressions', auth, impressionLimiter, async (req,
               max_reaction   = GREATEST(post_impressions.max_reaction, $4)
       `, [userId, imp.post_id, imp.dwell_ms, imp.max_reaction]);
 
+      await client.query(POST_IMPRESSION_DAILY_UPSERT_SQL, [
+        userId,
+        imp.post_id,
+        imp.surface,
+        Boolean(context.viewer_was_follower),
+        imp.dwell_ms,
+        imp.max_reaction,
+      ]);
+      recorded += 1;
+
       // Afinidade passiva: leu com atenção mas não interagiu explicitamente.
       // Sinal fraco (+0.3) — indica interesse sem compromisso.
       // Só aplicamos se ainda não teve interação (max_reaction < 2).
-      if (imp.dwell_ms >= 8_000 && imp.max_reaction < 2) {
+      if (previousDwell < 8_000 && previousDwell + imp.dwell_ms >= 8_000) {
         await client.query(
           'SELECT fa_apply_tag_affinity($1, $2, $3)',
           [userId, imp.post_id, 0.3],
@@ -315,7 +381,7 @@ app.post('/api/community/feed/impressions', auth, impressionLimiter, async (req,
     }
 
     await client.query('COMMIT');
-    res.json({ ok: true, recorded: impressions.length });
+    res.json({ ok: true, recorded });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[POST /api/community/feed/impressions]', e);
@@ -334,13 +400,30 @@ app.post('/api/community/posts/:id/save', auth, async (req, res) => {
   if (!postId) return res.status(400).json({ error: 'ID invalido' });
 
   try {
-    const { rowCount } = await pool.query(
-      'INSERT INTO post_saves(post_id, user_id) VALUES($1, $2) ON CONFLICT DO NOTHING',
-      [postId, req.user.sub],
-    );
+    const { rows: saveRows } = await pool.query(`
+      WITH active_post AS (
+        SELECT p.id
+        FROM user_posts p
+        LEFT JOIN user_posts op ON op.id=p.repost_of_id
+        WHERE p.id=$1
+          AND COALESCE(p.moderation_status,'active')='active'
+          AND (op.id IS NULL OR COALESCE(op.moderation_status,'active')='active')
+      ), inserted AS (
+        INSERT INTO post_saves(post_id,user_id)
+        SELECT id,$2 FROM active_post
+        ON CONFLICT DO NOTHING
+        RETURNING post_id
+      )
+      SELECT EXISTS(SELECT 1 FROM active_post) AS active,
+             EXISTS(SELECT 1 FROM inserted) AS inserted
+    `, [postId, req.user.sub]);
+    if (!saveRows[0]?.active) {
+      return res.status(404).json({ error: 'Post nao encontrado ou indisponivel.', code: 'POST_UNAVAILABLE' });
+    }
+    const inserted = Boolean(saveRows[0]?.inserted);
 
     // Registra como impressão de máxima qualidade (max_reaction=5)
-    if (rowCount > 0) {
+    if (inserted) {
       await pool.query(`
         INSERT INTO post_impressions(user_id, post_id, max_reaction, first_seen_at, last_seen_at)
         VALUES($1, $2, 5, NOW(), NOW())
@@ -354,7 +437,7 @@ app.post('/api/community/posts/:id/save', auth, async (req, res) => {
       'SELECT COUNT(*)::int AS saves_count FROM post_saves WHERE post_id=$1',
       [postId],
     );
-    res.json({ ok: true, saved: rowCount > 0, saves_count: rows[0]?.saves_count ?? 0 });
+    res.json({ ok: true, saved: true, newly_saved: inserted, saves_count: rows[0]?.saves_count ?? 0 });
   } catch (e) {
     console.error('[POST /api/community/posts/:id/save]', e);
     res.status(500).json({ error: 'Erro ao salvar post.' });
@@ -480,6 +563,9 @@ export const feedV2Endpoint = (app, auth, pool, { clampInt, sanitize, primaryInt
 app.get('/api/community/feed', auth, async (req, res) => {
   const limit          = clampInt(req.query.limit, 20, 1, 50);
   const filter         = req.query.filter || 'all';
+  if (!['all', 'following', 'saved', 'trending'].includes(filter)) {
+    return res.status(400).json({ error: 'Filtro de feed invalido.' });
+  }
   const isNewSession   = req.query.is_new_session === 'true';
 
   // evaluation_timestamp: âncora temporal fixa durante o scroll da sessão atual.
@@ -512,8 +598,9 @@ app.get('/api/community/feed', auth, async (req, res) => {
   const search  = req.query.search  ? `%${sanitize(req.query.search).toLowerCase()}%`                  : null;
   const hashtag = req.query.hashtag ? sanitize(req.query.hashtag).replace(/^#/, '').toLowerCase() : null;
 
-  // $1 = userId, $2 = limit+1, $3 = evalTs, $4 = cursorScore, $5 = cursorId, $6 = sessionSeed
-  const params = [req.user.sub, limit + 1, evaluationTimestamp, cursorScore, cursorId, sessionSeed];
+  const deliverySurface = search ? 'search' : filter === 'following' ? 'following' : filter === 'trending' ? 'trending' : 'recommended';
+  // $1 = userId, $2 = limit+1, $3 = evalTs, $4 = cursorScore, $5 = cursorId, $6 = sessionSeed, $7 = delivery surface
+  const params = [req.user.sub, limit + 1, evaluationTimestamp, cursorScore, cursorId, sessionSeed, deliverySurface];
 
   // ── Condições WHERE da base ─────────────────────────────────────────────────
   const conditions = [
@@ -523,6 +610,9 @@ app.get('/api/community/feed', auth, async (req, res) => {
        WHERE (ub.blocker_id = $1 AND ub.blocked_id = u.id)
           OR (ub.blocker_id = u.id AND ub.blocked_id = $1)
     )`,
+    `COALESCE(p.moderation_status,'active')='active'`,
+    `(op.id IS NULL OR COALESCE(op.moderation_status,'active')='active')`,
+    `COALESCE(delivery_control.delivery_factor, 1.0) > 0`,
     `NOT EXISTS (
        SELECT 1 FROM user_blocks oub
        WHERE ou.id IS NOT NULL
@@ -639,6 +729,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
                  SELECT 1 FROM post_polls pp
                  WHERE pp.post_id = COALESCE(p.repost_of_id, p.id)
                ) AS has_poll
+               ,${socialDeliveryFactorSql('delivery_control')} AS delivery_factor_internal
         FROM user_posts p
         JOIN  users            u   ON  p.author_id    = u.id
         LEFT JOIN user_preferences up  ON  up.user_id    = u.id
@@ -647,6 +738,14 @@ app.get('/api/community/feed', auth, async (req, res) => {
         LEFT JOIN users            ou  ON  ou.id         = op.author_id
         LEFT JOIN user_preferences oup ON  oup.user_id   = ou.id
         LEFT JOIN player_balances  opb ON  LOWER(opb.minecraft_name) = LOWER(ou.minecraft_name)
+        ${socialDeliveryRestrictionJoinSql({
+          postAlias: 'p',
+          originalPostAlias: 'op',
+          viewerExpression: '$1',
+          evaluationExpression: '$3',
+          surfaceExpression: '$7',
+          alias: 'delivery_control',
+        })}
         ${whereClause}
       ),
 
@@ -816,7 +915,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
           -- Amplitude: ±12.5% → jitter centrado em 1.0, de 0.875 a 1.125.
           -- Deterministico por (post_id + session_seed) → paginação keyset não duplica posts.
           (0.875 + ((MOD(
-            ABS(hashtext(m.id::text || ':' || $6::text))::bigint,
+            ABS(hashtext(m.id::text || ':' || $6::text)::bigint),
             100000
           )::double precision / 100000.0) * 0.25))::double precision AS session_noise
 
@@ -838,6 +937,7 @@ app.get('/api/community/feed', auth, async (req, res) => {
           )
           * s.session_noise
           * s.seen_penalty
+          * s.delivery_factor_internal
           AS raw_hot_score
         FROM scored s
       ),
@@ -891,10 +991,6 @@ app.get('/api/community/feed', auth, async (req, res) => {
                     WHERE ps.post_id = f.target_id AND ps.user_id = $1)                                          AS saved_by_me,
              -- Comentários recentes (preview de até 3)
              COALESCE(recent.recent_comments, '[]'::json) AS recent_comments,
-             -- Scores de debug (úteis para análise; podem ser removidos em produção)
-             f.hot_score, f.engagement_score, f.velocity_mult, f.affinity_mult,
-             f.social_mult, f.media_mult, f.temporal_gravity, f.seen_penalty,
-             f.session_noise, f.author_diversity_rank,
              -- hot_score_cursor em decimal fixo: evita notação científica do ::text cast
              -- que pode ocorrer para valores muito pequenos (ex: 1.23456789e-09).
              to_char(f.hot_score, 'FM999999999999999990.99999999999999999999') AS hot_score_cursor,

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { socialDeliveryFactorSql, socialDeliveryRestrictionJoinSql } from './admin_social.mjs';
 
 const communityBus = new EventEmitter();
 communityBus.setMaxListeners(500);
@@ -395,10 +396,18 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
            FROM users u
            LEFT JOIN user_preferences up ON up.user_id=u.id
            LEFT JOIN player_balances pb ON LOWER(pb.minecraft_name)=LOWER(u.minecraft_name)
+           LEFT JOIN LATERAL (
+             SELECT MIN(r.delivery_factor)::double precision AS delivery_factor
+             FROM community_delivery_restrictions r
+             WHERE r.status='active' AND r.starts_at<=NOW() AND (r.ends_at IS NULL OR r.ends_at>NOW())
+               AND 'discover'=ANY(r.surfaces) AND r.target_type='profile' AND r.target_user_id=u.id
+               AND u.id<>$1
+           ) delivery_control ON TRUE
            WHERE u.id<>$1
+             AND COALESCE(delivery_control.delivery_factor,1)>0
              AND NOT EXISTS(SELECT 1 FROM user_follows f WHERE f.follower_id=$1 AND f.following_id=u.id)
              AND NOT EXISTS(SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id=$1 AND ub.blocked_id=u.id) OR (ub.blocker_id=u.id AND ub.blocked_id=$1))
-           ORDER BY is_online DESC, merit DESC NULLS LAST, u.created_at DESC
+           ORDER BY is_online DESC, COALESCE(delivery_control.delivery_factor,1) DESC, merit DESC NULLS LAST, u.created_at DESC
            LIMIT 8`,
           [req.user.sub],
         ),
@@ -411,10 +420,13 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
            FROM user_posts p
            JOIN users u ON u.id=p.author_id
            LEFT JOIN user_preferences up ON up.user_id=u.id
+           ${socialDeliveryRestrictionJoinSql({ postAlias: 'p', originalPostAlias: null, viewerExpression: '$1', surfaceExpression: "'discover'", alias: 'delivery_control' })}
            WHERE p.repost_of_id IS NULL AND p.created_at > NOW()-INTERVAL '7 days'
+             AND COALESCE(p.moderation_status,'active')='active'
+             AND ${socialDeliveryFactorSql('delivery_control')}>0
              AND NOT EXISTS(SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id=$1 AND ub.blocked_id=u.id) OR (ub.blocker_id=u.id AND ub.blocked_id=$1))
-           ORDER BY ((SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=p.id) * 2
-                    + (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id=p.id AND pc.is_deleted=FALSE) * 4) DESC,
+           ORDER BY (((SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=p.id) * 2
+                    + (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id=p.id AND pc.is_deleted=FALSE) * 4) * ${socialDeliveryFactorSql('delivery_control')}) DESC,
                     p.created_at DESC
            LIMIT 8`,
           [req.user.sub],
@@ -424,6 +436,13 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
            FROM user_posts p,
            LATERAL regexp_matches(p.content,'#([[:alnum:]_]{2,32})','g') AS tag_match
            WHERE p.created_at > NOW()-INTERVAL '7 days'
+             AND COALESCE(p.moderation_status,'active')='active'
+             AND NOT EXISTS (
+               SELECT 1 FROM community_delivery_restrictions r
+               WHERE r.status='active' AND r.starts_at<=NOW() AND (r.ends_at IS NULL OR r.ends_at>NOW())
+                 AND 'trending'=ANY(r.surfaces) AND r.delivery_factor=0
+                 AND ((r.target_type='post' AND r.target_post_id=p.id) OR (r.target_type='profile' AND r.target_user_id=p.author_id))
+             )
            GROUP BY LOWER(tag_match[1])
            ORDER BY count DESC, tag
            LIMIT 10`,
@@ -447,22 +466,39 @@ export function registerCommunityEvolution(app, pool, auth, helpers = {}) {
           `SELECT u.id,u.username,u.minecraft_name,COALESCE(up.display_name,'') AS display_name,
                   COALESCE(up.avatar_url,'') AS avatar_url
            FROM users u LEFT JOIN user_preferences up ON up.user_id=u.id
+           LEFT JOIN LATERAL (
+             SELECT MIN(r.delivery_factor)::double precision AS delivery_factor
+             FROM community_delivery_restrictions r
+             WHERE r.status='active' AND r.starts_at<=NOW() AND (r.ends_at IS NULL OR r.ends_at>NOW())
+               AND 'search'=ANY(r.surfaces) AND r.target_type='profile' AND r.target_user_id=u.id AND u.id<>$2
+           ) delivery_control ON TRUE
            WHERE (LOWER(COALESCE(u.username,'')) LIKE $1 OR LOWER(COALESCE(u.minecraft_name,'')) LIKE $1 OR LOWER(COALESCE(up.display_name,'')) LIKE $1)
+             AND COALESCE(delivery_control.delivery_factor,1)>0
              AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id=$2 AND ub.blocked_id=u.id) OR (ub.blocker_id=u.id AND ub.blocked_id=$2))
-           ORDER BY u.created_at DESC LIMIT 10`, [like, req.user.sub],
+           ORDER BY COALESCE(delivery_control.delivery_factor,1) DESC,u.created_at DESC LIMIT 10`, [like, req.user.sub],
         ) : Promise.resolve({ rows: [] }),
         type === 'all' || type === 'posts' ? pool.query(
           `SELECT p.id,p.content,p.media_urls,p.created_at,u.id AS author_id,u.username,u.minecraft_name,
                   COALESCE(up.display_name,'') AS display_name,COALESCE(up.avatar_url,'') AS avatar_url
            FROM user_posts p JOIN users u ON u.id=p.author_id LEFT JOIN user_preferences up ON up.user_id=u.id
+           ${socialDeliveryRestrictionJoinSql({ postAlias: 'p', originalPostAlias: null, viewerExpression: '$2', surfaceExpression: "'search'", alias: 'delivery_control' })}
            WHERE LOWER(COALESCE(p.content,'')) LIKE $1
+             AND COALESCE(p.moderation_status,'active')='active'
+             AND ${socialDeliveryFactorSql('delivery_control')}>0
              AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id=$2 AND ub.blocked_id=u.id) OR (ub.blocker_id=u.id AND ub.blocked_id=$2))
-           ORDER BY p.created_at DESC LIMIT 14`, [like, req.user.sub],
+           ORDER BY ${socialDeliveryFactorSql('delivery_control')} DESC,p.created_at DESC LIMIT 14`, [like, req.user.sub],
         ) : Promise.resolve({ rows: [] }),
         type === 'all' || type === 'hashtags' ? pool.query(
           `SELECT LOWER(tag_match[1]) AS tag,COUNT(*)::int AS count
            FROM user_posts p,LATERAL regexp_matches(p.content,'#([[:alnum:]_]{2,32})','g') AS tag_match
-           WHERE LOWER(tag_match[1]) LIKE $1 GROUP BY LOWER(tag_match[1]) ORDER BY count DESC LIMIT 10`, [like],
+           WHERE LOWER(tag_match[1]) LIKE $1 AND COALESCE(p.moderation_status,'active')='active'
+             AND NOT EXISTS (
+               SELECT 1 FROM community_delivery_restrictions r
+               WHERE r.status='active' AND r.starts_at<=NOW() AND (r.ends_at IS NULL OR r.ends_at>NOW())
+                 AND 'search'=ANY(r.surfaces) AND r.delivery_factor=0
+                 AND ((r.target_type='post' AND r.target_post_id=p.id) OR (r.target_type='profile' AND r.target_user_id=p.author_id))
+             )
+           GROUP BY LOWER(tag_match[1]) ORDER BY count DESC LIMIT 10`, [like],
         ) : Promise.resolve({ rows: [] }),
       ]);
       res.json({ players: players.rows, posts: posts.rows, hashtags: hashtags.rows });

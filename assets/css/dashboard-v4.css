@@ -906,6 +906,14 @@ body.v4-more-open { overflow: hidden; }
 body.v4-more-open .v4-sheet-scrim { display: block; animation: v4-fade .2s ease; }
 .v4-more-head, .v4-more-footer, .v4-more-section { display: none; }
 .v4-quick-action { display: none; }
+.v4-theme-toggle,
+[data-v4-theme-toggle] {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 @keyframes v4-fade { from { opacity: 0; } }
 
 @media (max-width: 1180px) and (min-width: 901px) {

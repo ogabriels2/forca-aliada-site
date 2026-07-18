@@ -18,6 +18,8 @@
 <script>
 (function(){
   const key = 'fa_theme';
+  const pendingKey = 'fa_theme_pending';
+  const revisionKey = 'fa_theme_revision';
   const token = localStorage.getItem('fa_token');
   // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -31,9 +33,13 @@
 
   if (token) {
     const syncTheme = () => {
+      const revisionAtRequest = localStorage.getItem(revisionKey) || '';
       fetch(`${API_BASE}/api/me/preferences`, { headers: { Authorization: 'Bearer ' + token } })
         .then(r => r.ok ? r.json() : null)
         .then(p => {
+          // Nunca permita que uma leitura iniciada antes do toque do usuário
+          // reverta a escolha local enquanto ela está sendo persistida.
+          if ((localStorage.getItem(revisionKey) || '') !== revisionAtRequest || localStorage.getItem(pendingKey)) return;
           if (p && p.theme) {
             localStorage.setItem(key, p.theme);
             apply(p.theme);
@@ -1798,9 +1804,10 @@ footer { display: none; }
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
-<link rel="stylesheet" href="assets/css/dashboard-v2.css?v=20260716d">
+<link rel="stylesheet" href="assets/css/dashboard-v2.css?v=20260718b">
 <link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260716d">
-<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260716d">
+<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260718b">
+<link rel="stylesheet" href="assets/css/dashboard-v5.css?v=20260718c">
 </head>
 <body>
 <a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
@@ -1947,6 +1954,7 @@ footer { display: none; }
         <button class="portal-tab" type="button" data-dashboard-target="server-overview" onclick="scrollToSection('server-overview')">Servidor</button>
         <button class="portal-tab" type="button" data-dashboard-target="stats-card" onclick="scrollToSection('stats-card')">Estatísticas</button>
         <button class="portal-tab" type="button" data-dashboard-target="admin-users-card" id="portal-nav-staff" onclick="scrollToSection('admin-users-card')" style="display:none;">Jogadores & Staff</button>
+        <button class="portal-tab" type="button" data-dashboard-target="social-admin-card" id="portal-nav-social" onclick="scrollToSection('social-admin-card')" style="display:none;">Rede social</button>
         <button class="portal-tab" type="button" data-dashboard-target="merit-card" id="portal-nav-merit" onclick="scrollToSection('merit-card')" style="display:none;">Mérito & Capital</button>
         <button class="portal-tab" type="button" data-dashboard-target="admin-notifications-card" id="portal-nav-notifications" onclick="scrollToSection('admin-notifications-card')" style="display:none;">Notificações</button>
         <button class="portal-tab" type="button" data-dashboard-target="moderation-card" id="portal-nav-moderation" onclick="scrollToSection('moderation-card')" style="display:none;">Moderação <span class="mod-badge" id="mod-nav-badge" style="display:none;">0</span></button>
@@ -2360,6 +2368,22 @@ footer { display: none; }
       </div>
 
 
+
+      <div class="card social-admin-card" id="social-admin-card" style="display:none;" aria-labelledby="portal-active-title">
+        <div class="social-console-navigation">
+          <label class="social-period-control"><span>Período analisado</span><select id="social-period"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option></select></label>
+          <nav class="social-console-tabs" aria-label="Áreas da rede social">
+            <button type="button" class="is-active" data-social-pane="overview"><i data-lucide="chart-no-axes-combined"></i><span>Visão geral</span></button>
+            <button type="button" data-social-pane="accounts"><i data-lucide="users-round"></i><span>Contas</span></button>
+            <button type="button" data-social-pane="posts"><i data-lucide="panels-top-left"></i><span>Publicações</span></button>
+            <button type="button" data-social-pane="delivery"><i data-lucide="shield-check"></i><span>Entrega & segurança</span></button>
+          </nav>
+        </div>
+        <div class="social-console-live" id="social-console-live" aria-live="polite"></div>
+        <div id="social-console-body" class="social-console-body">
+          <div class="social-console-loading"><span></span><span></span><span></span><p>Preparando o panorama da comunidade…</p></div>
+        </div>
+      </div>
 
       <div class="card" id="admin-notifications-card" style="display:none;">
         <h3>Publicações e Notificações <span>Envie avisos sincronizados para usuários logados</span></h3>
@@ -3171,6 +3195,7 @@ const dashboardRouteAliases = {
   server: 'server-overview',
   access: 'dashboard-access',
   players: 'admin-users-card',
+  social: 'social-admin-card',
   merit: 'merit-card',
   moderation: 'moderation-card',
   notifications: 'admin-notifications-card',
@@ -3476,7 +3501,8 @@ function renderTopCommunityContent(rows) {
   if (!el) return;
   el.innerHTML = rows.map(row => {
     const name = row.display_name || row.minecraft_name || row.username || 'Membro';
-    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-dark.png';
+    const avatar = safeDashboardProfileImage(row.avatar_url || row.photo_url)
+      || (row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-dark.png');
     const interactions = aNum(row.likes) + aNum(row.comments) + aNum(row.reposts) + aNum(row.saves);
     return `<tr>
       <td><div class="ci-content-title"><img src="${escapeHTML(avatar)}" alt=""><span><strong>${escapeHTML(name)}</strong><small>${escapeHTML(row.preview || 'Publicação sem texto')}</small></span></div></td>
@@ -3490,7 +3516,8 @@ function renderCommunityContributors(rows) {
   const el = document.getElementById('ci-contributors');
   if (el) el.innerHTML = rows.map(row => {
     const name = row.display_name || row.minecraft_name || row.username || 'Membro';
-    const avatar = row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-dark.png';
+    const avatar = safeDashboardProfileImage(row.avatar_url || row.photo_url)
+      || (row.minecraft_name ? `https://minotar.net/helm/${encodeURIComponent(row.minecraft_name)}/64.png` : 'assets/images/fa-icon-dark.png');
     return `<div class="ci-contributor"><img src="${escapeHTML(avatar)}" alt=""><span><strong>${escapeHTML(name)}</strong><small>${aCompact(row.posts)} posts · ${aCompact(row.comments)} respostas · ${aCompact(row.merit)} mérito</small></span><b>${aCompact(row.contribution_score)}</b></div>`;
   }).join('') || '<div class="cc-empty">Sem contribuições no período.</div>';
 }
@@ -3666,10 +3693,12 @@ function normalizeAuditLog(log) {
 
 
 async function syncThemePreference() {
+  const revisionAtRequest = localStorage.getItem('fa_theme_revision') || '';
   try {
     const res = await apiFetch(`/api/me/preferences`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return;
     const prefs = await res.json();
+    if ((localStorage.getItem('fa_theme_revision') || '') !== revisionAtRequest || localStorage.getItem('fa_theme_pending')) return;
     if (prefs.theme) {
       localStorage.setItem('fa_theme', prefs.theme);
       const dark = prefs.theme === 'dark' || (prefs.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -3687,7 +3716,7 @@ function applyRoleVisibility() {
   const conditionalCards = [
     'admin-users-card', 'admin-notifications-card', 'audit-card',
     'merit-card', 'manager-promo-card', 'app-keys-card', 'moderation-card',
-    'legacy-migration-card',
+    'legacy-migration-card', 'social-admin-card',
   ];
   conditionalCards.forEach(id => {
     const el = document.getElementById(id);
@@ -3707,6 +3736,10 @@ function applyRoleVisibility() {
   if (!role || role === 'limited') return;
   hide('admin-users-card',         'block');
   hide('qa-staff',                 'flex');
+
+  if (role !== 'observer' || canObserverView('private_activity')) {
+    hide('social-admin-card', 'block');
+  }
 
   if (role !== 'observer' || canObserverView('staff_operations')) {
     hide('admin-notifications-card', 'block');
@@ -3778,7 +3811,7 @@ function applyRoleVisibility() {
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
 
     const me = await res.json();
-    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, observerPermissions: normalizeObserverPermissions(me.observer_permissions || me.capabilities?.observer_permissions), capabilities: me.capabilities || null };
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, displayName: me.display_name, avatarUrl: me.avatar_url, photoUrl: me.photo_url, role: me.role, observerPermissions: normalizeObserverPermissions(me.observer_permissions || me.capabilities?.observer_permissions), capabilities: me.capabilities || null };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     await syncThemePreference();
 
@@ -3920,8 +3953,12 @@ function initDashboard() {
 
       const me = await res.json();
       const nextObserverPermissions = normalizeObserverPermissions(me.observer_permissions || me.capabilities?.observer_permissions);
-      if (session.role !== me.role || JSON.stringify(observerPermissions()) !== JSON.stringify(nextObserverPermissions)) {
+      const profileChanged = session.avatarUrl !== me.avatar_url || session.photoUrl !== me.photo_url || session.displayName !== me.display_name;
+      if (session.role !== me.role || profileChanged || JSON.stringify(observerPermissions()) !== JSON.stringify(nextObserverPermissions)) {
         session.role = me.role;
+        session.avatarUrl = me.avatar_url;
+        session.photoUrl = me.photo_url;
+        session.displayName = me.display_name;
         session.observerPermissions = nextObserverPermissions;
         session.capabilities = me.capabilities || session.capabilities;
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -3929,6 +3966,7 @@ function initDashboard() {
           window.location.replace('account.html');
         } else {
           // Role atualizado — re-aplica visibilidade dos cards
+          renderProfile();
           applyRoleVisibility();
         }
       }
@@ -3942,18 +3980,32 @@ function initDashboard() {
 }
 
 // ══ Perfil ══
+function safeDashboardProfileImage(value) {
+  try {
+    const parsed = new URL(String(value || ''), location.href);
+    const localHttp = location.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(parsed.hostname);
+    return parsed.protocol === 'https:' || localHttp ? parsed.href : '';
+  } catch { return ''; }
+}
+
 function renderProfile() {
   const mcName       = session.minecraftName || '-';
   const displayMcName = session.minecraftName ? session.minecraftName : 'Não vinculada';
-  const skinUrl      = session.minecraftName
+  const minecraftSkin = session.minecraftName
     ? `https://minotar.net/helm/${encodeURIComponent(session.minecraftName)}/100.png`
     : 'https://minotar.net/helm/Steve/100.png';
+  const skinUrl = safeDashboardProfileImage(session.avatarUrl || session.avatar_url || session.photoUrl || session.photo_url) || minecraftSkin;
+  const applyAvatar = element => {
+    if (!element) return;
+    element.src = skinUrl;
+    element.onerror = function() { this.onerror = null; this.src = minecraftSkin; };
+  };
 
   document.getElementById('nav-name').textContent  = session.username;
-  document.getElementById('nav-photo').src          = skinUrl;
+  applyAvatar(document.getElementById('nav-photo'));
   document.getElementById('drop-name').textContent  = session.username;
   document.getElementById('drop-email').textContent = session.email || 'Sem e-mail';
-  document.getElementById('drop-photo').src         = skinUrl;
+  applyAvatar(document.getElementById('drop-photo'));
 
   const sbName = document.getElementById('sidebar-name');
   if (sbName) sbName.textContent = session.username;
@@ -3971,7 +4023,7 @@ function renderProfile() {
   if (sbMc) sbMc.textContent = displayMcName;
 
   const sbPhoto = document.getElementById('sidebar-photo');
-  if (sbPhoto) sbPhoto.src = skinUrl;
+  if (sbPhoto) applyAvatar(sbPhoto);
 
   const pill = document.getElementById('sidebar-role');
   if (pill) {
@@ -4001,6 +4053,10 @@ var DASHBOARD_MODULES = {
   'admin-users-card': {
     title: 'Jogadores',
     desc: 'Contas cadastradas, jogadores sem cadastro, cargos, acesso e verificação.'
+  },
+  'social-admin-card': {
+    title: 'Rede social',
+    desc: 'Operação, analytics de contas e publicações, qualidade e controles de entrega.'
   },
   'merit-card': {
     title: 'Economia',
@@ -4039,6 +4095,7 @@ function updateDashboardModuleVisibility() {
   if (!DASHBOARD_MODULES) return;
   [
     ['portal-nav-staff', 'admin-users-card'],
+    ['portal-nav-social', 'social-admin-card'],
     ['portal-nav-merit', 'merit-card'],
     ['portal-nav-notifications', 'admin-notifications-card'],
     ['portal-nav-audit', 'audit-card'],
@@ -5348,12 +5405,13 @@ function updateActivityChart() {
   const bucketValues = [...buckets.values()];
   const rankedPlayers = [...players].sort((a, b) => bucketValues.reduce((sum, bucket) => sum + (bucket[b] || 0) - (bucket[a] || 0), 0));
   if (chartFocusedPlayer && !rankedPlayers.includes(chartFocusedPlayer)) chartFocusedPlayer = null;
-  let playerList = rankedPlayers.slice(0, 8);
-  if (chartFocusedPlayer && !playerList.includes(chartFocusedPlayer)) playerList = [chartFocusedPlayer, ...playerList.slice(0, 7)];
+  const maxVisibleSeries = window.matchMedia('(max-width:640px)').matches ? 4 : 8;
+  let playerList = rankedPlayers.slice(0, maxVisibleSeries);
+  if (chartFocusedPlayer && !playerList.includes(chartFocusedPlayer)) playerList = [chartFocusedPlayer, ...playerList.slice(0, maxVisibleSeries - 1)];
   const hiddenSeriesCount = Math.max(0, rankedPlayers.length - playerList.length);
   const chartTip = document.querySelector('#chart-toolbar .chart-tip');
   if (chartTip) chartTip.innerHTML = playerList.length
-    ? `<kbd>2× clique</kbd> isola uma linha &nbsp;·&nbsp; <kbd>1× clique</kbd> oculta${hiddenSeriesCount ? ` &nbsp;·&nbsp; exibindo os 8 mais ativos de ${rankedPlayers.length}` : ''}`
+    ? `${window.matchMedia('(pointer:coarse)').matches ? '<kbd>toque</kbd> destaca ou oculta' : '<kbd>2× clique</kbd> isola uma linha &nbsp;·&nbsp; <kbd>1× clique</kbd> oculta'}${hiddenSeriesCount ? ` &nbsp;·&nbsp; exibindo os ${maxVisibleSeries} mais ativos de ${rankedPlayers.length}` : ''}`
     : 'Nenhuma atividade registrada neste período.';
   const datasets   = playerList.map(p => {
     const color = playerColor(p); const isFocused = chartFocusedPlayer === p; const isDeemphasized = chartFocusedPlayer && !isFocused;
@@ -5436,11 +5494,13 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   currentModalPlayerName = playerName; currentEditingAdminId = siteAccountId;
   playerModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   let displayMcName = playerName;
-  if (siteAccountId) { const acc = globalAdminUsers.find(u => u.id === siteAccountId); if (acc) displayMcName = acc.minecraft_name || acc.username; }
+  const initialAccount = siteAccountId == null ? null : globalAdminUsers.find(u => Number(u.id) === Number(siteAccountId));
+  if (initialAccount) displayMcName = initialAccount.minecraft_name || initialAccount.username;
 
   document.getElementById('modal-name').textContent  = displayMcName;
-  document.getElementById('modal-img').src           = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`;
-  document.getElementById('modal-img').onerror       = function() { this.src = 'https://minotar.net/helm/Steve/100.png'; };
+  const modalFallback = `https://minotar.net/helm/${encodeURIComponent(displayMcName)}/100.png`;
+  document.getElementById('modal-img').src = safeDashboardProfileImage(initialAccount?.avatar_url || initialAccount?.photo_url) || modalFallback;
+  document.getElementById('modal-img').onerror = function() { this.onerror = null; this.src = modalFallback; };
   document.getElementById('modal-status').textContent = '...'; document.getElementById('modal-status').className = 'pill limited-status';
   document.getElementById('modal-site-account').style.display  = 'none';
   document.getElementById('modal-create-account').style.display = 'none';
@@ -7448,8 +7508,9 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
-<script src="assets/js/dashboard-v2.js?v=20260716d"></script>
+<script src="assets/js/dashboard-v2.js?v=20260718c"></script>
 <script src="assets/js/dashboard-v3.js?v=20260716d"></script>
-<script src="assets/js/dashboard-v4.js?v=20260716d"></script>
+<script src="assets/js/dashboard-v4.js?v=20260718b"></script>
+<script src="assets/js/dashboard-v5.js?v=20260718d"></script>
 </body>
 </html>

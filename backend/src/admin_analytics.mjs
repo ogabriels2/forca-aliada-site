@@ -15,7 +15,7 @@ const activityEventsSql = `
   UNION ALL SELECT author_id, created_at, 'comment' FROM post_comments WHERE is_deleted = FALSE
   UNION ALL SELECT user_id, created_at, 'like' FROM post_likes
   UNION ALL SELECT user_id, created_at, 'save' FROM post_saves
-  UNION ALL SELECT user_id, last_seen_at, 'view' FROM post_impressions
+  UNION ALL SELECT user_id, last_seen_at, 'view' FROM post_impression_daily
   UNION ALL SELECT follower_id, created_at, 'follow' FROM user_follows
   UNION ALL SELECT sender_id, created_at, 'message' FROM direct_messages WHERE is_deleted = FALSE
   UNION ALL SELECT sender_id, created_at, 'message' FROM chat_group_messages WHERE is_deleted = FALSE
@@ -94,9 +94,9 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
             (SELECT COUNT(*)::int FROM user_posts WHERE created_at >= $1 AND created_at < $2 AND repost_of_id IS NOT NULL) AS reposts,
             (SELECT COUNT(*)::int FROM post_saves WHERE created_at >= $1 AND created_at < $2) AS saves,
             (SELECT COUNT(*)::int FROM post_poll_votes WHERE created_at >= $1 AND created_at < $2) AS poll_votes,
-            (SELECT COALESCE(SUM(view_count),0)::int FROM post_impressions WHERE last_seen_at >= $1 AND last_seen_at < $2) AS impressions,
-            (SELECT COUNT(DISTINCT user_id)::int FROM post_impressions WHERE last_seen_at >= $1 AND last_seen_at < $2) AS viewers,
-            (SELECT COALESCE(AVG(total_dwell_ms),0)::float FROM post_impressions WHERE last_seen_at >= $1 AND last_seen_at < $2) AS avg_dwell_ms,
+            (SELECT COALESCE(SUM(view_count),0)::int FROM post_impression_daily WHERE last_seen_at >= $1 AND last_seen_at < $2) AS impressions,
+            (SELECT COUNT(DISTINCT user_id)::int FROM post_impression_daily WHERE last_seen_at >= $1 AND last_seen_at < $2) AS viewers,
+            (SELECT COALESCE(SUM(total_dwell_ms)::float / NULLIF(SUM(view_count),0),0) FROM post_impression_daily WHERE last_seen_at >= $1 AND last_seen_at < $2) AS avg_dwell_ms,
             (SELECT COUNT(*)::int FROM direct_messages WHERE created_at >= $1 AND created_at < $2 AND is_deleted = FALSE)
               + (SELECT COUNT(*)::int FROM chat_group_messages WHERE created_at >= $1 AND created_at < $2 AND is_deleted = FALSE) AS messages,
             (SELECT COUNT(*)::int FROM user_follows WHERE created_at >= $1 AND created_at < $2) AS new_connections,
@@ -139,6 +139,7 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
         pool.query(`
           SELECT
             p.id, u.username, u.minecraft_name, COALESCE(up.display_name, '') AS display_name,
+            COALESCE(up.avatar_url, '') AS avatar_url, COALESCE(u.photo_url, '') AS photo_url,
             LEFT(REGEXP_REPLACE(p.content, E'[\\n\\r]+', ' ', 'g'), 110) AS preview,
             p.created_at, (array_length(p.media_urls, 1) > 0) AS has_media, p.media_urls[1] AS thumbnail_url,
             COALESCE(i.impressions, 0)::int AS impressions,
@@ -153,14 +154,18 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
           JOIN users u ON u.id = p.author_id
           LEFT JOIN user_preferences up ON up.user_id = u.id
           LEFT JOIN LATERAL (
-            SELECT SUM(view_count)::int AS impressions, COUNT(DISTINCT user_id)::int AS viewers, AVG(total_dwell_ms)::float AS avg_dwell_ms
-            FROM post_impressions WHERE post_id = p.id
+            SELECT SUM(view_count)::int AS impressions,
+                   COUNT(DISTINCT user_id)::int AS viewers,
+                   COALESCE(SUM(total_dwell_ms)::float / NULLIF(SUM(view_count),0),0) AS avg_dwell_ms
+            FROM post_impression_daily
+            WHERE post_id = p.id AND last_seen_at >= $1 AND last_seen_at < $2
           ) i ON TRUE
           LEFT JOIN LATERAL (SELECT COUNT(*)::int AS likes FROM post_likes WHERE post_id = p.id) l ON TRUE
           LEFT JOIN LATERAL (SELECT COUNT(*)::int AS comments FROM post_comments WHERE post_id = p.id AND is_deleted = FALSE) c ON TRUE
           LEFT JOIN LATERAL (SELECT COUNT(*)::int AS reposts FROM user_posts WHERE repost_of_id = p.id) r ON TRUE
           LEFT JOIN LATERAL (SELECT COUNT(*)::int AS saves FROM post_saves WHERE post_id = p.id) s ON TRUE
           WHERE p.created_at >= $1 AND p.created_at < $2 AND p.repost_of_id IS NULL
+            AND COALESCE(p.moderation_status,'active')='active'
           ORDER BY quality_score DESC, impressions DESC, p.created_at DESC
           LIMIT 10
         `, [start.toISOString(), end.toISOString()]),
@@ -168,7 +173,7 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
           WITH stats AS (
             SELECT
               u.id,
-              (SELECT COUNT(DISTINCT pi.post_id) FROM post_impressions pi WHERE pi.user_id = u.id AND pi.last_seen_at >= $1 AND pi.last_seen_at < $2) AS views,
+              (SELECT COUNT(DISTINCT pi.post_id) FROM post_impression_daily pi WHERE pi.user_id = u.id AND pi.last_seen_at >= $1 AND pi.last_seen_at < $2) AS views,
               (SELECT COUNT(*) FROM user_posts p WHERE p.author_id = u.id AND p.created_at >= $1 AND p.created_at < $2 AND p.repost_of_id IS NULL) AS posts,
               (SELECT COUNT(*) FROM post_comments c WHERE c.author_id = u.id AND c.created_at >= $1 AND c.created_at < $2 AND c.is_deleted = FALSE) AS comments,
               (SELECT COUNT(*) FROM post_likes l WHERE l.user_id = u.id AND l.created_at >= $1 AND l.created_at < $2) AS likes,
@@ -216,9 +221,10 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
                 + (SELECT COUNT(*) * 2 FROM post_comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE)
                 + (SELECT COUNT(*) * 3 FROM user_posts r WHERE r.repost_of_id = p.id)
                 + (SELECT COUNT(*) * 4 FROM post_saves s WHERE s.post_id = p.id) AS quality,
-              COALESCE((SELECT SUM(view_count) FROM post_impressions i WHERE i.post_id = p.id),0) AS impressions
+              COALESCE((SELECT SUM(view_count) FROM post_impression_daily i WHERE i.post_id = p.id AND i.last_seen_at >= $1 AND i.last_seen_at < $2),0) AS impressions
             FROM user_posts p
             WHERE p.created_at >= $1 AND p.created_at < $2 AND p.repost_of_id IS NULL
+              AND COALESCE(p.moderation_status,'active')='active'
           )
           SELECT format, COUNT(*)::int AS posts, COALESCE(AVG(quality),0)::float AS avg_quality,
             COALESCE(AVG(impressions),0)::float AS avg_impressions
@@ -227,6 +233,7 @@ export function registerAdminAnalytics(app, pool, auth, requireAdmin) {
         pool.query(`
           SELECT
             u.id, u.username, u.minecraft_name, COALESCE(up.display_name,'') AS display_name,
+            COALESCE(up.avatar_url,'') AS avatar_url, COALESCE(u.photo_url,'') AS photo_url,
             activity.posts, activity.comments, activity.connections,
             COALESCE(pb.merit_total,0)::int AS merit,
             (activity.posts * 5 + activity.comments * 2 + activity.connections)::int AS contribution_score
