@@ -480,7 +480,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
   app.get('/api/admin/players/directory', auth, requireAdmin, async (req, res) => {
     try {
       const { rows } = await pool.query(`
-        SELECT u.id, u.username, CASE WHEN $1='owner' THEN u.email ELSE NULL END AS email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
+        SELECT u.id, u.username, CASE WHEN $1::boolean THEN u.email ELSE NULL END AS email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
           COALESCE(pb.merit_total,0)::int AS merit, COALESCE(pb.capital_balance,0)::float AS capital, COALESCE(pb.rank,'ferro') AS rank,
           s.last_seen, COALESCE(s.sessions,0)::int AS sessions, COALESCE(s.total_hours,0)::float AS total_hours,
           COALESCE(p.posts,0)::int AS posts, COALESCE(c.comments,0)::int AS comments,
@@ -491,7 +491,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
         LEFT JOIN LATERAL (SELECT COUNT(*) AS posts, MAX(created_at) AS last_post FROM user_posts WHERE author_id=u.id AND repost_of_id IS NULL) p ON TRUE
         LEFT JOIN LATERAL (SELECT COUNT(*) AS comments, MAX(created_at) AS last_comment FROM post_comments WHERE author_id=u.id AND is_deleted=FALSE) c ON TRUE
         WHERE u.merged_into_user_id IS NULL ORDER BY last_activity DESC NULLS LAST
-      `, [req.user.role]);
+      `, [req.user.role === 'owner' || (req.user.role === 'observer' && req.user.observer_permissions?.identity_contact === true)]);
       jsonData(res, rows);
     } catch (error) {
       registerRouteError('players-directory', res, error);
@@ -541,7 +541,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
         `),
         pool.query(`
           SELECT q.id, q.minecraft_name, q.user_id, q.queued_at, q.delivered_at,
-            u.username, CASE WHEN $1='owner' THEN u.email ELSE NULL END AS email, u.is_verified, u.is_platform_verified,
+            u.username, CASE WHEN $1::boolean THEN u.email ELSE NULL END AS email, u.is_verified, u.is_platform_verified,
             k.name AS delivered_by_name,
             (SELECT COUNT(*)::int FROM whitelist_queue_attempts a WHERE a.queue_id=q.id) AS retry_count,
             CASE WHEN q.delivered_at IS NULL THEN 'queued' ELSE 'delivered' END AS status
@@ -550,7 +550,7 @@ export function registerAdminDashboardV2(app, pool, auth, requireAdmin, requireO
           LEFT JOIN app_integration_keys k ON k.id = q.delivered_by
           ORDER BY (q.delivered_at IS NULL) DESC, COALESCE(q.delivered_at, q.queued_at) DESC
           LIMIT 250
-        `, [req.user.role]),
+        `, [req.user.role === 'owner' || (req.user.role === 'observer' && req.user.observer_permissions?.identity_contact === true)]),
         pool.query(`
           SELECT id, name, last_used_at
           FROM app_integration_keys

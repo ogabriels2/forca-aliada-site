@@ -10,6 +10,7 @@
   const mutatingSelector = [
     '[data-staff-add-access]', '[data-staff-requeue]', '[data-v2-save-settings]',
     '[data-v2-mod-bulk]', '[data-v2-danger-action]', '[data-v2-bulk-verify]',
+    '[data-v2-export-kind]', '[data-v2-bulk-export]',
     '[data-v2-bulk-notify]', '[data-v2-retry-post]', '[data-v2-save-template]',
     '[data-v2-quick-notify]', '[data-v2-churn-player]', '.merit-submit-btn',
     '#notif-submit-btn', '#btn-create-account', '#confirm-pw-submit-btn',
@@ -21,6 +22,7 @@
   let onlineTimer = 0;
   let updateFrame = 0;
   let themeSaveRevision = 0;
+  const observerMode = () => typeof isObserverSession === 'function' ? isObserverSession() : (typeof session !== 'undefined' && session?.role === 'observer');
 
   const quickActions = {
     command: { label: 'Buscar', icon: 'search', run: () => qs('#v2-cmd-trigger')?.click() },
@@ -70,7 +72,8 @@
 
   function applyThemeVisuals() {
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (themeMeta) themeMeta.content = dark ? '#111511' : '#fffefa';
+    const styles = getComputedStyle(document.documentElement);
+    if (themeMeta) themeMeta.content = (dark ? styles.getPropertyValue('--staff-surface') : styles.getPropertyValue('--staff-canvas')).trim() || (dark ? '#111511' : '#f5f6f2');
     qsa('[data-v4-theme-toggle]').forEach(button => {
       button.innerHTML = dark ? `${icon('sun')}<span class="v4-theme-label">Usar modo claro</span>` : `${icon('moon')}<span class="v4-theme-label">Usar modo escuro</span>`;
       button.setAttribute('aria-label', dark ? 'Ativar modo claro' : 'Ativar modo escuro');
@@ -93,7 +96,7 @@
   async function persistThemePreference(theme) {
     const revision = ++themeSaveRevision;
     const authToken = localStorage.getItem('fa_token');
-    if (!authToken || !navigator.onLine || (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW)) return;
+    if (!authToken || !navigator.onLine || observerMode() || (typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW)) return;
     try {
       const currentResponse = await apiFetch('/api/me/preferences', { headers: { Authorization: `Bearer ${authToken}` } });
       const currentPayload = currentResponse.ok ? await currentResponse.json().catch(() => ({})) : {};
@@ -122,6 +125,19 @@
     const line = styles.getPropertyValue('--staff-line').trim();
     const surface = styles.getPropertyValue('--staff-surface-raised').trim();
     const strong = styles.getPropertyValue('--staff-ink').trim();
+    const chartTones = {
+      '#0071e3': styles.getPropertyValue('--staff-blue').trim(),
+      '#0a84ff': styles.getPropertyValue('--staff-blue').trim(),
+      '#64d2ff': styles.getPropertyValue('--staff-blue').trim(),
+      '#34c759': styles.getPropertyValue('--staff-green').trim(),
+      '#30d158': styles.getPropertyValue('--staff-green').trim(),
+      '#ffd60a': styles.getPropertyValue('--staff-gold').trim(),
+      '#ff9f0a': styles.getPropertyValue('--staff-gold').trim(),
+      '#ff3b30': styles.getPropertyValue('--staff-red').trim(),
+      '#ff453a': styles.getPropertyValue('--staff-red').trim(),
+      '#af52de': styles.getPropertyValue('--staff-purple').trim(),
+    };
+    const semanticTone = value => typeof value === 'string' ? (chartTones[value.toLowerCase()] || value) : value;
     Chart.defaults.color = ink;
     Chart.defaults.borderColor = line;
     Chart.defaults.font.family = styles.getPropertyValue('--ff').trim() || 'system-ui';
@@ -150,6 +166,13 @@
           tooltip.padding = 12;
           tooltip.cornerRadius = 12;
         }
+        (chart.data?.datasets || []).forEach(dataset => {
+          if (Array.isArray(dataset.borderColor)) dataset.borderColor = dataset.borderColor.map(semanticTone);
+          else dataset.borderColor = semanticTone(dataset.borderColor);
+          if (Array.isArray(dataset.backgroundColor)) dataset.backgroundColor = dataset.backgroundColor.map(semanticTone);
+          else dataset.backgroundColor = semanticTone(dataset.backgroundColor);
+          if (dataset.pointBorderColor === '#fff' || dataset.pointBorderColor === '#ffffff') dataset.pointBorderColor = surface;
+        });
         chart.update('none');
       } catch (_) { /* A chart can be between construction and first layout. */ }
     });
@@ -179,6 +202,14 @@
   }
 
   function addStatusElements() {
+    if (!qs('#v4-observer-banner')) {
+      const observerBanner = document.createElement('aside');
+      observerBanner.id = 'v4-observer-banner';
+      observerBanner.className = 'v4-observer-banner';
+      observerBanner.innerHTML = `${icon('eye')}<div><strong>Modo observador</strong><span>Consulta somente leitura · alterações e exportações estão bloqueadas.</span></div>`;
+      observerBanner.setAttribute('role', 'status');
+      document.body.appendChild(observerBanner);
+    }
     if (!qs('#v4-connection-banner')) {
       const banner = document.createElement('div');
       banner.id = 'v4-connection-banner';
@@ -225,11 +256,56 @@
     }
   }
 
+  function announceObserverMutation() {
+    const message = 'Modo observador: nenhuma alteração administrativa é permitida.';
+    if (typeof showToast === 'function') showToast(message, 'warning');
+    else {
+      const banner = qs('#v4-observer-banner');
+      if (banner) banner.setAttribute('data-announcement', message);
+    }
+  }
+
+  function updateObserverState() {
+    const active = observerMode();
+    document.body.classList.toggle('staff-observer-mode', active);
+    if (active) {
+      mutationControls().forEach(control => {
+        if (control.dataset.v4ObserverDisabled) return;
+        if ('disabled' in control) control.disabled = true;
+        else control.setAttribute('aria-disabled', 'true');
+        control.dataset.v4ObserverDisabled = '1';
+        control.setAttribute('aria-description', 'Indisponível no modo observador, que é somente leitura.');
+      });
+      qsa('#v2-settings-body input, #v2-settings-body select, #v2-settings-body textarea, #app-keys-card input, #legacy-migration-card input, #legacy-migration-card select, #legacy-migration-card textarea').forEach(field => {
+        if (field.dataset.v4ObserverField) return;
+        field.disabled = true;
+        field.dataset.v4ObserverField = '1';
+      });
+      if (!document.body.dataset.v4ObserverMeritReady && typeof switchMeritTab === 'function') {
+        document.body.dataset.v4ObserverMeritReady = '1';
+        try { switchMeritTab('leaderboard'); } catch (_) { /* Module can still be loading. */ }
+      }
+    } else {
+      qsa('[data-v4-observer-disabled]').forEach(control => {
+        if ('disabled' in control) control.disabled = false;
+        control.removeAttribute('aria-disabled');
+        control.removeAttribute('aria-description');
+        delete control.dataset.v4ObserverDisabled;
+      });
+      qsa('[data-v4-observer-field]').forEach(field => { field.disabled = false; delete field.dataset.v4ObserverField; });
+      delete document.body.dataset.v4ObserverMeritReady;
+    }
+  }
+
   function installOfflineApiGuard() {
     const original = window.apiFetch;
     if (typeof original !== 'function' || original.__staffOfflineGuard) return;
     const guarded = function staffOfflineApiFetch(path, options = {}) {
       const method = String(options.method || 'GET').toUpperCase();
+      const administrativePath = /^\/api\/(?:admin(?:\/|$)|player\/[^/]+\/notes(?:\/|$))/i.test(String(path));
+      if (observerMode() && administrativePath && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        return Promise.reject(new Error('Modo observador: alterações administrativas estão bloqueadas.'));
+      }
       if (!navigator.onLine && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
         return Promise.reject(new Error('Esta altera\u00e7\u00e3o exige conex\u00e3o. Reconecte-se e tente novamente.'));
       }
@@ -270,6 +346,7 @@
         onlineTimer = setTimeout(() => document.body.classList.remove('v4-online-confirmed'), 2400);
       }
     }
+    updateObserverState();
   }
 
   function enhanceMobileNavigation() {
@@ -448,7 +525,7 @@
     }
 
     const quick = qs('#v4-quick-action');
-    const config = quickActions[view];
+    const config = observerMode() && ['access', 'merit', 'notifications'].includes(view) ? null : quickActions[view];
     if (quick) {
       if (quick.hidden !== !config) quick.hidden = !config;
       if (config) {
@@ -467,6 +544,7 @@
     updateFrame = requestAnimationFrame(() => {
       updateFrame = 0;
       updateActiveChrome();
+      updateObserverState();
       if (!navigator.onLine) updateConnectionState(false);
     });
   }
@@ -484,6 +562,12 @@
 
   function bindInteractions() {
     document.addEventListener('click', event => {
+      if (observerMode() && mutationControl(event.target)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        announceObserverMutation();
+        return;
+      }
       if (!navigator.onLine && mutationControl(event.target)) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -498,6 +582,12 @@
     document.addEventListener('submit', event => {
       const submitter = event.submitter || qs('button[type="submit"],input[type="submit"]', event.target);
       const mutationForm = event.target.matches?.('#staff-action-form,.admin-notification-form');
+      if (observerMode() && (mutationForm || mutationControl(submitter))) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        announceObserverMutation();
+        return;
+      }
       if (navigator.onLine || (!mutationForm && !mutationControl(submitter))) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -602,6 +692,7 @@
     }
     addHeaderEnhancements();
     addStatusElements();
+    updateObserverState();
     bindInteractions();
     observeInterface();
 

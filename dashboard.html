@@ -1798,9 +1798,9 @@ footer { display: none; }
 <link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
-<link rel="stylesheet" href="assets/css/dashboard-v2.css?v=20260716b">
-<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260716b">
-<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260716b">
+<link rel="stylesheet" href="assets/css/dashboard-v2.css?v=20260716d">
+<link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260716d">
+<link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260716d">
 </head>
 <body>
 <a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
@@ -2867,8 +2867,16 @@ footer { display: none; }
           <div class="admin-field"><label>Usuário de Login</label><div class="view-val" id="av-username">-</div><input type="text" id="ai-username"></div>
           <div class="admin-field"><label>E-mail</label><div class="view-val" id="av-email">-</div><input type="email" id="ai-email"></div>
           <div class="admin-field"><label>Conta Minecraft</label><div class="view-val" id="av-mc">-</div><input type="text" id="ai-mc" placeholder="Opcional"></div>
-          <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
+          <div class="admin-field"><label>Permissão</label><div class="view-val" id="av-role">-</div><select id="ai-role" onchange="syncObserverPermissionPanels()"><option value="limited">Acesso Restrito</option><option value="observer">Observador</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
         </div>
+
+        <section class="observer-permissions-panel" id="observer-permissions-edit" hidden>
+          <div class="observer-permissions-head">
+            <div><span class="observer-permissions-kicker">Visibilidade individual</span><h4>O que este observador pode consultar</h4><p>O acesso continua 100% somente leitura. Tudo que estiver desligado é censurado também no servidor.</p></div>
+            <span class="observer-readonly-seal">Somente leitura</span>
+          </div>
+          <div class="observer-permissions-grid" data-observer-permissions="edit"></div>
+        </section>
 
         <div class="advanced-security-section" id="advanced-security-wrapper" style="display:none;">
           <button class="accordion-btn" id="adv-sec-btn" onclick="toggleAccordion('adv-sec-btn','adv-sec-body')"><span style="font-size:13px;font-weight:600;color:var(--text-secondary);">🔒 Alterar Senha</span><i class="acc-arrow">▾</i></button>
@@ -2893,9 +2901,13 @@ footer { display: none; }
               <div class="admin-field"><label>Usuário de Login</label><input type="text" id="ci-username" placeholder="nome_de_usuario" style="display:block;"></div>
               <div class="admin-field"><label>E-mail</label><input type="email" id="ci-email" placeholder="email@exemplo.com" style="display:block;"></div>
               <div class="admin-field"><label>Conta Minecraft</label><input type="text" id="ci-mc" placeholder="Nome no Minecraft" readonly style="display:block;background:#f2f2f7;cursor:default;"></div>
-              <div class="admin-field"><label>Permissão</label><select id="ci-role" style="display:block;"><option value="limited">Acesso Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
+              <div class="admin-field"><label>Permissão</label><select id="ci-role" onchange="syncObserverPermissionPanels()" style="display:block;"><option value="limited">Acesso Restrito</option><option value="observer">Observador</option><option value="full">Admin</option><option value="owner">Dono</option></select></div>
               <div class="admin-field" style="grid-column:1/-1;"><label>Senha Inicial (mín. 8 caracteres)</label><input type="password" id="ci-password" placeholder="Senha inicial" style="display:block;"></div>
             </div>
+            <section class="observer-permissions-panel" id="observer-permissions-create" hidden>
+              <div class="observer-permissions-head"><div><span class="observer-permissions-kicker">Privacidade por padrão</span><h4>Começa com tudo censurado</h4><p>Libere somente as categorias necessárias para o trabalho desta pessoa.</p></div><span class="observer-readonly-seal">Sem alterações</span></div>
+              <div class="observer-permissions-grid" data-observer-permissions="create"></div>
+            </section>
             <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:16px;gap:12px;">
               <div class="create-form-msg" id="create-form-msg" style="font-size:13px;"></div>
               <button class="btn-primary" onclick="submitCreateAccount()" id="btn-create-account">Criar Cadastro</button>
@@ -3063,10 +3075,70 @@ async function apiFetch(path, options = {}) {
 }
 
 const DASHBOARD_PREVIEW = ['localhost','127.0.0.1'].includes(window.location.hostname) && new URLSearchParams(location.search).has('preview');
+const dashboardPreviewParams = new URLSearchParams(location.search);
 let session = null;
 const token = localStorage.getItem(TOKEN_KEY) || (DASHBOARD_PREVIEW ? 'preview' : null);
 try { session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { session = null; }
-if (DASHBOARD_PREVIEW) session = { username:'Direção', email:'preview@forcaaliada.local', minecraftName:'Steve', role:'owner' };
+const OBSERVER_PERMISSION_DEFS = Object.freeze({
+  identity_contact: ['Identidade e contato', 'E-mails, vínculos de conta, aliases e identificadores privados.', 'contact-round'],
+  private_activity: ['Atividade privada', 'Sessões, horários, presença, risco de evasão e relações individuais.', 'activity'],
+  moderation_private: ['Moderação interna', 'Denúncias, conteúdo sob análise, notas e identidade de denunciantes.', 'shield-alert'],
+  economy_private: ['Economia individual', 'Saldos, transações, motivos de Mérito e Capital por pessoa.', 'landmark'],
+  audit_security: ['Auditoria e segurança', 'Logs detalhados, IP, dispositivo, sessão e metadados técnicos.', 'scroll-text'],
+  infrastructure: ['Infraestrutura', 'Acesso, integrações, configurações e diagnósticos internos.', 'server-cog'],
+  staff_operations: ['Operações da staff', 'Avisos, públicos-alvo, agendamentos e falhas internas.', 'badge-check'],
+});
+const emptyObserverPermissions = () => Object.fromEntries(Object.keys(OBSERVER_PERMISSION_DEFS).map(key => [key, false]));
+const normalizeObserverPermissions = value => {
+  const source = value && typeof value === 'object' ? value : {};
+  return Object.fromEntries(Object.keys(OBSERVER_PERMISSION_DEFS).map(key => [key, source[key] === true]));
+};
+const observerPermissions = () => normalizeObserverPermissions(session?.observerPermissions || session?.observer_permissions || session?.capabilities?.observer_permissions);
+const isObserverSession = () => session?.role === 'observer';
+const canObserverView = scope => !isObserverSession() || observerPermissions()[scope] === true;
+const canStaffMutate = () => session?.role === 'owner' || session?.role === 'full';
+const roleLabel = role => ({ owner:'Dono', full:'Admin', observer:'Observador', limited:'Acesso Restrito' }[role] || 'Acesso Restrito');
+if (DASHBOARD_PREVIEW) {
+  const previewRole = dashboardPreviewParams.get('role') === 'observer' ? 'observer' : 'owner';
+  const enabledScopes = new Set((dashboardPreviewParams.get('scopes') || '').split(',').filter(Boolean));
+  const previewPermissions = Object.fromEntries(Object.keys(OBSERVER_PERMISSION_DEFS).map(key => [key, enabledScopes.has('all') || enabledScopes.has(key)]));
+  session = { username: previewRole === 'observer' ? 'Observador' : 'Direção', email:'preview@forcaaliada.local', minecraftName:'Steve', role:previewRole, observerPermissions:previewPermissions, capabilities:{ read_only:previewRole === 'observer', observer_permissions:previewPermissions } };
+}
+
+function renderObserverPermissionEditors() {
+  document.querySelectorAll('[data-observer-permissions]').forEach(grid => {
+    if (grid.childElementCount) return;
+    const mode = grid.dataset.observerPermissions;
+    grid.innerHTML = Object.entries(OBSERVER_PERMISSION_DEFS).map(([key, [title, description, iconName]]) => `
+      <label class="observer-permission-row">
+        <span class="observer-permission-icon"><i data-lucide="${iconName}" aria-hidden="true"></i></span>
+        <span class="observer-permission-copy"><strong>${title}</strong><small>${description}</small></span>
+        <input type="checkbox" data-observer-permission="${key}" data-observer-mode="${mode}" aria-label="Permitir ${title.toLowerCase()}">
+        <span class="observer-permission-switch" aria-hidden="true"></span>
+      </label>`).join('');
+  });
+  window.lucide?.createIcons?.();
+}
+
+function populateObserverPermissions(mode, value = {}) {
+  renderObserverPermissionEditors();
+  const permissions = normalizeObserverPermissions(value);
+  document.querySelectorAll(`[data-observer-mode="${mode}"]`).forEach(input => { input.checked = permissions[input.dataset.observerPermission] === true; });
+}
+
+function collectObserverPermissions(mode) {
+  const permissions = emptyObserverPermissions();
+  document.querySelectorAll(`[data-observer-mode="${mode}"]`).forEach(input => { permissions[input.dataset.observerPermission] = input.checked === true; });
+  return permissions;
+}
+
+function syncObserverPermissionPanels() {
+  renderObserverPermissionEditors();
+  const editPanel = document.getElementById('observer-permissions-edit');
+  const createPanel = document.getElementById('observer-permissions-create');
+  if (editPanel) editPanel.hidden = document.getElementById('ai-role')?.value !== 'observer';
+  if (createPanel) createPanel.hidden = document.getElementById('ci-role')?.value !== 'observer';
+}
 
 function loginUrlForCurrentPage(){
   const here = `${location.pathname}${location.search}${location.hash}`.replace(/^\//,'');
@@ -3612,9 +3684,6 @@ async function syncThemePreference() {
 // garantindo que os cards apareçam corretamente em todos os cenários de boot.
 function applyRoleVisibility() {
   const role = session?.role;
-
-  // Reseta todos os cards condicionais antes de re-aplicar (evita cards "fantasmas"
-  // caso o role tenha sido rebaixado sem recarregar a página)
   const conditionalCards = [
     'admin-users-card', 'admin-notifications-card', 'audit-card',
     'merit-card', 'manager-promo-card', 'app-keys-card', 'moderation-card',
@@ -3625,7 +3694,6 @@ function applyRoleVisibility() {
     if (el) el.style.display = 'none';
   });
 
-  // Reseta quick-action buttons condicionais
   const el = (id) => document.getElementById(id);
   const hide = (id, d='none') => { const e=el(id); if(e) e.style.display=d; };
   hide('qa-staff');
@@ -3637,40 +3705,39 @@ function applyRoleVisibility() {
   hide('btn-export-staff');
 
   if (!role || role === 'limited') return;
-
-  // Cards visíveis para qualquer staff (full + owner)
   hide('admin-users-card',         'block');
-  hide('admin-notifications-card', 'block');
   hide('qa-staff',                 'flex');
-  hide('qa-notifications',         'flex');
 
-  // Moderação — visível para full e owner (alinhado com requireAdmin)
-  if (role === 'full' || role === 'owner') {
+  if (role !== 'observer' || canObserverView('staff_operations')) {
+    hide('admin-notifications-card', 'block');
+    hide('qa-notifications', 'flex');
+  }
+  if (role !== 'observer' || canObserverView('moderation_private')) {
     hide('moderation-card', 'block');
     hide('qa-moderation',   'flex');
   }
-
-  // Logs de Auditoria — API usa requireAdmin (full + owner), UI alinhada
-  if (role === 'full' || role === 'owner') {
+  if (role !== 'observer' || canObserverView('audit_security')) {
     hide('audit-card', 'block');
     hide('qa-audit',   'flex');
   }
-
-  // Merit & Capital — visível para full e owner
-  if (role === 'full' || role === 'owner') {
+  if (role !== 'observer' || canObserverView('economy_private')) {
     hide('merit-card', 'block');
     hide('qa-merit',   'flex');
   }
-
-  // Cards e ações exclusivos do owner
   if (role === 'owner') {
     hide('btn-export-staff',    'inline-flex');
     hide('manager-promo-card',  'block');
     hide('app-keys-card',       'block');
     hide('qa-appkeys',          'flex');
     hide('legacy-migration-card', 'block');
+  } else if (role === 'observer' && canObserverView('infrastructure')) {
+    hide('manager-promo-card', 'block');
+    hide('app-keys-card', 'block');
+    hide('qa-appkeys', 'flex');
+    hide('legacy-migration-card', 'block');
   }
 
+  document.body.classList.toggle('staff-observer-mode', role === 'observer');
   updateDashboardModuleVisibility();
   setActiveDashboardModule(activeDashboardModule || 'command-center', { scroll: false });
 }
@@ -3694,7 +3761,7 @@ function applyRoleVisibility() {
     // Revela a página imediatamente — independente do role no cache,
     // para evitar tela em branco quando o role está desatualizado ou ausente.
     document.body.style.visibility = 'visible';
-    if (cached.role === 'full' || cached.role === 'owner') {
+    if (cached.role === 'full' || cached.role === 'owner' || cached.role === 'observer') {
       initDashboard();
       _dashboardInitialized = true;
     } else {
@@ -3711,7 +3778,7 @@ function applyRoleVisibility() {
     if (!res.ok) throw new Error('Servidor retornou erro: ' + res.status);
 
     const me = await res.json();
-    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role };
+    session = { username: me.username, email: me.email, minecraftName: me.minecraft_name, role: me.role, observerPermissions: normalizeObserverPermissions(me.observer_permissions || me.capabilities?.observer_permissions), capabilities: me.capabilities || null };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     await syncThemePreference();
 
@@ -3793,18 +3860,18 @@ function initDashboard() {
   _startStatusPolling();
   updateNotificationAudienceHint();
   loadNotifications();
-  loadAdminNotifications();
+  if (!isObserverSession() || canObserverView('staff_operations')) loadAdminNotifications();
   fetchAdminUsers();
   updateSortBarForTab('registered');
 
   // Carregamento inicial de dados do owner
-  if (session.role === 'owner') {
+  if (session.role === 'owner' || (isObserverSession() && canObserverView('infrastructure'))) {
     fetchAppKeys();
     setTimeout(legacyAdminInit, 0);
   }
 
   // Audit logs — visível para full E owner (alinhado com a API requireAdmin)
-  if (session.role === 'full' || session.role === 'owner') {
+  if (session.role === 'full' || session.role === 'owner' || (isObserverSession() && canObserverView('audit_security'))) {
     fetchAuditLogs();
     // Recarrega logs de auditoria a cada 60 segundos automaticamente
     setInterval(() => {
@@ -3813,12 +3880,12 @@ function initDashboard() {
   }
 
   // Moderação — carrega fila IA e denúncias para full e owner
-  if (session.role === 'full' || session.role === 'owner') {
+  if (session.role === 'full' || session.role === 'owner' || (isObserverSession() && canObserverView('moderation_private'))) {
     setTimeout(modInit, 0);
   }
 
   // Merit & Capital — inicialização para full e owner
-  if (session.role === 'full' || session.role === 'owner') {
+  if (session.role === 'full' || session.role === 'owner' || (isObserverSession() && canObserverView('economy_private'))) {
     // Cache admin users for autocomplete once they're loaded
     setTimeout(()=>{
       if(globalAdminUsers && globalAdminUsers.length > 0) {
@@ -3852,8 +3919,11 @@ function initDashboard() {
       if (!res.ok) return; // Servidor em baixo ou erro 500? Ignora e não expulsa o utilizador.
 
       const me = await res.json();
-      if (session.role !== me.role) {
+      const nextObserverPermissions = normalizeObserverPermissions(me.observer_permissions || me.capabilities?.observer_permissions);
+      if (session.role !== me.role || JSON.stringify(observerPermissions()) !== JSON.stringify(nextObserverPermissions)) {
         session.role = me.role;
+        session.observerPermissions = nextObserverPermissions;
+        session.capabilities = me.capabilities || session.capabilities;
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
         if (session.role === 'limited') {
           window.location.replace('account.html');
@@ -3905,8 +3975,8 @@ function renderProfile() {
 
   const pill = document.getElementById('sidebar-role');
   if (pill) {
-    pill.textContent = session.role === 'owner' ? 'Dono' : (session.role === 'full' ? 'Acesso Total' : 'Acesso Restrito');
-    pill.className   = session.role === 'owner' ? 'pill owner' : (session.role === 'full' ? 'pill full' : 'pill limited');
+    pill.textContent = session.role === 'full' ? 'Acesso Total' : roleLabel(session.role);
+    pill.className   = `pill ${['owner','full','observer'].includes(session.role) ? session.role : 'limited'}`;
   }
 }
 
@@ -4237,7 +4307,7 @@ function updateNotificationAudienceHint() {
   const hint = document.getElementById('notif-audience-hint');
   const data = {
     all: ['Envio para todos os usuários cadastrados.', '', true],
-    role: ['Use owner, full ou limited para segmentar por permissão.', 'owner, full ou limited', false],
+    role: ['Use owner, full, observer ou limited para segmentar por permissão.', 'owner, full, observer ou limited', false],
     user: ['Informe o ID numérico do usuário cadastrado.', 'ID do usuário', false],
     minecraft: ['Informe exatamente o nick Minecraft vinculado à conta.', 'Nick Minecraft', false],
   }[aud];
@@ -4835,6 +4905,7 @@ function exportPlayerHistoryCSV() {
 }
 
 function exportStaffCSV() {
+  if (isObserverSession()) { showToast('Exportações não estão disponíveis no modo observador.', 'warning'); return; }
   if (!globalAdminUsers.length) { showToast('Nenhuma conta para exportar.', 'warning'); return; }
   const rows = globalAdminUsers.map(u => [u.username, u.email, u.minecraft_name || '-', u.role, u.created_at || '-']);
   downloadCSV('staff_forcaaliada.csv', rows, ['Usuário', 'E-mail', 'Minecraft', 'Permissão', 'Criado em']);
@@ -5381,8 +5452,10 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   playerModal.classList.add('active'); document.body.style.overflow = 'hidden';
   requestAnimationFrame(() => playerModal.querySelector('.close-modal')?.focus());
 
-  // Carrega notas compartilhadas do backend imediatamente
-  renderPlayerNotes(displayMcName);
+  const notesPanel = document.getElementById('player-notes-panel');
+  const canViewNotes = !isObserverSession() || canObserverView('moderation_private');
+  if (notesPanel) notesPanel.style.display = canViewNotes ? '' : 'none';
+  if (canViewNotes) renderPlayerNotes(displayMcName);
 
   const [historyData] = await Promise.all([
     apiFetch(`/api/player/${encodeURIComponent(displayMcName)}/history`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -5411,19 +5484,29 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
   if (siteAcc) {
     currentEditingAdminId = siteAcc.id;
     document.getElementById('av-username').textContent = siteAcc.username;
-    document.getElementById('av-email').textContent    = siteAcc.email;
+    document.getElementById('av-email').textContent    = siteAcc.email || 'Oculto pelo proprietário';
     document.getElementById('av-mc').textContent       = siteAcc.minecraft_name || 'Nenhuma vinculada';
-    document.getElementById('av-role').textContent     = siteAcc.role === 'owner' ? 'Dono' : (siteAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+    document.getElementById('av-role').textContent     = roleLabel(siteAcc.role);
     document.getElementById('ai-username').value  = siteAcc.username;
-    document.getElementById('ai-email').value     = siteAcc.email;
+    document.getElementById('ai-email').value     = siteAcc.email || '';
     document.getElementById('ai-mc').value        = siteAcc.minecraft_name || '';
     document.getElementById('ai-role').value      = siteAcc.role;
+    populateObserverPermissions('edit', siteAcc.observer_permissions || emptyObserverPermissions());
+    syncObserverPermissionPanels();
     document.getElementById('ai-newpassword').value = '';
     document.getElementById('modal-site-account').style.display  = 'block';
     document.getElementById('modal-create-account').style.display = 'none';
     loadStaffProfileInsights(siteAcc.id, siteAcc);
 
-    if (session.role === 'full') {
+    if (session.role === 'observer') {
+      document.getElementById('admin-lock-screen').style.display        = 'none';
+      document.getElementById('admin-data-content').style.display       = 'grid';
+      document.getElementById('btn-edit-account').style.display         = 'none';
+      document.getElementById('action-bar-edit').style.display          = 'none';
+      document.getElementById('advanced-security-wrapper').style.display = 'none';
+      document.getElementById('observer-permissions-edit').hidden       = true;
+      setAdminEditMode(false);
+    } else if (session.role === 'full') {
       // Usuário full: exige confirmação de senha para ver dados sensíveis
       document.getElementById('admin-lock-screen').style.display        = 'block';
       document.getElementById('admin-data-content').style.display       = 'none';
@@ -5444,13 +5527,16 @@ async function openPlayerProfile(playerName, siteAccountId = null) {
     document.getElementById('ci-username').value = ''; document.getElementById('ci-email').value = '';
     document.getElementById('ci-mc').value       = playerName; document.getElementById('ci-role').value = 'limited';
     document.getElementById('ci-password').value = ''; document.getElementById('create-form-msg').textContent = '';
+    populateObserverPermissions('create', emptyObserverPermissions());
+    syncObserverPermissionPanels();
     const body = document.getElementById('create-account-body'), chevron = document.getElementById('create-acc-chevron');
     body.classList.remove('open'); chevron.classList.remove('open');
     document.getElementById('modal-create-account').style.display = session.role === 'owner' ? 'block' : 'none';
     document.getElementById('modal-site-account').style.display   = 'none';
   }
 
-  await loadModalMeritData(displayMcName);
+  if (!isObserverSession() || canObserverView('economy_private')) await loadModalMeritData(displayMcName);
+  else document.getElementById('modal-merit-section').style.display = 'none';
   renderModalStats(); renderModalTable();
 }
 
@@ -5460,6 +5546,11 @@ async function loadStaffProfileInsights(userId, account = {}) {
   if (!panel || !grid) return;
   panel.style.display = 'block';
   grid.innerHTML = '<div class="staff-insight staff-insight-wide"><span>Inteligência do perfil</span><strong>Carregando...</strong></div>';
+
+  if (isObserverSession() && !canObserverView('private_activity')) {
+    grid.innerHTML = '<div class="staff-insight staff-insight-wide"><span>Dados protegidos</span><strong>Atividade privada censurada pelo proprietário</strong></div>';
+    return;
+  }
 
   try {
     const data = DASHBOARD_PREVIEW ? {
@@ -5597,8 +5688,13 @@ function toggleCreateAccount() { const b = document.getElementById('create-accou
 function setAdminEditMode(isEditing) {
   const card    = document.getElementById('modal-site-account');
   const advWrap = document.getElementById('advanced-security-wrapper');
+  if (isObserverSession()) isEditing = false;
   if (isEditing) { card.classList.add('edit-mode'); advWrap.style.display = 'block'; hideAdminDeleteConfirm(); }
   else { card.classList.remove('edit-mode'); advWrap.style.display = 'none'; const b = document.getElementById('adv-sec-body'), btn = document.getElementById('adv-sec-btn'); if (b.classList.contains('open')) { b.classList.remove('open'); btn.classList.remove('open'); } }
+  syncObserverPermissionPanels();
+  const observerPanel = document.getElementById('observer-permissions-edit');
+  observerPanel?.querySelectorAll('input').forEach(input => { input.disabled = !isEditing; });
+  if (observerPanel && session.role !== 'owner') observerPanel.hidden = true;
 }
 function showAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'none'; document.getElementById('admin-delete-confirm').style.display = 'flex'; }
 function hideAdminDeleteConfirm() { document.getElementById('admin-delete-normal').style.display = 'block'; document.getElementById('admin-delete-confirm').style.display = 'none'; }
@@ -5607,6 +5703,7 @@ async function saveAdminUser() {
   if (!currentEditingAdminId) return;
   const newPwd = document.getElementById('ai-newpassword').value.trim();
   const body   = { username: document.getElementById('ai-username').value.trim(), email: document.getElementById('ai-email').value.trim(), minecraftName: document.getElementById('ai-mc').value.trim(), role: document.getElementById('ai-role').value };
+  body.observerPermissions = body.role === 'observer' ? collectObserverPermissions('edit') : emptyObserverPermissions();
   if (newPwd) body.newPassword = newPwd;
   if (!body.username || !body.email) { showToast('Preencha usuário e e-mail.', 'error'); return; }
   if (newPwd && newPwd.length < 8) { showToast('A nova senha deve ter ao menos 8 caracteres.', 'error'); return; }
@@ -5622,7 +5719,7 @@ async function saveAdminUser() {
       document.getElementById('av-username').textContent = body.username;
       document.getElementById('av-email').textContent    = body.email;
       document.getElementById('av-mc').textContent       = body.minecraftName || 'Nenhuma vinculada';
-      document.getElementById('av-role').textContent     = body.role === 'owner' ? 'Dono' : (body.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      document.getElementById('av-role').textContent     = roleLabel(body.role);
       setAdminEditMode(false);
       showToast('Alterações salvas com sucesso!');
     }
@@ -5651,13 +5748,14 @@ async function submitCreateAccount() {
   const email        = document.getElementById('ci-email').value.trim();
   const minecraftName = document.getElementById('ci-mc').value.trim();
   const role         = document.getElementById('ci-role').value;
+  const observerPermissions = role === 'observer' ? collectObserverPermissions('create') : emptyObserverPermissions();
   const password     = document.getElementById('ci-password').value;
   const msg          = document.getElementById('create-form-msg');
   const btn          = document.getElementById('btn-create-account');
   if (!username || !email || !password) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.style.color = 'var(--danger)'; return; }
   if (password.length < 8) { msg.textContent = 'A senha deve ter ao menos 8 caracteres.'; msg.style.color = 'var(--danger)'; return; }
   btn.disabled = true; btn.textContent = 'Criando...';
-  const res = await apiFetch(`/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role }) });
+  const res = await apiFetch(`/api/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ username, email, minecraftName, password, role, observerPermissions }) });
   btn.disabled = false; btn.textContent = 'Criar Cadastro';
   if (res.ok) {
     const data = await res.json();
@@ -5667,13 +5765,15 @@ async function submitCreateAccount() {
     const newAcc = globalAdminUsers.find(u => u.id === data.id);
     if (newAcc) {
       document.getElementById('av-username').textContent = newAcc.username;
-      document.getElementById('av-email').textContent    = newAcc.email;
+      document.getElementById('av-email').textContent    = newAcc.email || 'Oculto pelo proprietário';
       document.getElementById('av-mc').textContent       = newAcc.minecraft_name || 'Nenhuma vinculada';
-      document.getElementById('av-role').textContent     = newAcc.role === 'owner' ? 'Dono' : (newAcc.role === 'full' ? 'Admin' : 'Acesso Restrito');
+      document.getElementById('av-role').textContent     = roleLabel(newAcc.role);
       document.getElementById('ai-username').value       = newAcc.username;
-      document.getElementById('ai-email').value         = newAcc.email;
+      document.getElementById('ai-email').value         = newAcc.email || '';
       document.getElementById('ai-mc').value             = newAcc.minecraft_name || '';
       document.getElementById('ai-role').value          = newAcc.role;
+      populateObserverPermissions('edit', newAcc.observer_permissions || observerPermissions);
+      syncObserverPermissionPanels();
       document.getElementById('ai-newpassword').value   = '';
     }
     setAdminEditMode(false);
@@ -5783,7 +5883,7 @@ function renderRegisteredList() {
   let filtered = globalAdminUsers.filter(u =>
     String(u.id || '').includes(term) ||
     u.username.toLowerCase().includes(term) ||
-    u.email.toLowerCase().includes(term) ||
+    (u.email||'').toLowerCase().includes(term) ||
     (u.minecraft_name||'').toLowerCase().includes(term)
   );
   if (adminSortState.key === 'verified') filtered = filtered.filter(u => u.is_verified === false);
@@ -5822,33 +5922,34 @@ function renderRegisteredList() {
 
   list.innerHTML = filtered.map(u => {
     const mc        = u.minecraft_name || u.username;
-    const hist      = historyMap[mc.toLowerCase()];
+    const hist      = (!isObserverSession() || canObserverView('private_activity')) ? historyMap[mc.toLowerCase()] : null;
     const lastStr   = hist?.last ? new Date(hist.last).toLocaleDateString('pt-BR') : '-';
-    const pillClass = u.role === 'owner' ? 'owner' : (u.role === 'full' ? 'full' : 'limited');
-    const roleText  = u.role === 'owner' ? 'Dono' : (u.role === 'full' ? 'Admin' : 'Staff');
+    const pillClass = ['owner','full','observer'].includes(u.role) ? u.role : 'limited';
+    const roleText  = roleLabel(u.role);
     const verifiedBadge = u.is_verified === false ? `<span class="unregistered-badge" style="background:rgba(255,59,48,0.1);color:var(--danger);">E-mail pendente</span>` : '';
     const platformVerBadge = u.is_platform_verified ? `<span class="unregistered-badge" style="background:rgba(23,97,240,0.10);color:var(--blue);">Selo da plataforma</span>` : '';
-    const merit     = u.merit_total || 0;
-    const capital   = u.capital_balance || 0;
+    const economyVisible = !isObserverSession() || canObserverView('economy_private');
+    const merit     = economyVisible ? (u.merit_total || 0) : 0;
+    const capital   = economyVisible ? (u.capital_balance || 0) : 0;
     const rd        = getRankDef(merit);
     const pct       = rd.next === Infinity ? 100 : Math.round(((merit - rd.min) / (rd.next - rd.min)) * 100);
-    const meritBadge = `<span class="li-merit-badge ${rd.key}">${rd.icon} ${rd.label}</span>`;
+    const meritBadge = economyVisible ? `<span class="li-merit-badge ${rd.key}">${rd.icon} ${rd.label}</span>` : '<span class="observer-redacted-chip">Economia oculta</span>';
     const capitalStr = capital > 0 ? `<span style="font-size:11px;color:var(--text-secondary);margin-left:4px;">💰 ${capital.toLocaleString('pt-BR')}</span>` : '';
     return `<li class="list-item" onclick="openPlayerProfile('${mc}', ${u.id})">
       <img src="https://minotar.net/helm/${mc}/40.png" class="mc-head" onerror="this.src='https://minotar.net/helm/Steve/40.png'">
       <div class="item-details" style="flex:1;min-width:0;">
         <strong style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${u.username} <span class="pill ${pillClass}" style="font-size:10px;">${roleText}</span> ${verifiedBadge} ${platformVerBadge} ${meritBadge} ${capitalStr}</strong>
-        <span class="player-contact-line">${u.email}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
-        <div class="li-merit-bar" title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
+        <span class="player-contact-line">${escapeHTML(u.email || 'Contato oculto')}${hist?.last ? ` · Acesso ${lastStr}` : ''}</span>
+        <div class="li-merit-bar" ${economyVisible ? '' : 'hidden'} title="${merit} ⭐ · ${pct}% para ${rd.next===Infinity?'máximo':rd.key==='ferro'?'Ouro':rd.key==='ouro'?'Diamante':'Netherite'}">
           <div class="li-merit-bar-fill" style="width:${pct}%;background:${rd.color};"></div>
         </div>
       </div>
-      <button class="player-verify-btn" onclick="event.stopPropagation();togglePlatformVerified(${u.id},${!!u.is_platform_verified})"
+      ${isObserverSession() ? '' : `<button class="player-verify-btn" onclick="event.stopPropagation();togglePlatformVerified(${u.id},${!!u.is_platform_verified})"
         style="flex-shrink:0;padding:4px 9px;border-radius:6px;border:1px solid var(--line);font-size:11px;font-weight:700;cursor:pointer;
                background:${u.is_platform_verified?'rgba(23,97,240,0.10)':'var(--card)'};color:${u.is_platform_verified?'var(--blue)':'var(--text-secondary)'}"
         title="${u.is_platform_verified?'Revogar verificação':'Conceder verificação de plataforma'}">
         ${u.is_platform_verified?'Selo ativo':'Conceder selo'}
-      </button>
+      </button>`}
     </li>`;
   }).join('');
 }
@@ -7347,8 +7448,8 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
-<script src="assets/js/dashboard-v2.js?v=20260716b"></script>
-<script src="assets/js/dashboard-v3.js?v=20260716b"></script>
-<script src="assets/js/dashboard-v4.js?v=20260716b"></script>
+<script src="assets/js/dashboard-v2.js?v=20260716d"></script>
+<script src="assets/js/dashboard-v3.js?v=20260716d"></script>
+<script src="assets/js/dashboard-v4.js?v=20260716d"></script>
 </body>
 </html>

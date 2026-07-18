@@ -807,8 +807,9 @@ created_at    TIMESTAMPTZ  DEFAULT NOW()
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_platform_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS observer_permissions JSONB NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','limited'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','full','observer','limited'));
 UPDATE users
 SET photo_url = 'assets/images/fa-icon-dark.png'
 WHERE photo_url IS NULL
@@ -1664,6 +1665,109 @@ const REPORT_CONTENT_TYPES = new Set(['post', 'comment', 'user']);
 const REPORT_REASONS = new Set(['spam', 'hate_speech', 'harassment', 'inappropriate', 'misinformation', 'other']);
 const AFFILIATION_SCOPES = new Set(['post']);
 const CHAT_REACTIONS = new Set(['❤️', '👍', '😂', '😮', '😢', '🔥', '👏']);
+
+const OBSERVER_PERMISSION_DEFAULTS = Object.freeze({
+  identity_contact: false,
+  private_activity: false,
+  moderation_private: false,
+  economy_private: false,
+  audit_security: false,
+  infrastructure: false,
+  staff_operations: false,
+});
+const OBSERVER_PERMISSION_KEYS = Object.freeze(Object.keys(OBSERVER_PERMISSION_DEFAULTS));
+
+function normalizeObserverPermissions(value) {
+  let source = value;
+  if (typeof source === 'string') {
+    try { source = JSON.parse(source); } catch { source = {}; }
+  }
+  if (!source || typeof source !== 'object' || Array.isArray(source)) source = {};
+  return Object.fromEntries(OBSERVER_PERMISSION_KEYS.map(key => [key, source[key] === true]));
+}
+
+function observerCapabilities(user) {
+  const isObserver = user?.role === 'observer';
+  const permissions = isObserver
+    ? normalizeObserverPermissions(user?.observer_permissions)
+    : Object.fromEntries(OBSERVER_PERMISSION_KEYS.map(key => [key, true]));
+  return {
+    panel_access: ['owner', 'full', 'observer'].includes(user?.role),
+    read_only: isObserver,
+    can_write: ['owner', 'full'].includes(user?.role),
+    can_export: user?.role === 'owner',
+    observer_permissions: permissions,
+  };
+}
+
+function observerCan(user, permission) {
+  return user?.role !== 'observer' || normalizeObserverPermissions(user?.observer_permissions)[permission] === true;
+}
+
+function observerScopeForRequest(req) {
+  const path = String(req.path || req.originalUrl || '').toLowerCase();
+  if (/\/(?:merit|capital|leaderboard|players-with-balances)(?:\/|$)|economy-overview/.test(path)) return 'economy_private';
+  if (/\/(?:reports|moderation-queue)(?:\/|$)|moderation-overview|\/notes(?:\/|$)/.test(path)) return 'moderation_private';
+  if (/\/audit(?:\/|$)|audit-overview/.test(path)) return 'audit_security';
+  if (/\/(?:app-keys|settings|access)(?:\/|$)|\/legacy(?:\/|$)/.test(path)) return 'infrastructure';
+  if (/\/(?:notifications|notification-templates|scheduled-posts)(?:\/|$)/.test(path)) return 'staff_operations';
+  if (/\/(?:sessions|history|timeline)(?:\/|$)|\/users\/[^/]+\/insights(?:\/|$)|churn-risk|social-graph|staff-performance/.test(path)) return 'private_activity';
+  return null;
+}
+
+function scrubObserverString(value, permissions) {
+  let result = String(value);
+  if (!permissions.identity_contact) {
+    result = result.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[e-mail oculto]');
+  }
+  if (!permissions.audit_security) {
+    result = result.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[IP oculto]');
+  }
+  return result;
+}
+
+function redactObserverPayload(payload, permissions, seen = new WeakSet()) {
+  if (payload === null || payload === undefined) return payload;
+  if (typeof payload === 'string') return scrubObserverString(payload, permissions);
+  if (typeof payload !== 'object') return payload;
+  if (payload instanceof Date || Buffer.isBuffer(payload)) return payload;
+  if (seen.has(payload)) return null;
+  seen.add(payload);
+  if (Array.isArray(payload)) return payload.map(item => redactObserverPayload(item, permissions, seen));
+
+  const alwaysSecret = /(?:password|passwd|secret|token|authorization|cookie|hash|relay_room|refresh_token|access_token|confirm_token|verification_code|reset_code)/i;
+  const identity = /^(?:email|provider_email|profile_links|xbox_xuid|mc_uuid|legacy_username|alias_username|legacy_data_snapshot)$/i;
+  const activity = /^(?:last_activity|last_seen|last_seen_at|first_seen|entered_at|left_at|duration_hours|total_hours|avg_session_hours|session_history|sessions|last_social_at|last_server_at|last_social_activity|risk_score|followers|following|messages)$/i;
+  const moderation = /^(?:reporter_id|reporter_username|reporter_photo|reporter_email|internal_notes|note_text)$/i;
+  const economy = /^(?:merit|merit_total|capital|capital_balance|amount|weekly_delta|rank|rank_label|next_rank|newmerit|newcapital|new_total|new_balance|prevmerit|prevcapital)$/i;
+  const auditSecurity = /^(?:ip|request_ip|user_agent|request_ua|session_id|metadata|city|region|country|isp)$/i;
+  const infrastructure = /^(?:integration|manager|server_ip|server_port|host|database|observer_permissions|app_connected|app_last_seen|mc_state|cloud_mode|maintenance_message|whitelist_enabled)$/i;
+  const staffOperations = /^(?:audience_val|failure_reason|delivery_error)$/i;
+
+  const output = {};
+  for (const [key, rawValue] of Object.entries(payload)) {
+    if (alwaysSecret.test(key)) { output[key] = null; continue; }
+    if (!permissions.identity_contact && identity.test(key)) { output[key] = null; continue; }
+    if (!permissions.private_activity && activity.test(key)) { output[key] = null; continue; }
+    if (!permissions.moderation_private && moderation.test(key)) { output[key] = null; continue; }
+    if (!permissions.economy_private && economy.test(key)) { output[key] = null; continue; }
+    if (!permissions.audit_security && auditSecurity.test(key)) { output[key] = null; continue; }
+    if (!permissions.infrastructure && infrastructure.test(key)) { output[key] = null; continue; }
+    if (!permissions.staff_operations && staffOperations.test(key)) { output[key] = null; continue; }
+    output[key] = redactObserverPayload(rawValue, permissions, seen);
+  }
+  return output;
+}
+
+function installObserverResponseGuard(req, res) {
+  if (req.user?.role !== 'observer' || res.locals.observerResponseGuard) return;
+  const path = String(req.path || req.originalUrl || '');
+  if (!/^\/api\/(?:admin|player\/|players\/|snapshots\/|server\/)/i.test(path)) return;
+  const permissions = normalizeObserverPermissions(req.user.observer_permissions);
+  const originalJson = res.json.bind(res);
+  res.locals.observerResponseGuard = true;
+  res.json = payload => originalJson(redactObserverPayload(payload, permissions));
+}
 
 function isPrivileged(role) {
   return ['full', 'owner'].includes(role);
@@ -2762,7 +2866,7 @@ if (!token) return res.status(401).json({ error: 'missing token' });
 try {
 const decoded = jwt.verify(token, JWT_SECRET);
 const { rows } = await pool.query(
-'SELECT id, role, is_verified, minecraft_name, username FROM users WHERE id=$1',
+'SELECT id, role, is_verified, minecraft_name, username, observer_permissions FROM users WHERE id=$1',
 [decoded.sub],
 );
 if (!rows.length) return res.status(401).json({ error: 'user deleted' });
@@ -2783,20 +2887,39 @@ if (cached === null) {
 
 req.user = rows[0];
 req.user.sub = rows[0].id;
+req.user.observer_permissions = normalizeObserverPermissions(rows[0].observer_permissions);
+installObserverResponseGuard(req, res);
 next();
 } catch { res.status(401).json({ error: 'invalid token' }); }
 }
 
 function requireAdmin(req, res, next) {
-if (!['full', 'owner'].includes(req.user?.role))
-return res.status(403).json({ error: 'forbidden' });
-next();
+  if (['full', 'owner'].includes(req.user?.role)) return next();
+  if (req.user?.role !== 'observer') return res.status(403).json({ error: 'forbidden' });
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(String(req.method).toUpperCase())) {
+    return res.status(403).json({ error: 'Modo observador: alterações não são permitidas.', code: 'OBSERVER_READ_ONLY' });
+  }
+  const scope = observerScopeForRequest(req);
+  if (scope && !observerCan(req.user, scope)) {
+    return res.status(403).json({ error: 'Este conjunto de dados foi censurado pelo proprietário.', code: 'OBSERVER_SCOPE_RESTRICTED', scope });
+  }
+  next();
 }
 
 function requireOwner(req, res, next) {
-if (req.user?.role !== 'owner')
-return res.status(403).json({ error: 'forbidden' });
-next();
+  if (req.user?.role === 'owner') return next();
+  if (req.user?.role !== 'observer') return res.status(403).json({ error: 'forbidden' });
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(String(req.method).toUpperCase())) {
+    return res.status(403).json({ error: 'Modo observador: alterações não são permitidas.', code: 'OBSERVER_READ_ONLY' });
+  }
+  if (/\/export(?:\/|$)/i.test(String(req.path || req.originalUrl || ''))) {
+    return res.status(403).json({ error: 'Exportações não estão disponíveis no modo observador.', code: 'OBSERVER_EXPORT_BLOCKED' });
+  }
+  const scope = observerScopeForRequest(req) || 'infrastructure';
+  if (!observerCan(req.user, scope)) {
+    return res.status(403).json({ error: 'Este conjunto de dados foi censurado pelo proprietário.', code: 'OBSERVER_SCOPE_RESTRICTED', scope });
+  }
+  next();
 }
 
 // ─────────────────────────────────────────────
@@ -3171,18 +3294,18 @@ async function getServerStatusStats(host, currentOnline) {
   return { uptime24hPct, onlineSince, samples24h: total };
 }
 
-app.get('/api/server/status', auth, requireAdmin, async (_req, res) => {
+app.get('/api/server/status', auth, requireAdmin, async (req, res) => {
   const runtimeSettings = await getRuntimeDashboardSettings();
   const host = runtimeSettings.server_ip || process.env.MC_HOST || 'fa.ogabriels.com';
   try {
     const status = await fetchMinecraftStatusCached();
-    await recordServerStatus(status);
+    if (req.user.role !== 'observer') await recordServerStatus(status);
 
     // --- SISTEMA DE AUTO-CURA (MASTER/SLAVE) ---
     // Usa heartbeat em memória: se o app mandou sinal nos últimos 30s, ele é o master
     const appConnected = isAppConnectedInMemory();
 
-    if (!appConnected) {
+    if (!appConnected && req.user.role !== 'observer') {
       // Site assume controle — reconcilia sessões abertas com o que o MC reporta
       const now = status.checkedAt;
       const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
@@ -5077,7 +5200,7 @@ app.post('/api/auth/logout', auth, async (req, res) => {
 app.get('/api/me', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
+      `SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.observer_permissions, u.created_at,
               COALESCE(up.display_name, '') AS display_name,
               COALESCE(up.avatar_url, '') AS avatar_url,
               COALESCE(up.cover_url, '') AS cover_url,
@@ -5092,7 +5215,10 @@ app.get('/api/me', auth, async (req, res) => {
       [req.user.sub],
     );
     if (!rows.length) return res.status(401).json({ error: 'user deleted' });
-    res.json(rows[0]);
+    const account = rows[0];
+    account.observer_permissions = normalizeObserverPermissions(account.observer_permissions);
+    account.capabilities = observerCapabilities({ ...req.user, observer_permissions: account.observer_permissions });
+    res.json(account);
   } catch (error) {
     console.error('[GET /api/me error]', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -9398,7 +9524,7 @@ app.post('/api/admin/notifications', auth, requireAdmin, async (req, res) => {
     if (scheduledFor && Number.isNaN(scheduledFor.getTime())) return res.status(400).json({ error: 'invalid scheduled_for' });
     if (rawLinkUrl && !linkUrl) return res.status(400).json({ error: 'O link precisa usar http ou https.' });
 
-    if (audience === 'role' && !['owner','full','limited'].includes(audienceVal)) return res.status(400).json({ error: 'invalid role' });
+    if (audience === 'role' && !['owner','full','observer','limited'].includes(audienceVal)) return res.status(400).json({ error: 'invalid role' });
     client = await pool.connect();
     await client.query('BEGIN');
     await enforceDashboardBroadcastLimit(client, scheduledFor || new Date());
@@ -9799,10 +9925,10 @@ res.json(rows);
 // ─────────────────────────────────────────────
 // ADMIN – Gerenciamento de usuários
 // ─────────────────────────────────────────────
-app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {
+app.get('/api/admin/users', auth, requireAdmin, async (req, res) => {
 try {
   const { rows } = await pool.query(`
-    SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.created_at,
+    SELECT u.id, u.username, u.email, u.minecraft_name, u.photo_url, u.role, u.is_verified, u.is_platform_verified, u.observer_permissions, u.created_at,
       COALESCE(pb.merit_total, 0)     AS merit_total,
       COALESCE(pb.capital_balance, 0) AS capital_balance,
       COALESCE(pb.rank, 'ferro')      AS rank
@@ -9810,7 +9936,12 @@ try {
     LEFT JOIN player_balances pb ON pb.minecraft_name = LOWER(u.minecraft_name)
     ORDER BY u.id DESC
   `);
-  res.json(rows);
+  res.json(rows.map(row => ({
+    ...row,
+    observer_permissions: req.user.role === 'owner' && row.role === 'observer'
+      ? normalizeObserverPermissions(row.observer_permissions)
+      : null,
+  })));
 } catch (err) {
   console.error('[GET /api/admin/users error]', err);
   res.status(500).json({ error: 'Internal server error' });}
@@ -9902,13 +10033,31 @@ app.get('/api/admin/users/:id/insights', auth, requireAdmin, async (req, res) =>
     ]);
 
     if (!profileResult.rows.length) return res.status(404).json({ error: 'user not found' });
-    res.json({
+    const insight = {
       profile: profileResult.rows[0],
       social: socialResult.rows[0] || {},
       game: gameResult.rows[0] || {},
       providers: providersResult.rows,
       legacy: legacyResult.rows,
-    });
+    };
+    if (req.user.role === 'observer') {
+      if (!observerCan(req.user, 'identity_contact')) {
+        insight.profile.email = null;
+        insight.profile.profile_links = [];
+        insight.providers = [];
+        insight.legacy = [];
+      }
+      if (!observerCan(req.user, 'economy_private')) {
+        insight.game.merit = null;
+        insight.game.capital = null;
+        insight.game.rank = null;
+      }
+      if (!observerCan(req.user, 'moderation_private')) {
+        insight.social.reports_made = null;
+        insight.social.reports_received = null;
+      }
+    }
+    res.json(insight);
   } catch (err) {
     console.error('[GET /api/admin/users/:id/insights]', err);
     res.status(500).json({ error: 'Erro ao carregar inteligência do perfil.' });
@@ -9920,8 +10069,9 @@ const username      = sanitize(req.body?.username).toLowerCase();
 const email         = sanitize(req.body?.email).toLowerCase();
 const minecraftName = sanitize(req.body?.minecraftName || username);
 const password      = req.body?.password || '';
-const ALLOWED_ROLES = ['owner','full','limited'];
+const ALLOWED_ROLES = ['owner','full','observer','limited'];
 const role          = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : 'limited';
+const observerPermissions = role === 'observer' ? normalizeObserverPermissions(req.body?.observerPermissions) : normalizeObserverPermissions({});
 
 if (!validateUsername(username) || !validateEmail(email) || !validatePassword(password))
 return res.status(400).json({ error: 'invalid fields' });
@@ -9929,8 +10079,8 @@ return res.status(400).json({ error: 'invalid fields' });
 try {
 const hash = await bcrypt.hash(password, 10);
 const { rows } = await pool.query(
-'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified) VALUES($1,$2,$3,$4,$5,TRUE) RETURNING id',
-[username, email, minecraftName, hash, role],
+'INSERT INTO users(username,email,minecraft_name,password_hash,role,is_verified,observer_permissions) VALUES($1,$2,$3,$4,$5,TRUE,$6::jsonb) RETURNING id',
+[username, email, minecraftName, hash, role, JSON.stringify(observerPermissions)],
 );
 
 await audit({
@@ -9954,8 +10104,9 @@ const username      = sanitize(req.body?.username).toLowerCase();
 const email         = sanitize(req.body?.email).toLowerCase();
 const minecraftName = sanitize(req.body?.minecraftName || username);
 const photoUrl      = sanitize(req.body?.photoUrl || 'assets/images/fa-icon-dark.png');
-const ALLOWED_ROLES = ['owner','full','limited'];
+const ALLOWED_ROLES = ['owner','full','observer','limited'];
 const role          = ALLOWED_ROLES.includes(req.body?.role) ? req.body.role : 'limited';
+const observerPermissions = role === 'observer' ? normalizeObserverPermissions(req.body?.observerPermissions) : normalizeObserverPermissions({});
 
 if (!validateUsername(username) || !validateEmail(email))
 return res.status(400).json({ error: 'invalid fields' });
@@ -9965,7 +10116,7 @@ try {
 await client.query('BEGIN');
 await client.query('LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE');
 const { rows: before } = await client.query(
-  'SELECT username, email, minecraft_name, role FROM users WHERE id=$1 FOR UPDATE', [id]
+  'SELECT username, email, minecraft_name, role, observer_permissions FROM users WHERE id=$1 FOR UPDATE', [id]
 );
 if (!before.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'user not found' }); }
 if (before[0].role === 'owner' && role !== 'owner') {
@@ -9975,8 +10126,8 @@ if (before[0].role === 'owner' && role !== 'owner') {
 }
 
 await client.query(
-'UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5 WHERE id=$6',
-[username, email, minecraftName, photoUrl, role, id],
+'UPDATE users SET username=$1, email=$2, minecraft_name=$3, photo_url=$4, role=$5, observer_permissions=$6::jsonb WHERE id=$7',
+[username, email, minecraftName, photoUrl, role, JSON.stringify(observerPermissions), id],
 );
 await client.query('COMMIT');
 
@@ -9990,7 +10141,7 @@ await auditFromReq(req, {
   message:    `Conta editada por admin: ${before[0]?.username || username} → ${username}${before[0]?.role !== role ? ` (cargo: ${before[0]?.role} → ${role})` : ''}`,
   metadata: {
     before: before[0] || null,
-    after:  { username, email, minecraftName, role },
+    after:  { username, email, minecraftName, role, observerPermissions },
   },
 });
 
@@ -10293,7 +10444,10 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/player/:name/merit', auth, requireAdmin, async (req, res) => {
   const mc = req.params.name.toLowerCase();
-  const balance = await ensureBalance(mc);
+  const balance = req.user.role === 'observer'
+    ? (await pool.query('SELECT merit_total, capital_balance, rank FROM player_balances WHERE LOWER(minecraft_name)=$1 LIMIT 1', [mc])).rows[0]
+      || { merit_total: 0, capital_balance: 0, rank: 'ferro' }
+    : await ensureBalance(mc);
 
   const { rows: records } = await pool.query(
     'SELECT id, amount, reason, category, awarded_by_name, created_at FROM merit_records WHERE LOWER(minecraft_name)=$1 ORDER BY created_at DESC LIMIT 200',

@@ -256,7 +256,7 @@
         <div class="staff-tool-head">
           <div><h2>Lista de acesso e onboarding</h2><p>Acompanhe desde a criação da conta até a entrega da whitelist ao Manager.</p></div>
           <div class="staff-tool-actions">
-            ${typeof session !== 'undefined' && session?.role === 'owner' ? '<button class="v2-btn" type="button" data-staff-open-legacy>Migrações Legacy</button>' : ''}
+            ${typeof session !== 'undefined' && (session?.role === 'owner' || (session?.role === 'observer' && typeof canObserverView === 'function' && canObserverView('infrastructure'))) ? '<button class="v2-btn" type="button" data-staff-open-legacy>Migrações Legacy</button>' : ''}
             <button class="v2-btn primary" type="button" data-staff-add-access>Adicionar à fila</button>
           </div>
         </div>

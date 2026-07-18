@@ -25,25 +25,34 @@
   const VIEWS = [
     { view: 'command', id: 'command-center', label: 'Visão geral', icon: 'layout-dashboard', group: 'Operação' },
     { view: 'server', id: 'server-overview', label: 'Servidor', icon: 'server', group: 'Operação' },
-    { view: 'access', id: 'dashboard-access', label: 'Acesso', icon: 'key-round', group: 'Operação', badge: 'access' },
+    { view: 'access', id: 'dashboard-access', label: 'Acesso', icon: 'key-round', group: 'Operação', badge: 'access', scope: 'infrastructure' },
     { view: 'players', id: 'admin-users-card', label: 'Jogadores', icon: 'users', group: 'Comunidade' },
-    { view: 'merit', id: 'merit-card', label: 'Economia', icon: 'landmark', group: 'Comunidade' },
-    { view: 'moderation', id: 'moderation-card', label: 'Moderação', icon: 'shield-alert', group: 'Comunidade', badge: 'moderation' },
-    { view: 'notifications', id: 'admin-notifications-card', label: 'Comunicação', icon: 'megaphone', group: 'Comunidade' },
-    { view: 'audit', id: 'audit-card', label: 'Auditoria', icon: 'scroll-text', group: 'Sistema' },
-    { view: 'integrations', id: 'app-keys-card', label: 'Integrações', icon: 'plug', group: 'Sistema', owner: true },
-    { view: 'settings', id: 'dashboard-settings', label: 'Configurações', icon: 'settings', group: 'Sistema', owner: true },
-    { view: 'analytics', id: 'community-analytics', label: 'Insights da comunidade', icon: 'bar-chart-3', group: 'Contexto', nav: false },
-    { view: 'legacy', id: 'legacy-migration-card', label: 'Migrações Legacy', icon: 'link-2', group: 'Contexto', badge: 'legacy', nav: false, owner: true },
+    { view: 'merit', id: 'merit-card', label: 'Economia', icon: 'landmark', group: 'Comunidade', scope: 'economy_private' },
+    { view: 'moderation', id: 'moderation-card', label: 'Moderação', icon: 'shield-alert', group: 'Comunidade', badge: 'moderation', scope: 'moderation_private' },
+    { view: 'notifications', id: 'admin-notifications-card', label: 'Comunicação', icon: 'megaphone', group: 'Comunidade', scope: 'staff_operations' },
+    { view: 'audit', id: 'audit-card', label: 'Auditoria', icon: 'scroll-text', group: 'Sistema', scope: 'audit_security' },
+    { view: 'integrations', id: 'app-keys-card', label: 'Integrações', icon: 'plug', group: 'Sistema', owner: true, scope: 'infrastructure' },
+    { view: 'settings', id: 'dashboard-settings', label: 'Configurações', icon: 'settings', group: 'Sistema', owner: true, scope: 'infrastructure' },
+    { view: 'analytics', id: 'community-analytics', label: 'Insights da comunidade', icon: 'bar-chart-3', group: 'Contexto', nav: false, scope: 'private_activity' },
+    { view: 'legacy', id: 'legacy-migration-card', label: 'Migrações Legacy', icon: 'link-2', group: 'Contexto', badge: 'legacy', nav: false, owner: true, scope: 'infrastructure' },
     { view: 'tools', id: 'dashboard-tools', label: 'Análises especializadas', icon: 'wrench', group: 'Contexto', nav: false },
   ];
   const VIEW_BY_ID = Object.fromEntries(VIEWS.map((item) => [item.id, item.view]));
   VIEW_BY_ID['stats-card'] = 'server';
   const VIEW_META = Object.fromEntries(VIEWS.map((item) => [item.view, item]));
   const VALID_TOOLS = new Set(['activity', 'calendar', 'economy', 'churn', 'social', 'staff']);
+  const TOOL_SCOPES = Object.freeze({ calendar: 'staff_operations', economy: 'economy_private', churn: 'private_activity', social: 'private_activity', staff: 'private_activity' });
   let commandReturnFocus = null;
   let navigationRole = null;
   const isOwner = () => typeof session !== 'undefined' && session?.role === 'owner';
+  const isObserver = () => typeof session !== 'undefined' && session?.role === 'observer';
+  const observerPermission = (scope) => !isObserver() || (typeof canObserverView === 'function' && canObserverView(scope));
+  const canAccessView = (item) => {
+    if (isObserver()) return (!item.scope || observerPermission(item.scope)) && (!item.owner || observerPermission('infrastructure'));
+    return !item.owner || isOwner();
+  };
+  const canViewStaffPerformance = () => isOwner() || (isObserver() && observerPermission('private_activity'));
+  const canAccessTool = (tool) => VALID_TOOLS.has(tool) && (!TOOL_SCOPES[tool] || observerPermission(TOOL_SCOPES[tool])) && (tool !== 'staff' || canViewStaffPerformance());
   const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   const num = (value) => Number(value || 0);
   const compact = (value) => new Intl.NumberFormat('pt-BR', { notation: Math.abs(num(value)) >= 1000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(num(value));
@@ -111,7 +120,7 @@
       return { nodes, edges: Array.from({ length: 70 }, (_, index) => ({ source: index % 28 + 1, target: (index * 5 + 3) % 28 + 1 })) };
     }
     if (path.includes('scheduled-posts')) return Array.from({ length: 13 }, (_, index) => ({ id: index + 1, content: `Publicação editorial ${index + 1}: novidades e próximos eventos da comunidade.`, publish_at: new Date(now.getFullYear(), now.getMonth(), 2 + index * 2, 18 + index % 4).toISOString(), status: index % 6 === 0 ? 'failed' : index % 4 === 0 ? 'published' : 'scheduled', username: 'Direção', display_name: 'Direção', media_urls: index % 3 ? [] : ['assets/images/hero.png'] }));
-    if (path.includes('players/directory')) return Array.from({ length: 24 }, (_, index) => ({ id: index + 1, username: `membro${index + 1}`, email: `membro${index + 1}@example.com`, minecraft_name: ['Steve', 'Alex', 'Gabriel', 'Luna', 'Caio', 'Rafa'][index % 6] + (index > 5 ? index : ''), role: index === 0 ? 'owner' : index < 4 ? 'full' : 'limited', is_verified: index % 5 !== 0, is_platform_verified: index % 4 === 0, created_at: new Date(now.getTime() - index * 5 * 86400000).toISOString(), merit: index * 43, capital: index * 11, rank: index > 18 ? 'diamante' : index > 8 ? 'ouro' : 'ferro', last_activity: new Date(now.getTime() - index * 3 * 86400000).toISOString(), posts: index + 2, comments: index * 3, sessions: index * 2, total_hours: index * 4.5 }));
+    if (path.includes('players/directory')) return Array.from({ length: 24 }, (_, index) => ({ id: index + 1, username: `membro${index + 1}`, email: observerPermission('identity_contact') ? `membro${index + 1}@example.com` : null, minecraft_name: ['Steve', 'Alex', 'Gabriel', 'Luna', 'Caio', 'Rafa'][index % 6] + (index > 5 ? index : ''), role: index === 0 ? 'owner' : index < 4 ? 'full' : index === 4 ? 'observer' : 'limited', is_verified: index % 5 !== 0, is_platform_verified: index % 4 === 0, created_at: new Date(now.getTime() - index * 5 * 86400000).toISOString(), merit: observerPermission('economy_private') ? index * 43 : null, capital: observerPermission('economy_private') ? index * 11 : null, rank: observerPermission('economy_private') ? (index > 18 ? 'diamante' : index > 8 ? 'ouro' : 'ferro') : null, last_activity: observerPermission('private_activity') ? new Date(now.getTime() - index * 3 * 86400000).toISOString() : null, posts: observerPermission('private_activity') ? index + 2 : null, comments: observerPermission('private_activity') ? index * 3 : null, sessions: observerPermission('private_activity') ? index * 2 : null, total_hours: observerPermission('private_activity') ? index * 4.5 : null }));
     if (path.includes('moderation-overview')) return { summary: { pending_ai: 5, pending_reports: 3, approved: 23, removed: 8, avg_response_hours: 3.4 }, daily: Array.from({ length: 14 }, (_, index) => ({ day: new Date(now.getTime() - (13 - index) * 86400000).toISOString(), reports: 2 + index % 5 })) };
     if (path.includes('audit-overview')) return { heatmap, actors: ['Direção', 'Gabriel', 'Caio', 'Luna', 'Rafa'].map((name, index) => ({ actor_name: name, actions: 72 - index * 11 })) };
     if (path.includes('/timeline')) return Array.from({ length: 12 }, (_, index) => ({ type: ['signup', 'first_session', 'first_post', 'merit', 'audit'][index % 5], timestamp: new Date(now.getTime() - index * 12 * 86400000).toISOString(), label: ['Cadastro criado', 'Primeira sessão no servidor', 'Primeira publicação', 'Mérito +50', 'Perfil verificado'][index % 5], detail: 'Evento de demonstração' }));
@@ -123,7 +132,7 @@
 
   function authorizedViews({ navigationOnly = true } = {}) {
     return VIEWS.filter((item) => !navigationOnly || item.nav !== false)
-      .filter((item) => !item.owner || isOwner())
+      .filter(canAccessView)
       .filter((item) => document.getElementById(item.id));
   }
 
@@ -145,7 +154,7 @@
           ['economy', 'landmark', 'Economia'],
           ['churn', 'radar', 'Churn Risk'],
           ['social', 'share-2', 'Grafo Social'],
-          ...(isOwner() ? [['staff', 'badge-check', 'Desempenho da Staff']] : []),
+          ...(canViewStaffPerformance() ? [['staff', 'badge-check', 'Desempenho da Staff']] : []),
         ].map(([key, ico, label]) => `<button class="v2-subtab ${key === state.tool ? 'active' : ''}" data-v2-tool="${key}">${icon(ico)} ${label}</button>`).join('')}
       </nav>
       <div id="v2-tools-body" class="v2-section"><div class="v2-loading">Preparando ferramentas...</div></div>`;
@@ -154,7 +163,7 @@
     const settings = document.createElement('div');
     settings.className = 'card';
     settings.id = 'dashboard-settings';
-    if (!isOwner()) settings.style.display = 'none';
+    if (!canAccessView(VIEW_META.settings)) settings.style.display = 'none';
     settings.innerHTML = '<div id="v2-settings-body" class="v2-section"><div class="v2-loading">Carregando configurações...</div></div>';
     content.appendChild(settings);
 
@@ -216,7 +225,8 @@
       ['server', 'server', 'Servidor'],
       ['players', 'users', 'Jogadores'],
       ['moderation', 'shield-alert', 'Atenção'],
-    ];
+    ].filter(([view]) => canAccessView(VIEW_META[view]));
+    nav.style.setProperty('--v2-mobile-count', String(main.length + 1));
     nav.innerHTML = main.map(([view, ico, label]) => `<button class="v2-mobile-item" data-v2-view="${view}">${icon(ico)}<span>${label}</span>${view === 'moderation' ? '<b class="v2-nav-badge" data-v2-badge="moderation" hidden>0</b>' : ''}</button>`).join('')
       + `<button class="v2-mobile-item" data-v2-more aria-expanded="false" aria-controls="v2-mobile-menu">${icon('grid-2x2')}<span>Mais</span></button>`;
     document.body.appendChild(nav);
@@ -352,7 +362,7 @@
   }
 
   function navigate(view, options = {}) {
-    if (!VIEW_META[view] || (VIEW_META[view].owner && !isOwner())) view = 'command';
+    if (!VIEW_META[view] || !canAccessView(VIEW_META[view])) view = 'command';
     const leavingCurrentView = state.navigationReady && view !== state.view;
     if (leavingCurrentView && !options.force && window.staffSettingsGuard?.requestLeave && !window.staffSettingsGuard.requestLeave()) {
       if (options.fromPopState) syncUrlToView(state.view, { replace: false });
@@ -430,18 +440,25 @@
     const s = data.summary || {};
     const server = data.server || {};
     const wauDelta = percentDelta(s.wau, Math.max(0, num(s.previous_active_users)));
-    const pendingActions = num(s.pending_reports) + num(s.pending_moderation) + num(s.failed_scheduled_posts) + num(s.unverified_users);
+    const pendingActions = (observerPermission('moderation_private') ? num(s.pending_reports) + num(s.pending_moderation) : 0)
+      + (observerPermission('staff_operations') ? num(s.failed_scheduled_posts) : 0)
+      + (observerPermission('infrastructure') ? num(s.unverified_users) : 0);
     const preview = typeof DASHBOARD_PREVIEW !== 'undefined' && DASHBOARD_PREVIEW;
     const online = preview || (typeof globalApiData !== 'undefined' && globalApiData?.online);
     const onlineCount = preview ? 18 : (typeof globalHistData !== 'undefined' ? num(globalHistData?.onlinePlayers?.length) : 0);
     const max = typeof globalApiData !== 'undefined' ? num(globalApiData?.players?.max || 80) : 80;
-    const alerts = commandAlerts(s);
+    const alerts = commandAlerts(s).filter(alert => {
+      const view = VIEW_META[alert.view];
+      return (!view || canAccessView(view)) && (!alert.tool || canAccessTool(alert.tool));
+    });
     const kpis = [
       ['Jogadores online', onlineCount, null, 'var(--chart-5)', `capacidade ${max}`],
       ['Uptime', `${num(server.uptime_pct).toFixed(1)}%`, null, 'var(--chart-2)', `${data.period?.days || 30} dias`],
-      ['Ações pendentes', pendingActions, null, pendingActions ? 'var(--chart-4)' : 'var(--chart-5)', pendingActions ? 'requerem triagem' : 'fila em dia'],
-      ['Jogadores ativos', s.unique_players, null, 'var(--chart-1)', `${data.period?.days || 30} dias`],
-      ['Horas de jogo', `${num(s.play_hours).toFixed(0)}h`, null, 'var(--chart-3)', `${compact(s.unique_players)} jogadores`],
+      ...(alerts.length ? [['Ações pendentes', pendingActions, null, pendingActions ? 'var(--chart-4)' : 'var(--chart-5)', pendingActions ? 'requerem triagem' : 'fila em dia']] : []),
+      ...(observerPermission('private_activity') ? [
+        ['Jogadores ativos', s.unique_players, null, 'var(--chart-1)', `${data.period?.days || 30} dias`],
+        ['Horas de jogo', `${num(s.play_hours).toFixed(0)}h`, null, 'var(--chart-3)', `${compact(s.unique_players)} jogadores`],
+      ] : []),
     ];
     root.innerHTML = `
       <div class="v2-north-star staff-signal-grid">
@@ -450,21 +467,21 @@
           <div class="v2-server-live"><i></i>${online ? 'Saudável' : 'Sem confirmação'}</div>
           <div class="v2-north-name">${onlineCount}/${max} online · ${pct(server.uptime_pct)} uptime</div>
         </article>
-        <article class="v2-north-card staff-signal ${pendingActions ? 'is-warning' : 'is-healthy'}">
+        ${alerts.length ? `<article class="v2-north-card staff-signal ${pendingActions ? 'is-warning' : 'is-healthy'}">
           <div class="v2-label">Fila operacional</div>
           <div class="v2-north-value">${compact(pendingActions)}</div>
           <div class="v2-north-name">${pendingActions ? 'decisões ou verificações pendentes' : 'nenhuma ação crítica'}</div>
-        </article>
+        </article>` : ''}
         <article class="v2-north-card staff-signal is-healthy">
           <div class="v2-label">API e dados</div>
           <div class="v2-server-live"><i></i>Conectada</div>
           <div class="v2-north-name">Leitura consolidada de ${data.period?.days || 30} dias</div>
         </article>
-        <article class="v2-north-card staff-signal ${num(s.unverified_users) ? 'is-warning' : 'is-healthy'}">
+        ${observerPermission('infrastructure') ? `<article class="v2-north-card staff-signal ${num(s.unverified_users) ? 'is-warning' : 'is-healthy'}">
           <div class="v2-label">Onboarding e acesso</div>
           <div class="v2-north-value">${compact(s.unverified_users)}</div>
           <div class="v2-north-name">contas aguardando verificação</div>
-        </article>
+        </article>` : ''}
       </div>
       <div class="v2-kpi-strip">${kpis.map(([label, value, previous, tone, context]) => `
         <article class="v2-kpi-card" style="--tone:${tone}">
@@ -472,12 +489,12 @@
           ${previous !== null ? deltaHtml(value, previous) : `<div class="v2-kpi-context">${context}</div>`}
         </article>`).join('')}</div>
       <div class="v2-grid">
-        <section class="v2-panel span-2"><div class="v2-section-head"><div><h3>Fila de atenção</h3><p>Máximo de três sinais, cada um com ação próxima.</p></div></div>
+        ${alerts.length ? `<section class="v2-panel span-2"><div class="v2-section-head"><div><h3>Fila de atenção</h3><p>Máximo de três sinais, cada um com ação próxima.</p></div></div>
           <div class="v2-alert-list" style="margin-top:12px">${alerts.map((alert) => `<article class="v2-alert" style="--tone:${alert.tone}"><div><strong>${alert.title}</strong><small>${alert.body}</small></div><button class="v2-btn" data-v2-alert-view="${alert.view}" data-v2-alert-tool="${alert.tool || ''}">Resolver</button></article>`).join('')}</div>
-        </section>
-        <section class="v2-panel"><div class="v2-section-head"><div><h3>Economia FA</h3><p>Visão rápida da circulação.</p></div><button class="v2-btn" data-v2-action-view="merit">${icon('arrow-up-right')} Abrir economia</button></div>
+        </section>` : '<section class="v2-panel span-2 v2-observer-safe"><div class="v2-section-head"><div><h3>Visão protegida</h3><p>Os detalhes operacionais permanecem censurados conforme a política desta conta.</p></div></div></section>'}
+        ${observerPermission('economy_private') ? `<section class="v2-panel"><div class="v2-section-head"><div><h3>Economia FA</h3><p>Visão rápida da circulação.</p></div><button class="v2-btn" data-v2-action-view="merit">${icon('arrow-up-right')} Abrir economia</button></div>
           <div class="v2-grid two" style="margin-top:14px"><div><div class="v2-label">Mérito</div><div class="v2-kpi-value">${compact(s.total_merit)}</div></div><div><div class="v2-label">Capital</div><div class="v2-kpi-value">${compact(s.total_capital)}</div></div></div>
-        </section>
+        </section>` : ''}
       </div>`;
     refreshIcons();
   }
@@ -631,7 +648,7 @@
   }
 
   async function activateTool(tool) {
-    if (!VALID_TOOLS.has(tool) || (tool === 'staff' && !isOwner())) tool = 'activity';
+    if (!canAccessTool(tool)) tool = 'activity';
     state.tool = tool;
     if (state.view === 'tools' && state.navigationReady) syncUrlToView('tools', { replace: true });
     document.querySelectorAll('[data-v2-tool]').forEach((button) => button.classList.toggle('active', button.dataset.v2Tool === tool));
@@ -808,7 +825,7 @@
   }
 
   async function renderStaffTool(body) {
-    if (!isOwner()) throw new Error('Esta ferramenta é exclusiva para owner.');
+    if (!canViewStaffPerformance()) throw new Error('Este conjunto de dados não está liberado para sua conta.');
     const data = await api('/api/admin/analytics/staff-performance?days=30');
     state.toolData.staff = data;
     const max = Math.max(1, ...data.map((row) => num(row.total_actions)));
@@ -843,11 +860,11 @@
 
   async function loadSettings() {
     const body = document.getElementById('v2-settings-body');
-    if (!body || !isOwner()) return;
+    if (!body || !canAccessView(VIEW_META.settings)) return;
     body.innerHTML = '<div class="v2-loading">Carregando configurações...</div>';
     try {
       const settings = await api('/api/admin/settings');
-      body.innerHTML = `${toolHeader('Configurações operacionais', 'Parâmetros globais reservados ao dono do projeto.', `<button class="v2-btn primary" data-v2-save-settings>${icon('save')} Salvar alterações</button>`)}
+      body.innerHTML = `${toolHeader('Configurações operacionais', isObserver() ? 'Consulta autorizada pelo proprietário, sem possibilidade de alteração.' : 'Parâmetros globais reservados ao dono do projeto.', `<button class="v2-btn primary" data-v2-save-settings>${icon('save')} Salvar alterações</button>`)}
         <div class="v2-settings-grid">
           <section class="v2-panel"><div class="v2-section-head"><div><h3>Servidor</h3><p>Metadados operacionais exibidos no painel e nas integrações.</p></div></div><div class="v2-form-grid" style="margin-top:13px">
             ${settingField('server_ip','IP do servidor',settings.server_ip)}
@@ -864,7 +881,7 @@
             ${settingSelect('channel_email','Canal E-mail',settings.broadcast_channels?.email,[['true','Ativo'],['false','Inativo']])}
           </div></section>
           <section class="v2-panel"><div class="v2-section-head"><div><h3>Progressão de ranks</h3><p>Os limites são uma regra única do projeto: Ferro 0, Ouro 150, Diamante 500 e Netherite 1000. Alterações exigem migração versionada e testes de contrato.</p></div></div></section>
-          <section class="v2-panel"><div class="v2-section-head"><div><h3>Exportação de dados</h3><p>Arquivos JSON completos; trate-os como dados restritos e armazene-os com segurança.</p></div></div><div class="v2-page-actions" style="margin-top:13px">${[['audit','Auditoria'],['merit','Mérito'],['sessions','Sessões'],['users','Contas']].map(([kind,label]) => `<button class="v2-btn" data-v2-export-kind="${kind}">${icon('download')} ${label}</button>`).join('')}</div></section>
+          <section class="v2-panel v2-export-zone"><div class="v2-section-head"><div><h3>Exportação de dados</h3><p>Arquivos JSON completos; trate-os como dados restritos e armazene-os com segurança.</p></div></div><div class="v2-page-actions" style="margin-top:13px">${[['audit','Auditoria'],['merit','Mérito'],['sessions','Sessões'],['users','Contas']].map(([kind,label]) => `<button class="v2-btn" data-v2-export-kind="${kind}">${icon('download')} ${label}</button>`).join('')}</div></section>
           <section class="v2-panel v2-danger-zone span-full"><div class="v2-section-head"><div><h3 style="color:var(--red)">Ações críticas</h3><p>Operações destrutivas foram retiradas do navegador até existir backup durável, preview de impacto, reautenticação e recuperação verificável.</p></div></div><div class="staff-honesty-note" style="margin-top:13px">Para mudanças sistêmicas, exporte os dados acima e siga o runbook operacional com aprovação do dono. O painel não apaga trilhas de auditoria, contas ou saldos.</div></section>
         </div>`;
       state.toolData.settings = settings;
@@ -916,6 +933,7 @@
   }
 
   async function exportSettingsData(kind) {
+    if (isObserver()) return showToast('Exportações não estão disponíveis no modo observador.', 'warning');
     const payload = await api(`/api/admin/settings/export/${kind}`);
     downloadJSON(`fa-${kind}-${new Date().toISOString().slice(0,10)}.json`, payload);
   }
@@ -945,6 +963,7 @@
   }
 
   function exportToolData(kind) {
+    if (isObserver()) return showToast('Exportações não estão disponíveis no modo observador.', 'warning');
     const date = new Date().toISOString().slice(0, 10);
     if (kind === 'calendar') {
       const rows = state.toolData.calendar || [];
@@ -965,6 +984,7 @@
   }
 
   function exportCurrentView() {
+    if (isObserver()) return showToast('Exportações não estão disponíveis no modo observador.', 'warning');
     const card = document.getElementById(VIEW_META[state.view]?.id);
     if (!card) return;
     const selectors = '.list-item,.mod-item,.audit-item,.admin-notification-item,.v2-feed-row,.v2-performance-row,.v2-risk-row,.v2-top-post,.v2-table tbody tr,.leaderboard-table tbody tr';
@@ -991,7 +1011,7 @@
       <select data-v2-player-filter="access"><option value="all">Qualquer acesso</option><option value="today">Online hoje</option><option value="week">Última semana</option><option value="month">Último mês</option><option value="never">Nunca</option></select>
       <select data-v2-player-filter="verified"><option value="all">Verificação: todas</option><option value="yes">Verificados</option><option value="no">Não verificados</option></select>
       <select data-v2-player-filter="linked"><option value="all">Minecraft: todos</option><option value="yes">Com Minecraft</option><option value="no">Sem Minecraft</option></select>
-      <select data-v2-player-filter="role"><option value="all">Permissão: todas</option><option value="limited">Restrito</option><option value="full">Admin</option><option value="owner">Dono</option></select>
+      <select data-v2-player-filter="role"><option value="all">Permissão: todas</option><option value="limited">Restrito</option><option value="observer">Observador</option><option value="full">Admin</option><option value="owner">Dono</option></select>
       <button class="v2-btn" type="button" data-v2-player-view="list" aria-label="Exibir como lista" title="Exibir como lista">${icon('list')}</button><button class="v2-btn" type="button" data-v2-player-view="cards" aria-label="Exibir como cartões" title="Exibir como cartões">${icon('layout-grid')}</button>`;
     toolbar.querySelector('.v2-player-tabs')?.insertAdjacentHTML('afterend', `<button class="v2-btn" data-v2-action-view="analytics">${icon('bar-chart-3')} Insights</button><button class="v2-btn" data-v2-action-view="tools" data-v2-action-tool="churn">${icon('radar')} Risco de afastamento</button><button class="v2-btn v2-filter-toggle" data-v2-filter-toggle>${icon('sliders-horizontal')} Filtros</button>`);
     toolbar.querySelector('[data-v2-player-filter="role"]')?.insertAdjacentHTML('afterend', '<select data-v2-player-filter="rank"><option value="all">Rank: todos</option><option value="ferro">Ferro</option><option value="ouro">Ouro</option><option value="diamante">Diamante</option><option value="netherite">Netherite</option></select>');
@@ -1724,7 +1744,7 @@
       const actionView = event.target.closest('[data-v2-action-view]');
       if (actionView) {
         const tool = actionView.dataset.v2ActionTool;
-        if (tool && VALID_TOOLS.has(tool) && (tool !== 'staff' || isOwner())) state.tool = tool;
+        if (tool && canAccessTool(tool)) state.tool = tool;
         const navigated = navigate(actionView.dataset.v2ActionView);
         if (navigated !== false) document.getElementById('v2-command-dialog')?.close();
         return;
@@ -1732,7 +1752,7 @@
       const alert = event.target.closest('[data-v2-alert-view]');
       if (alert) {
         const tool = alert.dataset.v2AlertTool;
-        if (tool && VALID_TOOLS.has(tool) && (tool !== 'staff' || isOwner())) state.tool = tool;
+        if (tool && canAccessTool(tool)) state.tool = tool;
         navigate(alert.dataset.v2AlertView);
         return;
       }
@@ -1843,15 +1863,17 @@
     window.addEventListener('popstate', (event) => {
       const url = new URL(location.href);
       const tool = event.state?.tool || url.searchParams.get('tool');
-      if (VALID_TOOLS.has(tool) && (tool !== 'staff' || isOwner())) state.tool = tool;
+      if (canAccessTool(tool)) state.tool = tool;
       navigate(event.state?.view || url.searchParams.get('v') || 'command', { replace: true, fromPopState: true });
     });
   }
 
   function rebuildNavigationForRole(force = false) {
     const role = typeof session !== 'undefined' ? (session?.role || 'unknown') : 'unknown';
-    if (!force && role === navigationRole) return false;
-    navigationRole = role;
+    const permissionSignature = isObserver() ? JSON.stringify(typeof observerPermissions === 'function' ? observerPermissions() : {}) : '';
+    const accessSignature = `${role}:${permissionSignature}`;
+    if (!force && accessSignature === navigationRole) return false;
+    navigationRole = accessSignature;
 
     window.staffMobileMenu?.close?.({ consumeHistory: true, returnFocus: false });
     document.querySelector('.sidebar-profile .v2-nav')?.remove();
@@ -1861,12 +1883,12 @@
     document.querySelectorAll('.v4-sheet-scrim').forEach((scrim) => scrim.remove());
 
     const settings = document.getElementById('dashboard-settings');
-    if (settings) settings.style.display = isOwner() ? '' : 'none';
+    if (settings) settings.style.display = canAccessView(VIEW_META.settings) ? '' : 'none';
     const tabs = document.getElementById('v2-tool-tabs');
     const staffTab = tabs?.querySelector('[data-v2-tool="staff"]');
-    if (tabs && isOwner() && !staffTab) tabs.insertAdjacentHTML('beforeend', `<button class="v2-subtab" data-v2-tool="staff">${icon('badge-check')} Desempenho da Staff</button>`);
-    if (!isOwner() && staffTab) staffTab.remove();
-    if (!isOwner() && state.tool === 'staff') state.tool = 'activity';
+    if (tabs && canViewStaffPerformance() && !staffTab) tabs.insertAdjacentHTML('beforeend', `<button class="v2-subtab" data-v2-tool="staff">${icon('badge-check')} Desempenho da Staff</button>`);
+    if (!canViewStaffPerformance() && staffTab) staffTab.remove();
+    if (!canViewStaffPerformance() && state.tool === 'staff') state.tool = 'activity';
 
     buildSidebar();
     buildMobileNavigation();
@@ -1874,7 +1896,7 @@
     refreshIcons();
     document.dispatchEvent(new CustomEvent('staff:navigation-rebuilt', { detail: { role } }));
 
-    if (VIEW_META[state.view]?.owner && !isOwner()) navigate('command', { replace: true, force: true, resetScroll: true });
+    if (VIEW_META[state.view] && !canAccessView(VIEW_META[state.view])) navigate('command', { replace: true, force: true, resetScroll: true });
     return true;
   }
 
@@ -1952,7 +1974,7 @@
     refreshIcons();
     const initialUrl = new URL(location.href);
     const initialTool = initialUrl.searchParams.get('tool');
-    if (VALID_TOOLS.has(initialTool) && (initialTool !== 'staff' || isOwner())) state.tool = initialTool;
+    if (canAccessTool(initialTool)) state.tool = initialTool;
     const initial = initialUrl.searchParams.get('v') || VIEW_BY_ID[initialUrl.searchParams.get('module')] || 'command';
     navigate(initial, { replace: true });
     setInterval(() => { rebuildNavigationForRole(); updateBadges(); lazyImages(); if (state.view === 'command') renderCommandOverview(); if (state.view === 'server') renderServerFeed(); }, 3000);
