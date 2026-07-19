@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v43';
+const CACHE_VERSION = 'fa-static-v44';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -9,6 +9,7 @@ const STATIC_ASSETS = [
   'assets/images/app-icons/favicon-32.png',
   'assets/images/app-icons/icon-192.png',
   'assets/images/fa-icon-dark.png',
+  'assets/images/fa-icon-light.png',
   'assets/images/og-image.jpg',
   'assets/js/fa-seo.js',
   'assets/js/dashboard-v2.js?v=20260718c',
@@ -30,7 +31,7 @@ const STATIC_ASSETS = [
   'assets/css/fa-design-system.css',
   'assets/css/dashboard-v2.css?v=20260718b',
   'assets/css/dashboard-v3.css?v=20260716d',
-  'assets/css/dashboard-v4.css?v=20260719a',
+  'assets/css/dashboard-v4.css?v=20260719b',
   'assets/css/dashboard-v5.css?v=20260718c',
   'assets/css/community-evolution.css',
   'assets/css/community-evolution-20260614f.css',
