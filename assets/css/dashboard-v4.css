@@ -2820,6 +2820,49 @@ html[data-theme="dark"] #server-period-panel .ci-quality-metric {
   .portal-page-head { overflow: visible !important; }
 }
 
+/* --------------------------------------------------------------------------
+   Dark-mode surface refinement
+   --------------------------------------------------------------------------
+   Section labels should read as part of the workspace, not as a stack of
+   outlined cards.  This keeps the page hierarchy while letting the data
+   surfaces (the metric cards, tables and charts) carry the visual weight.
+*/
+html[data-theme="dark"] .portal-page-head {
+  border-color: transparent !important;
+}
+
+@media (min-width: 901px) {
+  html[data-theme="dark"] .portal-page-head {
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+html[data-theme="dark"] .server-runtime-section,
+html[data-theme="dark"] .server-activity-section,
+html[data-theme="dark"] .server-roster-section {
+  padding-inline: 0 !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .server-activity-section .server-activity-heading {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top-color: transparent !important;
+}
+
+/* The remaining data tiles retain a quiet, tactile separation. */
+html[data-theme="dark"] .server-runtime-section .mini-card,
+html[data-theme="dark"] .server-runtime-section .health-card,
+html[data-theme="dark"] .server-roster-panel {
+  border-color: color-mix(in srgb, var(--staff-line) 58%, transparent) !important;
+}
+
 .ci-grid,
 .ci-grid > *,
 .ci-doughnut-wrap {

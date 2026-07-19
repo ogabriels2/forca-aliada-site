@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v42';
+const CACHE_VERSION = 'fa-static-v43';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -30,7 +30,7 @@ const STATIC_ASSETS = [
   'assets/css/fa-design-system.css',
   'assets/css/dashboard-v2.css?v=20260718b',
   'assets/css/dashboard-v3.css?v=20260716d',
-  'assets/css/dashboard-v4.css?v=20260718b',
+  'assets/css/dashboard-v4.css?v=20260719a',
   'assets/css/dashboard-v5.css?v=20260718c',
   'assets/css/community-evolution.css',
   'assets/css/community-evolution-20260614f.css',
