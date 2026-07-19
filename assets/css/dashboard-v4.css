@@ -142,10 +142,10 @@ html:not([data-theme="dark"]) body > header > .brand-link {
   background: linear-gradient(180deg, #fbfcfa, #f6f9f5) !important;
   box-shadow: none !important;
 }
-html:not([data-theme="dark"]) .brand-link .logo-img {
-  padding: 3px;
-  background: #176c3e !important;
-  box-shadow: 0 5px 14px rgba(22,32,25,.13), 0 0 0 1px rgba(23,108,62,.28) !important;
+html:not([data-theme="dark"]) .brand-link .brand-logo-mark .logo-img {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 html:not([data-theme="dark"]) .brand-link .logo-text { color: #18221b !important; }
 html:not([data-theme="dark"]) .brand-link::after {
@@ -392,6 +392,27 @@ body > header {
   border-radius: 11px !important;
   box-shadow: 0 7px 20px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.09) !important;
 }
+.brand-link .brand-logo-mark {
+  position: relative;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+}
+.brand-link .brand-logo-mark .logo-img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+}
+.brand-link .brand-logo-mark .logo-img--light { display: none !important; }
+html:not([data-theme="dark"]) .brand-link .brand-logo-mark .logo-img--dark { display: none !important; }
+html:not([data-theme="dark"]) .brand-link .brand-logo-mark .logo-img--light { display: block !important; }
 .brand-link .logo-text { color: #f7f5ee !important; font-size: 15px !important; letter-spacing: -.025em; }
 .brand-link::after {
   content: "STAFF" !important;
@@ -957,7 +978,12 @@ body.v4-more-open .v4-sheet-scrim { display: block; animation: v4-fade .2s ease;
     border-radius: 12px !important;
     background: var(--staff-sidebar) !important;
   }
+  html:not([data-theme="dark"]) body > header > .brand-link {
+    border-color: transparent !important;
+    background: transparent !important;
+  }
   body > header > .brand-link .logo-img { width: 30px !important; height: 30px !important; border-radius: 8px !important; object-fit: contain; box-shadow: none !important; }
+  body > header > .brand-link .brand-logo-mark { width: 30px !important; height: 30px !important; flex-basis: 30px !important; }
   body > header > .brand-link .logo-text, body > header > .brand-link::after { display: none !important; }
   .v4-mobile-title { display: block !important; flex: 1 1 auto; }
   .v2-cmd-trigger { order: 2; flex: 0 0 44px; width: 44px !important; min-width: 44px !important; min-height: 44px !important; margin: 0 !important; padding: 0 !important; justify-content: center; background: transparent !important; }
