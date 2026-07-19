@@ -29,6 +29,7 @@ import crypto from 'crypto';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import https from 'https';
+import { WebSocketServer, WebSocket } from 'ws';
 import {
   feedV2SchemaSql,
   impressionsEndpoint,
@@ -283,6 +284,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret', 'x-app-key'],
 }));
 
+// Os endpoints do app nao recebem uploads editoriais. Limites dedicados fazem
+// o parser rejeitar corpos abusivos antes de reservar o teto global do site.
+app.use('/api/app/remote/relay', express.json({ limit: '17mb' }));
+app.use('/api/app/sync', express.json({ limit: '1mb' }));
+app.use('/api/app/whitelist-ack', express.json({ limit: '64kb' }));
+app.use('/api/app/heartbeat', express.json({ limit: '16kb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -3634,32 +3641,97 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────
 
 // ── Helper: valida a chave do app e retorna { isValid, appKeyId } ──
+const APP_KEY_CACHE_TTL_MS = 60_000;
+const APP_KEY_LAST_USED_WRITE_MS = 15 * 60_000;
+const appKeyValidationCache = new Map();
+
+function pruneAppKeyValidationCache() {
+  const now = Date.now();
+  for (const [hash, entry] of appKeyValidationCache) {
+    if (!entry || entry.expiresAt <= now) appKeyValidationCache.delete(hash);
+  }
+  while (appKeyValidationCache.size > 500) {
+    appKeyValidationCache.delete(appKeyValidationCache.keys().next().value);
+  }
+}
+
+function touchAppKeyLastUsed(keyHash, entry) {
+  const now = Date.now();
+  if (!entry?.appKeyId || now - Number(entry.lastTouchedAt || 0) < APP_KEY_LAST_USED_WRITE_MS) return;
+  entry.lastTouchedAt = now;
+  pool.query('UPDATE app_integration_keys SET last_used_at=NOW() WHERE id=$1 AND key_hash=$2', [entry.appKeyId, keyHash])
+    .catch(() => {});
+}
+
 async function validateAppKey(key) {
   if (!key) return { isValid: false, appKeyId: null };
   if (key === INGEST_SECRET && INGEST_SECRET) return { isValid: true, appKeyId: null };
   const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+  pruneAppKeyValidationCache();
+  const cached = appKeyValidationCache.get(keyHash);
+  if (cached && cached.expiresAt > Date.now()) {
+    touchAppKeyLastUsed(keyHash, cached);
+    return { isValid: true, appKeyId: cached.appKeyId, keyName: cached.keyName };
+  }
   const { rows } = await pool.query(
-    'UPDATE app_integration_keys SET last_used_at=NOW() WHERE key_hash=$1 RETURNING id, name',
+    'SELECT id, name, last_used_at FROM app_integration_keys WHERE key_hash=$1',
     [keyHash]
   );
   if (!rows.length) return { isValid: false, appKeyId: null };
-  return { isValid: true, appKeyId: rows[0].id, keyName: rows[0].name };
+  const entry = {
+    appKeyId: rows[0].id,
+    keyName: rows[0].name,
+    expiresAt: Date.now() + APP_KEY_CACHE_TTL_MS,
+    lastTouchedAt: rows[0].last_used_at ? new Date(rows[0].last_used_at).getTime() : 0,
+  };
+  appKeyValidationCache.set(keyHash, entry);
+  touchAppKeyLastUsed(keyHash, entry);
+  return { isValid: true, appKeyId: entry.appKeyId, keyName: entry.keyName };
 }
 
 const REMOTE_RELAY_MAX_WAIT_MS = 25000;
-const REMOTE_RELAY_MAX_PAYLOAD_BYTES = 768 * 1024;
+const REMOTE_RELAY_MAX_PAYLOAD_BYTES = 16 * 1024 * 1024;
 const REMOTE_RELAY_ROOM_TTL_SEC = 7 * 24 * 60 * 60;
 const REMOTE_RELAY_MESSAGE_TTL_SEC = 180;
+const REMOTE_RELAY_WS_MAX_PAYLOAD_BYTES = 16 * 1024 * 1024;
+const REMOTE_RELAY_WS_BUDGET_BYTES = 64 * 1024 * 1024;
+const APP_SYNC_WS_BUDGET_BYTES = 4 * 1024 * 1024;
 let remoteRelayLastCleanup = 0;
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const remoteRelayWsRooms = new Map();
+const remoteRelayWss = new WebSocketServer({ noServer: true, maxPayload: REMOTE_RELAY_WS_MAX_PAYLOAD_BYTES });
+const remoteRelayHttpWaiters = new Map();
+const appSyncWss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
+const appSyncSockets = new Set();
+const webSocketUpgradeRates = new Map();
+let lastAppSyncFingerprint = '';
+let lastAppSyncDatabaseAt = 0;
 
 function relaySafeEqual(a, b) {
   const ab = Buffer.from(String(a || ''));
   const bb = Buffer.from(String(b || ''));
   return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+}
+
+function allowWebSocketUpgrade(req) {
+  const now = Date.now();
+  const address = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown')
+    .split(',')[0]
+    .trim();
+  let bucket = webSocketUpgradeRates.get(address);
+  if (!bucket || now - bucket.startedAt >= 60_000) {
+    bucket = { startedAt: now, count: 0 };
+    webSocketUpgradeRates.set(address, bucket);
+  }
+  bucket.count += 1;
+  if (webSocketUpgradeRates.size > 5000) {
+    for (const [key, entry] of webSocketUpgradeRates) {
+      if (!entry || now - entry.startedAt > 2 * 60_000) webSocketUpgradeRates.delete(key);
+    }
+    while (webSocketUpgradeRates.size > 5000) {
+      webSocketUpgradeRates.delete(webSocketUpgradeRates.keys().next().value);
+    }
+  }
+  return bucket.count <= 120;
 }
 
 function relayHash(value) {
@@ -3707,6 +3779,20 @@ function relayPayload(value) {
   return value;
 }
 
+function relayWsPayload(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    const err = new Error('Payload WebSocket invalido.');
+    err.status = 400;
+    throw err;
+  }
+  if (Buffer.byteLength(JSON.stringify(value)) > REMOTE_RELAY_WS_MAX_PAYLOAD_BYTES) {
+    const err = new Error('Payload WebSocket muito grande.');
+    err.status = 413;
+    throw err;
+  }
+  return value;
+}
+
 async function cleanupRemoteRelay() {
   const now = Date.now();
   if (now - remoteRelayLastCleanup < 30000) return;
@@ -3722,6 +3808,301 @@ async function validateRemoteRelayRoom(roomId) {
   );
   return rows[0] || null;
 }
+
+function getRemoteRelayWsRoom(roomId) {
+  let room = remoteRelayWsRooms.get(roomId);
+  if (!room) {
+    room = { host: null, clients: new Map() };
+    remoteRelayWsRooms.set(roomId, room);
+  }
+  return room;
+}
+
+function sendRemoteRelayWs(ws, message) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+  try {
+    ws.send(JSON.stringify(message));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function removeRemoteRelayWs(ws) {
+  const meta = ws?.faRelay;
+  if (!meta) return;
+  const room = remoteRelayWsRooms.get(meta.roomId);
+  if (!room) return;
+  if (meta.role === 'host' && room.host === ws) {
+    room.host = null;
+    for (const client of room.clients.values()) {
+      sendRemoteRelayWs(client, { kind: 'relay-host-offline', at: Date.now() });
+    }
+  } else if (meta.role === 'client' && room.clients.get(meta.clientId) === ws) {
+    room.clients.delete(meta.clientId);
+  }
+  if (!room.host && room.clients.size === 0) remoteRelayWsRooms.delete(meta.roomId);
+}
+
+async function authenticateRemoteRelayWs(req) {
+  const url = new URL(req.url || '/', 'http://localhost');
+  if (url.pathname !== '/api/app/remote/ws') {
+    const error = new Error('Endpoint WebSocket inexistente.');
+    error.status = 404;
+    throw error;
+  }
+  const roomId = relayIdentifier(url.searchParams.get('room'), 'Sala');
+  const role = url.searchParams.get('role') === 'host' ? 'host' : 'client';
+  if (role === 'host') {
+    const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+    const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false, appKeyId: null }));
+    if (!isValid) {
+      const error = new Error('Chave invalida ou revogada.');
+      error.status = 403;
+      throw error;
+    }
+    const hostToken = String(req.headers['x-relay-host-token'] || '');
+    const { rows } = await pool.query(
+      `SELECT app_key_id, host_token_hash
+         FROM app_remote_relay_rooms
+        WHERE room_id=$1 AND expires_at > NOW()`,
+      [roomId]
+    );
+    const room = rows[0];
+    if (!room || !relaySafeEqual(room.host_token_hash, relayHash(hostToken))) {
+      const error = new Error('Sala remota indisponivel.');
+      error.status = 404;
+      throw error;
+    }
+    if (room.app_key_id !== null && Number(room.app_key_id) !== Number(appKeyId)) {
+      const error = new Error('Chave sem permissao para esta sala.');
+      error.status = 403;
+      throw error;
+    }
+    return { roomId, role, clientId: '' };
+  }
+
+  const room = await validateRemoteRelayRoom(roomId);
+  if (!room) {
+    const error = new Error('Sala remota expirada ou inexistente.');
+    error.status = 404;
+    throw error;
+  }
+  return {
+    roomId,
+    role,
+    clientId: relayIdentifier(url.searchParams.get('client'), 'Cliente', 1),
+  };
+}
+
+async function authenticateAppSyncWs(req) {
+  const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const auth = await validateAppKey(key).catch(() => ({ isValid: false }));
+  if (!auth.isValid) {
+    const error = new Error('Chave invalida ou revogada.');
+    error.status = 403;
+    throw error;
+  }
+  return auth;
+}
+
+function attachRemoteRelayWebSocket(httpServer) {
+  httpServer.on('upgrade', (req, socket, head) => {
+    if (!allowWebSocketUpgrade(req)) {
+      try { socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n'); } catch (_) {}
+      socket.destroy();
+      return;
+    }
+    let pathname = '';
+    try { pathname = new URL(req.url || '/', 'http://localhost').pathname; } catch (_) {}
+    const isAppSync = pathname === '/api/app/ws';
+    const authenticate = isAppSync ? authenticateAppSyncWs(req) : authenticateRemoteRelayWs(req);
+    authenticate
+      .then(meta => {
+        const target = isAppSync ? appSyncWss : remoteRelayWss;
+        target.handleUpgrade(req, socket, head, ws => {
+          if (isAppSync) ws.faAppAuth = meta;
+          else ws.faRelay = meta;
+          target.emit('connection', ws, req);
+        });
+      })
+      .catch(error => {
+        const status = Number(error?.status) || 401;
+        try { socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`); } catch (_) {}
+        socket.destroy();
+      });
+  });
+}
+
+remoteRelayWss.on('connection', ws => {
+  const meta = ws.faRelay;
+  const room = getRemoteRelayWsRoom(meta.roomId);
+  ws.isAlive = true;
+  ws.faRate = { startedAt: Date.now(), count: 0, bytes: 0 };
+  ws.on('pong', () => { ws.isAlive = true; });
+
+  if (meta.role === 'host') {
+    if (room.host && room.host !== ws) room.host.close(1012, 'Host substituido');
+    room.host = ws;
+    for (const client of room.clients.values()) {
+      sendRemoteRelayWs(client, { kind: 'relay-host-online', at: Date.now() });
+    }
+  } else {
+    if (room.clients.size >= 32 && !room.clients.has(meta.clientId)) {
+      ws.close(1013, 'Limite de clientes atingido');
+      return;
+    }
+    const old = room.clients.get(meta.clientId);
+    if (old && old !== ws) old.close(1012, 'Cliente substituido');
+    room.clients.set(meta.clientId, ws);
+  }
+
+  sendRemoteRelayWs(ws, {
+    kind: 'relay-ready',
+    role: meta.role,
+    hostOnline: !!room.host,
+    at: Date.now(),
+  });
+
+  ws.on('message', data => {
+    const now = Date.now();
+    if (now - ws.faRate.startedAt >= 60000) ws.faRate = { startedAt: now, count: 0, bytes: 0 };
+    ws.faRate.count += 1;
+    ws.faRate.bytes += Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
+    if (ws.faRate.count > 900 || ws.faRate.bytes > REMOTE_RELAY_WS_BUDGET_BYTES) {
+      ws.close(1008, 'Limite de mensagens excedido');
+      return;
+    }
+    let message;
+    try { message = JSON.parse(data.toString('utf8')); }
+    catch (_) { ws.close(1007, 'Mensagem invalida'); return; }
+    if (!message || typeof message !== 'object' || Array.isArray(message)) return;
+
+    try {
+      const correlationId = message.correlationId ? relayIdentifier(message.correlationId, 'Correlacao', 8) : null;
+      const messageId = message.messageId ? relayIdentifier(message.messageId, 'Mensagem', 8) : null;
+      const kind = relayIdentifier(message.kind, 'Tipo', 2, 40);
+      const payload = relayWsPayload(message.payload);
+      if (meta.role === 'host') {
+        const clientId = relayIdentifier(message.clientId, 'Cliente', 1);
+        sendRemoteRelayWs(room.clients.get(clientId), { clientId, messageId, correlationId, kind, payload });
+      } else if (!sendRemoteRelayWs(room.host, {
+        clientId: meta.clientId,
+        messageId,
+        correlationId,
+        kind,
+        payload,
+      })) {
+        sendRemoteRelayWs(ws, {
+          clientId: meta.clientId,
+          correlationId,
+          kind: 'relay-error',
+          payload: { error: 'PC host temporariamente indisponivel.' },
+        });
+      }
+    } catch (error) {
+      sendRemoteRelayWs(ws, {
+        correlationId: message?.correlationId || null,
+        kind: 'relay-error',
+        payload: { error: error.message || 'Mensagem remota invalida.' },
+      });
+    }
+  });
+  ws.on('close', () => removeRemoteRelayWs(ws));
+  ws.on('error', () => removeRemoteRelayWs(ws));
+});
+
+function markAppSocketHeartbeat(auth = {}) {
+  if (isCloudLockoutActive()) return;
+  _appHeartbeat.lastSeenAt = Date.now();
+  if (auth.appKeyId) _appHeartbeat.keyId = auth.appKeyId;
+  if (auth.keyName) _appHeartbeat.keyName = auth.keyName;
+}
+
+appSyncWss.on('connection', ws => {
+  const auth = ws.faAppAuth || {};
+  ws.isAlive = true;
+  ws.faRate = { startedAt: Date.now(), count: 0, bytes: 0 };
+  ws.faMessageChain = Promise.resolve();
+  appSyncSockets.add(ws);
+  markAppSocketHeartbeat(auth);
+  ws.on('pong', () => {
+    ws.isAlive = true;
+    markAppSocketHeartbeat(auth);
+  });
+  sendRemoteRelayWs(ws, {
+    kind: 'app-ready',
+    serverTime: new Date().toISOString(),
+    protocol: 1,
+  });
+  sendPendingWhitelistToSocket(ws, auth.appKeyId).catch(() => {});
+
+  ws.on('message', data => {
+    ws.faMessageChain = ws.faMessageChain.then(async () => {
+      const now = Date.now();
+      if (now - ws.faRate.startedAt >= 60000) ws.faRate = { startedAt: now, count: 0, bytes: 0 };
+      ws.faRate.count += 1;
+      ws.faRate.bytes += Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
+      if (ws.faRate.count > 180 || ws.faRate.bytes > APP_SYNC_WS_BUDGET_BYTES) {
+        ws.close(1008, 'Limite de mensagens excedido');
+        return;
+      }
+      let message;
+      try { message = JSON.parse(data.toString('utf8')); }
+      catch (_) { ws.close(1007, 'Mensagem invalida'); return; }
+      if (!message || typeof message !== 'object' || Array.isArray(message)) return;
+      markAppSocketHeartbeat(auth);
+      const messageId = String(message.messageId || '').slice(0, 96);
+      try {
+        if (message.kind === 'heartbeat') {
+          sendRemoteRelayWs(ws, { kind: 'heartbeat-ack', messageId, at: Date.now() });
+          return;
+        }
+        if (message.kind === 'sync') {
+          const result = await processAppSyncPayload(message.payload || {}, {
+            appKeyId: auth.appKeyId,
+            keyName: auth.keyName,
+            deliverWhitelist: false,
+          });
+          sendRemoteRelayWs(ws, { kind: 'sync-ack', messageId, result });
+          return;
+        }
+        if (message.kind === 'whitelist-ack') {
+          const ids = Array.isArray(message.ids)
+            ? message.ids.map(Number).filter(Number.isInteger).slice(0, 50)
+            : [];
+          if (ids.length) {
+            await pool.query(
+              'UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2::int[]) AND delivered_at IS NULL',
+              [auth.appKeyId, ids]
+            );
+          }
+          sendRemoteRelayWs(ws, { kind: 'whitelist-acknowledged', messageId, ids });
+        }
+      } catch (error) {
+        sendRemoteRelayWs(ws, {
+          kind: 'app-error',
+          messageId,
+          error: error?.message || 'Falha na sincronizacao.',
+        });
+      }
+    }).catch(() => {});
+  });
+  ws.on('close', () => appSyncSockets.delete(ws));
+  ws.on('error', () => appSyncSockets.delete(ws));
+});
+
+const remoteRelayWsHeartbeat = setInterval(() => {
+  for (const ws of [...remoteRelayWss.clients, ...appSyncWss.clients]) {
+    if (!ws.isAlive) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch (_) { ws.terminate(); }
+  }
+}, 25000);
+remoteRelayWsHeartbeat.unref?.();
 
 async function requireRemoteRelayHost(req, res) {
   const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
@@ -3767,6 +4148,43 @@ async function requireRemoteRelayHost(req, res) {
   return { roomId, appKeyId };
 }
 
+function remoteRelayWaiterKey(roomId, target, clientId = '') {
+  return `${roomId}|${target}|${target === 'client' ? clientId : '*'}`;
+}
+
+function createRemoteRelayWaiter(roomId, target, clientId, waitMs) {
+  const key = remoteRelayWaiterKey(roomId, target, clientId);
+  let settled = false;
+  let resolvePromise;
+  const promise = new Promise(resolve => { resolvePromise = resolve; });
+  const waiter = {
+    resolve(messages) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      const list = remoteRelayHttpWaiters.get(key) || [];
+      const index = list.indexOf(waiter);
+      if (index >= 0) list.splice(index, 1);
+      if (!list.length) remoteRelayHttpWaiters.delete(key);
+      resolvePromise(Array.isArray(messages) ? messages : []);
+    },
+  };
+  const list = remoteRelayHttpWaiters.get(key) || [];
+  list.push(waiter);
+  remoteRelayHttpWaiters.set(key, list);
+  const timer = setTimeout(() => waiter.resolve([]), Math.max(0, waitMs));
+  return { promise, cancel: () => waiter.resolve([]) };
+}
+
+function deliverRemoteRelayHttp(roomId, target, clientId, message) {
+  const key = remoteRelayWaiterKey(roomId, target, clientId);
+  const waiters = remoteRelayHttpWaiters.get(key);
+  const waiter = waiters?.[0];
+  if (!waiter) return false;
+  waiter.resolve([message]);
+  return true;
+}
+
 async function insertRelayMessage({ roomId, target, clientId, messageId, correlationId, kind, payload, ttlSeconds }) {
   const safeRoomId = relayIdentifier(roomId, 'Sala');
   const safeTarget = target === 'host' ? 'host' : 'client';
@@ -3796,12 +4214,10 @@ async function insertRelayMessage({ roomId, target, clientId, messageId, correla
 async function pollRelayMessages({ roomId, target, clientId, waitMs }) {
   const safeRoomId = relayIdentifier(roomId, 'Sala');
   const safeWaitMs = relayWaitMs(waitMs);
-  const deadline = Date.now() + safeWaitMs;
   const safeClientId = target === 'client'
     ? relayIdentifier(clientId, 'Cliente', 1)
     : null;
-
-  while (true) {
+  const takePersisted = async () => {
     const params = target === 'client'
       ? [safeRoomId, target, safeClientId]
       : [safeRoomId, target];
@@ -3825,8 +4241,7 @@ async function pollRelayMessages({ roomId, target, clientId, waitMs }) {
         RETURNING m.client_id, m.message_id, m.correlation_id, m.kind, m.payload, m.created_at, m.expires_at`,
       params
     );
-    if (rows.length || Date.now() >= deadline) {
-      return rows.map(r => ({
+    return rows.map(r => ({
         clientId: r.client_id,
         messageId: r.message_id,
         correlationId: r.correlation_id,
@@ -3834,16 +4249,168 @@ async function pollRelayMessages({ roomId, target, clientId, waitMs }) {
         payload: r.payload,
         createdAt: r.created_at,
         expiresAt: r.expires_at,
-      }));
-    }
-    await sleep(Math.min(1000, Math.max(100, deadline - Date.now())));
+    }));
+  };
+
+  if (safeWaitMs <= 0) return takePersisted();
+  const waiter = createRemoteRelayWaiter(safeRoomId, target, safeClientId, safeWaitMs);
+  const persisted = await takePersisted();
+  if (persisted.length) {
+    waiter.cancel();
+    return persisted;
   }
+  const live = await waiter.promise;
+  if (live.length) return live;
+  return takePersisted();
+}
+
+async function takePendingWhitelist(appKeyId, markDelivered = false) {
+  const { rows } = await pool.query(
+    'SELECT id, minecraft_name, queued_at FROM whitelist_queue WHERE delivered_at IS NULL ORDER BY queued_at ASC LIMIT 50'
+  );
+  if (markDelivered && rows.length) {
+    await pool.query(
+      'UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2::int[]) AND delivered_at IS NULL',
+      [appKeyId, rows.map(row => row.id)]
+    );
+  }
+  return rows.map(row => ({ id: row.id, username: row.minecraft_name, queued_at: row.queued_at }));
+}
+
+async function sendPendingWhitelistToSocket(ws, appKeyId) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const pending = await takePendingWhitelist(appKeyId, false);
+  if (pending.length) sendRemoteRelayWs(ws, { kind: 'whitelist-add', items: pending });
+}
+
+function broadcastWhitelistItem(item) {
+  if (!item?.id || !item?.username) return;
+  for (const ws of appSyncSockets) {
+    sendRemoteRelayWs(ws, { kind: 'whitelist-add', items: [item] });
+  }
+}
+
+async function processAppSyncPayload(rawPayload = {}, options = {}) {
+  const payload = rawPayload?.payload || rawPayload || {};
+  const online = Array.from(new Set(
+    (Array.isArray(payload.onlinePlayers) ? payload.onlinePlayers : [])
+      .map(value => String(value || '').trim().slice(0, 64))
+      .filter(Boolean)
+  )).slice(0, 500);
+  const now = new Date();
+  const serverStopped = payload.serverStopped === true;
+  const serverStarted = payload.serverStarted === true;
+
+  if (serverStopped) {
+    _appHeartbeat.lastSeenAt = 0;
+    activateCloudLockout();
+    setMcState('offline', 'app_signal');
+  } else if (serverStarted) {
+    releaseCloudLockout();
+    setMcState('online', 'app_signal');
+    _appHeartbeat.lastSeenAt = Date.now();
+  } else if (!isCloudLockoutActive()) {
+    _appHeartbeat.lastSeenAt = Date.now();
+  }
+  if (options.appKeyId) _appHeartbeat.keyId = options.appKeyId;
+  if (options.keyName) _appHeartbeat.keyName = options.keyName;
+
+  const fingerprint = crypto.createHash('sha256')
+    .update(JSON.stringify([online.slice().sort((a, b) => a.localeCompare(b)), serverStopped, serverStarted]))
+    .digest('hex');
+  const mustReconcile = serverStopped
+    || serverStarted
+    || fingerprint !== lastAppSyncFingerprint
+    || Date.now() - lastAppSyncDatabaseAt > 5 * 60_000;
+  let opened = [];
+  let closed = [];
+
+  if (mustReconcile) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const closedResult = serverStopped
+        ? await client.query(
+            `UPDATE player_sessions
+                SET left_at=$1,
+                    duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2)
+              WHERE left_at IS NULL
+              RETURNING player`,
+            [now]
+          )
+        : await client.query(
+            `UPDATE player_sessions
+                SET left_at=$1,
+                    duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2)
+              WHERE left_at IS NULL
+                AND NOT (player = ANY($2::text[]))
+              RETURNING player`,
+            [now, online]
+          );
+      closed = closedResult.rows.map(row => row.player);
+
+      if (!serverStopped && online.length) {
+        const openedResult = await client.query(
+          `INSERT INTO player_sessions(player, entered_at, origin)
+           SELECT candidate.player, $2, 'app'
+             FROM unnest($1::text[]) AS candidate(player)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM player_sessions active
+               WHERE active.left_at IS NULL AND active.player=candidate.player
+            )
+           RETURNING player`,
+          [online, now]
+        );
+        opened = openedResult.rows.map(row => row.player);
+      }
+      await client.query('COMMIT');
+      lastAppSyncFingerprint = fingerprint;
+      lastAppSyncDatabaseAt = Date.now();
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Entrega e confirmacao sao etapas separadas. Marcar como entregue aqui
+  // perderia o item se a resposta HTTP chegasse ao app, mas a aplicacao local
+  // falhasse ou a conexao caísse antes de ele processa-la.
+  const pending = options.deliverWhitelist
+    ? await takePendingWhitelist(options.appKeyId, false)
+    : [];
+  if (serverStopped || serverStarted || opened.length || closed.length) {
+    await audit({
+      type: 'system',
+      severity: 'info',
+      message: serverStopped
+        ? 'App sinalizou shutdown do servidor'
+        : `App Sync: ${online.length} jogador(es) online`,
+      metadata: {
+        onlinePlayers: online,
+        serverStarted,
+        serverStopped,
+        sessionsOpened: opened,
+        sessionsClosed: closed,
+        whitelistDelivered: pending.map(item => item.username),
+      },
+    }).catch(() => {});
+  }
+  return {
+    ok: true,
+    mode: serverStopped || isCloudLockoutActive() ? 'cloud' : 'app',
+    whitelist_add: pending,
+    sessionsOpened: opened.length,
+    sessionsClosed: closed.length,
+  };
 }
 
 /**
  * POST /api/app/heartbeat
  * Chamado pelo app a cada 10 segundos para sinalizar que está ativo.
- * Operação leve — só atualiza memória + last_used_at no banco (1 query).
+ * Operacao leve: atualiza memoria. A validacao da chave fica em cache e o
+ * last_used_at e persistido no maximo uma vez a cada 15 minutos.
  * Não reconcilia sessões; essa responsabilidade é do /api/app/sync.
  */
 app.post('/api/app/heartbeat', async (req, res) => {
@@ -3890,20 +4457,9 @@ app.get('/api/app/whitelist-queue', async (req, res) => {
   if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
 
   try {
-    const { rows: pending } = await pool.query(`
-      WITH picked AS (
-        SELECT id FROM whitelist_queue
-        WHERE delivered_at IS NULL
-        ORDER BY queued_at ASC
-        FOR UPDATE SKIP LOCKED
-        LIMIT 50
-      )
-      UPDATE whitelist_queue q
-      SET delivered_at=NOW(), delivered_by=$1
-      FROM picked
-      WHERE q.id=picked.id
-      RETURNING q.id, q.minecraft_name, q.queued_at
-    `, [appKeyId]);
+    const { rows: pending } = await pool.query(
+      'SELECT id, minecraft_name, queued_at FROM whitelist_queue WHERE delivered_at IS NULL ORDER BY queued_at ASC LIMIT 50'
+    );
 
     res.json({
       ok: true,
@@ -3951,6 +4507,27 @@ app.post('/api/app/remote/relay/register', remoteRelayLimiter, async (req, res) 
   }
 });
 
+app.post('/api/app/whitelist-ack', async (req, res) => {
+  const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false }));
+  if (!isValid) return res.status(403).json({ error: 'Chave invalida ou revogada' });
+
+  const ids = Array.isArray(req.body?.ids)
+    ? Array.from(new Set(req.body.ids.map(Number).filter(Number.isInteger))).slice(0, 50)
+    : [];
+  if (!ids.length) return res.status(400).json({ error: 'Confirmacao vazia ou invalida' });
+
+  try {
+    const { rowCount } = await pool.query(
+      'UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2::int[]) AND delivered_at IS NULL',
+      [appKeyId, ids]
+    );
+    return res.json({ ok: true, acknowledged: ids, updated: rowCount });
+  } catch (_) {
+    return res.status(500).json({ error: 'Falha ao confirmar fila' });
+  }
+});
+
 app.post('/api/app/remote/relay/host-poll', remoteRelayLimiter, async (req, res) => {
   try {
     await cleanupRemoteRelay();
@@ -3972,10 +4549,24 @@ app.post('/api/app/remote/relay/host-send', remoteRelayLimiter, async (req, res)
     await cleanupRemoteRelay();
     const host = await requireRemoteRelayHost(req, res);
     if (!host) return;
+    const clientId = relayIdentifier(req.body?.clientId, 'Cliente', 1);
+    const liveMessage = {
+      clientId,
+      messageId: req.body?.messageId,
+      correlationId: req.body?.correlationId,
+      kind: req.body?.kind,
+      payload: relayPayload(req.body?.payload),
+      relayTransport: 'http',
+    };
+    const wsClient = remoteRelayWsRooms.get(host.roomId)?.clients.get(clientId);
+    if (sendRemoteRelayWs(wsClient, liveMessage)) return res.json({ ok: true, transport: 'websocket' });
+    if (deliverRemoteRelayHttp(host.roomId, 'client', clientId, liveMessage)) {
+      return res.json({ ok: true, transport: 'long-poll' });
+    }
     await insertRelayMessage({
       roomId: host.roomId,
       target: 'client',
-      clientId: req.body?.clientId,
+      clientId,
       messageId: req.body?.messageId,
       correlationId: req.body?.correlationId,
       kind: req.body?.kind,
@@ -3992,14 +4583,26 @@ app.post('/api/app/remote/relay/client-send', remoteRelayLimiter, async (req, re
   try {
     await cleanupRemoteRelay();
     const roomId = relayIdentifier(req.body?.roomId, 'Sala');
-    await pool.query(
-      'UPDATE app_remote_relay_rooms SET last_client_seen_at=NOW() WHERE room_id=$1 AND expires_at > NOW()',
-      [roomId]
-    );
+    const clientId = relayIdentifier(req.body?.clientId, 'Cliente', 1);
+    const room = await validateRemoteRelayRoom(roomId);
+    if (!room) return res.status(404).json({ error: 'Sala remota expirada ou inexistente.' });
+    const liveMessage = {
+      clientId,
+      messageId: req.body?.messageId,
+      correlationId: req.body?.correlationId,
+      kind: req.body?.kind,
+      payload: relayPayload(req.body?.payload),
+      relayTransport: 'http',
+    };
+    const wsHost = remoteRelayWsRooms.get(roomId)?.host;
+    if (sendRemoteRelayWs(wsHost, liveMessage)) return res.json({ ok: true, transport: 'websocket' });
+    if (deliverRemoteRelayHttp(roomId, 'host', '', liveMessage)) {
+      return res.json({ ok: true, transport: 'long-poll' });
+    }
     await insertRelayMessage({
       roomId,
       target: 'host',
-      clientId: req.body?.clientId,
+      clientId,
       messageId: req.body?.messageId,
       correlationId: req.body?.correlationId,
       kind: req.body?.kind,
@@ -4019,10 +4622,6 @@ app.post('/api/app/remote/relay/client-poll', remoteRelayLimiter, async (req, re
     const clientId = relayIdentifier(req.body?.clientId, 'Cliente', 1);
     const room = await validateRemoteRelayRoom(roomId);
     if (!room) return res.status(404).json({ error: 'Sala remota expirada ou inexistente.' });
-    await pool.query(
-      'UPDATE app_remote_relay_rooms SET last_client_seen_at=NOW() WHERE room_id=$1',
-      [roomId]
-    ).catch(() => {});
     const messages = await pollRelayMessages({
       roomId,
       target: 'client',
@@ -4059,105 +4658,28 @@ app.delete('/api/admin/app-keys/:id', auth, requireOwner, async (req, res) => {
     if (reason.length < 8) return res.status(400).json({ error: 'Informe o motivo da revogação.' });
     const { rows } = await pool.query('DELETE FROM app_integration_keys WHERE id=$1 RETURNING name', [id]);
     if (!rows.length) return res.status(404).json({ error: 'Chave de integração não encontrada.' });
+    appKeyValidationCache.clear();
     await audit({ actorId: req.user.sub, actorName: req.user.username, type: 'delete', severity: 'warning', message: `Chave de Integração revogada: "${rows[0].name}"`, metadata: { appKeyId: id, reason } });
     res.json({ ok: true });
 });
 
 app.post('/api/app/sync', async (req, res) => {
-    const key = req.headers['x-app-key'] || req.headers['x-ingest-secret']; 
+    const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
     if (!key) return res.status(401).json({ error: 'Chave não fornecida' });
 
-    const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false }));
+    const { isValid, appKeyId, keyName } = await validateAppKey(key).catch(() => ({ isValid: false }));
     if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
-
-    // Sync também atualiza o heartbeat em memória (garante que site não interfira durante sync)
-    _appHeartbeat.lastSeenAt = Date.now();
-    if (appKeyId) _appHeartbeat.keyId = appKeyId;
-
     try {
-        const payload  = req.body?.payload || req.body;
-        const online   = (payload?.onlinePlayers || []).filter(Boolean);
-        const now      = new Date();
-
-        // ── Sinal de shutdown: app avisou que o servidor foi desligado ──
-        // Fecha todas as sessões abertas IMEDIATAMENTE, sem esperar o heartbeat expirar.
-        // Ativa o cloud lockout para que heartbeats subsequentes do app não
-        // reconectem o modo app antes que o servidor realmente suba de novo.
-        if (payload?.serverStopped === true) {
-            _appHeartbeat.lastSeenAt = 0; // invalida heartbeat → modo nuvem imediato
-            activateCloudLockout();       // bloqueia reconexão via heartbeat por CLOUD_MODE_LOCKOUT_MS
-            setMcState('offline', 'app_signal');
-            const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-            for (const row of active.rows) {
-                const dur = (now - new Date(row.entered_at)) / 3600000;
-                await pool.query(
-                    'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
-                    [now, +dur.toFixed(2), row.player]
-                );
-            }
-            await audit({
-                type: 'system', severity: 'info',
-                message: 'App sinalizou shutdown do servidor — sessões encerradas, modo nuvem ativado',
-                metadata: { sessionsClosed: active.rows.length },
-            });
-            return res.json({ ok: true, mode: 'cloud', whitelist_add: [] });
-        }
-
-        // ── Sinal de startup: app avisou que o servidor subiu ──
-        // Libera o cloud lockout: o servidor foi relançado pelo app.
-        if (payload?.serverStarted === true) {
-            releaseCloudLockout(); // app pode voltar a ser master
-            setMcState('online', 'app_signal');
-        }
-
-        const active   = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
-
-        for (const row of active.rows) {
-            if (!online.includes(row.player)) {
-                const dur = (now - new Date(row.entered_at)) / 3600000;
-                await pool.query('UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL', [now, +dur.toFixed(2), row.player]);
-            }
-        }
-
-        for (const p of online) {
-            const already = active.rows.some(r => r.player === p);
-            // A App marca as sessões como 'app'
-            if (!already) await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'app')", [p, now]);
-        }
-
-        // ── Whitelist queue: fetch pending items not yet delivered ──
-        const { rows: pending } = await pool.query(`
-          WITH picked AS (
-            SELECT id FROM whitelist_queue
-            WHERE delivered_at IS NULL
-            ORDER BY queued_at ASC
-            FOR UPDATE SKIP LOCKED
-            LIMIT 50
-          )
-          UPDATE whitelist_queue q
-          SET delivered_at=NOW(), delivered_by=$1
-          FROM picked
-          WHERE q.id=picked.id
-          RETURNING q.id, q.minecraft_name
-        `, [appKeyId]);
-
-        res.json({
-          ok: true,
-          whitelist_add: pending.map(r => ({ id: r.id, username: r.minecraft_name })),
+        const result = await processAppSyncPayload(req.body, {
+          appKeyId,
+          keyName,
+          deliverWhitelist: true,
         });
-
-        await audit({
-          type: 'system', severity: 'info',
-          message: `App Sync: ${online.length} jogador(es) online registrado(s)${pending.length ? `, ${pending.length} whitelist(s) entregue(s)` : ''}`,
-          metadata: {
-            onlinePlayers: online,
-            serverStarted: payload?.serverStarted || false,
-            sessionsOpened: online.filter(p => !active.rows.some(r => r.player === p)).length,
-            sessionsClosed: active.rows.filter(r => !online.includes(r.player)).length,
-            whitelistDelivered: pending.map(r => r.minecraft_name),
-          },
-        });
-    } catch (err) { res.status(500).json({ error: 'Falha na sincronização' }); }
+        return res.json(result);
+    } catch (err) {
+        console.error('[app-sync]', err);
+        return res.status(500).json({ error: 'Falha na sincronização' });
+    }
 });
 
 
@@ -4283,6 +4805,7 @@ async function linkMicrosoftIntegration({ userId, msRefreshToken, xuid, mcUuid, 
   }
 
   const client = await pool.connect();
+  let queuedWhitelist = [];
   try {
     await client.query('BEGIN');
 
@@ -4366,17 +4889,20 @@ async function linkMicrosoftIntegration({ userId, msRefreshToken, xuid, mcUuid, 
 
     if (cleanEdition === 'java') {
       // Arquitetura defensiva: Só insere na fila se o jogador já não estiver lá
-      await client.query(
-        `INSERT INTO whitelist_queue(minecraft_name, user_id) 
-         SELECT $1::varchar, $2::int 
+      const { rows } = await client.query(
+        `INSERT INTO whitelist_queue(minecraft_name, user_id)
+         SELECT $1::varchar, $2::int
          WHERE NOT EXISTS (
-           SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
-         )`,
+            SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
+         )
+         RETURNING id, minecraft_name`,
         [cleanNick, userId]
       );
+      queuedWhitelist = rows;
     }
 
     await client.query('COMMIT');
+    for (const row of queuedWhitelist) broadcastWhitelistItem({ id: row.id, username: row.minecraft_name });
     return { user: userRows[0], integration, transferredFromUserId: previousUserId };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -4969,14 +5495,16 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         // Enfileira na whitelist automaticamente para jogadores de Java Edition
         if (edition === 'java') {
           // Arquitetura defensiva: Só insere na fila se o jogador já não estiver lá
-          await pool.query(
-            `INSERT INTO whitelist_queue(minecraft_name, user_id) 
-             SELECT $1::varchar, $2::int 
+          const { rows: queued } = await pool.query(
+            `INSERT INTO whitelist_queue(minecraft_name, user_id)
+             SELECT $1::varchar, $2::int
              WHERE NOT EXISTS (
-               SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
-             )`,
+                SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
+             )
+             RETURNING id, minecraft_name`,
             [nick, userRow.id]
           );
+          for (const row of queued) broadcastWhitelistItem({ id: row.id, username: row.minecraft_name });
         }
       }
 
@@ -5138,14 +5666,16 @@ app.post('/api/auth/verify-email', authLimiter, async (req, res) => {
   if (user.minecraft_name) {
     try {
       // Arquitetura defensiva para evitar duplicidade na fila
-      await pool.query(
-        `INSERT INTO whitelist_queue(minecraft_name, user_id) 
-         SELECT $1::varchar, $2::int 
+      const { rows: queued } = await pool.query(
+        `INSERT INTO whitelist_queue(minecraft_name, user_id)
+         SELECT $1::varchar, $2::int
          WHERE NOT EXISTS (
-           SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
-         )`,
+            SELECT 1 FROM whitelist_queue WHERE minecraft_name = $1
+         )
+         RETURNING id, minecraft_name`,
         [user.minecraft_name, user.id]
       );
+      for (const row of queued) broadcastWhitelistItem({ id: row.id, username: row.minecraft_name });
     } catch (e) {
       console.error('[whitelist_queue insert]', e);
     }
@@ -11420,7 +11950,8 @@ function scheduleDatabaseRetry() {
 }
 
 function startHttpServer() {
-  app.listen(PORT, () => console.log(`✅  API ${DEPLOY_SCHEMA_VERSION} rodando na porta ${PORT}`));
+  const httpServer = app.listen(PORT, () => console.log(`✅  API ${DEPLOY_SCHEMA_VERSION} rodando na porta ${PORT}`));
+  attachRemoteRelayWebSocket(httpServer);
 }
 
 prepareDatabaseForBoot()
