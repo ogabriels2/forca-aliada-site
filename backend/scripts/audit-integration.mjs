@@ -25,6 +25,11 @@ const requiredFragments = [
   "app.post('/api/app/whitelist-ack'",
   'const remoteRelayWsRooms = new Map()',
   'const remoteRelayHttpWaiters = new Map()',
+  "const REMOTE_RELAY_NOTIFY_CHANNEL = 'fa_remote_relay_v1'",
+  "client.query(`LISTEN ${REMOTE_RELAY_NOTIFY_CHANNEL}`)",
+  "kind: 'relay-delivery'",
+  'deliveryAck: true',
+  'drainPersistedRelayToLocalSocket',
   'async function processAppSyncPayload',
   'APP_KEY_LAST_USED_WRITE_MS',
 ];
@@ -48,5 +53,5 @@ if (failures.length) {
 console.log([
   'Auditoria da integracao aprovada.',
   `${modules.length} modulos do backend com sintaxe valida.`,
-  'WebSocket, relay em memoria e ACK confiavel da whitelist presentes.',
+  'WebSocket, entrega entre instancias, relay em memoria e ACKs confiaveis presentes.',
 ].join('\n'));

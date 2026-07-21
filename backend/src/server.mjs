@@ -3696,10 +3696,14 @@ const REMOTE_RELAY_MESSAGE_TTL_SEC = 180;
 const REMOTE_RELAY_WS_MAX_PAYLOAD_BYTES = 16 * 1024 * 1024;
 const REMOTE_RELAY_WS_BUDGET_BYTES = 64 * 1024 * 1024;
 const APP_SYNC_WS_BUDGET_BYTES = 4 * 1024 * 1024;
+const REMOTE_RELAY_NOTIFY_CHANNEL = 'fa_remote_relay_v1';
 let remoteRelayLastCleanup = 0;
 const remoteRelayWsRooms = new Map();
 const remoteRelayWss = new WebSocketServer({ noServer: true, maxPayload: REMOTE_RELAY_WS_MAX_PAYLOAD_BYTES });
 const remoteRelayHttpWaiters = new Map();
+const remoteRelayDrainInFlight = new Set();
+let remoteRelayNotifyClient = null;
+let remoteRelayNotifyRetryTimer = null;
 const appSyncWss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
 const appSyncSockets = new Set();
 const webSocketUpgradeRates = new Map();
@@ -3840,6 +3844,8 @@ function removeRemoteRelayWs(ws) {
     }
   } else if (meta.role === 'client' && room.clients.get(meta.clientId) === ws) {
     room.clients.delete(meta.clientId);
+    sendRemoteRelayWs(room.host, { kind: 'relay-client-offline', clientId: meta.clientId, at: Date.now() });
+    publishRemoteRelayPresence(meta.roomId, meta.clientId, false).catch(() => {});
   }
   if (!room.host && room.clients.size === 0) remoteRelayWsRooms.delete(meta.roomId);
 }
@@ -3955,14 +3961,25 @@ remoteRelayWss.on('connection', ws => {
     const old = room.clients.get(meta.clientId);
     if (old && old !== ws) old.close(1012, 'Cliente substituido');
     room.clients.set(meta.clientId, ws);
+    sendRemoteRelayWs(room.host, { kind: 'relay-client-online', clientId: meta.clientId, at: Date.now() });
+    publishRemoteRelayPresence(meta.roomId, meta.clientId, true).catch(() => {});
   }
 
   sendRemoteRelayWs(ws, {
     kind: 'relay-ready',
+    protocol: 2,
+    deliveryAck: true,
+    databaseNotify: !!remoteRelayNotifyClient,
     role: meta.role,
     hostOnline: !!room.host,
+    clients: meta.role === 'host' ? Array.from(room.clients.keys()).slice(0, 64) : undefined,
     at: Date.now(),
   });
+  drainPersistedRelayToLocalSocket({
+    roomId: meta.roomId,
+    target: meta.role === 'host' ? 'host' : 'client',
+    clientId: meta.clientId || '',
+  }).catch(() => {});
 
   ws.on('message', data => {
     const now = Date.now();
@@ -3985,7 +4002,8 @@ remoteRelayWss.on('connection', ws => {
       const payload = relayWsPayload(message.payload);
       if (meta.role === 'host') {
         const clientId = relayIdentifier(message.clientId, 'Cliente', 1);
-        sendRemoteRelayWs(room.clients.get(clientId), { clientId, messageId, correlationId, kind, payload });
+        const delivered = sendRemoteRelayWs(room.clients.get(clientId), { clientId, messageId, correlationId, kind, payload });
+        sendRemoteRelayWs(ws, { kind: 'relay-delivery', messageId, correlationId, delivered, at: Date.now() });
       } else if (!sendRemoteRelayWs(room.host, {
         clientId: meta.clientId,
         messageId,
@@ -4209,6 +4227,7 @@ async function insertRelayMessage({ roomId, target, clientId, messageId, correla
      ON CONFLICT (room_id, target, client_id, message_id) DO NOTHING`,
     [safeRoomId, safeTarget, safeClientId, safeMessageId, safeCorrelationId, safeKind, JSON.stringify(safePayload), ttl]
   );
+  await notifyRemoteRelayMessage(safeRoomId, safeTarget, safeClientId).catch(() => {});
 }
 
 async function pollRelayMessages({ roomId, target, clientId, waitMs }) {
@@ -4262,6 +4281,122 @@ async function pollRelayMessages({ roomId, target, clientId, waitMs }) {
   const live = await waiter.promise;
   if (live.length) return live;
   return takePersisted();
+}
+
+async function publishRemoteRelayNotification(payload) {
+  const text = JSON.stringify(payload || {});
+  if (Buffer.byteLength(text) > 7000) return false;
+  await pool.query('SELECT pg_notify($1, $2)', [REMOTE_RELAY_NOTIFY_CHANNEL, text]);
+  return true;
+}
+
+function notifyRemoteRelayMessage(roomId, target, clientId = '') {
+  return publishRemoteRelayNotification({ type: 'message', roomId, target, clientId });
+}
+
+function publishRemoteRelayPresence(roomId, clientId, online) {
+  return publishRemoteRelayNotification({ type: 'presence', roomId, clientId, online: !!online, at: Date.now() });
+}
+
+async function drainPersistedRelayToLocalSocket({ roomId, target, clientId = '' } = {}) {
+  const safeRoomId = relayIdentifier(roomId, 'Sala');
+  const safeTarget = target === 'host' ? 'host' : 'client';
+  const safeClientId = safeTarget === 'client' ? relayIdentifier(clientId, 'Cliente', 1) : '';
+  const key = `${safeRoomId}|${safeTarget}|${safeClientId}`;
+  if (remoteRelayDrainInFlight.has(key)) return false;
+
+  const getSocket = () => {
+    const room = remoteRelayWsRooms.get(safeRoomId);
+    return safeTarget === 'host' ? room?.host : room?.clients.get(safeClientId);
+  };
+  if (getSocket()?.readyState !== WebSocket.OPEN) return false;
+
+  remoteRelayDrainInFlight.add(key);
+  try {
+    for (let page = 0; page < 4; page += 1) {
+      const socket = getSocket();
+      if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+      const messages = await pollRelayMessages({
+        roomId: safeRoomId,
+        target: safeTarget,
+        clientId: safeClientId,
+        waitMs: 0,
+      });
+      if (!messages.length) return true;
+      for (const message of messages) {
+        if (!sendRemoteRelayWs(socket, { ...message, relayTransport: 'http' })) return false;
+      }
+      if (messages.length < 50) return true;
+    }
+    return true;
+  } finally {
+    remoteRelayDrainInFlight.delete(key);
+  }
+}
+
+function handleRemoteRelayNotification(rawPayload) {
+  let payload;
+  try { payload = JSON.parse(String(rawPayload || '')); }
+  catch (_) { return; }
+  try {
+    const roomId = relayIdentifier(payload.roomId, 'Sala');
+    if (payload.type === 'presence') {
+      const clientId = relayIdentifier(payload.clientId, 'Cliente', 1);
+      sendRemoteRelayWs(remoteRelayWsRooms.get(roomId)?.host, {
+        kind: payload.online ? 'relay-client-online' : 'relay-client-offline',
+        clientId,
+        at: Number(payload.at || Date.now()),
+      });
+      return;
+    }
+    if (payload.type === 'message') {
+      drainPersistedRelayToLocalSocket({
+        roomId,
+        target: payload.target,
+        clientId: payload.clientId || '',
+      }).catch(() => {});
+    }
+  } catch (_) {}
+}
+
+function scheduleRemoteRelayNotificationListenerRetry() {
+  if (remoteRelayNotifyRetryTimer) return;
+  remoteRelayNotifyRetryTimer = setTimeout(() => {
+    remoteRelayNotifyRetryTimer = null;
+    startRemoteRelayNotificationListener().catch(() => {});
+  }, 5000);
+  remoteRelayNotifyRetryTimer.unref?.();
+}
+
+async function startRemoteRelayNotificationListener() {
+  if (remoteRelayNotifyClient) return true;
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query(`LISTEN ${REMOTE_RELAY_NOTIFY_CHANNEL}`);
+    remoteRelayNotifyClient = client;
+    let released = false;
+    const reset = () => {
+      if (remoteRelayNotifyClient === client) remoteRelayNotifyClient = null;
+      if (!released) {
+        released = true;
+        try { client.release(true); } catch (_) {}
+      }
+      scheduleRemoteRelayNotificationListenerRetry();
+    };
+    client.on('notification', message => {
+      if (message.channel === REMOTE_RELAY_NOTIFY_CHANNEL) handleRemoteRelayNotification(message.payload);
+    });
+    client.on('error', reset);
+    client.on('end', reset);
+    return true;
+  } catch (error) {
+    if (client) {
+      try { client.release(true); } catch (_) {}
+    }
+    scheduleRemoteRelayNotificationListenerRetry();
+    return false;
+  }
 }
 
 async function takePendingWhitelist(appKeyId, markDelivered = false) {
@@ -11924,6 +12059,7 @@ async function prepareDatabaseForBoot() {
   await migrate();
   await seedAdmin();
   markDatabaseReady();
+  await startRemoteRelayNotificationListener();
 }
 
 function scheduleDatabaseRetry() {
