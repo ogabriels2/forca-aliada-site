@@ -21,6 +21,8 @@ const server = fs.readFileSync(path.join(sourceDir, 'server.mjs'), 'utf8');
 const manager = fs.readFileSync(path.join(sourceDir, 'manager_observability.mjs'), 'utf8');
 const worker = fs.readFileSync(path.join(root, '..', '_worker.js'), 'utf8');
 const workerRoutes = JSON.parse(fs.readFileSync(path.join(root, '..', '_routes.json'), 'utf8'));
+const dashboard = fs.readFileSync(path.join(root, '..', 'dashboard.html'), 'utf8');
+const managerDashboardCss = fs.readFileSync(path.join(root, '..', 'assets', 'css', 'dashboard-manager.css'), 'utf8');
 const requiredFragments = [
   "pathname === '/api/app/ws'",
   "url.pathname !== '/api/app/remote/ws'",
@@ -57,6 +59,15 @@ if (!worker.includes("/^\\/api\\/app(?:\\/|$)/")) {
 }
 if (!workerRoutes.include?.includes('/api/app/*')) {
   failures.push('_routes.json nao ativa o Worker para /api/app/*');
+}
+if (/<header\b[^>]*class=["'][^"']*manager-console-header/.test(dashboard)) {
+  failures.push('pagina do Manager usa <header> aninhado e pode sobrescrever o cabecalho global do Staff');
+}
+if (!/<div\b[^>]*class=["'][^"']*manager-console-header/.test(dashboard)) {
+  failures.push('cabecalho interno seguro da pagina do Manager nao encontrado');
+}
+if (!managerDashboardCss.includes('#app-keys-card:not(.dashboard-card-active)')) {
+  failures.push('pagina do Manager nao possui isolamento explicito das demais rotas do dashboard');
 }
 for (const fragment of [
   'CREATE TABLE IF NOT EXISTS manager_installations',

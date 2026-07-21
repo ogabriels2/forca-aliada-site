@@ -2,6 +2,16 @@
   display: none !important;
 }
 
+/* The Manager is a routed page. Keep it out of every other dashboard view. */
+.dashboard-content.portal-routed > #app-keys-card[aria-hidden="true"],
+.dashboard-content.portal-routed > #app-keys-card:not(.dashboard-card-active) {
+  display: none !important;
+}
+
+.dashboard-content.portal-routed > #app-keys-card.dashboard-card-active {
+  display: block !important;
+}
+
 .manager-console {
   --manager-green: #24b867;
   --manager-blue: #3278ea;
