@@ -27,6 +27,8 @@
     SYNC_WRONG_SERVICE: ['Endpoint incorreto', 'A URL respondeu, mas não era a API do Manager.'],
     SYNC_PROTOCOL_OUTDATED: ['Protocolo antigo', 'Aplicativo e backend estão em versões incompatíveis.'],
     SYNC_PROCESSING_FAILED: ['Falha de processamento', 'O backend recebeu o pedido, mas não concluiu a sincronização.'],
+    PRESENCE_UNAVAILABLE: ['Presença indisponível', 'O Manager não conseguiu confirmar o registro operacional.'],
+    INSTALLATION_AUTH_REJECTED: ['Registro rejeitado', 'A credencial local de presença precisou ser renovada.'],
   };
 
   const FEATURE_LABELS = {
@@ -55,11 +57,20 @@
     'action.update_install': 'Atualizações instaladas',
   };
 
+  const ACTIVATION_LABELS = {
+    registered: 'Managers registrados',
+    server_configured: 'Servidor configurado',
+    app_key_linked: 'App Key vinculada',
+    site_sync_configured: 'Sincronização configurada',
+    usage_telemetry_opt_in: 'Diagnósticos opcionais',
+  };
+
   function previewData() {
     const isoAgo = minutes => new Date(Date.now() - minutes * 60_000).toISOString();
     const installations = [
-      { installation_id:'preview-main', device_name:'Servidor principal', app_version:'1.1.3', os_family:'Windows 11', os_release:'10.0.26200', arch:'x64', control_mode:'local', runtime_role:'machine-agent', last_transport:'websocket', telemetry_enabled:true, remote_enabled:true, remote_connected:true, agent_enabled:true, agent_healthy:true, last_seen_at:isoAgo(.1), latency_ms:34, sync_successes:1842, sync_failures:3, key_name:'Servidor principal', auth_kind:'app_key', online:true },
-      { installation_id:'preview-note', device_name:'Notebook da administração', app_version:'1.1.3', os_family:'Windows 10', os_release:'10.0.19045', arch:'x64', control_mode:'remote-client', runtime_role:'remote-client', last_transport:'relay-websocket', telemetry_enabled:true, remote_enabled:true, remote_connected:true, agent_enabled:false, agent_healthy:false, last_seen_at:isoAgo(.4), latency_ms:51, sync_successes:0, sync_failures:0, key_name:'Administração', auth_kind:'relay_session', online:true },
+      { installation_id:'preview-main', app_key_id:1, device_name:'Servidor principal', app_version:'1.1.4', os_family:'Windows 11', os_release:'10.0.26200', arch:'x64', control_mode:'local', runtime_role:'machine-agent', last_transport:'websocket', telemetry_enabled:true, remote_enabled:true, remote_connected:true, agent_enabled:true, agent_healthy:true, server_configured:true, velocity_configured:true, site_sync_configured:true, server_running:true, velocity_running:true, start_with_windows:true, auto_start_enabled:true, backup_enabled:true, schedule_count:4, controller_count:3, online_controller_count:1, app_uptime_seconds:19640, launch_count:28, version_change_count:3, first_seen_at:isoAgo(90000), last_launch_at:isoAgo(330), last_seen_at:isoAgo(.1), latency_ms:34, sync_successes:1842, sync_failures:3, key_name:'Servidor principal', auth_kind:'app_key', online:true },
+      { installation_id:'preview-note', app_key_id:2, device_name:'Notebook da administração', app_version:'1.1.4', os_family:'Windows 10', os_release:'10.0.19045', arch:'x64', control_mode:'remote-client', runtime_role:'remote-client', last_transport:'relay-websocket', telemetry_enabled:true, remote_enabled:true, remote_connected:true, agent_enabled:false, agent_healthy:false, site_sync_configured:false, start_with_windows:true, app_uptime_seconds:3820, launch_count:16, version_change_count:2, first_seen_at:isoAgo(50000), last_launch_at:isoAgo(64), last_seen_at:isoAgo(.4), latency_ms:51, sync_successes:0, sync_failures:0, key_name:'Administração', auth_kind:'relay_session', online:true },
+      { installation_id:'preview-fresh', device_name:'PC recém-instalado', app_version:'1.1.4', os_family:'Windows 11', os_release:'10.0.26100', arch:'x64', control_mode:'local', runtime_role:'desktop', last_transport:'https-presence', telemetry_enabled:false, remote_enabled:false, remote_connected:false, agent_enabled:false, agent_healthy:false, server_configured:true, site_sync_configured:false, server_running:false, start_with_windows:true, auto_start_enabled:false, backup_enabled:false, schedule_count:0, controller_count:0, online_controller_count:0, app_uptime_seconds:420, launch_count:1, version_change_count:0, first_seen_at:isoAgo(7), last_launch_at:isoAgo(7), last_seen_at:isoAgo(.2), latency_ms:42, sync_successes:0, sync_failures:0, key_name:null, auth_kind:'installation', online:true },
       { installation_id:'preview-reserve', device_name:'PC de suporte', app_version:'1.1.2', os_family:'Windows 11', os_release:'10.0.26100', arch:'x64', control_mode:'remote-client', runtime_role:'remote-client', last_transport:'relay-https', telemetry_enabled:false, remote_enabled:true, remote_connected:false, agent_enabled:false, agent_healthy:false, last_seen_at:isoAgo(18), latency_ms:186, sync_successes:0, sync_failures:0, key_name:'Suporte', auth_kind:'relay_session', online:false, last_error_code:'SYNC_NETWORK_ERROR' },
       { installation_id:'legacy-shared-credential', device_name:'Manager legado', app_version:'1.1.0', os_family:'Windows 10', arch:'x64', control_mode:'local', runtime_role:'desktop', last_transport:'https', telemetry_enabled:false, remote_enabled:false, remote_connected:false, agent_enabled:false, agent_healthy:false, last_seen_at:isoAgo(1900), latency_ms:null, sync_successes:97, sync_failures:8, key_name:null, auth_kind:'legacy', online:false },
     ];
@@ -75,14 +86,15 @@
     }));
     return {
       service:'forca-aliada-manager-api', protocol:2, ok:true, generatedAt:new Date().toISOString(), periodDays:30,
-      summary:{ totalInstallations:4, online:2, active24h:3, active30d:4, latestVersion:'1.1.3', latestVersionAdoptionPct:50, syncSuccessRatePct:99.4, telemetryOptIn:2, telemetryCoveragePct:50, legacyCredentials:1 },
+      summary:{ totalInstallations:5, online:3, active24h:4, active30d:5, latestVersion:'1.1.4', latestVersionAdoptionPct:60, syncSuccessRatePct:99.4, telemetryOptIn:2, telemetryCoveragePct:40, legacyCredentials:1, linkedInstallations:4, registeredOnly:1, serverConfigured:3, serverRunning:1, siteSyncConfigured:2, remoteEnabled:3, startWithWindows:3, autoStartEnabled:1, launches:52, versionChanges:7, schedules:4, controllers:3 },
+      activation:[{stage:'registered',count:5},{stage:'server_configured',count:3},{stage:'app_key_linked',count:4},{stage:'site_sync_configured',count:2},{stage:'usage_telemetry_opt_in',count:2}],
       health:{ api:'operational', database:{status:'ready'}, websocketConnections:2, latestSignalAt:installations[0].last_seen_at },
       distributions:{
-        versions:[{name:'1.1.3',count:2},{name:'1.1.2',count:1},{name:'1.1.0',count:1}],
-        operatingSystems:[{name:'Windows 11',count:2},{name:'Windows 10',count:2}],
-        modes:[{name:'remote-client',count:2},{name:'local',count:2}],
-        transports:[{name:'websocket',count:1},{name:'relay-websocket',count:1},{name:'relay-https',count:1},{name:'https',count:1}],
-        runtimeRoles:[{name:'remote-client',count:2},{name:'machine-agent',count:1},{name:'desktop',count:1}],
+        versions:[{name:'1.1.4',count:3},{name:'1.1.2',count:1},{name:'1.1.0',count:1}],
+        operatingSystems:[{name:'Windows 11',count:3},{name:'Windows 10',count:2}],
+        modes:[{name:'local',count:3},{name:'remote-client',count:2}],
+        transports:[{name:'websocket',count:1},{name:'relay-websocket',count:1},{name:'https-presence',count:1},{name:'relay-https',count:1},{name:'https',count:1}],
+        runtimeRoles:[{name:'desktop',count:2},{name:'remote-client',count:2},{name:'machine-agent',count:1}],
       },
       trend,
       errors:[{code:'SYNC_NETWORK_ERROR',count:6},{code:'SYNC_WRONG_SERVICE',count:2},{code:'SYNC_TLS_ERROR',count:1}],
@@ -115,6 +127,16 @@
     if (!value) return 'Não informado';
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? 'Não informado' : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  function duration(value) {
+    const seconds = Math.max(0, Number(value || 0));
+    if (!seconds) return 'Não informado';
+    if (seconds < 60) return `${Math.round(seconds)} s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return minutes ? `${hours} h ${minutes} min` : `${hours} h`;
   }
 
   function setLiveState(kind, label) {
@@ -151,9 +173,9 @@
     const success = summary.syncSuccessRatePct;
     document.getElementById('manager-kpis').innerHTML = [
       ['Conectados agora', number.format(summary.online || 0), summary.online ? 'Presença confirmada pelo backend' : 'Nenhum pulso dentro da janela segura'],
-      ['Ativos em 24 horas', number.format(summary.active24h || 0), `${number.format(summary.active30d || 0)} ativos em 30 dias`],
+      ['Instalações', number.format(summary.totalInstallations || 0), `${number.format(summary.linkedInstallations || 0)} vinculadas · ${number.format(summary.active24h || 0)} ativas em 24 h`],
       ['Versão atual', summary.latestVersion || 'Sem dados', summary.latestVersion ? `${summary.latestVersionAdoptionPct || 0}% das instalações nesta versão` : 'Aparece após a primeira conexão'],
-      ['Sincronizações', success == null ? 'Sem dados' : `${success}%`, 'Taxa de sucesso acumulada'],
+      ['Servidores ativos', number.format(summary.serverRunning || 0), `${number.format(summary.serverConfigured || 0)} configurados${success == null ? '' : ` · sync ${success}%`}`],
     ].map(([label, value, detail]) => `<article class="manager-kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></article>`).join('');
   }
 
@@ -167,6 +189,7 @@
   function transportLabel(value) {
     return value === 'websocket' ? 'Tempo real'
       : value === 'https' ? 'HTTPS de contingência'
+      : value === 'https-presence' ? 'Presença HTTPS'
       : value === 'relay-websocket' ? 'Relay em tempo real'
       : value === 'relay-https' ? 'Relay HTTPS'
       : 'Não informado';
@@ -174,6 +197,10 @@
 
   function usesLegacyCredential(row = {}) {
     return String(row.auth_kind || '').startsWith('legacy');
+  }
+
+  function isLinkedInstallation(row = {}) {
+    return !!row.app_key_id || !!row.key_name || usesLegacyCredential(row);
   }
 
   function controlModeLabel(row = {}) {
@@ -197,13 +224,16 @@
     const list = document.getElementById('manager-presence-list');
     const rows = (data.installations || []).slice(0, 5);
     if (!rows.length) {
-      list.innerHTML = '<div class="manager-loading-row">Nenhuma instalação enviou presença ainda.</div>';
+      list.innerHTML = '<div class="manager-loading-row">Managers 1.1.4 ou mais recentes aparecem aqui automaticamente após serem abertos.</div>';
       return;
     }
     list.innerHTML = rows.map(row => {
       const [kind, status] = installationStatus(row);
+      const integration = row.key_name
+        ? `App Key · ${row.key_name}`
+        : usesLegacyCredential(row) ? 'Credencial legada' : 'Registro operacional';
       return `<div class="manager-presence-row">
-        <div class="manager-presence-main"><span class="manager-device-icon"><i data-lucide="monitor"></i></span><div class="manager-presence-copy"><strong>${esc(row.device_name || 'Manager')}</strong><small>${esc(row.app_version ? `v${row.app_version}` : 'Versão não informada')} · ${esc(row.key_name || (usesLegacyCredential(row) ? 'Credencial legada' : 'Sem chave associada'))}</small></div></div>
+        <div class="manager-presence-main"><span class="manager-device-icon"><i data-lucide="monitor"></i></span><div class="manager-presence-copy"><strong>${esc(row.device_name || 'Manager')}</strong><small>${esc(row.app_version ? `v${row.app_version}` : 'Versão não informada')} · ${esc(integration)}</small></div></div>
         <span class="manager-state-badge is-${kind}"><span class="manager-status-dot is-${kind}"></span>${esc(status)} · ${esc(relativeTime(row.last_seen_at))}</span>
       </div>`;
     }).join('');
@@ -230,7 +260,8 @@
     const latest = state.data?.summary?.latestVersion;
     return rows.filter(row => {
       if (state.filter === 'online' && !row.online) return false;
-      if (state.filter === 'attention' && row.online && row.app_version === latest && !usesLegacyCredential(row) && !row.last_error_code) return false;
+      const needsLink = row.server_configured && !isLinkedInstallation(row);
+      if (state.filter === 'attention' && row.online && row.app_version === latest && !row.last_error_code && !needsLink) return false;
       if (!query) return true;
       return [row.device_name, row.app_version, row.os_family, row.key_name, row.control_mode, row.installation_id]
         .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(query));
@@ -251,11 +282,18 @@
       const latency = row.latency_ms !== null && row.latency_ms !== '' && Number.isFinite(Number(row.latency_ms))
         ? ` · ${number.format(row.latency_ms)} ms`
         : '';
+      const integration = row.key_name
+        ? `App Key · ${row.key_name}`
+        : usesLegacyCredential(row) ? 'Credencial legada' : `Registro operacional · ${String(row.installation_id || '').slice(-8)}`;
+      const runtime = row.runtime_role === 'remote-client'
+        ? (row.remote_connected ? 'Controle remoto ativo' : row.remote_enabled ? 'Remoto disponível' : 'Controle remoto inativo')
+        : (row.server_running || row.velocity_running) ? 'Servidor em execução'
+          : row.server_configured ? 'Servidor configurado e parado' : 'Sem servidor local configurado';
       return `<tr>
-        <td><div class="manager-installation-main"><span class="manager-device-icon"><i data-lucide="monitor"></i></span><div><strong>${esc(row.device_name || 'Manager')}</strong><small>${esc(row.key_name || (usesLegacyCredential(row) ? 'Credencial legada' : row.installation_id))}</small></div></div></td>
+        <td><div class="manager-installation-main"><span class="manager-device-icon"><i data-lucide="monitor"></i></span><div><strong>${esc(row.device_name || 'Manager')}</strong><small>${esc(integration)}</small></div></div></td>
         <td data-label="Estado"><span class="manager-state-badge is-${kind}"><span class="manager-status-dot is-${kind}"></span>${esc(status)}</span></td>
         <td data-label="Versão e sistema"><strong>${esc(row.app_version ? `v${row.app_version}` : 'Não informada')}</strong><small>${esc([row.os_family, row.arch].filter(Boolean).join(' · ') || 'Sistema não informado')}</small></td>
-        <td data-label="Modo">${esc(mode)}<small>${row.remote_connected ? 'Controle remoto ativo' : row.remote_enabled ? 'Remoto disponível' : 'Somente local'}</small></td>
+        <td data-label="Modo">${esc(mode)}<small>${esc(runtime)}</small></td>
         <td data-label="Canal"><span class="manager-transport-badge">${esc(transportLabel(row.last_transport))}</span><small>${esc(latency.replace(/^ · /, ''))}</small></td>
         <td data-label="Último sinal" title="${esc(dateTime(row.last_seen_at))}">${esc(relativeTime(row.last_seen_at))}</td>
         <td><button class="manager-table-detail" type="button" data-manager-detail="${esc(row.installation_id)}" title="Ver detalhes" aria-label="Ver detalhes de ${esc(row.device_name || 'Manager')}"><i data-lucide="chevron-right"></i></button></td>
@@ -273,7 +311,26 @@
     }).join('');
   }
 
+  function renderActivation(data) {
+    const target = document.getElementById('manager-activation');
+    if (!target) return;
+    const total = Math.max(0, Number(data.summary?.totalInstallations || 0));
+    const items = Array.isArray(data.activation) ? data.activation : [
+      { stage: 'registered', count: total },
+      { stage: 'server_configured', count: data.summary?.serverConfigured || 0 },
+      { stage: 'app_key_linked', count: data.summary?.linkedInstallations || 0 },
+      { stage: 'site_sync_configured', count: data.summary?.siteSyncConfigured || 0 },
+      { stage: 'usage_telemetry_opt_in', count: data.summary?.telemetryOptIn || 0 },
+    ];
+    target.innerHTML = items.map(item => {
+      const count = Math.max(0, Number(item.count || 0));
+      const pct = total ? Math.min(100, Math.round((count / total) * 100)) : 0;
+      return `<div class="manager-activation-step"><span>${esc(ACTIVATION_LABELS[item.stage] || item.stage)}</span><strong>${number.format(count)}</strong><small>${pct}% das instalações</small><div class="manager-activation-track"><i style="width:${pct}%"></i></div></div>`;
+    }).join('');
+  }
+
   function renderUsage(data) {
+    renderActivation(data);
     document.getElementById('manager-telemetry-coverage').textContent = `${data.summary?.telemetryCoveragePct || 0}% opt-in`;
     document.getElementById('manager-feature-bars').innerHTML = barsHtml(data.features || [], item => FEATURE_LABELS[item.metric] || item.metric);
     const platformItems = [
@@ -311,7 +368,7 @@
     const canMutate = session?.role === 'owner';
     root.querySelectorAll('[onclick="generateAppKey()"]')?.forEach(button => { button.hidden = !canMutate; });
     if (!rows.length) {
-      list.innerHTML = '<div class="manager-loading-row">Nenhuma chave individual criada. A integração legada pode continuar funcionando, mas não separa computadores.</div>';
+      list.innerHTML = '<div class="manager-loading-row">Os Managers já podem aparecer por registro operacional. Gere uma App Key somente para sincronizar dados e controlar o servidor pelo site.</div>';
       return;
     }
     list.innerHTML = rows.map(key => {
@@ -332,13 +389,22 @@
     if (!row || !dialog) return;
     document.getElementById('manager-detail-title').textContent = row.device_name || 'Manager';
     const [kind, status] = installationStatus(row);
+    const configuredParts = [row.server_configured ? 'Backend' : '', row.velocity_configured ? 'Velocity' : ''].filter(Boolean);
+    const runningParts = [row.server_running ? 'Backend' : '', row.velocity_running ? 'Velocity' : ''].filter(Boolean);
     const values = [
       ['Estado', status], ['Último sinal', dateTime(row.last_seen_at)],
       ['Versão', row.app_version ? `v${row.app_version}` : 'Não informada'], ['Sistema', [row.os_family, row.os_release, row.arch].filter(Boolean).join(' · ') || 'Não informado'],
       ['Modo', controlModeLabel(row)], ['Processo', runtimeRoleLabel(row.runtime_role)],
       ['Canal', transportLabel(row.last_transport)], ['Latência', row.latency_ms == null ? 'Não medida' : `${row.latency_ms} ms`],
-      ['Chave', row.key_name || (usesLegacyCredential(row) ? 'Credencial legada' : 'Não associada')], ['Telemetria', row.telemetry_enabled ? 'Permitida' : 'Desativada'],
+      ['Registro do Manager', 'Ativo com credencial própria'], ['Vínculo de dados', row.key_name ? `App Key · ${row.key_name}` : usesLegacyCredential(row) ? 'Credencial legada' : 'Não vinculado'],
+      ['Arquivos configurados', configuredParts.join(' + ') || 'Nenhum neste computador'], ['Execução atual', runningParts.length ? `${runningParts.join(' + ')} ligado` : 'Servidor parado'],
+      ['Sincronização do site', row.site_sync_configured ? 'Configurada' : 'Não configurada'], ['Telemetria de uso', row.telemetry_enabled ? 'Permitida' : 'Desativada'],
       ['Controle remoto', row.remote_connected ? 'Conectado' : row.remote_enabled ? 'Disponível' : 'Desativado'], ['Agente do Windows', row.agent_healthy ? 'Saudável' : row.agent_enabled ? 'Sem confirmação' : 'Não utilizado'],
+      ['Iniciar com Windows', row.start_with_windows ? 'Ativado' : 'Desativado'], ['Início automático do servidor', row.auto_start_enabled ? 'Ativado' : 'Desativado'],
+      ['Backups automáticos', row.backup_enabled ? 'Ativados' : 'Desativados'], ['Agendamentos', number.format(row.schedule_count || 0)],
+      ['Controladores', `${number.format(row.online_controller_count || 0)} online · ${number.format(row.controller_count || 0)} cadastrados`], ['Tempo aberto nesta sessão', duration(row.app_uptime_seconds)],
+      ['Inicializações registradas', number.format(row.launch_count || 0)], ['Trocas de versão', number.format(row.version_change_count || 0)],
+      ['Primeiro registro', dateTime(row.first_seen_at)], ['Última abertura', dateTime(row.last_launch_at)],
       ['Sincronizações confirmadas', number.format(row.sync_successes || 0)], ['Falhas', number.format(row.sync_failures || 0)],
       ['Identificador aleatório', row.installation_id], ['Diagnóstico recente', ERROR_LABELS[row.last_error_code]?.[0] || row.last_error_code || 'Nenhuma falha'],
     ];

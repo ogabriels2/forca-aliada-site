@@ -674,8 +674,8 @@ footer{
               <tr><td>Histórico de sessões</td><td>Servidor Minecraft</td><td>Estatísticas de atividade exibidas no painel pessoal</td></tr>
               <tr><td>UUID e Xbox XUID</td><td>API Microsoft/Mojang (se vinculado)</td><td>Vinculação de conta Xbox e funcionalidades de integração</td></tr>
               <tr><td>Refresh token Microsoft</td><td>API Microsoft (se vinculado)</td><td>Manter a integração Xbox ativa sem solicitar login repetido</td></tr>
-              <tr><td>Identificador aleatório da instalação, nome do computador, versões do Manager e do Windows, arquitetura e modo de operação</td><td>Força Aliada Manager</td><td>Confirmar qual instalação está conectada, proteger credenciais e diagnosticar compatibilidade</td></tr>
-              <tr><td>Estado do canal, latência aproximada e códigos técnicos de falha</td><td>Força Aliada Manager</td><td>Exibir a saúde da integração e recuperar falhas de conexão</td></tr>
+              <tr><td>Identificador aleatório da instalação, nome do computador, versões do Manager e do Windows, arquitetura, modo e estado operacional</td><td>Força Aliada Manager, automaticamente enquanto o aplicativo está em execução</td><td>Confirmar qual instalação está conectada, exibir adoção e diagnosticar compatibilidade sem coletar o conteúdo do servidor</td></tr>
+              <tr><td>Estado do canal, latência aproximada, configuração operacional agregada e códigos técnicos de falha</td><td>Força Aliada Manager</td><td>Exibir a saúde da integração e recuperar falhas de conexão</td></tr>
               <tr><td>Contagens agregadas de recursos utilizados</td><td>Força Aliada Manager, somente com consentimento</td><td>Melhorar estabilidade e priorizar recursos; nunca inclui jogadores, comandos, IPs, caminhos, logs, MOTD ou conteúdo do servidor</td></tr>
             </tbody>
           </table>
@@ -715,7 +715,7 @@ footer{
           <li data-icon="⚙️"><strong>Servidor de aplicação:</strong> API hospedada no <strong>Render.com</strong>, em região US-East. O acesso à API é feito exclusivamente via HTTPS.</li>
           <li data-icon="🔑"><strong>Senhas:</strong> Armazenadas apenas como hash bcrypt (custo 10), nunca em texto claro. Tokens de sessão são armazenados como hash SHA-256.</li>
           <li data-icon="🔄"><strong>Refresh tokens Microsoft:</strong> Armazenados de forma segura no banco. São usados exclusivamente para renovar integrações Xbox e podem ser revogados pelo painel a qualquer momento.</li>
-          <li data-icon="🖥️"><strong>Integração do Manager:</strong> Chaves individuais são armazenadas somente como hash. Sinais de presença são mantidos primeiro em memória e consolidados no banco com limitação de frequência para reduzir coleta e carga.</li>
+          <li data-icon="🖥️"><strong>Integração do Manager:</strong> Chaves de integração e credenciais exclusivas de presença são armazenadas no backend somente como hash. A credencial de presença não autoriza sincronização, comandos ou controle remoto. Sinais são mantidos primeiro em memória e consolidados no banco com limitação de frequência para reduzir coleta e carga.</li>
         </ul>
       </section>
 

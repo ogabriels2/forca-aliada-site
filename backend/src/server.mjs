@@ -324,6 +324,7 @@ app.use(cors({
   allowedHeaders: [
     'Content-Type', 'Authorization', 'X-Ingest-Secret', 'x-app-key', 'x-request-id',
     'x-fa-installation-id', 'x-fa-device-name', 'x-fa-app-version',
+    'x-fa-installation-token',
     'x-fa-os-platform', 'x-fa-os-release', 'x-fa-os-family', 'x-fa-arch',
     'x-fa-control-mode', 'x-fa-runtime-role', 'x-fa-telemetry-enabled',
   ],
@@ -349,6 +350,7 @@ app.use('/api/app/remote/relay', express.json({ limit: '17mb' }));
 app.use('/api/app/sync', express.json({ limit: '1mb' }));
 app.use('/api/app/whitelist-ack', express.json({ limit: '64kb' }));
 app.use('/api/app/heartbeat', express.json({ limit: '16kb' }));
+app.use('/api/app/installations', express.json({ limit: '16kb' }));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -831,6 +833,28 @@ const remoteRelayLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas requisicoes de relay remoto. Aguarde alguns instantes.' },
+});
+const managerInstallationRegisterLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json(managerEnvelope(req, {
+    ok: false,
+    code: 'INSTALLATION_RATE_LIMITED',
+    error: 'Muitas tentativas de registro. Aguarde antes de tentar novamente.',
+  })),
+});
+const managerInstallationPresenceLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 1200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json(managerEnvelope(req, {
+    ok: false,
+    code: 'PRESENCE_RATE_LIMITED',
+    error: 'Muitos sinais de presenca. Aguarde alguns instantes.',
+  })),
 });
 
 function sanitize(v)            { return String(v || '').replace(/[<>]/g, '').trim(); }
@@ -3130,8 +3154,10 @@ app.get('/api/app/discovery', (req, res) => res.json(managerEnvelope(req, {
   ok: true,
   apiBase: 'https://forca-aliada-site.onrender.com',
   syncEndpoint: 'https://forca-aliada-site.onrender.com/api/app/sync',
+  installationRegistrationEndpoint: 'https://forca-aliada-site.onrender.com/api/app/installations/register',
+  installationPresenceEndpoint: 'https://forca-aliada-site.onrender.com/api/app/installations/presence',
   websocketEndpoint: 'wss://forca-aliada-site.onrender.com/api/app/ws',
-  transports: { websocket: true, httpsFallback: true },
+  transports: { websocket: true, httpsFallback: true, operationalPresence: true },
   build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
 })));
 
@@ -3811,6 +3837,19 @@ function managerMetadataFromRequest(req, body = null, auth = {}) {
     controlMode: embedded.controlMode || headers['x-fa-control-mode'],
     runtimeRole: embedded.runtimeRole || headers['x-fa-runtime-role'],
     telemetryEnabled: embedded.telemetryEnabled ?? headers['x-fa-telemetry-enabled'] === '1',
+    sessionId: embedded.sessionId,
+    appUptimeSeconds: embedded.appUptimeSeconds,
+    serverConfigured: embedded.serverConfigured,
+    velocityConfigured: embedded.velocityConfigured,
+    siteSyncConfigured: embedded.siteSyncConfigured,
+    serverRunning: embedded.serverRunning,
+    velocityRunning: embedded.velocityRunning,
+    startWithWindows: embedded.startWithWindows,
+    autoStartEnabled: embedded.autoStartEnabled,
+    backupEnabled: embedded.backupEnabled,
+    scheduleCount: embedded.scheduleCount,
+    controllerCount: embedded.controllerCount,
+    onlineControllerCount: embedded.onlineControllerCount,
   }, auth);
 }
 
@@ -4855,6 +4894,86 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
     telemetry,
   };
 }
+
+/**
+ * Registro operacional do Manager. A credencial emitida aqui so autentica
+ * presenca e telemetria agregada; ela nao e aceita em nenhuma rota de sync,
+ * whitelist, relay ou controle remoto.
+ */
+app.post('/api/app/installations/register', managerInstallationRegisterLimiter, async (req, res) => {
+  const suppliedAppKey = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
+  const appAuth = suppliedAppKey
+    ? await validateAppKey(suppliedAppKey).catch(() => ({ isValid: false }))
+    : { isValid: false };
+  const managerMeta = managerMetadataFromRequest(req, req.body, {});
+  const reportedInstallationId = req.body?._manager?.installationId || req.headers['x-fa-installation-id'];
+  try {
+    const registration = await managerObservability.registerInstallation({
+      metadata: { ...managerMeta, installationId: reportedInstallationId },
+      presentedToken: req.headers['x-fa-installation-token'],
+      appAuth,
+    });
+    return res.json(managerEnvelope(req, {
+      ok: true,
+      ...registration,
+      capability: 'operational-presence-only',
+    }));
+  } catch (error) {
+    return res.status(Number(error?.status || 500)).json(managerEnvelope(req, {
+      ok: false,
+      code: error?.code || 'INSTALLATION_REGISTRATION_FAILED',
+      error: error?.message || 'Nao foi possivel registrar esta instalacao.',
+    }));
+  }
+});
+
+app.post('/api/app/installations/presence', managerInstallationPresenceLimiter, async (req, res) => {
+  const id = req.headers['x-fa-installation-id'];
+  const token = req.headers['x-fa-installation-token'];
+  let installationAuth;
+  try {
+    installationAuth = await managerObservability.authenticateInstallation(id, token);
+  } catch (_) {
+    return res.status(503).json(managerEnvelope(req, {
+      ok: false,
+      code: 'INSTALLATION_AUTH_UNAVAILABLE',
+      error: 'A validacao de presenca esta temporariamente indisponivel.',
+    }));
+  }
+  if (!installationAuth.isValid) {
+    return res.status(401).json(managerEnvelope(req, {
+      ok: false,
+      code: installationAuth.code || 'INSTALLATION_AUTH_REJECTED',
+      error: 'Credencial de presenca invalida ou indisponivel.',
+    }));
+  }
+
+  const reported = managerMetadataFromRequest(req, req.body, installationAuth);
+  const managerMeta = managerObservability.normalizeMetadata({
+    ...reported,
+    installationId: installationAuth.installationId,
+  }, installationAuth);
+  await managerObservability.recordSignal({
+    auth: installationAuth,
+    metadata: managerMeta,
+    transport: 'https-presence',
+    kind: 'presence',
+    ok: true,
+  });
+  const telemetry = req.body?.telemetry
+    ? await managerObservability.ingestTelemetry(installationAuth, {
+        ...req.body.telemetry,
+        manager: managerMeta,
+      }).catch(() => ({ accepted: false, reason: 'unavailable' }))
+    : null;
+  return res.json(managerEnvelope(req, {
+    ok: true,
+    installationId: installationAuth.installationId,
+    linkedToAppKey: !!installationAuth.appKeyId,
+    capability: 'operational-presence-only',
+    telemetry,
+  }));
+});
 
 /**
  * POST /api/app/heartbeat

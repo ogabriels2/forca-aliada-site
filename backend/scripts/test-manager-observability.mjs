@@ -98,14 +98,14 @@ const errorWrite = clientCalls.find(call => call.sql.includes('INSERT INTO manag
 assert.ok(errorWrite, 'falhas devem usar contagem diaria normalizada');
 assert.match(errorWrite.sql, /occurrence_count=manager_error_daily\.occurrence_count \+ EXCLUDED\.occurrence_count/);
 const failedSyncWrite = clientCalls.filter(call => call.sql.includes('INSERT INTO manager_installations')).at(-1);
-assert.equal(failedSyncWrite.params[21], 0);
-assert.equal(failedSyncWrite.params[22], 1, 'falha de sync deve entrar apenas no contador de sincronizacao');
+assert.equal(failedSyncWrite.params[34], 0);
+assert.equal(failedSyncWrite.params[35], 1, 'falha de sync deve entrar apenas no contador de sincronizacao');
 const remoteInstallationWrite = clientCalls.find(call =>
   call.sql.includes('INSERT INTO manager_installations')
   && call.params[0] === '70ac127c-e293-47de-aef1-b4355461f234'
 );
-assert.equal(remoteInstallationWrite.params[21], 0, 'heartbeat remoto nao pode inflar sincronizacoes bem-sucedidas');
-assert.equal(remoteInstallationWrite.params[22], 0, 'heartbeat remoto nao pode inflar falhas de sincronizacao');
+assert.equal(remoteInstallationWrite.params[34], 0, 'heartbeat remoto nao pode inflar sincronizacoes bem-sucedidas');
+assert.equal(remoteInstallationWrite.params[35], 0, 'heartbeat remoto nao pode inflar falhas de sincronizacao');
 
 const day = new Date().toISOString().slice(0, 10);
 const telemetry = await observability.ingestTelemetry(auth, {
@@ -132,13 +132,105 @@ const disabled = await observability.ingestTelemetry(auth, {
 });
 assert.equal(disabled.accepted, false, 'backend deve respeitar telemetria desativada');
 
+const presenceOnly = createManagerObservability(pool);
+await presenceOnly.recordSignal({
+  auth: { isValid: true, authKind: 'installation' },
+  metadata: {
+    ...metadata,
+    installationId: '5c8fa2c0-b572-46cc-8e5d-81393f231297',
+    sessionId: 'session-presence-only',
+    serverConfigured: true,
+    serverRunning: true,
+    scheduleCount: 4,
+  },
+  transport: 'https-presence',
+  kind: 'presence',
+  ok: true,
+});
+assert.equal(presenceOnly.isAnyOnline(), false, 'presenca operacional nao pode declarar o servidor conectado');
+assert.equal(presenceOnly.isAnyOnline({ includeRemoteClients: true }), true, 'dashboard deve enxergar a instalacao registrada');
+
+let registeredInstallation = null;
+let registeredTokenHash = '';
+const registrationAppKeyValues = [];
+const credentialClient = {
+  async query(sql, params = []) {
+    const source = String(sql);
+    if (source.includes('SELECT i.app_key_id') && source.includes('FOR UPDATE OF i')) {
+      return { rows: registeredInstallation ? [registeredInstallation] : [] };
+    }
+    if (source.includes('SELECT token_hash FROM manager_installation_credentials')) {
+      return { rows: registeredTokenHash ? [{ token_hash: registeredTokenHash }] : [] };
+    }
+    if (source.includes('INSERT INTO manager_installations')) {
+      if (source.includes('first_seen_at')) registrationAppKeyValues.push(params[1]);
+      registeredInstallation ||= { app_key_id: null, auth_kind: 'installation', key_name: null };
+    }
+    if (source.includes('INSERT INTO manager_installation_credentials')) {
+      registeredTokenHash = params[1];
+    }
+    return { rows: [], rowCount: 1 };
+  },
+  release() {},
+};
+const credentialPool = {
+  async connect() { return credentialClient; },
+  async query(sql) {
+    if (String(sql).includes('FROM manager_installation_credentials c')) {
+      return {
+        rows: registeredTokenHash
+          ? [{ token_hash: registeredTokenHash, app_key_id: null, key_name: null }]
+          : [],
+      };
+    }
+    return { rows: [], rowCount: 0 };
+  },
+};
+const credentialObservability = createManagerObservability(credentialPool);
+const registrationMetadata = {
+  ...metadata,
+  installationId: '73c1a6bd-4a92-43b6-a82d-9bd0116139b9',
+  telemetryEnabled: false,
+};
+const registration = await credentialObservability.registerInstallation({ metadata: registrationMetadata });
+assert.match(registration.installationToken, /^fai_v1_[a-zA-Z0-9_-]{32,160}$/);
+assert.equal(registration.tokenIssued, true);
+assert.equal((await credentialObservability.authenticateInstallation(registrationMetadata.installationId, registration.installationToken)).isValid, true);
+assert.equal((await credentialObservability.authenticateInstallation(registrationMetadata.installationId, `${registration.installationToken}x`)).isValid, false);
+const existingRegistration = await credentialObservability.registerInstallation({
+  metadata: registrationMetadata,
+  presentedToken: registration.installationToken,
+});
+assert.equal(existingRegistration.tokenIssued, false, 'token valido deve ser reutilizado sem expor outro segredo');
+await assert.rejects(
+  credentialObservability.registerInstallation({ metadata: registrationMetadata }),
+  error => error.code === 'INSTALLATION_ALREADY_REGISTERED' && error.status === 409,
+);
+
+registeredInstallation = null;
+registeredTokenHash = '';
+const legacyRegistration = await createManagerObservability(credentialPool).registerInstallation({
+  metadata: {
+    ...registrationMetadata,
+    installationId: 'f57f7877-a611-433d-a03e-5667445a0ad0',
+  },
+  appAuth: {
+    isValid: true,
+    appKeyId: null,
+    keyName: 'Credencial legada',
+    authKind: 'legacy',
+  },
+});
+assert.equal(legacyRegistration.linkedToAppKey, true, 'credencial legada valida deve manter compatibilidade');
+assert.equal(registrationAppKeyValues.at(-1), null, 'credencial legada nao pode virar o app_key_id 0');
+
 const envelope = managerEnvelope({ managerRequestId: 'request-123456' }, { ok: true });
 assert.equal(envelope.service, MANAGER_SERVICE_ID);
 assert.equal(envelope.protocol, MANAGER_PROTOCOL_VERSION);
 assert.equal(envelope.requestId, 'request-123456');
 assert.equal(envelope.ok, true);
 
-for (const table of ['manager_installations', 'manager_health_daily', 'manager_error_daily', 'manager_telemetry_daily']) {
+for (const table of ['manager_installations', 'manager_installation_credentials', 'manager_health_daily', 'manager_error_daily', 'manager_telemetry_daily']) {
   assert.ok(MANAGER_OBSERVABILITY_SCHEMA_SQL.includes(`CREATE TABLE IF NOT EXISTS ${table}`));
 }
 assert.ok(MANAGER_OBSERVABILITY_SCHEMA_SQL.includes('origin_transport'));

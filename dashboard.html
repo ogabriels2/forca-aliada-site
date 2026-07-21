@@ -1808,7 +1808,7 @@ footer { display: none; }
 <link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260716d">
 <link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260719b">
 <link rel="stylesheet" href="assets/css/dashboard-v5.css?v=20260718c">
-<link rel="stylesheet" href="assets/css/dashboard-manager.css?v=20260721h">
+<link rel="stylesheet" href="assets/css/dashboard-manager.css?v=20260721i">
 </head>
 <body>
 <a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
@@ -2811,7 +2811,11 @@ footer { display: none; }
         </div>
 
         <div class="manager-panel" data-manager-panel="usage" hidden>
-          <div class="manager-section-heading manager-panel-heading"><div><h4>Uso agregado</h4><p>Contagens opcionais, sem conteúdo do servidor ou identificação de jogadores.</p></div><span class="manager-privacy-chip" id="manager-telemetry-coverage">0% opt-in</span></div>
+          <div class="manager-section-heading manager-panel-heading"><div><h4>Uso e adoção</h4><p>Ativação operacional e contagens opcionais, sem conteúdo do servidor ou identificação de jogadores.</p></div><span class="manager-privacy-chip" id="manager-telemetry-coverage">0% opt-in</span></div>
+          <section class="manager-section manager-activation-section" aria-labelledby="manager-activation-title">
+            <div class="manager-section-heading"><div><h4 id="manager-activation-title">Adoção da integração</h4><p>Mostra onde cada instalação chegou, do primeiro registro até os diagnósticos opcionais.</p></div></div>
+            <div class="manager-activation" id="manager-activation"></div>
+          </section>
           <div class="manager-usage-layout">
             <section class="manager-section"><h4>Recursos mais usados</h4><div class="manager-bars" id="manager-feature-bars"></div></section>
             <section class="manager-section"><h4>Modos e plataformas</h4><div class="manager-bars" id="manager-platform-bars"></div></section>
@@ -7633,6 +7637,6 @@ function esc(v) {
 <script src="assets/js/dashboard-v3.js?v=20260716d"></script>
 <script src="assets/js/dashboard-v4.js?v=20260718b"></script>
 <script src="assets/js/dashboard-v5.js?v=20260718d"></script>
-<script src="assets/js/dashboard-manager.js?v=20260721g"></script>
+<script src="assets/js/dashboard-manager.js?v=20260721h"></script>
 </body>
 </html>

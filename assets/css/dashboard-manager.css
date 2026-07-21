@@ -290,6 +290,24 @@
 .manager-table-empty { padding: 42px 16px !important; color: var(--text-secondary, var(--ink-2)); text-align: center; }
 
 .manager-bars { display: grid; gap: 13px; margin-top: 14px; }
+.manager-activation-section { margin-bottom: 20px; }
+.manager-activation {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(0,1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.manager-activation-step { min-width: 0; padding: 13px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); }
+.manager-activation-step:last-child { border-right: 0; }
+.manager-activation-step span,
+.manager-activation-step strong,
+.manager-activation-step small { display: block; }
+.manager-activation-step span { min-height: 28px; color: var(--text-secondary, var(--ink-2)); font-size: 9px; line-height: 1.35; }
+.manager-activation-step strong { margin-top: 7px; font-size: 18px; }
+.manager-activation-step small { margin-top: 4px; color: var(--text-secondary, var(--ink-3)); font-size: 9px; }
+.manager-activation-track { height: 4px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--line) 75%, transparent); }
+.manager-activation-track i { display: block; height: 100%; border-radius: inherit; background: var(--manager-green); }
 .manager-bar-row { display: grid; grid-template-columns: minmax(110px, .75fr) minmax(90px, 1fr) auto; gap: 10px; align-items: center; }
 .manager-bar-row span { overflow: hidden; color: var(--text-secondary, var(--ink-2)); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .manager-bar-row strong { min-width: 36px; font-size: 10px; text-align: right; }
@@ -357,6 +375,9 @@
   .manager-overview-grid,
   .manager-usage-layout,
   .manager-health-layout { grid-template-columns: 1fr; }
+  .manager-activation { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .manager-activation-step:nth-child(3) { border-right: 0; }
+  .manager-activation-step:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
 }
 
 @media (max-width: 640px) {
@@ -446,4 +467,9 @@
   .manager-detail-grid { grid-template-columns: 1fr; }
   .manager-key-copy { align-items: stretch; flex-direction: column; }
   .manager-key-copy button { justify-content: center; }
+  .manager-activation { grid-template-columns: 1fr; }
+  .manager-activation-step,
+  .manager-activation-step:nth-child(3) { border-right: 0; border-bottom: 1px solid var(--line); }
+  .manager-activation-step:last-child { border-bottom: 0; }
+  .manager-activation-step span { min-height: 0; }
 }

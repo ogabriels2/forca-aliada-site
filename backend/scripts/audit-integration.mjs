@@ -38,6 +38,9 @@ const requiredFragments = [
   'async function processAppSyncPayload',
   'APP_KEY_LAST_USED_WRITE_MS',
   "app.get('/api/app/discovery'",
+  "app.post('/api/app/installations/register'",
+  "app.post('/api/app/installations/presence'",
+  "capability: 'operational-presence-only'",
   'managerEnvelope(req',
   'app_connection: getAppConnectionSummary()',
   'managerObservability.registerAdminRoutes',
@@ -71,6 +74,7 @@ if (!managerDashboardCss.includes('#app-keys-card:not(.dashboard-card-active)'))
 }
 for (const fragment of [
   'CREATE TABLE IF NOT EXISTS manager_installations',
+  'CREATE TABLE IF NOT EXISTS manager_installation_credentials',
   'CREATE TABLE IF NOT EXISTS manager_health_daily',
   'CREATE TABLE IF NOT EXISTS manager_telemetry_daily',
   'usageTelemetryOptional: true',
