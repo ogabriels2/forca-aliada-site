@@ -76,6 +76,13 @@ import {
   socialDeliveryFactorSql,
   socialDeliveryRestrictionJoinSql,
 } from './admin_social.mjs';
+import {
+  MANAGER_OBSERVABILITY_SCHEMA_SQL,
+  MANAGER_PROTOCOL_VERSION,
+  MANAGER_SERVICE_ID,
+  createManagerObservability,
+  managerEnvelope,
+} from './manager_observability.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -90,7 +97,7 @@ const _mcStatusCache = { data: null, expiresAt: 0 };
 const MC_STATUS_TTL_MS = 50_000; // 50s < 60s (ciclo do dashboard) → sempre dado fresco no poll
 
 // ── Estado em memória do heartbeat do App (sem I/O de banco) ──────────────────
-// O app deve chamar POST /api/app/heartbeat a cada 10 segundos.
+// O app chama POST /api/app/heartbeat aproximadamente a cada 12 segundos.
 // Se não receber nada em APP_HEARTBEAT_TIMEOUT_MS, considera desconectado.
 const _appHeartbeat = {
   lastSeenAt: 0,   // timestamp Unix em ms da última chamada
@@ -98,9 +105,42 @@ const _appHeartbeat = {
   keyName: null,
 };
 const APP_HEARTBEAT_TIMEOUT_MS = 30_000; // 30s — tolerância de 3 ciclos
+let managerObservability = null;
 
 function isAppConnectedInMemory() {
-  return Date.now() - _appHeartbeat.lastSeenAt < APP_HEARTBEAT_TIMEOUT_MS;
+  return managerObservability?.isAnyOnline()
+    || Date.now() - _appHeartbeat.lastSeenAt < APP_HEARTBEAT_TIMEOUT_MS;
+}
+
+function getAppLastSeenIso() {
+  const managerSignal = managerObservability?.latestSignal();
+  const timestamp = Math.max(Number(managerSignal?.lastSeenMs || 0), Number(_appHeartbeat.lastSeenAt || 0));
+  return timestamp ? new Date(timestamp).toISOString() : null;
+}
+
+function getAppConnectionSummary() {
+  const manager = managerObservability?.connectionSummary();
+  if (manager) return manager;
+  const lastSeenAt = Number(_appHeartbeat.lastSeenAt || 0);
+  const connected = Date.now() - lastSeenAt < APP_HEARTBEAT_TIMEOUT_MS;
+  return {
+    connected,
+    onlineInstallations: connected ? 1 : 0,
+    lastSeenAt: lastSeenAt ? new Date(lastSeenAt).toISOString() : null,
+    installationId: null,
+    deviceName: null,
+    appVersion: null,
+    osFamily: null,
+    controlMode: null,
+    runtimeRole: null,
+    transport: null,
+    latencyMs: null,
+    lastErrorCode: null,
+    authKind: _appHeartbeat.keyId ? 'app_key' : 'legacy',
+    keyName: _appHeartbeat.keyName || null,
+    protocol: null,
+    confidence: lastSeenAt ? 'legacy' : 'unknown',
+  };
 }
 
 // ── Máquina de estados do servidor Minecraft ──────────────────────────────────
@@ -281,8 +321,27 @@ app.use(cors({
     return cb(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Ingest-Secret', 'x-app-key'],
+  allowedHeaders: [
+    'Content-Type', 'Authorization', 'X-Ingest-Secret', 'x-app-key', 'x-request-id',
+    'x-fa-installation-id', 'x-fa-device-name', 'x-fa-app-version',
+    'x-fa-os-platform', 'x-fa-os-release', 'x-fa-os-family', 'x-fa-arch',
+    'x-fa-control-mode', 'x-fa-runtime-role', 'x-fa-telemetry-enabled',
+  ],
 }));
+
+app.use('/api/app', (req, res, next) => {
+  const suppliedRequestId = String(req.headers['x-request-id'] || '').trim();
+  req.managerRequestId = /^[a-zA-Z0-9._:-]{8,80}$/.test(suppliedRequestId)
+    ? suppliedRequestId
+    : crypto.randomUUID();
+  res.set({
+    'X-FA-Service': MANAGER_SERVICE_ID,
+    'X-FA-Protocol': String(MANAGER_PROTOCOL_VERSION),
+    'X-Request-Id': req.managerRequestId,
+    'Cache-Control': 'no-store',
+  });
+  next();
+});
 
 // Os endpoints do app nao recebem uploads editoriais. Limites dedicados fazem
 // o parser rejeitar corpos abusivos antes de reservar o teto global do site.
@@ -544,6 +603,17 @@ const pool = new Pool({
   ssl: process.env.PG_SSL_NO_VERIFY === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
+managerObservability = createManagerObservability(pool, {
+  getDatabaseState: () => dbStartupState.ready
+    ? { status: 'ready', readyAt: dbStartupState.readyAt }
+    : dbStartupState.lastError
+      ? { status: 'unavailable', error: dbStartupState.lastError }
+      : { status: 'starting' },
+  getSocketCount: () => appSyncSockets.size
+    + [...remoteRelayWss.clients].filter(ws => ws.faRelay?.managerReported).length,
+  onError: (error, scope) => console.error(`[${scope}]`, error?.message || error),
+});
+
 function readNonNegativeIntEnv(name, fallback) {
   const value = Number(process.env[name] ?? fallback);
   return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
@@ -613,7 +683,7 @@ function logDatabaseStartupError(error, label = '[startup:db]') {
 app.use((req, res, next) => {
   if (dbStartupState.ready || !dbStartupState.lastError) return next();
 
-  const healthPaths = new Set(['/healthz', '/api/healthz', '/ping', '/admin/health']);
+  const healthPaths = new Set(['/healthz', '/api/healthz', '/api/app/discovery', '/ping', '/admin/health']);
   if (healthPaths.has(req.path)) return next();
 
   if (DB_BOOT_RETRY_MS > 0) {
@@ -963,6 +1033,7 @@ CREATE INDEX IF NOT EXISTS idx_whitelist_queue_delivered ON whitelist_queue(deli
 `;
 
 await pool.query(baseSchemaSql);
+await pool.query(MANAGER_OBSERVABILITY_SCHEMA_SQL);
 
 const featureSchemaSql = `
 CREATE TABLE IF NOT EXISTS player_notes (
@@ -3055,6 +3126,14 @@ const healthHandler = (_req, res) => res.json({
 });
 app.get('/healthz', healthHandler);
 app.get('/api/healthz', healthHandler);
+app.get('/api/app/discovery', (req, res) => res.json(managerEnvelope(req, {
+  ok: true,
+  apiBase: 'https://forca-aliada-site.onrender.com',
+  syncEndpoint: 'https://forca-aliada-site.onrender.com/api/app/sync',
+  websocketEndpoint: 'wss://forca-aliada-site.onrender.com/api/app/ws',
+  transports: { websocket: true, httpsFallback: true },
+  build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
+})));
 
 // Admin-only health endpoint with detailed diagnostics
 app.get('/admin/health', auth, requireAdmin, (_req, res) => res.json({
@@ -3069,6 +3148,7 @@ app.get('/admin/health', auth, requireAdmin, (_req, res) => res.json({
   mc_state: _mcState,
   cloud_lockout: { active: _cloudLockout.active, since: _cloudLockout.since || null },
   app_connected: isAppConnectedInMemory(),
+  app_connection: getAppConnectionSummary(),
   tcpshield_detection: {
     query_enabled: process.env.MC_QUERY_DISABLED !== 'true',
     offline_motd_configured: Boolean(process.env.MC_OFFLINE_MOTD),
@@ -3472,7 +3552,8 @@ app.get('/api/server/status', auth, requireAdmin, async (req, res) => {
       checked_at: status.checkedAt.toISOString(),
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
       app_connected: appConnected,
-      app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
+      app_last_seen: getAppLastSeenIso(),
+      app_connection: getAppConnectionSummary(),
       // Estado da máquina de estados — para o dashboard mostrar modo nuvem corretamente
       mc_state: {
         state:  _mcState.state,   // 'unknown' | 'offline' | 'online'
@@ -3515,7 +3596,8 @@ app.get('/api/server/status', auth, requireAdmin, async (req, res) => {
       checked_at: checkedAt.toISOString(),
       backend: { startedAt: PROCESS_STARTED_AT.toISOString(), uptimeSeconds: Math.floor(process.uptime()) },
       app_connected: appConnected,
-      app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
+      app_last_seen: getAppLastSeenIso(),
+      app_connection: getAppConnectionSummary(),
       mc_state: {
         state:  _mcState.state,
         set_by: _mcState.setBy,
@@ -3611,25 +3693,42 @@ app.get('/api/snapshots/latest', auth, requireAdmin, async (req, res) => {
 
   try {
     const online  = await pool.query(
-      'SELECT player, entered_at, origin FROM player_sessions WHERE left_at IS NULL'
+      `SELECT player, entered_at, origin, origin_installation_id,
+              origin_transport, origin_confidence
+         FROM player_sessions WHERE left_at IS NULL`
     );
     const history = await pool.query(
-      'SELECT player, entered_at, left_at, duration_hours, origin FROM player_sessions WHERE left_at IS NOT NULL ORDER BY left_at DESC LIMIT $1',
+      `SELECT player, entered_at, left_at, duration_hours, origin,
+              origin_installation_id, origin_transport, origin_confidence
+         FROM player_sessions
+        WHERE left_at IS NOT NULL
+        ORDER BY left_at DESC LIMIT $1`,
       [limit]
     );
 
     res.json({
       onlinePlayers: online.rows.map(r => r.player),
       activeSessions: online.rows.reduce((acc, r) => ({
-        ...acc, [r.player]: { name: r.player, enteredAt: r.entered_at, origin: r.origin || 'site' }
+        ...acc, [r.player]: {
+          name: r.player,
+          enteredAt: r.entered_at,
+          origin: r.origin || 'site',
+          sourceInstallationId: r.origin_installation_id || null,
+          sourceTransport: r.origin_transport || null,
+          sourceConfidence: r.origin_confidence || 'inferred',
+        }
       }), {}),
       history: history.rows.map(r => ({
         player: r.player, enteredAt: r.entered_at,
         leftAt: r.left_at, hoursOnline: r.duration_hours,
-        origin: r.origin || 'site'
+        origin: r.origin || 'site',
+        sourceInstallationId: r.origin_installation_id || null,
+        sourceTransport: r.origin_transport || null,
+        sourceConfidence: r.origin_confidence || 'inferred',
       })),
       app_connected: isAppConnectedInMemory(),
-      app_last_seen: _appHeartbeat.lastSeenAt ? new Date(_appHeartbeat.lastSeenAt).toISOString() : null,
+      app_last_seen: getAppLastSeenIso(),
+      app_connection: getAppConnectionSummary(),
     });
   } catch (err) {
     res.status(500).json({ error: 'Falha ao buscar histórico' });
@@ -3665,13 +3764,20 @@ function touchAppKeyLastUsed(keyHash, entry) {
 
 async function validateAppKey(key) {
   if (!key) return { isValid: false, appKeyId: null };
-  if (key === INGEST_SECRET && INGEST_SECRET) return { isValid: true, appKeyId: null };
+  if (key === INGEST_SECRET && INGEST_SECRET) {
+    return {
+      isValid: true,
+      appKeyId: null,
+      keyName: 'Credencial legada',
+      authKind: 'legacy',
+    };
+  }
   const keyHash = crypto.createHash('sha256').update(key).digest('hex');
   pruneAppKeyValidationCache();
   const cached = appKeyValidationCache.get(keyHash);
   if (cached && cached.expiresAt > Date.now()) {
     touchAppKeyLastUsed(keyHash, cached);
-    return { isValid: true, appKeyId: cached.appKeyId, keyName: cached.keyName };
+    return { isValid: true, appKeyId: cached.appKeyId, keyName: cached.keyName, authKind: 'app_key' };
   }
   const { rows } = await pool.query(
     'SELECT id, name, last_used_at FROM app_integration_keys WHERE key_hash=$1',
@@ -3686,7 +3792,26 @@ async function validateAppKey(key) {
   };
   appKeyValidationCache.set(keyHash, entry);
   touchAppKeyLastUsed(keyHash, entry);
-  return { isValid: true, appKeyId: entry.appKeyId, keyName: entry.keyName };
+  return { isValid: true, appKeyId: entry.appKeyId, keyName: entry.keyName, authKind: 'app_key' };
+}
+
+function managerMetadataFromRequest(req, body = null, auth = {}) {
+  const payload = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const embedded = payload._manager && typeof payload._manager === 'object' ? payload._manager : {};
+  const headers = req?.headers || {};
+  return managerObservability.normalizeMetadata({
+    ...embedded,
+    installationId: embedded.installationId || headers['x-fa-installation-id'],
+    deviceName: embedded.deviceName || headers['x-fa-device-name'],
+    appVersion: embedded.appVersion || headers['x-fa-app-version'],
+    osPlatform: embedded.osPlatform || headers['x-fa-os-platform'],
+    osRelease: embedded.osRelease || headers['x-fa-os-release'],
+    osFamily: embedded.osFamily || headers['x-fa-os-family'],
+    arch: embedded.arch || headers['x-fa-arch'],
+    controlMode: embedded.controlMode || headers['x-fa-control-mode'],
+    runtimeRole: embedded.runtimeRole || headers['x-fa-runtime-role'],
+    telemetryEnabled: embedded.telemetryEnabled ?? headers['x-fa-telemetry-enabled'] === '1',
+  }, auth);
 }
 
 const REMOTE_RELAY_MAX_WAIT_MS = 25000;
@@ -3807,7 +3932,10 @@ async function cleanupRemoteRelay() {
 
 async function validateRemoteRelayRoom(roomId) {
   const { rows } = await pool.query(
-    'SELECT room_id FROM app_remote_relay_rooms WHERE room_id=$1 AND expires_at > NOW()',
+    `SELECT r.room_id, r.app_key_id, k.name AS key_name
+       FROM app_remote_relay_rooms r
+       LEFT JOIN app_integration_keys k ON k.id=r.app_key_id
+      WHERE r.room_id=$1 AND r.expires_at > NOW()`,
     [roomId]
   );
   return rows[0] || null;
@@ -3894,11 +4022,76 @@ async function authenticateRemoteRelayWs(req) {
     error.status = 404;
     throw error;
   }
+  const auth = {
+    appKeyId: room.app_key_id,
+    keyName: room.key_name || null,
+    authKind: room.app_key_id ? 'relay_session' : 'legacy_relay',
+  };
+  const reportedInstallationId = String(req.headers['x-fa-installation-id'] || '').trim().toLowerCase();
+  const managerReported = /^[a-z0-9][a-z0-9._:-]{7,79}$/.test(reportedInstallationId);
+  const managerMeta = managerReported
+    ? managerObservability.normalizeMetadata({
+        ...managerMetadataFromRequest(req, null, auth),
+        installationId: reportedInstallationId,
+        controlMode: 'remote-client',
+        runtimeRole: 'remote-client',
+      }, auth)
+    : null;
   return {
     roomId,
     role,
     clientId: relayIdentifier(url.searchParams.get('client'), 'Cliente', 1),
+    ...auth,
+    managerReported,
+    managerMeta,
   };
+}
+
+function remoteRelayManagerAuth(source = {}) {
+  return {
+    appKeyId: source.appKeyId ?? source.app_key_id ?? null,
+    keyName: source.keyName || source.key_name || null,
+    authKind: source.authKind || ((source.appKeyId ?? source.app_key_id) ? 'relay_session' : 'legacy_relay'),
+  };
+}
+
+function normalizeRemoteRelayManager(source = {}, rawManager = null) {
+  const candidate = rawManager && typeof rawManager === 'object' && !Array.isArray(rawManager)
+    ? rawManager
+    : source.managerMeta;
+  const reportedInstallationId = String(candidate?.installationId || candidate?.installation_id || '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9._:-]{7,79}$/.test(reportedInstallationId)) return null;
+  if (source.managerMeta?.installationId && source.managerMeta.installationId !== reportedInstallationId) return null;
+  const auth = remoteRelayManagerAuth(source);
+  return managerObservability.normalizeMetadata({
+    ...candidate,
+    installationId: reportedInstallationId,
+    controlMode: 'remote-client',
+    runtimeRole: 'remote-client',
+  }, auth);
+}
+
+async function recordRemoteRelayManagerPresence(source = {}, rawManager = null, telemetryPayload = null) {
+  if (source.role && source.role !== 'client') return { recorded: false, telemetry: null };
+  const managerMeta = normalizeRemoteRelayManager(source, rawManager);
+  if (!managerMeta) return { recorded: false, telemetry: null };
+  const auth = remoteRelayManagerAuth(source);
+  source.managerReported = true;
+  source.managerMeta = managerMeta;
+  await managerObservability.recordSignal({
+    auth,
+    metadata: managerMeta,
+    transport: source.transport || 'relay-websocket',
+    kind: 'heartbeat',
+    ok: true,
+  }).catch(() => null);
+  const telemetry = telemetryPayload
+    ? await managerObservability.ingestTelemetry(auth, {
+        ...telemetryPayload,
+        manager: managerMeta,
+      }).catch(() => ({ accepted: false, reason: 'unavailable' }))
+    : null;
+  return { recorded: true, telemetry };
 }
 
 async function authenticateAppSyncWs(req) {
@@ -3909,7 +4102,7 @@ async function authenticateAppSyncWs(req) {
     error.status = 403;
     throw error;
   }
-  return auth;
+  return { ...auth, managerMeta: managerMetadataFromRequest(req, null, auth) };
 }
 
 function attachRemoteRelayWebSocket(httpServer) {
@@ -3945,7 +4138,12 @@ remoteRelayWss.on('connection', ws => {
   const room = getRemoteRelayWsRoom(meta.roomId);
   ws.isAlive = true;
   ws.faRate = { startedAt: Date.now(), count: 0, bytes: 0 };
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.on('pong', () => {
+    ws.isAlive = true;
+    if (meta.role === 'client' && meta.managerReported) {
+      recordRemoteRelayManagerPresence(meta).catch(() => {});
+    }
+  });
 
   if (meta.role === 'host') {
     if (room.host && room.host !== ws) room.host.close(1012, 'Host substituido');
@@ -3963,11 +4161,13 @@ remoteRelayWss.on('connection', ws => {
     room.clients.set(meta.clientId, ws);
     sendRemoteRelayWs(room.host, { kind: 'relay-client-online', clientId: meta.clientId, at: Date.now() });
     publishRemoteRelayPresence(meta.roomId, meta.clientId, true).catch(() => {});
+    if (meta.managerReported) recordRemoteRelayManagerPresence(meta).catch(() => {});
   }
 
   sendRemoteRelayWs(ws, {
     kind: 'relay-ready',
-    protocol: 2,
+    service: MANAGER_SERVICE_ID,
+    protocol: MANAGER_PROTOCOL_VERSION,
     deliveryAck: true,
     databaseNotify: !!remoteRelayNotifyClient,
     role: meta.role,
@@ -3994,6 +4194,26 @@ remoteRelayWss.on('connection', ws => {
     try { message = JSON.parse(data.toString('utf8')); }
     catch (_) { ws.close(1007, 'Mensagem invalida'); return; }
     if (!message || typeof message !== 'object' || Array.isArray(message)) return;
+
+    if (meta.role === 'client' && message.kind === 'manager-presence') {
+      recordRemoteRelayManagerPresence(meta, message.manager, message.telemetry)
+        .then(result => {
+          sendRemoteRelayWs(ws, managerEnvelope(null, {
+            kind: 'manager-presence-ack',
+            ok: result.recorded,
+            code: result.recorded ? 'PRESENCE_RECORDED' : 'INVALID_INSTALLATION',
+            telemetry: result.telemetry,
+          }));
+        })
+        .catch(() => {
+          sendRemoteRelayWs(ws, managerEnvelope(null, {
+            kind: 'manager-presence-ack',
+            ok: false,
+            code: 'PRESENCE_UNAVAILABLE',
+          }));
+        });
+      return;
+    }
 
     try {
       const correlationId = message.correlationId ? relayIdentifier(message.correlationId, 'Correlacao', 8) : null;
@@ -4031,10 +4251,17 @@ remoteRelayWss.on('connection', ws => {
 });
 
 function markAppSocketHeartbeat(auth = {}) {
-  if (isCloudLockoutActive()) return;
-  _appHeartbeat.lastSeenAt = Date.now();
+  const recorded = managerObservability.recordSignal({
+    auth,
+    metadata: auth.managerMeta || {},
+    transport: 'websocket',
+    kind: 'heartbeat',
+    ok: true,
+  }).catch(() => null);
+  if (!isCloudLockoutActive()) _appHeartbeat.lastSeenAt = Date.now();
   if (auth.appKeyId) _appHeartbeat.keyId = auth.appKeyId;
   if (auth.keyName) _appHeartbeat.keyName = auth.keyName;
+  return recorded;
 }
 
 appSyncWss.on('connection', ws => {
@@ -4050,8 +4277,12 @@ appSyncWss.on('connection', ws => {
   });
   sendRemoteRelayWs(ws, {
     kind: 'app-ready',
+    service: MANAGER_SERVICE_ID,
     serverTime: new Date().toISOString(),
-    protocol: 1,
+    protocol: MANAGER_PROTOCOL_VERSION,
+    build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
+    installationId: auth.managerMeta?.installationId || null,
+    authKind: auth.authKind || (auth.appKeyId ? 'app_key' : 'legacy'),
   });
   sendPendingWhitelistToSocket(ws, auth.appKeyId).catch(() => {});
 
@@ -4069,20 +4300,44 @@ appSyncWss.on('connection', ws => {
       try { message = JSON.parse(data.toString('utf8')); }
       catch (_) { ws.close(1007, 'Mensagem invalida'); return; }
       if (!message || typeof message !== 'object' || Array.isArray(message)) return;
-      markAppSocketHeartbeat(auth);
+      if (message.manager && typeof message.manager === 'object') {
+        auth.managerMeta = managerObservability.normalizeMetadata(message.manager, auth);
+      }
       const messageId = String(message.messageId || '').slice(0, 96);
       try {
         if (message.kind === 'heartbeat') {
-          sendRemoteRelayWs(ws, { kind: 'heartbeat-ack', messageId, at: Date.now() });
+          await markAppSocketHeartbeat(auth);
+          const telemetry = message.telemetry
+            ? await managerObservability.ingestTelemetry(auth, { ...message.telemetry, manager: auth.managerMeta }).catch(() => ({ accepted: false }))
+            : null;
+          sendRemoteRelayWs(ws, {
+            kind: 'heartbeat-ack',
+            service: MANAGER_SERVICE_ID,
+            protocol: MANAGER_PROTOCOL_VERSION,
+            messageId,
+            installationId: auth.managerMeta?.installationId || null,
+            telemetry,
+            at: Date.now(),
+          });
           return;
         }
         if (message.kind === 'sync') {
           const result = await processAppSyncPayload(message.payload || {}, {
             appKeyId: auth.appKeyId,
             keyName: auth.keyName,
+            auth,
+            metadata: auth.managerMeta,
+            transport: 'websocket',
             deliverWhitelist: false,
           });
-          sendRemoteRelayWs(ws, { kind: 'sync-ack', messageId, result });
+          sendRemoteRelayWs(ws, {
+            kind: 'sync-ack',
+            service: MANAGER_SERVICE_ID,
+            protocol: MANAGER_PROTOCOL_VERSION,
+            messageId,
+            installationId: auth.managerMeta?.installationId || null,
+            result,
+          });
           return;
         }
         if (message.kind === 'whitelist-ack') {
@@ -4095,12 +4350,21 @@ appSyncWss.on('connection', ws => {
               [auth.appKeyId, ids]
             );
           }
-          sendRemoteRelayWs(ws, { kind: 'whitelist-acknowledged', messageId, ids });
+          sendRemoteRelayWs(ws, {
+            kind: 'whitelist-acknowledged',
+            service: MANAGER_SERVICE_ID,
+            protocol: MANAGER_PROTOCOL_VERSION,
+            messageId,
+            ids,
+          });
         }
       } catch (error) {
         sendRemoteRelayWs(ws, {
           kind: 'app-error',
+          service: MANAGER_SERVICE_ID,
+          protocol: MANAGER_PROTOCOL_VERSION,
           messageId,
+          code: 'SYNC_PROCESSING_FAILED',
           error: error?.message || 'Falha na sincronizacao.',
         });
       }
@@ -4427,6 +4691,10 @@ function broadcastWhitelistItem(item) {
 
 async function processAppSyncPayload(rawPayload = {}, options = {}) {
   const payload = rawPayload?.payload || rawPayload || {};
+  const managerMeta = managerObservability.normalizeMetadata(
+    options.metadata || payload._manager || rawPayload?._manager || {},
+    options.auth || { appKeyId: options.appKeyId, keyName: options.keyName },
+  );
   const online = Array.from(new Set(
     (Array.isArray(payload.onlinePlayers) ? payload.onlinePlayers : [])
       .map(value => String(value || '').trim().slice(0, 64))
@@ -4468,33 +4736,54 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
         ? await client.query(
             `UPDATE player_sessions
                 SET left_at=$1,
-                    duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2)
+                    duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2),
+                    origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END,
+                    origin_installation_id=$2,
+                    origin_transport=$3,
+                    origin_confidence='verified'
               WHERE left_at IS NULL
               RETURNING player`,
-            [now]
+            [now, managerMeta.installationId, options.transport || 'https']
           )
         : await client.query(
             `UPDATE player_sessions
                 SET left_at=$1,
-                    duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2)
+                    duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2),
+                    origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END,
+                    origin_installation_id=$3,
+                    origin_transport=$4,
+                    origin_confidence='verified'
               WHERE left_at IS NULL
                 AND NOT (player = ANY($2::text[]))
               RETURNING player`,
-            [now, online]
+            [now, online, managerMeta.installationId, options.transport || 'https']
           );
       closed = closedResult.rows.map(row => row.player);
 
       if (!serverStopped && online.length) {
+        await client.query(
+          `UPDATE player_sessions
+              SET origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END,
+                  origin_installation_id=$2,
+                  origin_transport=$3,
+                  origin_confidence='verified'
+            WHERE left_at IS NULL
+              AND player = ANY($1::text[])`,
+          [online, managerMeta.installationId, options.transport || 'https']
+        );
         const openedResult = await client.query(
-          `INSERT INTO player_sessions(player, entered_at, origin)
-           SELECT candidate.player, $2, 'app'
+          `INSERT INTO player_sessions(
+             player, entered_at, origin, origin_installation_id,
+             origin_transport, origin_confidence
+           )
+           SELECT candidate.player, $2, 'app', $3, $4, 'verified'
              FROM unnest($1::text[]) AS candidate(player)
             WHERE NOT EXISTS (
               SELECT 1 FROM player_sessions active
                WHERE active.left_at IS NULL AND active.player=candidate.player
             )
            RETURNING player`,
-          [online, now]
+          [online, now, managerMeta.installationId, options.transport || 'https']
         );
         opened = openedResult.rows.map(row => row.player);
       }
@@ -4529,39 +4818,88 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
         sessionsOpened: opened,
         sessionsClosed: closed,
         whitelistDelivered: pending.map(item => item.username),
+        sourceInstallationId: managerMeta.installationId,
+        sourceTransport: options.transport || 'https',
       },
     }).catch(() => {});
   }
+  await managerObservability.recordSignal({
+    auth: options.auth || {
+      appKeyId: options.appKeyId,
+      keyName: options.keyName,
+      authKind: options.appKeyId ? 'app_key' : 'legacy',
+    },
+    metadata: managerMeta,
+    transport: options.transport || 'https',
+    kind: 'sync',
+    ok: true,
+  });
+  const telemetryPayload = rawPayload?.telemetry || payload?.telemetry;
+  const telemetry = telemetryPayload
+    ? await managerObservability.ingestTelemetry(options.auth || {}, {
+        ...telemetryPayload,
+        manager: managerMeta,
+      }).catch(() => ({ accepted: false }))
+    : null;
   return {
     ok: true,
     mode: serverStopped || isCloudLockoutActive() ? 'cloud' : 'app',
     whitelist_add: pending,
     sessionsOpened: opened.length,
     sessionsClosed: closed.length,
+    source: {
+      installationId: managerMeta.installationId,
+      transport: options.transport || 'https',
+      confidence: 'verified',
+    },
+    telemetry,
   };
 }
 
 /**
  * POST /api/app/heartbeat
- * Chamado pelo app a cada 10 segundos para sinalizar que está ativo.
+ * Chamado pelo app aproximadamente a cada 12 segundos para sinalizar que está ativo.
  * Operacao leve: atualiza memoria. A validacao da chave fica em cache e o
  * last_used_at e persistido no maximo uma vez a cada 15 minutos.
  * Não reconcilia sessões; essa responsabilidade é do /api/app/sync.
  */
 app.post('/api/app/heartbeat', async (req, res) => {
   const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
-  const { isValid, appKeyId, keyName } = await validateAppKey(key).catch(() => ({ isValid: false }));
-  if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
+  const appAuth = await validateAppKey(key).catch(() => ({ isValid: false }));
+  const { isValid, appKeyId, keyName } = appAuth;
+  if (!isValid) return res.status(403).json(managerEnvelope(req, {
+    ok: false,
+    code: 'AUTH_REJECTED',
+    error: 'Chave inválida ou revogada',
+  }));
 
   const wasDisconnected = !isAppConnectedInMemory();
+  const managerMeta = managerMetadataFromRequest(req, req.body, appAuth);
+  await managerObservability.recordSignal({
+    auth: appAuth,
+    metadata: managerMeta,
+    transport: 'https',
+    kind: 'heartbeat',
+    ok: true,
+  }).catch(() => {});
+  const telemetry = req.body?.telemetry
+    ? await managerObservability.ingestTelemetry(appAuth, {
+        ...req.body.telemetry,
+        manager: managerMeta,
+      }).catch(() => ({ accepted: false }))
+    : null;
 
-  // Se o cloud lockout está ativo (shutdown recente), não registramos o heartbeat como
-  // "app conectado" — o app está vivo mas o servidor foi explicitamente desligado.
-  // O lockout expira em CLOUD_MODE_LOCKOUT_MS ou quando serverStarted:true chegar.
+  // O lockout representa o servidor explicitamente desligado, não uma queda do Manager.
+  // A presença operacional acima continua válida; apenas a máquina de estados permanece
+  // offline até o lockout expirar ou um serverStarted:true chegar.
   if (isCloudLockoutActive()) {
-    // Respondemos OK para o app não achar que há um problema de rede,
-    // mas não atualizamos lastSeenAt — o modo nuvem permanece ativo.
-    return res.json({ ok: true, cloud_lockout: true, server_time: new Date().toISOString() });
+    return res.json(managerEnvelope(req, {
+      ok: true,
+      cloudLockout: true,
+      installationId: managerMeta.installationId,
+      authKind: appAuth.authKind,
+      telemetry,
+    }));
   }
 
   _appHeartbeat.lastSeenAt = Date.now();
@@ -4578,7 +4916,12 @@ app.post('/api/app/heartbeat', async (req, res) => {
     _mcStatusCache.expiresAt = 0;
   }
 
-  res.json({ ok: true, server_time: new Date().toISOString() });
+  res.json(managerEnvelope(req, {
+    ok: true,
+    installationId: managerMeta.installationId,
+    authKind: appAuth.authKind,
+    telemetry,
+  }));
 });
 
 /**
@@ -4645,21 +4988,21 @@ app.post('/api/app/remote/relay/register', remoteRelayLimiter, async (req, res) 
 app.post('/api/app/whitelist-ack', async (req, res) => {
   const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
   const { isValid, appKeyId } = await validateAppKey(key).catch(() => ({ isValid: false }));
-  if (!isValid) return res.status(403).json({ error: 'Chave invalida ou revogada' });
+  if (!isValid) return res.status(403).json(managerEnvelope(req, { ok: false, code: 'AUTH_REJECTED', error: 'Chave invalida ou revogada' }));
 
   const ids = Array.isArray(req.body?.ids)
     ? Array.from(new Set(req.body.ids.map(Number).filter(Number.isInteger))).slice(0, 50)
     : [];
-  if (!ids.length) return res.status(400).json({ error: 'Confirmacao vazia ou invalida' });
+  if (!ids.length) return res.status(400).json(managerEnvelope(req, { ok: false, code: 'INVALID_ACK', error: 'Confirmacao vazia ou invalida' }));
 
   try {
     const { rowCount } = await pool.query(
       'UPDATE whitelist_queue SET delivered_at=NOW(), delivered_by=$1 WHERE id = ANY($2::int[]) AND delivered_at IS NULL',
       [appKeyId, ids]
     );
-    return res.json({ ok: true, acknowledged: ids, updated: rowCount });
+    return res.json(managerEnvelope(req, { ok: true, acknowledged: ids, updated: rowCount }));
   } catch (_) {
-    return res.status(500).json({ error: 'Falha ao confirmar fila' });
+    return res.status(500).json(managerEnvelope(req, { ok: false, code: 'ACK_FAILED', error: 'Falha ao confirmar fila' }));
   }
 });
 
@@ -4721,6 +5064,12 @@ app.post('/api/app/remote/relay/client-send', remoteRelayLimiter, async (req, re
     const clientId = relayIdentifier(req.body?.clientId, 'Cliente', 1);
     const room = await validateRemoteRelayRoom(roomId);
     if (!room) return res.status(404).json({ error: 'Sala remota expirada ou inexistente.' });
+    const managerPresence = await recordRemoteRelayManagerPresence({
+      ...room,
+      role: 'client',
+      clientId,
+      transport: 'relay-https',
+    }, req.body?._manager || req.body?.manager, req.body?.telemetry);
     const liveMessage = {
       clientId,
       messageId: req.body?.messageId,
@@ -4730,9 +5079,9 @@ app.post('/api/app/remote/relay/client-send', remoteRelayLimiter, async (req, re
       relayTransport: 'http',
     };
     const wsHost = remoteRelayWsRooms.get(roomId)?.host;
-    if (sendRemoteRelayWs(wsHost, liveMessage)) return res.json({ ok: true, transport: 'websocket' });
+    if (sendRemoteRelayWs(wsHost, liveMessage)) return res.json(managerEnvelope(req, { ok: true, transport: 'websocket', telemetry: managerPresence.telemetry }));
     if (deliverRemoteRelayHttp(roomId, 'host', '', liveMessage)) {
-      return res.json({ ok: true, transport: 'long-poll' });
+      return res.json(managerEnvelope(req, { ok: true, transport: 'long-poll', telemetry: managerPresence.telemetry }));
     }
     await insertRelayMessage({
       roomId,
@@ -4744,7 +5093,7 @@ app.post('/api/app/remote/relay/client-send', remoteRelayLimiter, async (req, re
       payload: req.body?.payload,
       ttlSeconds: req.body?.ttlSeconds,
     });
-    return res.json({ ok: true });
+    return res.json(managerEnvelope(req, { ok: true, transport: 'queued', telemetry: managerPresence.telemetry }));
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message || 'Falha ao enviar mensagem remota.' });
   }
@@ -4757,13 +5106,19 @@ app.post('/api/app/remote/relay/client-poll', remoteRelayLimiter, async (req, re
     const clientId = relayIdentifier(req.body?.clientId, 'Cliente', 1);
     const room = await validateRemoteRelayRoom(roomId);
     if (!room) return res.status(404).json({ error: 'Sala remota expirada ou inexistente.' });
+    const managerPresence = await recordRemoteRelayManagerPresence({
+      ...room,
+      role: 'client',
+      clientId,
+      transport: 'relay-https',
+    }, req.body?._manager || req.body?.manager, req.body?.telemetry);
     const messages = await pollRelayMessages({
       roomId,
       target: 'client',
       clientId,
       waitMs: req.body?.waitMs,
     });
-    return res.json({ ok: true, messages });
+    return res.json(managerEnvelope(req, { ok: true, messages, telemetry: managerPresence.telemetry }));
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message || 'Falha ao buscar mensagens remotas.' });
   }
@@ -4782,7 +5137,16 @@ app.post('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
 });
 
 app.get('/api/admin/app-keys', auth, requireOwner, async (req, res) => {
-    const { rows } = await pool.query(`SELECT k.id, k.name, k.created_at, k.last_used_at, u.username as created_by FROM app_integration_keys k LEFT JOIN users u ON u.id = k.created_by ORDER BY k.created_at DESC`);
+    const { rows } = await pool.query(`
+      SELECT k.id, k.name, k.created_at, k.last_used_at, u.username AS created_by,
+             COUNT(i.installation_id)::int AS installations,
+             COUNT(i.installation_id) FILTER (WHERE i.last_seen_at > NOW() - INTERVAL '150 seconds')::int AS online_installations,
+             MAX(i.last_seen_at) AS last_seen_at
+        FROM app_integration_keys k
+        LEFT JOIN users u ON u.id=k.created_by
+        LEFT JOIN manager_installations i ON i.app_key_id=k.id
+       GROUP BY k.id, u.username
+       ORDER BY k.created_at DESC`);
     res.json(rows);
 });
 
@@ -4800,20 +5164,34 @@ app.delete('/api/admin/app-keys/:id', auth, requireOwner, async (req, res) => {
 
 app.post('/api/app/sync', async (req, res) => {
     const key = req.headers['x-app-key'] || req.headers['x-ingest-secret'];
-    if (!key) return res.status(401).json({ error: 'Chave não fornecida' });
+    if (!key) return res.status(401).json(managerEnvelope(req, { ok: false, code: 'AUTH_MISSING', error: 'Chave não fornecida' }));
 
-    const { isValid, appKeyId, keyName } = await validateAppKey(key).catch(() => ({ isValid: false }));
-    if (!isValid) return res.status(403).json({ error: 'Chave inválida ou revogada' });
+    const appAuth = await validateAppKey(key).catch(() => ({ isValid: false }));
+    const { isValid, appKeyId, keyName } = appAuth;
+    if (!isValid) return res.status(403).json(managerEnvelope(req, { ok: false, code: 'AUTH_REJECTED', error: 'Chave inválida ou revogada' }));
     try {
+        const managerMeta = managerMetadataFromRequest(req, req.body, appAuth);
         const result = await processAppSyncPayload(req.body, {
           appKeyId,
           keyName,
+          auth: appAuth,
+          metadata: managerMeta,
+          transport: 'https',
           deliverWhitelist: true,
         });
-        return res.json(result);
+        return res.json(managerEnvelope(req, result));
     } catch (err) {
         console.error('[app-sync]', err);
-        return res.status(500).json({ error: 'Falha na sincronização' });
+        const managerMeta = managerMetadataFromRequest(req, req.body, appAuth);
+        await managerObservability.recordSignal({
+          auth: appAuth,
+          metadata: managerMeta,
+          transport: 'https',
+          kind: 'sync',
+          ok: false,
+          errorCode: 'SYNC_PROCESSING_FAILED',
+        }).catch(() => {});
+        return res.status(500).json(managerEnvelope(req, { ok: false, code: 'SYNC_PROCESSING_FAILED', error: 'Falha na sincronização' }));
     }
 });
 
@@ -10787,6 +11165,7 @@ res.json({ ok: true });
 registerAdminAnalytics(app, pool, auth, requireAdmin);
 registerAdminDashboardV2(app, pool, auth, requireAdmin, requireOwner, auditFromReq);
 registerAdminSocialRoutes(app, pool, auth, requireAdmin, requireOwner, auditFromReq);
+managerObservability.registerAdminRoutes(app, auth, requireOwner);
 
 app.get('/api/admin/analytics/activity', auth, requireAdmin, async (req, res) => {
   try {

@@ -1,0 +1,8 @@
+{
+  "service": "forca-aliada-manager-discovery",
+  "protocol": 2,
+  "apiBase": "https://forca-aliada-site.onrender.com",
+  "syncEndpoint": "https://forca-aliada-site.onrender.com/api/app/sync",
+  "websocketEndpoint": "wss://forca-aliada-site.onrender.com/api/app/ws",
+  "dashboard": "https://forcaaliada.ogabriels.com/dashboard?v=integrations"
+}

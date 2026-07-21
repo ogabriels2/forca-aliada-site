@@ -1,5 +1,6 @@
 const API_ORIGIN = 'https://forca-aliada-site.onrender.com';
 const DYNAMIC_PATHS = [
+  /^\/api\/app(?:\/|$)/,
   /^\/share\//,
   /^\/sitemap(?:-[a-z0-9-]+)?\.xml$/,
   /^\/sitemap-posts-page-\d+\.xml$/,

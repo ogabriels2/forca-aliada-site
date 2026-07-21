@@ -18,6 +18,9 @@ for (const file of modules) {
 }
 
 const server = fs.readFileSync(path.join(sourceDir, 'server.mjs'), 'utf8');
+const manager = fs.readFileSync(path.join(sourceDir, 'manager_observability.mjs'), 'utf8');
+const worker = fs.readFileSync(path.join(root, '..', '_worker.js'), 'utf8');
+const workerRoutes = JSON.parse(fs.readFileSync(path.join(root, '..', '_routes.json'), 'utf8'));
 const requiredFragments = [
   "pathname === '/api/app/ws'",
   "url.pathname !== '/api/app/remote/ws'",
@@ -32,6 +35,12 @@ const requiredFragments = [
   'drainPersistedRelayToLocalSocket',
   'async function processAppSyncPayload',
   'APP_KEY_LAST_USED_WRITE_MS',
+  "app.get('/api/app/discovery'",
+  'managerEnvelope(req',
+  'app_connection: getAppConnectionSummary()',
+  'managerObservability.registerAdminRoutes',
+  "message.kind === 'manager-presence'",
+  "origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END",
 ];
 for (const fragment of requiredFragments) {
   if (!server.includes(fragment)) failures.push(`contrato ausente em server.mjs: ${fragment}`);
@@ -42,6 +51,24 @@ if (/UPDATE app_integration_keys SET last_used_at=NOW\(\)[^\n]+RETURNING/.test(s
 }
 if (/while\s*\([^)]*Date\.now[^)]*\)\s*\{[\s\S]{0,500}pool\.query/.test(server)) {
   failures.push('polling ativo de banco detectado no relay remoto');
+}
+if (!worker.includes("/^\\/api\\/app(?:\\/|$)/")) {
+  failures.push('Worker publico nao encaminha o namespace /api/app ao backend');
+}
+if (!workerRoutes.include?.includes('/api/app/*')) {
+  failures.push('_routes.json nao ativa o Worker para /api/app/*');
+}
+for (const fragment of [
+  'CREATE TABLE IF NOT EXISTS manager_installations',
+  'CREATE TABLE IF NOT EXISTS manager_health_daily',
+  'CREATE TABLE IF NOT EXISTS manager_telemetry_daily',
+  'usageTelemetryOptional: true',
+  'operationalPresenceRequired: true',
+  'sequence <= EXCLUDED.sequence',
+  "entry.transport === 'relay-websocket'",
+  "entry.lastKind === 'sync'",
+]) {
+  if (!manager.includes(fragment)) failures.push(`observabilidade ausente: ${fragment}`);
 }
 
 if (failures.length) {

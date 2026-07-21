@@ -1808,6 +1808,7 @@ footer { display: none; }
 <link rel="stylesheet" href="assets/css/dashboard-v3.css?v=20260716d">
 <link rel="stylesheet" href="assets/css/dashboard-v4.css?v=20260719b">
 <link rel="stylesheet" href="assets/css/dashboard-v5.css?v=20260718c">
+<link rel="stylesheet" href="assets/css/dashboard-manager.css?v=20260721e">
 </head>
 <body>
 <a class="staff-skip-link" href="#portal-active-title">Ir para o módulo ativo</a>
@@ -1915,7 +1916,7 @@ footer { display: none; }
             <span class="qa-icon">🕵️</span><span class="qa-label">Logs de Auditoria</span><span class="qa-arrow">›</span>
           </button>
           <button class="quick-action-btn" id="qa-appkeys" onclick="scrollToSection('app-keys-card')" style="display:none;">
-            <span class="qa-icon">🔌</span><span class="qa-label">Integração App</span><span class="qa-arrow">›</span>
+            <span class="qa-icon">🔌</span><span class="qa-label">Força Aliada Manager</span><span class="qa-arrow">›</span>
           </button>
           <button class="quick-action-btn" id="qa-merit" onclick="scrollToSection('merit-card')" style="display:none;">
             <span class="qa-icon">⭐</span><span class="qa-label">Mérito & Capital</span><span class="qa-arrow">›</span>
@@ -1962,7 +1963,7 @@ footer { display: none; }
         <button class="portal-tab" type="button" data-dashboard-target="admin-notifications-card" id="portal-nav-notifications" onclick="scrollToSection('admin-notifications-card')" style="display:none;">Notificações</button>
         <button class="portal-tab" type="button" data-dashboard-target="moderation-card" id="portal-nav-moderation" onclick="scrollToSection('moderation-card')" style="display:none;">Moderação <span class="mod-badge" id="mod-nav-badge" style="display:none;">0</span></button>
         <button class="portal-tab" type="button" data-dashboard-target="audit-card" id="portal-nav-audit" onclick="scrollToSection('audit-card')" style="display:none;">Auditoria</button>
-        <button class="portal-tab" type="button" data-dashboard-target="app-keys-card" id="portal-nav-appkeys" onclick="scrollToSection('app-keys-card')" style="display:none;">Integrações</button>
+        <button class="portal-tab" type="button" data-dashboard-target="app-keys-card" id="portal-nav-appkeys" onclick="scrollToSection('app-keys-card')" style="display:none;">Manager</button>
         <button class="portal-tab" type="button" data-dashboard-target="legacy-migration-card" id="portal-nav-legacy" onclick="scrollToSection('legacy-migration-card')" style="display:none;">Contas Legacy <span class="mod-badge" id="legacy-nav-pending-badge" style="display:none;">0</span></button>
       </div>
 
@@ -2736,26 +2737,119 @@ footer { display: none; }
         </div>
       </div>
 
-      <div class="card" id="app-keys-card" style="display:none; margin-top:24px;">
-        <h3>🔌 Integração de Sistema <span>Gerencie os acessos do Força Aliada Manager (App PC)</span></h3>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap:wrap; gap:12px;">
-          <p style="font-size:13px; color:var(--text-secondary); margin:0; flex:1; min-width:200px;">Gere chaves seguras para permitir que o seu aplicativo de computador sincronize logs e gerencie o servidor remotamente.</p>
-          <button class="btn-primary" onclick="generateAppKey()" style="padding: 10px 16px; font-size: 13px; white-space:nowrap;">+ Gerar Nova Chave</button>
+      <section class="manager-console" id="app-keys-card" style="display:none; margin-top:24px;" aria-labelledby="manager-console-title">
+        <header class="manager-console-header">
+          <div class="manager-console-heading">
+            <span class="manager-console-mark" aria-hidden="true"><i data-lucide="monitor-cog"></i></span>
+            <div>
+              <h3 id="manager-console-title">Operação em tempo real</h3>
+              <p>Conexões, versões, uso e integridade das instalações do Manager.</p>
+            </div>
+          </div>
+          <div class="manager-console-actions">
+            <span class="manager-live-state is-loading" id="manager-live-state"><span></span>Verificando</span>
+            <button class="manager-icon-button" type="button" id="manager-refresh-button" title="Atualizar dados do Manager" aria-label="Atualizar dados do Manager"><i data-lucide="refresh-cw"></i></button>
+          </div>
+        </header>
+
+        <div class="manager-service-strip" id="manager-service-strip" aria-live="polite">
+          <div class="manager-service-item"><span class="manager-service-dot is-loading"></span><div><strong>Backend</strong><small>Verificando API</small></div></div>
+          <div class="manager-service-item"><span class="manager-service-dot is-loading"></span><div><strong>Tempo real</strong><small>Verificando WebSocket</small></div></div>
+          <div class="manager-service-item"><span class="manager-service-dot is-loading"></span><div><strong>Banco</strong><small>Verificando persistência</small></div></div>
+          <div class="manager-service-item"><span class="manager-service-dot is-loading"></span><div><strong>Último sinal</strong><small>Aguardando dados</small></div></div>
         </div>
-        
-        <div id="new-key-alert" style="display:none; background:rgba(48,209,88,0.08); border:1px solid var(--success); padding:16px; border-radius:12px; margin-bottom:16px; animation: slideIn 0.3s ease;">
-          <strong style="color:var(--success); display:block; margin-bottom:8px;">✅ Chave gerada com sucesso!</strong>
-          <p style="margin:0 0 12px 0; font-size:13px; color:var(--text-primary);">Copie a chave abaixo e cole na tela inicial do seu Força Aliada Manager. <b>Por segurança, ela desaparecerá e não poderá ser vista novamente!</b></p>
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="new-key-value" readonly style="flex:1; font-family:monospace; color:var(--success); font-weight:bold; background:rgba(0,0,0,0.05); border-color:var(--success);">
-            <button class="btn-secondary" onclick="copyNewKey()">Copiar</button>
+
+        <nav class="manager-tabs" aria-label="Dados do Manager">
+          <button class="manager-tab is-active" type="button" data-manager-tab="overview">Visão geral</button>
+          <button class="manager-tab" type="button" data-manager-tab="installations">Instalações <span id="manager-installations-tab-count">0</span></button>
+          <button class="manager-tab" type="button" data-manager-tab="usage">Uso</button>
+          <button class="manager-tab" type="button" data-manager-tab="health">Saúde e erros</button>
+          <button class="manager-tab" type="button" data-manager-tab="credentials">Credenciais</button>
+        </nav>
+
+        <div class="manager-panel is-active" data-manager-panel="overview">
+          <div class="manager-kpis" id="manager-kpis">
+            <article class="manager-kpi"><span>Conectados agora</span><strong>--</strong><small>Aguardando presença</small></article>
+            <article class="manager-kpi"><span>Ativos em 24 horas</span><strong>--</strong><small>Instalações distintas</small></article>
+            <article class="manager-kpi"><span>Versão atual</span><strong>--</strong><small>Adoção da versão mais recente</small></article>
+            <article class="manager-kpi"><span>Sincronizações</span><strong>--</strong><small>Taxa de sucesso acumulada</small></article>
+          </div>
+
+          <div class="manager-overview-grid">
+            <section class="manager-section" aria-labelledby="manager-presence-title">
+              <div class="manager-section-heading"><div><h4 id="manager-presence-title">Presença recente</h4><p>As instalações mais recentes e o caminho usado para chegar ao site.</p></div><button class="manager-text-button" type="button" data-manager-open-tab="installations">Ver todas</button></div>
+              <div class="manager-presence-list" id="manager-presence-list"></div>
+            </section>
+            <section class="manager-section" aria-labelledby="manager-distribution-title">
+              <div class="manager-section-heading"><div><h4 id="manager-distribution-title">Distribuição</h4><p>Versões, Windows e modos de controle em uso.</p></div></div>
+              <div class="manager-distributions" id="manager-distributions"></div>
+            </section>
+          </div>
+
+          <aside class="manager-notice" id="manager-legacy-notice" hidden>
+            <i data-lucide="shield-alert" aria-hidden="true"></i>
+            <div><strong>Credencial legada detectada</strong><p>Ela funciona, mas não identifica cada computador separadamente. Gere uma chave individual e troque-a no Manager para auditoria e revogação precisas.</p></div>
+            <button type="button" data-manager-open-tab="credentials">Revisar</button>
+          </aside>
+        </div>
+
+        <div class="manager-panel" data-manager-panel="installations" hidden>
+          <div class="manager-toolbar">
+            <div class="manager-filter-group" role="group" aria-label="Filtrar instalações">
+              <button class="is-active" type="button" data-manager-filter="all">Todas</button>
+              <button type="button" data-manager-filter="online">Online</button>
+              <button type="button" data-manager-filter="attention">Atenção</button>
+            </div>
+            <label class="manager-search"><i data-lucide="search" aria-hidden="true"></i><input type="search" id="manager-installation-search" placeholder="Buscar computador ou versão" autocomplete="off"></label>
+          </div>
+          <div class="manager-table-wrap">
+            <table class="manager-table">
+              <thead><tr><th>Instalação</th><th>Estado</th><th>Versão e sistema</th><th>Modo</th><th>Canal</th><th>Último sinal</th><th><span class="sr-only">Detalhes</span></th></tr></thead>
+              <tbody id="manager-installations-body"></tbody>
+            </table>
           </div>
         </div>
 
-        <div class="app-keys-list" id="app-keys-list">
-          <div class="empty-state"><div class="empty-icon">🔌</div><strong>Carregando chaves...</strong></div>
+        <div class="manager-panel" data-manager-panel="usage" hidden>
+          <div class="manager-section-heading manager-panel-heading"><div><h4>Uso agregado</h4><p>Contagens opcionais, sem conteúdo do servidor ou identificação de jogadores.</p></div><span class="manager-privacy-chip" id="manager-telemetry-coverage">0% opt-in</span></div>
+          <div class="manager-usage-layout">
+            <section class="manager-section"><h4>Recursos mais usados</h4><div class="manager-bars" id="manager-feature-bars"></div></section>
+            <section class="manager-section"><h4>Modos e plataformas</h4><div class="manager-bars" id="manager-platform-bars"></div></section>
+          </div>
+          <div class="manager-privacy-band">
+            <i data-lucide="shield-check" aria-hidden="true"></i>
+            <div><strong>Privacidade por desenho</strong><p id="manager-privacy-copy">A telemetria é opcional e não recebe jogadores, comandos, IPs, caminhos, logs, MOTD ou conteúdo do servidor.</p></div>
+          </div>
         </div>
-      </div>
+
+        <div class="manager-panel" data-manager-panel="health" hidden>
+          <div class="manager-health-layout">
+            <section class="manager-section"><div class="manager-section-heading"><div><h4>Confiabilidade diária</h4><p>Confirmações, falhas e transporte nos últimos 30 dias.</p></div></div><div class="manager-trend" id="manager-health-trend"></div></section>
+            <section class="manager-section"><div class="manager-section-heading"><div><h4>Falhas por causa</h4><p>Diagnósticos técnicos agrupados, sem mensagens ou dados privados.</p></div></div><div class="manager-error-list" id="manager-error-list"></div></section>
+          </div>
+        </div>
+
+        <div class="manager-panel" data-manager-panel="credentials" hidden>
+          <div class="manager-section-heading manager-panel-heading">
+            <div><h4>Credenciais de integração</h4><p>Uma chave por computador permite identificar, auditar e revogar acessos sem afetar os demais.</p></div>
+            <button class="btn-primary" type="button" onclick="generateAppKey()"><i data-lucide="key-round" aria-hidden="true"></i>Gerar chave</button>
+          </div>
+
+          <div class="manager-key-reveal" id="new-key-alert" hidden>
+            <div><strong>Chave criada</strong><p>Ela aparece uma única vez. Cole-a em Sincronização no Manager deste computador.</p></div>
+            <div class="manager-key-copy"><input type="text" id="new-key-value" readonly aria-label="Nova chave de integração"><button class="btn-secondary" type="button" onclick="copyNewKey()"><i data-lucide="copy" aria-hidden="true"></i>Copiar</button></div>
+          </div>
+
+          <div class="app-keys-list manager-credentials-list" id="app-keys-list">
+            <div class="manager-loading-row"><span></span>Carregando credenciais</div>
+          </div>
+        </div>
+
+        <dialog class="manager-detail-dialog" id="manager-installation-dialog" aria-labelledby="manager-detail-title">
+          <div class="manager-detail-header"><div><span>Instalação do Manager</span><h3 id="manager-detail-title">Detalhes</h3></div><button class="manager-icon-button" type="button" data-manager-close-dialog aria-label="Fechar"><i data-lucide="x"></i></button></div>
+          <div class="manager-detail-content" id="manager-detail-content"></div>
+        </dialog>
+      </section>
 
       <!-- ── Contas Legacy ──────────────────────────────────────────────── -->
       <div class="card" id="legacy-migration-card" style="display:none; margin-top:24px;">
@@ -3203,6 +3297,7 @@ const dashboardRouteAliases = {
   moderation: 'moderation-card',
   notifications: 'admin-notifications-card',
   audit: 'audit-card',
+  manager: 'app-keys-card',
   integrations: 'app-keys-card',
   settings: 'dashboard-settings',
   analytics: 'community-analytics',
@@ -4078,8 +4173,8 @@ var DASHBOARD_MODULES = {
     desc: 'Eventos administrativos, segurança, logins e trilhas de decisão.'
   },
   'app-keys-card': {
-    title: 'Integrações',
-    desc: 'Chaves do Força Aliada Manager e conexão com ferramentas externas.'
+    title: 'Força Aliada Manager',
+    desc: 'Instalações, conexão em tempo real, confiabilidade, uso agregado e credenciais.'
   },
   'legacy-migration-card': {
     title: 'Migrações Legacy',
@@ -4153,7 +4248,7 @@ function setActiveDashboardModule(id, opts = {}) {
   if (opts.scroll !== false) {
     document.querySelector('.dashboard-content')?.scrollTo({ top: 0, behavior: opts.behavior || 'smooth' });
   }
-  if (history.replaceState) {
+  if (history.replaceState && typeof window.navigate !== 'function') {
     const url = new URL(location.href);
     url.searchParams.set('module', id);
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
@@ -4637,8 +4732,10 @@ function renderTopPlayers(mode) {
 function hashStr(s) { let h = 0; for (let c of s) h = Math.imul(31, h) + c.charCodeAt(0); return h; }
 
 // ══ Integração App (Desktop Keys) ══
-// ══ Integração App (Desktop Keys) ══
 async function fetchAppKeys() {
+  if (window.managerConsole?.loadCredentials) {
+    return window.managerConsole.loadCredentials();
+  }
   const list = document.getElementById('app-keys-list');
   try {
     const res = await apiFetch('/api/admin/app-keys', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -4698,7 +4795,9 @@ async function generateAppKey() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         
-        document.getElementById('new-key-alert').style.display = 'block';
+        const keyAlert = document.getElementById('new-key-alert');
+        keyAlert.hidden = false;
+        keyAlert.style.display = '';
         document.getElementById('new-key-value').value = data.key;
         fetchAppKeys();
         if(session.role === 'owner' || session.role === 'full') fetchAuditLogs();
@@ -4724,7 +4823,11 @@ async function copyNewKey() {
   }
   
   // Esconde o painel após 15 segundos por segurança
-  setTimeout(() => { document.getElementById('new-key-alert').style.display = 'none'; }, 15000);
+  setTimeout(() => {
+    const keyAlert = document.getElementById('new-key-alert');
+    keyAlert.hidden = true;
+    keyAlert.style.display = '';
+  }, 15000);
 }
 
 async function revokeAppKey(id, name) {
@@ -5150,7 +5253,8 @@ function renderDashboard() {
   }
 
   // Indicador de fonte de dados (App vs Site)
-  const appConnected = globalHealthData?.app_connected ?? false;
+  const appConnection = globalHealthData?.app_connection ?? null;
+  const appConnected = appConnection?.connected ?? globalHealthData?.app_connected ?? false;
   const mcState      = globalHealthData?.mc_state      ?? null;
   const statusSrc    = globalHealthData?.minecraft?.status_source ?? null;
 
@@ -5158,24 +5262,29 @@ function renderDashboard() {
   if (appEl) {
     appEl.className = 'server-source-indicator';
     if (appConnected) {
-      const keyName = globalHealthData?.app_last_seen
-        ? ` · Último sinal: ${new Date(globalHealthData.app_last_seen).toLocaleTimeString('pt-BR')}`
-        : '';
-      appEl.innerHTML = `<span class="server-source-chip is-app" title="Força Aliada Manager conectado — dados em tempo real via App${keyName}"><span class="server-source-dot" aria-hidden="true"></span><span>App conectado</span></span>`;
+      const lastSeen = appConnection?.lastSeenAt || globalHealthData?.app_last_seen;
+      const transport = appConnection?.transport === 'websocket'
+        ? 'Tempo real'
+        : appConnection?.transport === 'https' ? 'HTTPS de contingência' : 'Canal seguro';
+      const device = appConnection?.deviceName ? ` · ${appConnection.deviceName}` : '';
+      const version = appConnection?.appVersion ? ` · v${appConnection.appVersion}` : '';
+      const latency = Number.isFinite(Number(appConnection?.latencyMs)) ? ` · ${Number(appConnection.latencyMs)} ms` : '';
+      const lastSignal = lastSeen ? ` · Último sinal ${new Date(lastSeen).toLocaleTimeString('pt-BR')}` : '';
+      const onlineCount = Number(appConnection?.onlineInstallations || 0);
+      const countLabel = onlineCount > 1 ? ` · ${onlineCount} apps` : '';
+      appEl.innerHTML = `<span class="server-source-chip is-app" title="Manager autenticado${escapeHTML(device + version + latency + lastSignal)}"><span class="server-source-dot" aria-hidden="true"></span><span>Manager · ${escapeHTML(transport + countLabel)}</span></span>`;
     } else {
-      // Modo nuvem — distingue entre: servidor detectado online externamente vs offline
+      // Sem sinal recente do Manager: distingue detecção externa e desligamento confirmado.
       const mcOnline = globalApiData?.online ?? false;
       let cloudLabel, cloudClass;
       if (mcState?.state === 'offline' && mcState?.set_by === 'app_signal') {
-        // App sinalizou offline e ainda está no período de lockout
-        cloudLabel  = '☁️ Modo Nuvem · Servidor desligado';
+        cloudLabel  = 'Site · Servidor desligado pelo Manager';
         cloudClass  = 'is-offline';
       } else if (mcOnline) {
-        // Servidor online detectado em modo nuvem (ligado externamente, sem app)
-        cloudLabel  = '☁️ Modo Nuvem · Online detectado';
+        cloudLabel  = 'Site · Online detectado externamente';
         cloudClass  = 'is-cloud-online';
       } else {
-        cloudLabel  = '☁️ Modo Nuvem';
+        cloudLabel  = 'Site · Monitoramento externo';
         cloudClass  = 'is-cloud';
       }
       appEl.innerHTML = `<span class="server-source-chip ${cloudClass}" title="${escapeHTML(_buildCloudTooltip(statusSrc, mcState))}">${cloudLabel}</span>`;
@@ -5217,8 +5326,14 @@ function normalizeSessionOrigin(source) {
 
 function sessionOriginBadge(source) {
   const origin = normalizeSessionOrigin(source);
+  const transport = typeof source === 'object' && source?.sourceTransport === 'websocket'
+    ? ' por canal em tempo real'
+    : typeof source === 'object' && source?.sourceTransport === 'https' ? ' por HTTPS de contingência' : '';
+  const confidence = typeof source === 'object' && source?.sourceConfidence === 'verified'
+    ? ' Origem autenticada pelo backend.'
+    : '';
   const badge = {
-    app: ['📡 App', 'Detectado pelo Força Aliada Manager', 'rgba(52,199,89,0.12)', '#1a7f37', 'rgba(52,199,89,0.3)'],
+    app: ['📡 App', `Detectado pelo Força Aliada Manager${transport}.${confidence}`, 'rgba(52,199,89,0.12)', '#1a7f37', 'rgba(52,199,89,0.3)'],
     site: ['☁️ Site', 'Detectado pelo site via ping', 'rgba(0,113,227,0.10)', '#0071e3', 'rgba(0,113,227,0.2)'],
     mixed: ['↔️ Mista', 'Sessões registradas pelo App e pelo site', 'rgba(245,158,11,0.12)', '#a16207', 'rgba(245,158,11,0.3)'],
     unknown: ['Fonte não informada', 'A origem desta sessão não foi informada pela API', 'rgba(142,142,147,0.10)', '#6b7280', 'rgba(142,142,147,0.25)'],
@@ -5228,8 +5343,11 @@ function sessionOriginBadge(source) {
 
 function sessionOriginIcon(source) {
   const origin = normalizeSessionOrigin(source);
+  const transport = typeof source === 'object' && source?.sourceTransport === 'websocket'
+    ? ' por canal em tempo real'
+    : typeof source === 'object' && source?.sourceTransport === 'https' ? ' por HTTPS de contingência' : '';
   const meta = {
-    app: ['💻', 'Registrado via App Desktop'],
+    app: ['💻', `Registrado via App Desktop${transport}`],
     site: ['☁️', 'Registrado via Site (ping)'],
     mixed: ['↔️', 'Registrado por App e Site'],
     unknown: ['?', 'Origem não informada pela API'],
@@ -7511,9 +7629,10 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }</script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
-<script src="assets/js/dashboard-v2.js?v=20260718c"></script>
+<script src="assets/js/dashboard-v2.js?v=20260721c"></script>
 <script src="assets/js/dashboard-v3.js?v=20260716d"></script>
 <script src="assets/js/dashboard-v4.js?v=20260718b"></script>
 <script src="assets/js/dashboard-v5.js?v=20260718d"></script>
+<script src="assets/js/dashboard-manager.js?v=20260721g"></script>
 </body>
 </html>

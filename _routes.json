@@ -1,6 +1,7 @@
 {
   "version": 1,
   "include": [
+    "/api/app/*",
     "/share/*",
     "/sitemap.xml",
     "/sitemap-pages.xml",

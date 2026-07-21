@@ -612,7 +612,7 @@ footer{
         <div class="article-meta-row" aria-label="Metadados do documento">
           <span class="meta-chip">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Atualizado em 25 de mai. de 2025
+            Atualizado em 21 de jul. de 2026
           </span>
           <span class="meta-chip">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -674,6 +674,9 @@ footer{
               <tr><td>Histórico de sessões</td><td>Servidor Minecraft</td><td>Estatísticas de atividade exibidas no painel pessoal</td></tr>
               <tr><td>UUID e Xbox XUID</td><td>API Microsoft/Mojang (se vinculado)</td><td>Vinculação de conta Xbox e funcionalidades de integração</td></tr>
               <tr><td>Refresh token Microsoft</td><td>API Microsoft (se vinculado)</td><td>Manter a integração Xbox ativa sem solicitar login repetido</td></tr>
+              <tr><td>Identificador aleatório da instalação, nome do computador, versões do Manager e do Windows, arquitetura e modo de operação</td><td>Força Aliada Manager</td><td>Confirmar qual instalação está conectada, proteger credenciais e diagnosticar compatibilidade</td></tr>
+              <tr><td>Estado do canal, latência aproximada e códigos técnicos de falha</td><td>Força Aliada Manager</td><td>Exibir a saúde da integração e recuperar falhas de conexão</td></tr>
+              <tr><td>Contagens agregadas de recursos utilizados</td><td>Força Aliada Manager, somente com consentimento</td><td>Melhorar estabilidade e priorizar recursos; nunca inclui jogadores, comandos, IPs, caminhos, logs, MOTD ou conteúdo do servidor</td></tr>
             </tbody>
           </table>
         </div>
@@ -696,8 +699,9 @@ footer{
           <li data-icon="👤"><strong>Operação da conta:</strong> Exibir seu perfil no painel, mostrar histórico de atividade, calcular mérito e rank, e gerenciar preferências personalizadas.</li>
           <li data-icon="📧"><strong>Comunicação:</strong> Enviar e-mails transacionais como código de verificação, confirmação de cadastro e recuperação de senha. Não enviamos newsletters sem consentimento.</li>
           <li data-icon="🎮"><strong>Integração com o servidor:</strong> Vincular sua conta ao nick de Minecraft para whitelist, exibição de skin e sincronização de dados de jogo.</li>
+          <li data-icon="🖥️"><strong>Operação do Manager:</strong> Confirmar instalações ativas, versões, tipo de canal e integridade da conexão entre aplicativo e plataforma.</li>
           <li data-icon="🔍"><strong>Auditoria interna:</strong> Registrar ações relevantes (logins, alterações de perfil, ações de moderação) para rastreabilidade e segurança da plataforma.</li>
-          <li data-icon="📊"><strong>Melhoria dos serviços:</strong> Analisar padrões de uso de forma agregada e não identificável para melhorar a experiência da plataforma.</li>
+          <li data-icon="📊"><strong>Melhoria dos serviços:</strong> Quando os diagnósticos opcionais estão ativados no Manager, analisar somente contagens agregadas e códigos técnicos para melhorar a experiência da plataforma.</li>
         </ul>
       </section>
 
@@ -711,6 +715,7 @@ footer{
           <li data-icon="⚙️"><strong>Servidor de aplicação:</strong> API hospedada no <strong>Render.com</strong>, em região US-East. O acesso à API é feito exclusivamente via HTTPS.</li>
           <li data-icon="🔑"><strong>Senhas:</strong> Armazenadas apenas como hash bcrypt (custo 10), nunca em texto claro. Tokens de sessão são armazenados como hash SHA-256.</li>
           <li data-icon="🔄"><strong>Refresh tokens Microsoft:</strong> Armazenados de forma segura no banco. São usados exclusivamente para renovar integrações Xbox e podem ser revogados pelo painel a qualquer momento.</li>
+          <li data-icon="🖥️"><strong>Integração do Manager:</strong> Chaves individuais são armazenadas somente como hash. Sinais de presença são mantidos primeiro em memória e consolidados no banco com limitação de frequência para reduzir coleta e carga.</li>
         </ul>
       </section>
 
@@ -751,6 +756,7 @@ footer{
           <li data-icon="📊"><strong>Histórico de sessões no servidor:</strong> Anonimizado ou removido no mesmo prazo.</li>
           <li data-icon="📋"><strong>Registros de auditoria:</strong> Podem ser mantidos por até 90 dias adicionais para fins de segurança e investigação de eventuais incidentes passados.</li>
           <li data-icon="🔗"><strong>Dados de integração Microsoft</strong> (XUID, UUID, refresh token): removidos imediatamente ao desvincular a conta ou ao excluir o perfil.</li>
+          <li data-icon="🖥️"><strong>Saúde e diagnósticos do Manager:</strong> Registros diários e instalações inativas são removidos após 120 dias. A telemetria opcional pode ser desativada a qualquer momento no aplicativo.</li>
         </ul>
         <p>Para solicitar a exclusão, envie mensagem pelo Discord oficial ou por e-mail com o assunto "Exclusão de Dados". A solicitação será processada em até 30 dias corridos.</p>
       </section>

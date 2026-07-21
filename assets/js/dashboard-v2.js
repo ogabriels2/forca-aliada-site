@@ -32,7 +32,7 @@
     { view: 'moderation', id: 'moderation-card', label: 'Moderação', icon: 'shield-alert', group: 'Comunidade', badge: 'moderation', scope: 'moderation_private' },
     { view: 'notifications', id: 'admin-notifications-card', label: 'Comunicação', icon: 'megaphone', group: 'Comunidade', scope: 'staff_operations' },
     { view: 'audit', id: 'audit-card', label: 'Auditoria', icon: 'scroll-text', group: 'Sistema', scope: 'audit_security' },
-    { view: 'integrations', id: 'app-keys-card', label: 'Integrações', icon: 'plug', group: 'Sistema', owner: true, scope: 'infrastructure' },
+    { view: 'integrations', id: 'app-keys-card', label: 'Manager', icon: 'monitor-cog', group: 'Sistema', owner: true, scope: 'infrastructure' },
     { view: 'settings', id: 'dashboard-settings', label: 'Configurações', icon: 'settings', group: 'Sistema', owner: true, scope: 'infrastructure' },
     { view: 'analytics', id: 'community-analytics', label: 'Insights da comunidade', icon: 'bar-chart-3', group: 'Contexto', nav: false, scope: 'private_activity' },
     { view: 'legacy', id: 'legacy-migration-card', label: 'Migrações Legacy', icon: 'link-2', group: 'Contexto', badge: 'legacy', nav: false, owner: true, scope: 'infrastructure' },
@@ -1980,7 +1980,9 @@
     const initialUrl = new URL(location.href);
     const initialTool = initialUrl.searchParams.get('tool');
     if (canAccessTool(initialTool)) state.tool = initialTool;
-    const initial = initialUrl.searchParams.get('v') || VIEW_BY_ID[initialUrl.searchParams.get('module')] || 'command';
+    const legacyModule = initialUrl.searchParams.get('module');
+    const legacyViewAliases = { manager: 'integrations', integrations: 'integrations', settings: 'settings' };
+    const initial = initialUrl.searchParams.get('v') || VIEW_BY_ID[legacyModule] || legacyViewAliases[legacyModule] || 'command';
     navigate(initial, { replace: true });
     setInterval(() => { rebuildNavigationForRole(); updateBadges(); lazyImages(); if (state.view === 'command') renderCommandOverview(); if (state.view === 'server') renderServerFeed(); }, 3000);
     setInterval(() => {

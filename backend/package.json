@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.mjs",
-    "test": "node scripts/audit-integration.mjs"
+    "test": "node scripts/audit-integration.mjs && node scripts/test-manager-observability.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
