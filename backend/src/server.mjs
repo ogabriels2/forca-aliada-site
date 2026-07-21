@@ -83,6 +83,7 @@ import {
   createManagerObservability,
   managerEnvelope,
 } from './manager_observability.mjs';
+import { getLatestManagerRelease } from './manager_release.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -613,6 +614,7 @@ managerObservability = createManagerObservability(pool, {
       : { status: 'starting' },
   getSocketCount: () => appSyncSockets.size
     + [...remoteRelayWss.clients].filter(ws => ws.faRelay?.managerReported).length,
+  getLatestRelease: getLatestManagerRelease,
   onError: (error, scope) => console.error(`[${scope}]`, error?.message || error),
 });
 

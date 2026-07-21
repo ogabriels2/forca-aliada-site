@@ -896,7 +896,7 @@ export function createManagerObservability(pool, options = {}) {
 
   async function loadOverview(days = 30) {
     const safeDays = int(days, 1, 120);
-    const [installationResult, summaryResult, distributionResult, healthResult, telemetryResult, keyResult, errorResult] = await Promise.all([
+    const [installationResult, summaryResult, distributionResult, healthResult, telemetryResult, keyResult, errorResult, releaseResult] = await Promise.all([
       pool.query(
         `SELECT i.*, k.name AS key_name,
                 (i.last_seen_at > NOW() - ($1::int * INTERVAL '1 second')) AS online
@@ -989,6 +989,12 @@ export function createManagerObservability(pool, options = {}) {
           ORDER BY occurrence_count DESC, error_code`,
         [safeDays],
       ),
+      typeof options.getLatestRelease === 'function'
+        ? Promise.resolve(options.getLatestRelease()).catch(error => {
+            options.onError?.(error, 'manager-release');
+            return null;
+          })
+        : Promise.resolve(null),
     ]);
 
     const installations = overlayLive(installationResult.rows);
@@ -1003,8 +1009,19 @@ export function createManagerObservability(pool, options = {}) {
       .filter(row => row.dimension === dimension)
       .map(row => ({ name: row.name, count: Number(row.count || 0) }));
     const versions = distribution('version');
-    const latestVersion = versions.map(item => item.name).filter(name => /^\d/.test(name)).sort(compareVersions).pop() || null;
-    const latestVersionCount = latestVersion ? Number(versions.find(item => item.name === latestVersion)?.count || 0) : 0;
+    const reportedVersions = versions.filter(item => /^\d+\.\d+\.\d+/.test(item.name));
+    const latestObservedVersion = reportedVersions.map(item => item.name).sort(compareVersions).pop() || null;
+    const releasedVersion = /^\d+\.\d+\.\d+$/.test(String(releaseResult?.version || ''))
+      ? String(releaseResult.version)
+      : null;
+    const latestVersion = releasedVersion || latestObservedVersion;
+    const upToDateInstallations = latestVersion
+      ? reportedVersions.filter(item => compareVersions(item.name, latestVersion) >= 0).reduce((total, item) => total + Number(item.count || 0), 0)
+      : 0;
+    const outdatedInstallations = latestVersion
+      ? reportedVersions.filter(item => compareVersions(item.name, latestVersion) < 0).reduce((total, item) => total + Number(item.count || 0), 0)
+      : 0;
+    const reportedVersionInstallations = reportedVersions.reduce((total, item) => total + Number(item.count || 0), 0);
     const successes = Number(aggregate.sync_successes || 0);
     const failures = Number(aggregate.sync_failures || 0);
     const telemetryOptIn = Number(aggregate.telemetry_opt_in || 0);
@@ -1047,7 +1064,13 @@ export function createManagerObservability(pool, options = {}) {
         active24h,
         active30d,
         latestVersion,
-        latestVersionAdoptionPct: totalInstallations ? Math.round((latestVersionCount / totalInstallations) * 100) : 0,
+        latestReleasedVersion: releasedVersion,
+        latestObservedVersion,
+        latestVersionSource: releasedVersion ? 'release' : latestObservedVersion ? 'observed' : 'unavailable',
+        upToDateInstallations,
+        outdatedInstallations,
+        reportedVersionInstallations,
+        latestVersionAdoptionPct: totalInstallations ? Math.round((upToDateInstallations / totalInstallations) * 100) : 0,
         syncSuccessRatePct: successes + failures ? Math.round((successes / (successes + failures)) * 1000) / 10 : null,
         telemetryOptIn,
         telemetryCoveragePct: totalInstallations ? Math.round((telemetryOptIn / totalInstallations) * 100) : 0,
@@ -1077,6 +1100,25 @@ export function createManagerObservability(pool, options = {}) {
         database: options.getDatabaseState?.() || { status: 'unknown' },
         websocketConnections: options.getSocketCount?.() || 0,
         latestSignalAt: installations[0]?.last_seen_at || null,
+        release: {
+          status: releaseResult?.status || (releasedVersion ? 'ready' : 'unavailable'),
+          source: releaseResult?.source || null,
+          checkedAt: releaseResult?.checkedAt || null,
+        },
+      },
+      release: {
+        version: releasedVersion,
+        tag: releasedVersion ? text(releaseResult?.tag || `v${releasedVersion}`, 40) : null,
+        name: releasedVersion ? text(releaseResult?.name || `Forca Aliada Manager ${releasedVersion}`, 120) : null,
+        publishedAt: releaseResult?.publishedAt || null,
+        assetName: releasedVersion ? text(releaseResult?.assetName, 160) : null,
+        assetSize: Number(releaseResult?.assetSize || 0) || null,
+        downloadUrl: releasedVersion ? text(releaseResult?.downloadUrl, 500) : '',
+        releasePageUrl: text(releaseResult?.releasePageUrl || 'https://github.com/ogabriels2/forca-aliada-releases/releases/latest', 500),
+        source: releaseResult?.source || null,
+        status: releaseResult?.status || (releasedVersion ? 'ready' : 'unavailable'),
+        stale: releaseResult?.stale === true,
+        checkedAt: releaseResult?.checkedAt || null,
       },
       distributions: {
         versions,

@@ -23,7 +23,24 @@ const pool = {
     return client;
   },
   async query(sql, params = []) {
-    poolCalls.push({ sql: String(sql), params });
+    const source = String(sql);
+    poolCalls.push({ sql: source, params });
+    if (source.includes('COUNT(*)::int AS total_installations')) {
+      return {
+        rows: [{
+          total_installations: 2,
+          online: 0,
+          active_24h: 2,
+          active_30d: 2,
+          telemetry_opt_in: 0,
+          linked_installations: 2,
+        }],
+        rowCount: 1,
+      };
+    }
+    if (source.includes('SELECT dimension, name, COUNT(*)::int AS count')) {
+      return { rows: [{ dimension: 'version', name: '1.1.3', count: 2 }], rowCount: 1 };
+    }
     return { rows: [], rowCount: 0 };
   },
 };
@@ -31,6 +48,13 @@ const pool = {
 const observability = createManagerObservability(pool, {
   getDatabaseState: () => ({ status: 'ready' }),
   getSocketCount: () => 1,
+  getLatestRelease: async () => ({
+    version: '1.1.5', tag: 'v1.1.5', name: 'Forca Aliada Manager 1.1.5',
+    assetName: 'Forca-Aliada-Manager-Setup-1.1.5.exe', assetSize: 100438956,
+    downloadUrl: 'https://github.com/ogabriels2/forca-aliada-releases/releases/download/v1.1.5/Forca-Aliada-Manager-Setup-1.1.5.exe',
+    releasePageUrl: 'https://github.com/ogabriels2/forca-aliada-releases/releases/tag/v1.1.5',
+    source: 'github-release-api', status: 'ready', stale: false,
+  }),
 });
 const auth = { appKeyId: 7, keyName: 'PC principal', authKind: 'app_key' };
 const metadata = {
@@ -76,6 +100,15 @@ assert.equal(observability.latestSignal().meta.deviceName, 'Servidor Casa', 'cli
 assert.equal(observability.latestSignal({ includeRemoteClients: true }).meta.deviceName, 'Notebook remoto');
 assert.equal(observability.connectionSummary().onlineInstallations, 1, 'resumo do servidor deve excluir clientes remotos');
 assert.equal(observability.isAnyOnline({ includeRemoteClients: true }), true);
+
+const overview = await observability.loadOverview(30);
+assert.equal(overview.summary.latestVersion, '1.1.5', 'versao publicada deve vir do release, nao dos PCs conectados');
+assert.equal(overview.summary.latestReleasedVersion, '1.1.5');
+assert.equal(overview.summary.latestObservedVersion, '1.1.3');
+assert.equal(overview.summary.latestVersionAdoptionPct, 0);
+assert.equal(overview.summary.outdatedInstallations, 2);
+assert.equal(overview.release.version, '1.1.5');
+assert.match(overview.release.downloadUrl, /^https:\/\/github\.com\/ogabriels2\/forca-aliada-releases\//);
 
 await observability.recordSignal({
   auth,

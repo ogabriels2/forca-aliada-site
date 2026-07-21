@@ -194,6 +194,30 @@
 .manager-kpi span { color: var(--text-secondary, var(--ink-2)); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .manager-kpi strong { margin-top: 7px; color: var(--text-primary, var(--ink)); font-size: 23px; line-height: 1; }
 .manager-kpi small { margin-top: 7px; color: var(--text-secondary, var(--ink-3)); font-size: 10px; line-height: 1.35; }
+.manager-kpi-value-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.manager-kpi-value-row strong { min-width: 0; }
+.manager-download-button {
+  min-width: 0;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  margin-top: 7px;
+  padding: 0 9px;
+  color: #fff;
+  background: var(--manager-blue);
+  border: 1px solid color-mix(in srgb, var(--manager-blue) 78%, #000);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+}
+.manager-download-button:hover { filter: brightness(1.06); }
+.manager-download-button:focus-visible { outline: 2px solid color-mix(in srgb, var(--manager-blue) 52%, transparent); outline-offset: 2px; }
+.manager-download-button svg { width: 13px; height: 13px; flex: 0 0 13px; }
 
 .manager-overview-grid,
 .manager-usage-layout,
@@ -425,6 +449,7 @@
   .manager-kpis { grid-template-columns: 1fr; }
   .manager-kpi { border-right: 0; border-bottom: 1px solid var(--line); }
   .manager-kpi:last-child { border-bottom: 0; }
+  .manager-kpi-value-row { align-items: center; }
   .manager-toolbar { align-items: stretch; flex-direction: column; }
   .manager-search { width: 100%; }
   .manager-notice,

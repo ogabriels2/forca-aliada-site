@@ -86,9 +86,10 @@
     }));
     return {
       service:'forca-aliada-manager-api', protocol:2, ok:true, generatedAt:new Date().toISOString(), periodDays:30,
-      summary:{ totalInstallations:5, online:3, active24h:4, active30d:5, latestVersion:'1.1.4', latestVersionAdoptionPct:60, syncSuccessRatePct:99.4, telemetryOptIn:2, telemetryCoveragePct:40, legacyCredentials:1, linkedInstallations:4, registeredOnly:1, serverConfigured:3, serverRunning:1, siteSyncConfigured:2, remoteEnabled:3, startWithWindows:3, autoStartEnabled:1, launches:52, versionChanges:7, schedules:4, controllers:3 },
+      summary:{ totalInstallations:5, online:3, active24h:4, active30d:5, latestVersion:'1.1.5', latestReleasedVersion:'1.1.5', latestObservedVersion:'1.1.4', latestVersionSource:'release', latestVersionAdoptionPct:0, upToDateInstallations:0, outdatedInstallations:5, syncSuccessRatePct:99.4, telemetryOptIn:2, telemetryCoveragePct:40, legacyCredentials:1, linkedInstallations:4, registeredOnly:1, serverConfigured:3, serverRunning:1, siteSyncConfigured:2, remoteEnabled:3, startWithWindows:3, autoStartEnabled:1, launches:52, versionChanges:7, schedules:4, controllers:3 },
       activation:[{stage:'registered',count:5},{stage:'server_configured',count:3},{stage:'app_key_linked',count:4},{stage:'site_sync_configured',count:2},{stage:'usage_telemetry_opt_in',count:2}],
       health:{ api:'operational', database:{status:'ready'}, websocketConnections:2, latestSignalAt:installations[0].last_seen_at },
+      release:{ version:'1.1.5', tag:'v1.1.5', name:'Força Aliada Manager 1.1.5', assetName:'Forca-Aliada-Manager-Setup-1.1.5.exe', assetSize:100438956, downloadUrl:'https://github.com/ogabriels2/forca-aliada-releases/releases/download/v1.1.5/Forca-Aliada-Manager-Setup-1.1.5.exe', releasePageUrl:'https://github.com/ogabriels2/forca-aliada-releases/releases/tag/v1.1.5', source:'github-release-api', status:'ready', stale:false },
       distributions:{
         versions:[{name:'1.1.4',count:3},{name:'1.1.2',count:1},{name:'1.1.0',count:1}],
         operatingSystems:[{name:'Windows 11',count:3},{name:'Windows 10',count:2}],
@@ -171,12 +172,43 @@
   function renderKpis(data) {
     const summary = data.summary || {};
     const success = summary.syncSuccessRatePct;
-    document.getElementById('manager-kpis').innerHTML = [
+    const release = data.release || {};
+    const releasedVersion = release.version || summary.latestReleasedVersion || summary.latestVersion;
+    const trustedReleaseUrl = safeManagerReleaseUrl(release.downloadUrl);
+    const trustedPageUrl = safeManagerReleaseUrl(release.releasePageUrl) || 'https://github.com/ogabriels2/forca-aliada-releases/releases/latest';
+    const actionUrl = trustedReleaseUrl || trustedPageUrl;
+    const actionLabel = trustedReleaseUrl ? 'Baixar app' : 'Ver download';
+    const releaseDetail = releasedVersion
+      ? `${summary.latestVersionAdoptionPct || 0}% já usam · ${number.format(summary.outdatedInstallations || 0)} para atualizar${release.stale ? ' · confirmação em cache' : ''}`
+      : 'Publicação indisponível · abra a página de download';
+    const regularCards = [
       ['Conectados agora', number.format(summary.online || 0), summary.online ? 'Presença confirmada pelo backend' : 'Nenhum pulso dentro da janela segura'],
       ['Instalações', number.format(summary.totalInstallations || 0), `${number.format(summary.linkedInstallations || 0)} vinculadas · ${number.format(summary.active24h || 0)} ativas em 24 h`],
-      ['Versão atual', summary.latestVersion || 'Sem dados', summary.latestVersion ? `${summary.latestVersionAdoptionPct || 0}% das instalações nesta versão` : 'Aparece após a primeira conexão'],
-      ['Servidores ativos', number.format(summary.serverRunning || 0), `${number.format(summary.serverConfigured || 0)} configurados${success == null ? '' : ` · sync ${success}%`}`],
-    ].map(([label, value, detail]) => `<article class="manager-kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></article>`).join('');
+    ].map(([label, value, detail]) => `<article class="manager-kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></article>`);
+    const releaseCard = `<article class="manager-kpi manager-release-kpi"><span>Versão publicada</span><div class="manager-kpi-value-row"><strong>${esc(releasedVersion || 'Não confirmada')}</strong><a class="manager-download-button" href="${esc(actionUrl)}" ${trustedReleaseUrl ? 'download' : 'target="_blank"'} rel="noopener" title="${esc(`${actionLabel}${releasedVersion ? ` ${releasedVersion}` : ''}`)}"><i data-lucide="download" aria-hidden="true"></i>${esc(actionLabel)}</a></div><small>${esc(releaseDetail)}</small></article>`;
+    const serverCard = `<article class="manager-kpi"><span>Servidores ativos</span><strong>${esc(number.format(summary.serverRunning || 0))}</strong><small>${esc(`${number.format(summary.serverConfigured || 0)} configurados${success == null ? '' : ` · sync ${success}%`}`)}</small></article>`;
+    document.getElementById('manager-kpis').innerHTML = [...regularCards, releaseCard, serverCard].join('');
+  }
+
+  function safeManagerReleaseUrl(value) {
+    try {
+      const url = new URL(String(value || ''));
+      if (url.protocol !== 'https:' || url.hostname !== 'github.com') return '';
+      if (!url.pathname.startsWith('/ogabriels2/forca-aliada-releases/releases/')) return '';
+      return url.href;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function compareVersions(left, right) {
+    const parts = value => String(value || '').replace(/^v/i, '').split(/[.-]/).map(item => Number.parseInt(item, 10) || 0);
+    const a = parts(left);
+    const b = parts(right);
+    for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+      if ((a[index] || 0) !== (b[index] || 0)) return (a[index] || 0) - (b[index] || 0);
+    }
+    return 0;
   }
 
   function installationStatus(row) {
@@ -261,7 +293,8 @@
     return rows.filter(row => {
       if (state.filter === 'online' && !row.online) return false;
       const needsLink = row.server_configured && !isLinkedInstallation(row);
-      if (state.filter === 'attention' && row.online && row.app_version === latest && !row.last_error_code && !needsLink) return false;
+      const current = row.app_version && latest && compareVersions(row.app_version, latest) >= 0;
+      if (state.filter === 'attention' && row.online && current && !row.last_error_code && !needsLink) return false;
       if (!query) return true;
       return [row.device_name, row.app_version, row.os_family, row.key_name, row.control_mode, row.installation_id]
         .some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(query));

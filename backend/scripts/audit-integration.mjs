@@ -19,10 +19,12 @@ for (const file of modules) {
 
 const server = fs.readFileSync(path.join(sourceDir, 'server.mjs'), 'utf8');
 const manager = fs.readFileSync(path.join(sourceDir, 'manager_observability.mjs'), 'utf8');
+const managerRelease = fs.readFileSync(path.join(sourceDir, 'manager_release.mjs'), 'utf8');
 const worker = fs.readFileSync(path.join(root, '..', '_worker.js'), 'utf8');
 const workerRoutes = JSON.parse(fs.readFileSync(path.join(root, '..', '_routes.json'), 'utf8'));
 const dashboard = fs.readFileSync(path.join(root, '..', 'dashboard.html'), 'utf8');
 const managerDashboardCss = fs.readFileSync(path.join(root, '..', 'assets', 'css', 'dashboard-manager.css'), 'utf8');
+const managerDashboardJs = fs.readFileSync(path.join(root, '..', 'assets', 'js', 'dashboard-manager.js'), 'utf8');
 const requiredFragments = [
   "pathname === '/api/app/ws'",
   "url.pathname !== '/api/app/remote/ws'",
@@ -71,6 +73,12 @@ if (!/<div\b[^>]*class=["'][^"']*manager-console-header/.test(dashboard)) {
 }
 if (!managerDashboardCss.includes('#app-keys-card:not(.dashboard-card-active)')) {
   failures.push('pagina do Manager nao possui isolamento explicito das demais rotas do dashboard');
+}
+for (const fragment of ['github-release-api', 'electron-updater-metadata', 'Forca-Aliada-Manager-Setup-${version}.exe']) {
+  if (!managerRelease.includes(fragment)) failures.push(`fonte de release ausente: ${fragment}`);
+}
+if (!managerDashboardJs.includes('manager-download-button') || !managerDashboardJs.includes('release.downloadUrl')) {
+  failures.push('dashboard do Manager nao oferece download validado da versao publicada');
 }
 for (const fragment of [
   'CREATE TABLE IF NOT EXISTS manager_installations',
