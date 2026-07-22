@@ -5321,7 +5321,15 @@ app.post('/api/app/sync', async (req, res) => {
           ok: false,
           errorCode: 'SYNC_PROCESSING_FAILED',
         }).catch(() => {});
-        return res.status(500).json(managerEnvelope(req, { ok: false, code: 'SYNC_PROCESSING_FAILED', error: 'Falha na sincronização' }));
+        const diagnostic = String(req.headers['x-fa-debug-sync'] || '') === '1'
+          ? {
+              dbCode: String(err?.code || '').slice(0, 32) || null,
+              table: String(err?.table || '').slice(0, 64) || null,
+              column: String(err?.column || '').slice(0, 64) || null,
+              constraint: String(err?.constraint || '').slice(0, 96) || null,
+            }
+          : undefined;
+        return res.status(500).json(managerEnvelope(req, { ok: false, code: 'SYNC_PROCESSING_FAILED', error: 'Falha na sincronização', diagnostic }));
     }
 });
 
