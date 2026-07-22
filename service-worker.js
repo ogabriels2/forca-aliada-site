@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v49-auth-and-404';
+const CACHE_VERSION = 'fa-static-v50-community-routes';
 const CANONICAL_ORIGIN = 'https://forcaaliada.com';
 const LEGACY_HOSTS = new Set(['forcaaliada.ogabriels.com', 'www.forcaaliada.ogabriels.com']);
 const IS_LEGACY_ORIGIN = LEGACY_HOSTS.has(self.location.hostname);
@@ -30,7 +30,7 @@ const STATIC_ASSETS = [
   'assets/js/fa-design-system-20260615a.js',
   'assets/js/community-social-ui-20260614a.js',
   'assets/js/community-social-refinement-20260615a.js',
-  'assets/js/social-chat.js?v=chat16-20260718',
+  'assets/js/social-chat.js?v=chat17-20260722',
   'assets/css/fa-design-system.css',
   'assets/css/dashboard-v2.css?v=20260718b',
   'assets/css/dashboard-v3.css?v=20260716d',
@@ -89,9 +89,12 @@ self.addEventListener('fetch', event => {
 
   if (request.destination === 'document') {
     const isStaff = url.pathname.endsWith('/dashboard') || url.pathname.endsWith('/dashboard.html');
+    const isCommunity = url.pathname === '/community'
+      || url.pathname === '/community.html'
+      || url.pathname.startsWith('/community/');
     event.respondWith(fetch(request).catch(() => isStaff
       ? caches.match('staff-offline.html')
-      : caches.match(request).then(hit => hit || caches.match('index.html'))));
+      : caches.match(request).then(hit => hit || caches.match(isCommunity ? 'community.html' : 'index.html'))));
     return;
   }
 
@@ -106,7 +109,7 @@ self.addEventListener('fetch', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const base = IS_LEGACY_ORIGIN ? CANONICAL_ORIGIN : self.registration.scope;
-  const target = new URL(event.notification.data?.url || 'community.html?notifications=1', base).href;
+  const target = new URL(event.notification.data?.url || '/community/notifications', base).href;
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find(client => new URL(client.url).origin === self.location.origin);

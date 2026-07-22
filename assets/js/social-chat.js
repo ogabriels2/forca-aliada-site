@@ -2197,7 +2197,7 @@
     if (!postId) return;
     closePanel();
     if (typeof window.navigatePost === 'function') window.navigatePost(String(postId));
-    else location.href = `community.html?post=${encodeURIComponent(postId)}`;
+    else location.href = `/community/post/${encodeURIComponent(postId)}`;
   }
 
   async function openCommunityComment(commentId) {
@@ -2210,7 +2210,7 @@
     try {
       const data = await loadSocialPreview('comment', String(commentId));
       const postId = data?.root_comment?.post_id || data?.original_post?.id;
-      if (postId) location.href = `community.html?post=${encodeURIComponent(postId)}`;
+      if (postId) location.href = `/community/post/${encodeURIComponent(postId)}`;
     } catch {}
   }
 

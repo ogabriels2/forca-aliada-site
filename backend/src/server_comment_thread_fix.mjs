@@ -297,7 +297,7 @@ export function registerCommentThreadFix(app, pool, auth, helpers = {}) {
       const preview = String(comment.content || '').slice(0, 160);
 
       // Render a minimal SEO page that redirects to the community post thread
-      const communityUrl = `/community.html?post=${encodeURIComponent(postId)}&comment=${encodeURIComponent(commentId)}`;
+      const communityUrl = `/community/post/${encodeURIComponent(postId)}?comment=${encodeURIComponent(commentId)}`;
 
       res.set('Content-Type', 'text/html; charset=utf-8');
       res.send(`<!DOCTYPE html>

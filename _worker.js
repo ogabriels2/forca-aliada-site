@@ -3,6 +3,7 @@ const APP_ORIGIN = 'https://forcaaliada.com';
 const AUTH_ORIGIN = 'https://accounts.ogabriels.com';
 const APP_HOST = 'forcaaliada.com';
 const WWW_HOST = 'www.forcaaliada.com';
+const COMMUNITY_HOST = 'community.forcaaliada.com';
 const AUTH_HOST = 'accounts.ogabriels.com';
 const AUTH_ALIAS_HOST = 'account.ogabriels.com';
 const PAGES_HOST = 'forca-aliada-site.pages.dev';
@@ -157,17 +158,67 @@ function safeNext(value, fallback = '/dashboard') {
 }
 
 function legacyAppRouteTarget(requestUrl, pathname) {
-  const post = pathname.match(/^\/community\/post\/([^/]+)$/i);
-  const profile = pathname.match(/^\/profile\/([^/]+)$/i);
-  const notifications = /^\/community\/notifications$/i.test(pathname);
-  if (!post && !profile && !notifications) return null;
+  const isCommunityRoot = /^\/community(?:\.html)?$/i.test(pathname);
+  const legacyProfile = pathname.match(/^\/profile\/([^/]+)$/i);
+  if (!isCommunityRoot && !legacyProfile) return null;
 
   const target = new URL('/community', APP_ORIGIN);
-  for (const [key, value] of requestUrl.searchParams) target.searchParams.append(key, value);
-  if (post) target.searchParams.set('post', post[1]);
-  if (profile) target.searchParams.set('profile', profile[1]);
-  if (notifications) target.searchParams.set('notifications', '1');
+  target.search = requestUrl.search;
+
+  if (legacyProfile) {
+    target.pathname = `/community/profile/${encodeURIComponent(legacyProfile[1])}`;
+    return target;
+  }
+
+  const post = target.searchParams.get('post');
+  const profile = target.searchParams.get('profile');
+  const notifications = target.searchParams.get('notifications');
+  if (!post && !profile && notifications !== '1') return null;
+
+  if (post) target.pathname = `/community/post/${encodeURIComponent(post)}`;
+  else if (profile) target.pathname = `/community/profile/${encodeURIComponent(profile)}`;
+  else target.pathname = '/community/notifications';
+
+  target.searchParams.delete('post');
+  target.searchParams.delete('profile');
+  target.searchParams.delete('notifications');
   return target;
+}
+
+function isCommunityShellPath(pathname) {
+  return /^\/community\/(?:post|profile)\/[^/]+$/.test(pathname)
+    || pathname === '/community/notifications';
+}
+
+function communityShellRequest(request) {
+  const assetUrl = new URL('/community', request.url);
+  assetUrl.search = '';
+  assetUrl.hash = '';
+  return new Request(assetUrl, request);
+}
+
+function communityShortcutTarget(requestUrl, pathname) {
+  const shortEntity = pathname.match(/^\/(post|profile)\/([^/]+)$/i);
+  const canonicalEntity = pathname.match(/^\/community\/(post|profile)\/([^/]+)$/i);
+  let targetPath;
+  if (pathname === '/' || /^\/index\.html$/i.test(pathname)) {
+    targetPath = '/community';
+  } else if (/^\/community(?:\.html)?$/i.test(pathname)) {
+    targetPath = '/community';
+  } else if (shortEntity) {
+    targetPath = `/community/${shortEntity[1].toLowerCase()}/${encodeURIComponent(shortEntity[2])}`;
+  } else if (canonicalEntity) {
+    targetPath = `/community/${canonicalEntity[1].toLowerCase()}/${encodeURIComponent(canonicalEntity[2])}`;
+  } else if (/^\/community\//i.test(pathname)) {
+    targetPath = pathname;
+  } else {
+    targetPath = `/community${pathname}`;
+  }
+
+  const target = new URL(targetPath, APP_ORIGIN);
+  target.search = requestUrl.search;
+  target.hash = requestUrl.hash;
+  return legacyAppRouteTarget(target, targetPath) || target;
 }
 
 function authCookieName(state) {
@@ -423,14 +474,19 @@ export default {
     const routedRequest = new Request(routeUrl, request);
     const authAsset = authAssetFor(path);
 
+    if (host === COMMUNITY_HOST) {
+      return redirectTo(communityShortcutTarget(routeUrl, path), 301);
+    }
+
     if (host === WWW_HOST) {
-      const canonical = new URL(routeUrl);
+      const canonical = legacyAppRouteTarget(routeUrl, path) || new URL(routeUrl);
       canonical.hostname = APP_HOST;
       return redirectTo(canonical, 301);
     }
 
     if (host === PAGES_HOST) {
-      const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
+      const canonical = legacyAppRouteTarget(routeUrl, path)
+        || new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
       return redirectTo(canonical, 301);
     }
 
@@ -441,7 +497,8 @@ export default {
         authUrl.search = routeUrl.search;
         return redirectTo(authUrl, 302);
       }
-      const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
+      const canonical = legacyAppRouteTarget(routeUrl, path)
+        || new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
       return redirectTo(canonical, 301);
     }
 
@@ -489,7 +546,8 @@ export default {
       if (isDynamicPath(path)) return proxyToApi(routedRequest, routeUrl);
       if (path === '/404' || path === '/404.html') return brandedNotFound(env, routedRequest);
       if (!['GET', 'HEAD'].includes(request.method)) return notFound();
-      const assetResponse = await serveAsset(env, routedRequest);
+      const assetRequest = isCommunityShellPath(path) ? communityShellRequest(routedRequest) : routedRequest;
+      const assetResponse = await serveAsset(env, assetRequest);
       return assetResponse.status === 404
         ? brandedNotFound(env, routedRequest)
         : assetResponse;
@@ -507,7 +565,8 @@ export default {
       if (isDynamicPath(path)) return proxyToApi(routedRequest, routeUrl);
       if (path === '/404' || path === '/404.html') return brandedNotFound(env, routedRequest, { preview: true });
       if (!['GET', 'HEAD'].includes(request.method)) return notFound();
-      const assetResponse = await serveAsset(env, routedRequest, { preview: true });
+      const assetRequest = isCommunityShellPath(path) ? communityShellRequest(routedRequest) : routedRequest;
+      const assetResponse = await serveAsset(env, assetRequest, { preview: true });
       return assetResponse.status === 404
         ? brandedNotFound(env, routedRequest, { preview: true })
         : assetResponse;

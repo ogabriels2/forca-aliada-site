@@ -10,6 +10,12 @@ const accountSource = fs.readFileSync(path.resolve(here, '../../account.html'), 
 const loginSource = fs.readFileSync(path.resolve(here, '../../login.html'), 'utf8');
 const notFoundSource = fs.readFileSync(path.resolve(here, '../../404.html'), 'utf8');
 const buildSource = fs.readFileSync(path.resolve(here, '../../scripts/build-pages.mjs'), 'utf8');
+const communitySource = fs.readFileSync(path.resolve(here, '../../community.html'), 'utf8');
+const serviceWorkerSource = fs.readFileSync(path.resolve(here, '../../service-worker.js'), 'utf8');
+const communityManifestSource = fs.readFileSync(path.resolve(here, '../../community.webmanifest'), 'utf8');
+const pwaSource = fs.readFileSync(path.resolve(here, '../../assets/js/fa-pwa.js'), 'utf8');
+const socialChatSource = fs.readFileSync(path.resolve(here, '../../assets/js/social-chat.js'), 'utf8');
+const commentThreadSource = fs.readFileSync(path.resolve(here, '../src/server_comment_thread_fix.mjs'), 'utf8');
 const workerModule = await import(`data:text/javascript;base64,${Buffer.from(workerSource).toString('base64')}`);
 const worker = workerModule.default;
 
@@ -19,7 +25,7 @@ const env = {
     async fetch(request) {
       const assetPath = new URL(request.url).pathname;
       assetRequests.push(assetPath);
-      if (assetPath.startsWith('/missing/')) {
+      if (assetPath.startsWith('/missing/') || assetPath === '/community/not-a-route') {
         return new Response('asset missing', { status: 404 });
       }
       if (assetPath === '/404') {
@@ -28,7 +34,7 @@ const env = {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
         });
       }
-      return new Response('asset', { status: 200 });
+      return new Response(request.method === 'HEAD' ? null : 'asset', { status: 200 });
     },
   },
 };
@@ -55,7 +61,7 @@ try {
 
   const legacy = await worker.fetch(new Request('https://forcaaliada.ogabriels.com/community?post=9'), env);
   assert.equal(legacy.status, 301);
-  assert.equal(legacy.headers.get('location'), 'https://forcaaliada.com/community?post=9');
+  assert.equal(legacy.headers.get('location'), 'https://forcaaliada.com/community/post/9');
 
   const legacyWww = await worker.fetch(new Request('https://www.forcaaliada.ogabriels.com/guia'), env);
   assert.equal(legacyWww.status, 301);
@@ -64,6 +70,24 @@ try {
   const pages = await worker.fetch(new Request('https://forca-aliada-site.pages.dev/community'), env);
   assert.equal(pages.status, 301);
   assert.equal(pages.headers.get('location'), 'https://forcaaliada.com/community');
+
+  const communityShortcut = await worker.fetch(new Request('https://community.forcaaliada.com/?utm_source=shortcut'), env);
+  assert.equal(communityShortcut.status, 301);
+  assert.equal(communityShortcut.headers.get('location'), 'https://forcaaliada.com/community?utm_source=shortcut');
+
+  const communityPostShortcut = await worker.fetch(new Request('https://community.forcaaliada.com/post/42?comment=7'), env);
+  assert.equal(communityPostShortcut.status, 301);
+  assert.equal(communityPostShortcut.headers.get('location'), 'https://forcaaliada.com/community/post/42?comment=7');
+
+  const communityProfileShortcut = await worker.fetch(new Request('https://community.forcaaliada.com/community/profile/id%3A7?source=shortcut'), env);
+  assert.equal(communityProfileShortcut.status, 301);
+  assert.equal(communityProfileShortcut.headers.get('location'), 'https://forcaaliada.com/community/profile/id%3A7?source=shortcut');
+
+  for (const shortcutPath of ['/api/app/sync', '/service-worker.js', '/community.webmanifest']) {
+    const shortcutResponse = await worker.fetch(new Request(`https://community.forcaaliada.com${shortcutPath}`), env);
+    assert.equal(shortcutResponse.status, 301, `${shortcutPath} must never be served from the community shortcut`);
+    assert.match(shortcutResponse.headers.get('location') || '', /^https:\/\/forcaaliada\.com\/community\//);
+  }
 
   const authAlias = await worker.fetch(new Request('https://account.ogabriels.com/login?next=%2Faccount'), env);
   assert.equal(authAlias.status, 301);
@@ -222,16 +246,49 @@ try {
   assert.equal(upstreamRequests.at(-1).url, 'https://forca-aliada-site.onrender.com/api/app/sync');
 
   const postDeepLink = await worker.fetch(new Request('https://forcaaliada.com/community/post/42?comment=7'), env);
-  assert.equal(postDeepLink.status, 301);
-  assert.equal(postDeepLink.headers.get('location'), 'https://forcaaliada.com/community?comment=7&post=42');
+  assert.equal(postDeepLink.status, 200);
+  assert.equal(postDeepLink.headers.get('location'), null);
+  assert.equal(assetRequests.at(-1), '/community');
 
   const profileDeepLink = await worker.fetch(new Request('https://forcaaliada.com/profile/id%3A7'), env);
   assert.equal(profileDeepLink.status, 301);
-  assert.equal(profileDeepLink.headers.get('location'), 'https://forcaaliada.com/community?profile=id%3A7');
+  assert.equal(profileDeepLink.headers.get('location'), 'https://forcaaliada.com/community/profile/id%3A7');
+
+  const canonicalProfileDeepLink = await worker.fetch(new Request('https://forcaaliada.com/community/profile/id%3A7'), env);
+  assert.equal(canonicalProfileDeepLink.status, 200);
+  assert.equal(canonicalProfileDeepLink.headers.get('location'), null);
+  assert.equal(assetRequests.at(-1), '/community');
 
   const notificationsDeepLink = await worker.fetch(new Request('https://forcaaliada.com/community/notifications'), env);
-  assert.equal(notificationsDeepLink.status, 301);
-  assert.equal(notificationsDeepLink.headers.get('location'), 'https://forcaaliada.com/community?notifications=1');
+  assert.equal(notificationsDeepLink.status, 200);
+  assert.equal(notificationsDeepLink.headers.get('location'), null);
+  assert.equal(assetRequests.at(-1), '/community');
+
+  const postHead = await worker.fetch(new Request('https://forcaaliada.com/community/post/42', { method: 'HEAD' }), env);
+  assert.equal(postHead.status, 200);
+  assert.equal(await postHead.text(), '');
+  assert.equal(assetRequests.at(-1), '/community');
+
+  const previewDeepLink = await worker.fetch(new Request('https://preview-123.forca-aliada-site.pages.dev/community/post/42'), env);
+  assert.equal(previewDeepLink.status, 200);
+  assert.equal(assetRequests.at(-1), '/community');
+  assert.equal(previewDeepLink.headers.get('x-robots-tag'), 'noindex, nofollow');
+
+  const legacyPostQuery = await worker.fetch(new Request('https://forcaaliada.com/community?post=42&comment=7'), env);
+  assert.equal(legacyPostQuery.status, 301);
+  assert.equal(legacyPostQuery.headers.get('location'), 'https://forcaaliada.com/community/post/42?comment=7');
+
+  const legacyProfileQuery = await worker.fetch(new Request('https://forcaaliada.com/community.html?profile=id%3A7&source=legacy'), env);
+  assert.equal(legacyProfileQuery.status, 301);
+  assert.equal(legacyProfileQuery.headers.get('location'), 'https://forcaaliada.com/community/profile/id%3A7?source=legacy');
+
+  const legacyNotificationsQuery = await worker.fetch(new Request('https://forcaaliada.com/community?notifications=1&source=push'), env);
+  assert.equal(legacyNotificationsQuery.status, 301);
+  assert.equal(legacyNotificationsQuery.headers.get('location'), 'https://forcaaliada.com/community/notifications?source=push');
+
+  const unknownCommunityRoute = await worker.fetch(new Request('https://forcaaliada.com/community/not-a-route'), env);
+  assert.equal(unknownCommunityRoute.status, 404);
+  assert.match(await unknownCommunityRoute.text(), /data-page="not-found"/);
 
   for (const publicMissingPath of ['/missing/route', '/missing/nested/route', '/404', '/404.html']) {
     const missing = await worker.fetch(new Request(`https://forcaaliada.com${publicMissingPath}`), env);
@@ -253,6 +310,31 @@ try {
   assert.match(backendSource, /'Referrer-Policy': 'strict-origin'/);
   assert.match(buildSource, /'404\.html'/);
   assert.match(notFoundSource, /<meta name="robots" content="noindex,nofollow,noarchive">/);
+  assert.match(communitySource, /<base href="\/">/);
+  assert.match(communitySource, /`\/community\/post\/\$\{encodeURIComponent\(routeParams\.post\)\}`/);
+  assert.match(communitySource, /`\/community\/profile\/\$\{encodeURIComponent\(routeParams\.profile\)\}`/);
+  assert.match(communitySource, /url\.pathname = '\/community\/notifications'/);
+  assert.match(communitySource, /Router\.register\('\/community\/profile\/:id',renderProfileRoute\)/);
+  assert.match(communitySource, /\/api\/public\/community\/posts\/\$\{encodeURIComponent\(id\)\}/);
+  assert.match(communitySource, /\/api\/public\/community\/player\/\$\{encodeURIComponent\(identifier\)\}\/full-profile/);
+  assert.match(communitySource, /Promise\.resolve\(\{ comments: \[\], sort: 'oldest', has_more: false, next_cursor: null, guest_preview: true \}\)/);
+  assert.match(communitySource, /if \(!token\) \{\s*const responseCount = Number\(post\?\.comments_count \|\| 0\)/);
+  assert.match(communitySource, /Participe desta conversa/);
+  assert.match(communitySource, /data-profile-guest>Entrar para interagir/);
+  assert.doesNotMatch(communitySource, /if\(!token\)\{location\.href=`share\/post\/\$\{encodeURIComponent\(id\)\}`;return\}/);
+  assert.match(communitySource, /new URL\(authPath, location\.origin\)/);
+  assert.match(communitySource, /navigator\.serviceWorker\.register\('\/service-worker\.js',\{scope:'\/'\}\)/);
+  assert.match(communitySource, /id="guest-notifications-title">Suas notificações vivem aqui/);
+  assert.match(serviceWorkerSource, /fa-static-v50-community-routes/);
+  assert.match(serviceWorkerSource, /caches\.match\(isCommunity \? 'community\.html' : 'index\.html'\)/);
+  assert.match(communityManifestSource, /"start_url": "\/community\?source=pwa"/);
+  assert.match(communityManifestSource, /"url": "\/community\/notifications"/);
+  assert.match(pwaSource, /register\('\/service-worker\.js', \{ scope: '\/' \}\)/);
+  assert.match(communitySource, /fa-pwa\.js\?v=pwa5-20260722/);
+  assert.match(communitySource, /social-chat\.js\?v=chat17-20260722/);
+  assert.match(serviceWorkerSource, /social-chat\.js\?v=chat17-20260722/);
+  assert.doesNotMatch(socialChatSource, /community\.html\?post=/);
+  assert.match(commentThreadSource, /`\/community\/post\/\$\{encodeURIComponent\(postId\)\}\?comment=/);
 
   assert.doesNotMatch(backendSource, /[?&]oauth_(?:token|onboard)=/);
   assert.doesNotMatch(accountSource, /[?&]link_token=/);

@@ -4,7 +4,7 @@
   "short_name": "FA Community",
   "description": "Feed, perfis, conversas e atividades da comunidade Força Aliada.",
   "lang": "pt-BR",
-  "start_url": "/community.html?source=pwa",
+  "start_url": "/community?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#060c16",
@@ -16,8 +16,8 @@
     { "src": "assets/images/app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Abrir feed", "short_name": "Feed", "url": "/community.html", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Notificações", "short_name": "Notificações", "url": "/community.html?notifications=1", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Abrir feed", "short_name": "Feed", "url": "/community", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Notificações", "short_name": "Notificações", "url": "/community/notifications", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Minha conta", "short_name": "Conta", "url": "/account.html", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

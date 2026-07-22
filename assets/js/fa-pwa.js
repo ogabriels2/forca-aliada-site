@@ -36,7 +36,7 @@
   const isEligibleSession = () => Number(localStorage.getItem(sessionCountKey) || 0) >= 3;
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js', { scope: './' }).catch(() => {}));
+    window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(() => {}));
   }
 
   if (isStandalone) {

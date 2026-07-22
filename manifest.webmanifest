@@ -16,7 +16,7 @@
     { "src": "assets/images/app-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "FA Community", "short_name": "Community", "url": "/community.html", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "FA Community", "short_name": "Community", "url": "/community", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Minha conta", "short_name": "Conta", "url": "/account.html", "icons": [{ "src": "assets/images/app-icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

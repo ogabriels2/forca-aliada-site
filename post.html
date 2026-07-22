@@ -10,7 +10,7 @@
 <meta name="application-name" content="FA Community">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Community">
-<script defer src="assets/js/fa-pwa.js" data-fa-app="community"></script>
+<script defer src="assets/js/fa-pwa.js?v=pwa5-20260722" data-fa-app="community"></script>
 <script defer src="assets/js/fa-seo.js"></script>
 <title>Post | Forca Aliada</title>
 <meta name="description" content="Publicacao publica da comunidade Forca Aliada.">
@@ -388,7 +388,7 @@ function renderPost(post, id) {
   const author = authorName(post);
   const imgs = mediaUrls(post);
   updateSeo(post, id);
-  const fullThread = `community.html?post=${encodeURIComponent(id)}`;
+  const fullThread = `/community/post/${encodeURIComponent(id)}`;
   const enterUrl = loginUrl(fullThread);
   const profileUrl = `profile.html?id=${encodeURIComponent(profileIdentifier(post))}`;
   document.getElementById('account-link').href = token ? 'account.html' : enterUrl;

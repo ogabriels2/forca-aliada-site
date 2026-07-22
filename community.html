@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base href="/">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/images/app-icons/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/images/app-icons/apple-touch-180.png">
 <link rel="manifest" href="community.webmanifest">
@@ -10,7 +11,7 @@
 <meta name="application-name" content="FA Community">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FA Community">
-<script defer src="assets/js/fa-pwa.js?v=pwa4-20260614" data-fa-app="community"></script>
+<script defer src="assets/js/fa-pwa.js?v=pwa5-20260722" data-fa-app="community"></script>
 <script defer src="assets/js/fa-seo.js"></script>
 <!-- Cache-Control: HTML nunca deve ser cacheado para garantir que JS/CSS atualizados sejam carregados -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1024,6 +1025,19 @@ img{display:block}
   background:var(--surface);box-shadow:var(--shadow-sm);
   padding:9px;
 }
+.thread-guest-cta{
+  display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;
+  border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line));border-radius:var(--r-lg);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent-soft) 72%,var(--surface)),var(--surface));
+  box-shadow:var(--shadow-sm);padding:13px 14px;
+}
+.thread-guest-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:var(--accent-soft);color:var(--accent)}
+.thread-guest-icon svg{width:21px;height:21px}
+.thread-guest-copy{min-width:0}
+.thread-guest-copy strong{display:block;font-size:13.5px;font-weight:900;color:var(--ink)}
+.thread-guest-copy p{margin:3px 0 0;color:var(--ink-2);font-size:12.5px;line-height:1.45}
+.thread-guest-actions{display:flex;gap:8px;align-items:center}
+.thread-guest-actions .btn{white-space:nowrap}
 .reply-ta{
   width:100%;min-height:40px;max-height:130px;resize:none;outline:none;
   padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-sm);
@@ -1815,6 +1829,10 @@ button.pstat:hover{border-color:var(--accent);background:var(--accent-soft)}
   .thread-hero{padding:12px}
   .reply-bar{grid-template-columns:36px minmax(0,1fr);grid-template-rows:auto auto}
   .reply-bar .btn{grid-column:2}
+  .thread-guest-cta{grid-template-columns:40px minmax(0,1fr);align-items:start;padding:12px}
+  .thread-guest-icon{width:40px;height:40px}
+  .thread-guest-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .thread-guest-actions .btn{justify-content:center}
   .post-actions{gap:0}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
@@ -3519,7 +3537,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="community.html" aria-label="Início da comunidade" data-spa-home>
+    <a class="brand" href="/community" aria-label="Início da comunidade" data-spa-home>
       <span class="brand-mark" aria-hidden="true">
         <img class="brand-logo" id="brand-logo-img" src="assets/images/fa-icon-dark.png" alt="" width="72" height="72">
       </span>
@@ -3548,7 +3566,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
             <button class="btn btn-ghost btn-sm" id="mark-read-btn">Ler tudo</button>
           </div>
           <div class="notif-list" id="notif-list"></div>
-          <a class="notif-foot" href="community.html?notifications=1" data-notification-route>Ver todas →</a>
+          <a class="notif-foot" href="/community/notifications" data-notification-route>Ver todas →</a>
         </div>
       </div>
       <button class="tbtn" id="theme-btn" aria-label="Alternar tema">
@@ -3614,7 +3632,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg>
         Seguindo
       </button>
-      <a class="rnav-item" id="social-notif-nav" href="community.html?notifications=1" data-notification-route>
+      <a class="rnav-item" id="social-notif-nav" href="/community/notifications" data-notification-route>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Notificações
         <span class="rnav-badge" id="nav-notif-badge" hidden></span>
@@ -3823,7 +3841,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
       <button class="mobile-drawer-item is-active" type="button" data-drawer-filter="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/></svg><span>Feed geral</span></button>
       <button class="mobile-drawer-item" type="button" data-drawer-filter="following"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11l2 2 4-4"/></svg><span>Seguindo</span></button>
       <button class="mobile-drawer-item" type="button" id="drawer-search-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Buscar</span></button>
-      <a class="mobile-drawer-item" href="community.html?notifications=1" data-notification-route><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificações</span><span class="rnav-badge" id="drawer-notif-badge" hidden></span></a>
+      <a class="mobile-drawer-item" href="/community/notifications" data-notification-route><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notificações</span><span class="rnav-badge" id="drawer-notif-badge" hidden></span></a>
     </nav>
     <div class="mobile-drawer-season network-card">
       <p class="eyebrow">Agora na rede</p>
@@ -4278,9 +4296,10 @@ function currentAuthNextPath(){
 }
 function authUrlForCurrentPage(page){
   const here = currentAuthNextPath();
-  const url = new URL(page, location.href);
+  const authPath = String(page||'login').toLowerCase().includes('signup') ? '/signup' : '/login';
+  const url = new URL(authPath, location.origin);
   url.searchParams.set('next', here);
-  return `${url.pathname.replace(/^\//,'')}${url.search}`;
+  return `${url.pathname}${url.search}`;
 }
 function loginUrlForCurrentPage(){
   return authUrlForCurrentPage('login.html');
@@ -4531,13 +4550,22 @@ function verifiedBadgeHTML(p){
 }function rankSuffix(rank,merit){const rk=rankInfo(rank,merit);return rk.label?` · ${esc(rk.label)}`:''}
 function communityUrl(params={}){
   const url = new URL('/community', location.origin);
-  Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
+  const routeParams = {...params};
+  if(routeParams.post !== undefined && routeParams.post !== null && routeParams.post !== ''){
+    url.pathname = `/community/post/${encodeURIComponent(routeParams.post)}`;
+    delete routeParams.post; delete routeParams.profile; delete routeParams.notifications;
+  }else if(routeParams.profile !== undefined && routeParams.profile !== null && routeParams.profile !== ''){
+    url.pathname = `/community/profile/${encodeURIComponent(routeParams.profile)}`;
+    delete routeParams.profile; delete routeParams.notifications;
+  }else if(String(routeParams.notifications||'') === '1'){
+    url.pathname = '/community/notifications';
+    delete routeParams.notifications;
+  }
+  Object.entries(routeParams).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
   return url.pathname + url.search;
 }
 function communityShareUrl(params={}){
-  const url = new URL('/community', location.origin);
-  Object.entries(params).forEach(([key,value])=>{ if(value !== undefined && value !== null && value !== '') url.searchParams.set(key, value); });
-  return url.href;
+  return new URL(communityUrl(params), location.origin).href;
 }
 const FEED_SCROLL_KEY = 'fa_community_feed_scroll_v2';
 function rememberFeedScroll(){
@@ -4607,9 +4635,23 @@ const Router={
   dispatch(path=location.pathname + location.search){
     const url = new URL(path, location.origin);
     const query = url.searchParams;
-    if(query.get('post')){setMobileNavActive('none');return this.routes['/community/post/:id']?.(query.get('post'));}
-    if(query.get('profile')){setMobileNavActive('profile');return this.routes['/profile/:id']?.(query.get('profile'));}
-    if(query.get('notifications') === '1'){setMobileNavActive('none');return renderNotificationsRoute();}
+    const routePath=(url.pathname.replace(/\/+$/,'')||'/community');
+    const isLegacyQueryRoute=routePath==='/community'||routePath==='/community.html';
+    if(isLegacyQueryRoute&&query.get('post')){
+      const id=query.get('post'), params=Object.fromEntries(query.entries());
+      history.replaceState(history.state,document.title,communityUrl(params));
+      setMobileNavActive('none');return this.routes['/community/post/:id']?.(id);
+    }
+    if(isLegacyQueryRoute&&query.get('profile')){
+      const id=query.get('profile'), params=Object.fromEntries(query.entries());
+      history.replaceState(history.state,document.title,communityUrl(params));
+      setMobileNavActive('profile');return this.routes['/community/profile/:id']?.(id);
+    }
+    if(isLegacyQueryRoute&&query.get('notifications') === '1'){
+      const params=Object.fromEntries(query.entries());
+      history.replaceState(history.state,document.title,communityUrl(params));
+      setMobileNavActive('none');return renderNotificationsRoute();
+    }
     if(query.get('search') === '1'){setMobileNavActive('search');return showSearchPage('');}
     if(query.get('tag')){setMobileNavActive('search');return showHashtagRoute(query.get('tag'));}
     if(query.get('q')){setMobileNavActive('search');return showSearchRoute(query.get('q'));}
@@ -4618,7 +4660,7 @@ const Router={
       const rx=new RegExp('^'+pat.replace(/:[^/]+/g,'([^/]+)').replace(/\//g,'\\/')+'$');
       const m=p.match(rx);
       if(m){
-        if(pat==='/profile/:id') setMobileNavActive('profile');
+        if(pat==='/community/profile/:id'||pat==='/profile/:id') setMobileNavActive('profile');
         else if(pat==='/community') setMobileNavActive('home');
         else setMobileNavActive('none');
         return fn(...m.slice(1).map(decodeURIComponent));
@@ -5192,7 +5234,7 @@ function mobileNavModeFromLocation(path=location.href){
   if(query.get('search')==='1'||query.get('q')||query.get('tag')) return 'search';
   if(query.get('post')||query.get('notifications')==='1') return 'none';
   const clean=(url.pathname.replace(/\/+$/,'')||'/community');
-  if(clean==='/profile'||clean.startsWith('/profile/')) return 'profile';
+  if(clean==='/profile'||clean.startsWith('/profile/')||clean.startsWith('/community/profile/')) return 'profile';
   if(clean.endsWith('/community')||clean.endsWith('/community.html')) return 'home';
   return 'home';
 }
@@ -7589,8 +7631,12 @@ async function renderPostRoute(id){
   `);
   try{
     const [postResult, commentsResult] = await Promise.allSettled([
-      api(`/api/community/posts/${encodeURIComponent(id)}`),
-      api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=oldest`)
+      api(token
+        ? `/api/community/posts/${encodeURIComponent(id)}`
+        : `/api/public/community/posts/${encodeURIComponent(id)}`),
+      token
+        ? api(`/api/community/posts/${encodeURIComponent(id)}/comments?sort=oldest`)
+        : Promise.resolve({ comments: [], sort: 'oldest', has_more: false, next_cursor: null, guest_preview: true })
     ]);
     if (postResult.status !== 'fulfilled') throw postResult.reason || new Error('Post indisponivel');
     const post = postResult.value;
@@ -7645,7 +7691,7 @@ async function renderPostRoute(id){
                   <div class="post-menu" role="menu">
                     ${staff?`<button class="pm-item" data-action="${post.is_pinned?'unpin-thread':'pin-thread'}">${IC.pin} ${post.is_pinned?'Desfixar':'Fixar'}</button>`:''}
                     ${canEdit?`<button class="pm-item" data-action="edit-thread">${IC.edit} Editar</button>`:''}
-                    ${canManage?`<button class="pm-item danger" data-action="delete-thread">${IC.trash} Excluir</button>`:staff?`<button class="pm-item danger" data-action="admin-delete-thread">${IC.trash} Remover como staff</button>`:`<button class="pm-item" data-action="report-thread">${IC.flag} Denunciar</button>`}
+                    ${canManage?`<button class="pm-item danger" data-action="delete-thread">${IC.trash} Excluir</button>`:staff?`<button class="pm-item danger" data-action="admin-delete-thread">${IC.trash} Remover como staff</button>`:token?`<button class="pm-item" data-action="report-thread">${IC.flag} Denunciar</button>`:''}
                     <button class="pm-item" data-action="copy-thread">${IC.link} Copiar link</button>
                   </div>
                 </div>
@@ -7668,14 +7714,18 @@ async function renderPostRoute(id){
           </div>
         </div>
       </div>
-      <div class="reply-bar" id="reply-bar">
-        <img class="av42" src="${esc(state.me?avatar(state.me,50):fallbackAvatar('Jogador',50))}" alt="Seu avatar" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(state.me),50)}'">
+      ${token?`<div class="reply-bar" id="reply-bar">
+        <img class="av42" src="${esc(avatar(state.me,50))}" alt="Seu avatar" onerror="this.onerror=null; this.src='${fallbackAvatar(displayName(state.me),50)}'">
         <div class="comment-reply-editor">
           <textarea class="reply-ta" id="reply-ta" maxlength="280" placeholder="Responder com até 280 caracteres…" aria-label="Escrever resposta"></textarea>
           ${commentMediaToolsHTML('thread')}
         </div>
         <button class="btn btn-primary btn-sm" id="reply-btn">Responder</button>
-      </div>
+      </div>`:`<section class="thread-guest-cta" aria-labelledby="thread-guest-title">
+        <span class="thread-guest-icon" aria-hidden="true">${IC.comment}</span>
+        <div class="thread-guest-copy"><strong id="thread-guest-title">Participe desta conversa</strong><p>Entre ou crie sua conta para ver as respostas, curtir e responder sem perder este post.</p></div>
+        <div class="thread-guest-actions"><a class="btn btn-primary btn-sm" href="${esc(loginUrlForCurrentPage())}">Entrar</a><a class="btn btn-secondary btn-sm" href="${esc(signupUrlForCurrentPage())}">Criar conta</a></div>
+      </section>`}
       <div id="thread-comments"></div>
     `;
     renderThreadComments(comments, id, post, commentsNextCursor, commentsHasMore, commentsSort, commentsResp?.error || '');
@@ -7691,13 +7741,14 @@ function addThreadLikersRepostersBtns(post,id){
   const targetId=post.repost_of_id||id;
   const likesBtn=$('#thread-likes-btn');
   const repostsBtn=$('#thread-reposts-btn');
-  if(likesBtn)likesBtn.addEventListener('click',()=>showSocialSheet(targetId,'likes'));
-  if(repostsBtn)repostsBtn.addEventListener('click',()=>showSocialSheet(targetId,'reposts'));
+  if(likesBtn)likesBtn.addEventListener('click',()=>token?showSocialSheet(targetId,'likes'):promptGuestAccount('like'));
+  if(repostsBtn)repostsBtn.addEventListener('click',()=>token?showSocialSheet(targetId,'reposts'):promptGuestAccount('repost'));
   // Also bind thread repost button
   const repostBtn=$('#thread-repost-btn');
   if(repostBtn){
     repostBtn.addEventListener('click',e=>{
       e.stopPropagation();
+      if(!token){promptGuestAccount('repost');return}
       if(repostBtn.classList.contains('is-on'))toggleRepost(targetId,repostBtn);
       else openRepostPopover(targetId,repostBtn);
     });
@@ -7721,7 +7772,7 @@ function bindThreadEvents(post,id){
     if(act==='edit-thread'){editThreadPost(post,id);return}
     if(act==='delete-thread'){deletePost(id);return}
     if(act==='admin-delete-thread'){moderateDeletePost(id);return}
-    if(act==='report-thread'){reportContent('post',id);return}
+    if(act==='report-thread'){if(!token){promptGuestAccount();return}reportContent('post',id);return}
     if(act==='copy-thread'){copyLink(id);return}
   });
   // ── Like em comentário ──
@@ -7760,6 +7811,7 @@ function bindThreadEvents(post,id){
     navigateCommentThread(openBtn.dataset.openCommentThread, id);
   });
   $('#thread-like')?.addEventListener('click',async()=>{
+    if(!token){promptGuestAccount('like');return}
     const btn=$('#thread-like');const liked=Boolean(post.liked_by_me);
     post.liked_by_me=!liked;post.likes_count=Math.max(0,Number(post.likes_count||0)+(liked?-1:1));
     btn.classList.toggle('is-on',post.liked_by_me);btn.classList.add('popping');
@@ -7943,6 +7995,12 @@ async function showSocialSheet(postId,startTab='likes'){
 function renderThreadComments(comments, postId, post, nextCursor, hasMore, sort = 'oldest', loadError = '') {
   const wrap = $('#thread-comments');
   if (!wrap) return;
+
+  if (!token) {
+    const responseCount = Number(post?.comments_count || 0);
+    wrap.innerHTML = `<div class="empty-card"><div class="empty-icon">${IC.comment}</div><h3>${responseCount > 0 ? `${num(responseCount)} ${responseCount === 1 ? 'resposta' : 'respostas'} aguardando` : 'Ainda não há respostas'}</h3><p>${responseCount > 0 ? 'Entre para ler todas as respostas e continuar a conversa.' : 'Entre para ser a primeira pessoa a responder esta thread.'}</p></div>`;
+    return;
+  }
 
   const sorts = [
     { key: 'oldest',    label: 'Ordem' },
@@ -8220,7 +8278,9 @@ async function renderProfileRoute(identifier){
   `);
   const routeCol=$('#route-col');
   try{
-    const data=await api(`/api/community/player/${encodeURIComponent(identifier)}/full-profile`);
+    const data=await api(token
+      ? `/api/community/player/${encodeURIComponent(identifier)}/full-profile`
+      : `/api/public/community/player/${encodeURIComponent(identifier)}/full-profile`);
     state.profileIdentifier=identifier;
     state.profileData=data;
     const prof=data.profile||{};
@@ -8301,8 +8361,8 @@ async function renderProfileRoute(identifier){
           <div class="profile-topline">
             <img class="profile-av" src="${esc(avatar(prof,140))}" alt="${esc(shown)}" onerror="this.onerror=null; this.src='${fallbackAvatar(shown,140)}'">
             <div class="profile-actions-row">
-              ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}" aria-pressed="${prof.is_following?'true':'false'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
-              ${isMe?'':`<button class="btn btn-secondary profile-notif-btn ${prof.notification_level&&prof.notification_level!=='off'?'is-on':''}" data-pf-notifs data-uid="${esc(prof.id)}" data-level="${esc(prof.notification_level||'off')}" aria-label="Notificações deste perfil" title="Notificações deste perfil" ${prof.is_following?'':'hidden'}>${IC.bell||IC.info}</button><button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
+              ${isMe?'<button class="btn btn-primary" data-profile-edit>Editar perfil</button><a class="btn btn-secondary" href="account.html">Conta</a>':!token?'<button class="btn btn-primary" data-profile-guest>Entrar para interagir</button>':`<button class="btn btn-primary" data-pf-follow data-uid="${esc(prof.id)}" data-on="${prof.is_following?'1':'0'}" aria-pressed="${prof.is_following?'true':'false'}">${prof.is_blocked_by_me?'Bloqueado':prof.is_friend?'Amigo':prof.is_following?'Seguindo':'Seguir'}</button><button class="btn btn-secondary" data-pf-message data-uid="${esc(prof.id)}" data-name="${esc(mc)}">Mensagem</button>`}
+              ${isMe||!token?'':`<button class="btn btn-secondary profile-notif-btn ${prof.notification_level&&prof.notification_level!=='off'?'is-on':''}" data-pf-notifs data-uid="${esc(prof.id)}" data-level="${esc(prof.notification_level||'off')}" aria-label="Notificações deste perfil" title="Notificações deste perfil" ${prof.is_following?'':'hidden'}>${IC.bell||IC.info}</button><button class="btn btn-secondary" data-pf-report data-uid="${esc(prof.id)}" aria-label="Denunciar">${IC.flag}</button><button class="btn btn-danger btn-sm" data-pf-block data-uid="${esc(prof.id)}">${prof.is_blocked_by_me?'Desbloquear':'Bloquear'}</button>`}
             </div>
           </div>
           <div class="profile-name-row">
@@ -8363,17 +8423,18 @@ async function renderProfileRoute(identifier){
         if(target) target.innerHTML=renderTab(tab);
         return;
       }
+      if(e.target.closest('[data-profile-guest]')){promptGuestAccount('friend');return}
       const rf=e.target.closest('[data-pf-follow]');
-      if(rf){const on=rf.dataset.on==='1';toggleFollowUser(rf.dataset.uid,on,rf);return}
+      if(rf){if(!token){promptGuestAccount('friend');return}const on=rf.dataset.on==='1';toggleFollowUser(rf.dataset.uid,on,rf);return}
       const pn=e.target.closest('[data-pf-notifs]');
-      if(pn){openProfileNotificationPreference(pn);return}
+      if(pn){if(!token){promptGuestAccount('friend');return}openProfileNotificationPreference(pn);return}
       const msg=e.target.closest('[data-pf-message]');
-      if(msg){window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
+      if(msg){if(!token){promptGuestAccount('friend');return}window.FAChat?.openWithUser({id:msg.dataset.uid,minecraft_name:msg.dataset.name});return}
       if(e.target.closest('[data-profile-edit]')){openCommunityProfileEditor();return}
-      const rr=e.target.closest('[data-pf-report]');if(rr){reportContent('user',rr.dataset.uid);return}
+      const rr=e.target.closest('[data-pf-report]');if(rr){if(!token){promptGuestAccount();return}reportContent('user',rr.dataset.uid);return}
       const rb=e.target.closest('[data-pf-block]');
-      if(rb){const unblock=rb.textContent.trim().toLowerCase().includes('desbloquear');blockUser(rb.dataset.uid,unblock);return}
-      const rl=e.target.closest('[data-rel]');if(rl){openRelModal(rl.dataset.rel,rl.dataset.mc,rl.dataset.uid);return}
+      if(rb){if(!token){promptGuestAccount();return}const unblock=rb.textContent.trim().toLowerCase().includes('desbloquear');blockUser(rb.dataset.uid,unblock);return}
+      const rl=e.target.closest('[data-rel]');if(rl){if(!token){promptGuestAccount('friend');return}openRelModal(rl.dataset.rel,rl.dataset.mc,rl.dataset.uid);return}
       const jp=e.target.closest('.js-profile');
       if(jp&&!e.target.closest('button')){const uid2=jp.dataset.uid||jp.closest('[data-uid]')?.dataset.uid;const mc2=jp.dataset.mc||jp.closest('[data-mc]')?.dataset.mc;const identifier2=uid2?`id:${uid2}`:mc2;if(identifier2)navigateProfile(identifier2);return}
       const searchPost=e.target.closest('[data-search-post]');if(searchPost){navigatePost(searchPost.dataset.searchPost);return}
@@ -9076,7 +9137,7 @@ let browserNotifRegistration=null;
 async function ensureBrowserNotificationRegistration(){
   if(!('serviceWorker'in navigator))return null;
   if(browserNotifRegistration)return browserNotifRegistration;
-  browserNotifRegistration=await navigator.serviceWorker.register('service-worker.js',{scope:'./'});
+  browserNotifRegistration=await navigator.serviceWorker.register('/service-worker.js',{scope:'/'});
   return browserNotifRegistration;
 }
 function browserNotificationState(){
@@ -9107,7 +9168,7 @@ async function requestBrowserNotifications(){
   renderNotifs();
   if(permission==='granted'){
     toast('success','Notificações ativadas','Você receberá avisos de novas interações.');
-    await browserNotifRegistration?.showNotification('Força Aliada',{body:'Tudo certo. As notificações da comunidade estão ativas.',icon:'assets/images/fa-icon-dark.png',badge:'assets/images/fa-icon-dark.png',tag:'fa-notifications-enabled',data:{url:'community.html?notifications=1'}});
+    await browserNotifRegistration?.showNotification('Força Aliada',{body:'Tudo certo. As notificações da comunidade estão ativas.',icon:'assets/images/fa-icon-dark.png',badge:'assets/images/fa-icon-dark.png',tag:'fa-notifications-enabled',data:{url:'/community/notifications'}});
   }else if(permission==='denied')toast('warning','Permissão bloqueada','Você pode liberar a permissão nas configurações do navegador.');
 }
 function browserNotificationUrl(n){
@@ -9208,6 +9269,25 @@ function renderNotificationsRoute(){
   document.title='Notificações da rede | Força Aliada';
   setRailActive('notifications');
   setMobileNavActive('none');
+  if(!token){
+    showRouteUI(`
+      <div class="route-top">
+        <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
+        <span class="crumb-path">Rede / Notificações</span>
+      </div>
+      <section class="empty-card" aria-labelledby="guest-notifications-title">
+        <div class="empty-icon">${IC.bell||IC.info}</div>
+        <h1 id="guest-notifications-title">Suas notificações vivem aqui</h1>
+        <p>Entre para acompanhar respostas, curtidas, amizades e outras interações da Community.</p>
+        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px">
+          <a class="btn btn-primary" href="${esc(loginUrlForCurrentPage())}">Entrar</a>
+          <a class="btn btn-secondary" href="${esc(signupUrlForCurrentPage())}">Criar conta</a>
+        </div>
+      </section>
+    `);
+    $('#route-col')?.addEventListener('click',event=>{if(event.target.closest('[data-back]'))Router.navigate('/community')},{once:true});
+    return;
+  }
   showRouteUI(`
     <div class="route-top">
       <button class="btn btn-ghost btn-sm" data-back>${IC.back} Voltar</button>
@@ -9974,7 +10054,7 @@ function bindEvents(){
         if(a==='show-likers'){e.stopPropagation();showSocialSheet(id,'likes');return}
         if(a==='show-reposters'){e.stopPropagation();showSocialSheet(id,'reposts');return}
         if(a==='comment'){e.preventDefault();openQuickCommentComposer(id);return}
-        if(a==='open-thread'){e.preventDefault();if(!token){location.href=`share/post/${encodeURIComponent(id)}`;return}navigatePost(id);return}
+        if(a==='open-thread'){e.preventDefault();navigatePost(id);return}
         if(a==='repost'){
           const repostBtn=act.closest('.pa-repost');
           if(repostBtn?.classList.contains('is-on'))toggleRepost(id,repostBtn);
@@ -9999,7 +10079,6 @@ function bindEvents(){
         // Don't navigate if the user was selecting text (click+drag to highlight)
         const sel=window.getSelection();
         if(sel&&sel.toString().length>0) return;
-        if(!token){location.href=`share/post/${encodeURIComponent(id)}`;return}
         navigatePost(id);
       }
     }
@@ -10613,6 +10692,7 @@ Router.register('/community',showFeedRoute);
 Router.register('/community.html',showFeedRoute);
 Router.register('/community/post/:id',renderPostRoute);
 Router.register('/community/notifications',renderNotificationsRoute);
+Router.register('/community/profile/:id',renderProfileRoute);
 Router.register('/profile/:id',renderProfileRoute);
 
 async function boot(){
@@ -10658,7 +10738,7 @@ boot();
 <script src="assets/js/community-evolution-20260615a.js?v=20260705f"></script>
 <script src="assets/js/community-social-ui-20260614a.js?v=20260614a"></script>
 <script src="assets/js/community-social-refinement-20260615a.js?v=20260705a"></script>
-<script src="assets/js/social-chat.js?v=chat16-20260718"></script>
+<script src="assets/js/social-chat.js?v=chat17-20260722"></script>
 <!-- community_comments_fix.js removido: todas as correções integradas diretamente -->
 <script>
 /* ── Detector de HTML/JS cacheado ──────────────────────────────────────────
