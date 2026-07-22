@@ -4829,7 +4829,7 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
              player, entered_at, origin, origin_installation_id,
              origin_transport, origin_confidence
            )
-           SELECT candidate.player, $2, 'app', $3, $4, 'verified'
+           SELECT candidate.player, $2::timestamptz, 'app', $3::text, $4::varchar, 'verified'
              FROM unnest($1::text[]) AS candidate(player)
             WHERE NOT EXISTS (
               SELECT 1 FROM player_sessions active
