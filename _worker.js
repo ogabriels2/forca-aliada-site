@@ -41,9 +41,39 @@ const AUTH_PATHS = new Map([
   ['/recuperar.html', '/recuperar.html'],
 ]);
 
+function canonicalPathname(pathname) {
+  let value = String(pathname || '/');
+
+  // URL.pathname intentionally preserves escaped separators and some escaped
+  // characters. Decode repeatedly so encoded/double-encoded private paths
+  // cannot bypass route classification. Invalid or excessively nested
+  // encodings are rejected instead of falling through to the SPA shell.
+  for (let round = 0; round < 8; round += 1) {
+    let decoded;
+    try {
+      decoded = decodeURIComponent(value);
+    } catch {
+      return '';
+    }
+    if (decoded === value) break;
+    value = decoded;
+  }
+  if (/%[0-9a-f]{2}/i.test(value) || /[\u0000-\u001f\u007f]/.test(value)) return '';
+
+  const segments = [];
+  for (const segment of value.replace(/\\/g, '/').replace(/\/{2,}/g, '/').split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  return `/${segments.join('/')}` || '/';
+}
+
 function normalizedPathname(pathname) {
-  const value = String(pathname || '/').toLowerCase();
-  return value.length > 1 ? value.replace(/\/+$/, '') : value;
+  return canonicalPathname(pathname).toLowerCase();
 }
 
 function authAssetFor(pathname) {
@@ -346,71 +376,76 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const host = url.hostname.toLowerCase();
-    const authAsset = authAssetFor(url.pathname);
+    const path = canonicalPathname(url.pathname);
+    if (!path) return notFound();
+    const routeUrl = new URL(url);
+    routeUrl.pathname = path;
+    const routedRequest = new Request(routeUrl, request);
+    const authAsset = authAssetFor(path);
 
     if (host === WWW_HOST) {
-      const canonical = new URL(url);
+      const canonical = new URL(routeUrl);
       canonical.hostname = APP_HOST;
       return redirectTo(canonical, 301);
     }
 
     if (host === PAGES_HOST) {
-      const canonical = new URL(url.pathname + url.search + url.hash, APP_ORIGIN);
+      const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
       return redirectTo(canonical, 301);
     }
 
     if (LEGACY_HOSTS.has(host)) {
-      if (/^\/api\/app(?:\/|$)/.test(url.pathname)) return proxyToApi(request, url);
+      if (/^\/api\/app(?:\/|$)/.test(path)) return proxyToApi(routedRequest, routeUrl);
       if (authAsset) {
         const authUrl = new URL(authAsset.replace(/\.html$/, ''), AUTH_ORIGIN);
-        authUrl.search = url.search;
+        authUrl.search = routeUrl.search;
         return redirectTo(authUrl, 302);
       }
-      const canonical = new URL(url.pathname + url.search + url.hash, APP_ORIGIN);
+      const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
       return redirectTo(canonical, 301);
     }
 
     if (host === AUTH_ALIAS_HOST) {
-      const canonical = new URL(url);
+      const canonical = new URL(routeUrl);
       canonical.hostname = AUTH_HOST;
       return redirectTo(canonical, 301);
     }
 
     if (host === AUTH_HOST) {
-      if (url.pathname === '/logout') return authLogout(url);
-      if (url.pathname === '/auth/oauth-result') return authOAuthResult(request);
-      if (url.pathname === '/' || url.pathname === '/index.html') return redirectTo(new URL('/login', AUTH_ORIGIN), 302);
+      if (path === '/logout') return authLogout(routeUrl);
+      if (path === '/auth/oauth-result') return authOAuthResult(request);
+      if (path === '/' || path === '/index.html') return redirectTo(new URL('/login', AUTH_ORIGIN), 302);
       if (authAsset) {
         if (!['GET', 'HEAD'].includes(request.method)) return authError('Método não permitido.', 405);
-        const assetUrl = new URL(url);
+        const assetUrl = new URL(routeUrl);
         // Pages canonicalizes `/*.html` back to the extensionless URL. Fetch
         // the public path directly so auth hosts do not bounce to themselves.
         assetUrl.pathname = authAsset.replace(/\.html$/, '');
         return serveAsset(env, new Request(assetUrl, request), { auth: true });
       }
-      const canonical = new URL(url.pathname + url.search + url.hash, APP_ORIGIN);
+      const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
       return redirectTo(canonical, 301);
     }
 
     if (host === APP_HOST) {
-      if (url.pathname === '/logout') {
+      if (path === '/logout') {
         const logoutUrl = new URL('/logout', AUTH_ORIGIN);
-        logoutUrl.searchParams.set('next', safeNext(url.searchParams.get('next'), '/'));
+        logoutUrl.searchParams.set('next', safeNext(routeUrl.searchParams.get('next'), '/'));
         return redirectTo(logoutUrl, 302);
       }
-      if (url.pathname === '/auth/start') return authStart(url);
-      if (url.pathname === '/auth/handoff') return authHandoff(request);
-      if (url.pathname === '/auth/complete') return redirectTo(new URL('/', APP_ORIGIN), 302);
+      if (path === '/auth/start') return authStart(routeUrl);
+      if (path === '/auth/handoff') return authHandoff(request);
+      if (path === '/auth/complete') return redirectTo(new URL('/', APP_ORIGIN), 302);
       if (authAsset) {
         const start = new URL('/auth/start', APP_ORIGIN);
         start.searchParams.set('auth_path', authAsset.replace(/\.html$/, ''));
-        const requestedNext = url.searchParams.get('next') || url.searchParams.get('redirect') || url.searchParams.get('returnTo');
+        const requestedNext = routeUrl.searchParams.get('next') || routeUrl.searchParams.get('redirect') || routeUrl.searchParams.get('returnTo');
         if (requestedNext) start.searchParams.set('next', safeNext(requestedNext));
         return authStart(start);
       }
-      if (isPrivatePath(url.pathname)) return notFound();
-      if (isDynamicPath(url.pathname)) return proxyToApi(request, url);
-      return serveAsset(env, request);
+      if (isPrivatePath(path)) return notFound();
+      if (isDynamicPath(path)) return proxyToApi(routedRequest, routeUrl);
+      return serveAsset(env, routedRequest);
     }
 
     if (host.endsWith(PAGES_PREVIEW_SUFFIX)) {
@@ -419,12 +454,12 @@ export default {
         start.searchParams.set('auth_path', authAsset.replace(/\.html$/, ''));
         return redirectTo(start, 302);
       }
-      if (isPrivatePath(url.pathname)) return notFound();
-      if (isDynamicPath(url.pathname)) return proxyToApi(request, url);
-      return serveAsset(env, request, { preview: true });
+      if (isPrivatePath(path)) return notFound();
+      if (isDynamicPath(path)) return proxyToApi(routedRequest, routeUrl);
+      return serveAsset(env, routedRequest, { preview: true });
     }
 
-    const canonical = new URL(url.pathname + url.search + url.hash, APP_ORIGIN);
+    const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);
     return redirectTo(canonical, 301);
   },
 };

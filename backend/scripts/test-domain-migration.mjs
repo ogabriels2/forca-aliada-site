@@ -164,11 +164,20 @@ try {
 
   for (const privatePath of [
     '/README.md',
+    '/README.md/',
+    '/README%2Emd',
     '/backend/package.json',
+    '/%62ackend/package.json',
+    '/backend%2Fpackage.json',
+    '/%2562ackend/package.json',
+    '//backend/package.json',
+    '/backend%5Cpackage.json',
     '/backend/src/server.mjs',
     '/data/player-history.json',
     '/scripts/monitor.mjs',
     '/.git/HEAD',
+    '/%2Egit/HEAD',
+    '/%252Egit/HEAD',
     '/wrangler.jsonc',
   ]) {
     const privateResponse = await worker.fetch(new Request(`https://forcaaliada.com${privatePath}`), env);
@@ -179,6 +188,14 @@ try {
   const publicDiscovery = await worker.fetch(new Request('https://forcaaliada.com/.well-known/forca-aliada-manager.json'), env);
   assert.equal(publicDiscovery.status, 200);
   assert.equal(assetRequests.at(-1), '/.well-known/forca-aliada-manager.json');
+
+  const encodedPublicDiscovery = await worker.fetch(new Request('https://forcaaliada.com/.well-known%2Fforca-aliada-manager.json'), env);
+  assert.equal(encodedPublicDiscovery.status, 200);
+  assert.equal(assetRequests.at(-1), '/.well-known/forca-aliada-manager.json');
+
+  const encodedApi = await worker.fetch(new Request('https://forcaaliada.com/api%2Fapp%2Fsync'), env);
+  assert.equal(encodedApi.status, 200);
+  assert.equal(upstreamRequests.at(-1).url, 'https://forca-aliada-site.onrender.com/api/app/sync');
 
   assert.doesNotMatch(backendSource, /[?&]oauth_(?:token|onboard)=/);
   assert.doesNotMatch(accountSource, /[?&]link_token=/);
