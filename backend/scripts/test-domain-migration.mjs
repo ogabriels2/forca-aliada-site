@@ -62,14 +62,14 @@ try {
 
   const authAsset = await worker.fetch(new Request('https://accounts.ogabriels.com/login?next=%2Fcommunity'), env);
   assert.equal(authAsset.status, 200);
-  assert.equal(assetRequests.at(-1), '/login.html');
+  assert.equal(assetRequests.at(-1), '/login');
   assert.equal(authAsset.headers.get('cache-control'), 'private, no-store, max-age=0');
   assert.equal(authAsset.headers.get('referrer-policy'), 'no-referrer');
   assert.equal(authAsset.headers.get('x-frame-options'), 'DENY');
 
   const authAssetSlash = await worker.fetch(new Request('https://accounts.ogabriels.com/login/'), env);
   assert.equal(authAssetSlash.status, 200);
-  assert.equal(assetRequests.at(-1), '/login.html');
+  assert.equal(assetRequests.at(-1), '/login');
 
   const authEscape = await worker.fetch(new Request('https://accounts.ogabriels.com/dashboard?v=access'), env);
   assert.equal(authEscape.status, 301);

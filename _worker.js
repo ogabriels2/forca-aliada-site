@@ -354,7 +354,9 @@ export default {
       if (authAsset) {
         if (!['GET', 'HEAD'].includes(request.method)) return authError('Método não permitido.', 405);
         const assetUrl = new URL(url);
-        assetUrl.pathname = authAsset;
+        // Pages canonicalizes `/*.html` back to the extensionless URL. Fetch
+        // the public path directly so auth hosts do not bounce to themselves.
+        assetUrl.pathname = authAsset.replace(/\.html$/, '');
         return serveAsset(env, new Request(assetUrl, request), { auth: true });
       }
       const canonical = new URL(url.pathname + url.search + url.hash, APP_ORIGIN);
