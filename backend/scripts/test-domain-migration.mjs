@@ -9,6 +9,8 @@ const backendSource = fs.readFileSync(path.resolve(here, '../src/server.mjs'), '
 const accountSource = fs.readFileSync(path.resolve(here, '../../account.html'), 'utf8');
 const loginSource = fs.readFileSync(path.resolve(here, '../../login.html'), 'utf8');
 const notFoundSource = fs.readFileSync(path.resolve(here, '../../404.html'), 'utf8');
+const indexSource = fs.readFileSync(path.resolve(here, '../../index.html'), 'utf8');
+const manifestSource = fs.readFileSync(path.resolve(here, '../../manifest.webmanifest'), 'utf8');
 const buildSource = fs.readFileSync(path.resolve(here, '../../scripts/build-pages.mjs'), 'utf8');
 const communitySource = fs.readFileSync(path.resolve(here, '../../community.html'), 'utf8');
 const serviceWorkerSource = fs.readFileSync(path.resolve(here, '../../service-worker.js'), 'utf8');
@@ -206,6 +208,10 @@ try {
   assert.equal(logout.status, 302);
   assert.equal(logout.headers.get('location'), 'https://accounts.ogabriels.com/logout?next=%2Fguia');
 
+  const duplicateHome = await worker.fetch(new Request('https://forcaaliada.com/index.html?source=pwa'), env);
+  assert.equal(duplicateHome.status, 301);
+  assert.equal(duplicateHome.headers.get('location'), 'https://forcaaliada.com/?source=pwa');
+
   const mainApi = await worker.fetch(new Request('https://forcaaliada.com/api/app/sync'), env);
   assert.equal(mainApi.status, 200);
   assert.equal(upstreamRequests.at(-1).url, 'https://forca-aliada-site.onrender.com/api/app/sync');
@@ -325,14 +331,20 @@ try {
   assert.match(communitySource, /new URL\(authPath, location\.origin\)/);
   assert.match(communitySource, /navigator\.serviceWorker\.register\('\/service-worker\.js',\{scope:'\/'\}\)/);
   assert.match(communitySource, /id="guest-notifications-title">Suas notificações vivem aqui/);
-  assert.match(serviceWorkerSource, /fa-static-v50-community-routes/);
-  assert.match(serviceWorkerSource, /caches\.match\(isCommunity \? 'community\.html' : 'index\.html'\)/);
+  assert.match(serviceWorkerSource, /fa-static-v51-home-repair/);
+  assert.match(serviceWorkerSource, /OFFLINE_NOT_FOUND_URL/);
+  assert.match(serviceWorkerSource, /if \(isHome\) return caches\.match\('\.\/'\)/);
   assert.match(communityManifestSource, /"start_url": "\/community\?source=pwa"/);
   assert.match(communityManifestSource, /"url": "\/community\/notifications"/);
   assert.match(pwaSource, /register\('\/service-worker\.js', \{ scope: '\/' \}\)/);
   assert.match(communitySource, /fa-pwa\.js\?v=pwa5-20260722/);
   assert.match(communitySource, /social-chat\.js\?v=chat17-20260722/);
   assert.match(serviceWorkerSource, /social-chat\.js\?v=chat17-20260722/);
+  assert.match(indexSource, /fa-pwa\.js\?v=pwa6-20260722/);
+  assert.match(indexSource, /data-gallery-index="2"/);
+  assert.match(indexSource, /'galeria27\.webp'/);
+  assert.match(indexSource, /window\.location\.assign\('\/logout\?next=%2F'\)/);
+  assert.match(manifestSource, /"start_url": "\/\?source=pwa"/);
   assert.doesNotMatch(socialChatSource, /community\.html\?post=/);
   assert.match(commentThreadSource, /`\/community\/post\/\$\{encodeURIComponent\(postId\)\}\?comment=/);
 

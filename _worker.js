@@ -525,6 +525,12 @@ export default {
     }
 
     if (host === APP_HOST) {
+      if (path === '/index.html') {
+        const homeUrl = new URL('/', APP_ORIGIN);
+        homeUrl.search = routeUrl.search;
+        homeUrl.hash = routeUrl.hash;
+        return redirectTo(homeUrl, 301);
+      }
       if (path === '/logout') {
         const logoutUrl = new URL('/logout', AUTH_ORIGIN);
         logoutUrl.searchParams.set('next', safeNext(routeUrl.searchParams.get('next'), '/'));

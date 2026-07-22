@@ -1,12 +1,15 @@
-const CACHE_VERSION = 'fa-static-v50-community-routes';
+const CACHE_VERSION = 'fa-static-v51-home-repair';
 const CANONICAL_ORIGIN = 'https://forcaaliada.com';
+const OFFLINE_NOT_FOUND_URL = '/__fa-offline-not-found__';
 const LEGACY_HOSTS = new Set(['forcaaliada.ogabriels.com', 'www.forcaaliada.ogabriels.com']);
 const IS_LEGACY_ORIGIN = LEGACY_HOSTS.has(self.location.hostname);
 const STATIC_ASSETS = [
   './',
-  'index.html',
   'community.html',
   'guia.html',
+  'termos.html',
+  'privacidade.html',
+  'manifest.webmanifest',
   'staff-offline.html',
   'staff.webmanifest',
   'assets/images/app-icons/favicon-32.png',
@@ -14,6 +17,9 @@ const STATIC_ASSETS = [
   'assets/images/fa-icon-dark.png',
   'assets/images/fa-icon-light.png',
   'assets/images/og-image.jpg',
+  'assets/images/hero.webp',
+  'assets/images/sobre.webp',
+  'assets/images/status-bg.webp',
   'assets/js/fa-seo.js',
   'assets/js/dashboard-v2.js?v=20260718c',
   'assets/js/dashboard-v2-lazy.js',
@@ -21,7 +27,9 @@ const STATIC_ASSETS = [
   'assets/js/dashboard-v4.js?v=20260718b',
   'assets/js/dashboard-v5.js?v=20260718d',
   'assets/js/fa-pwa.js',
+  'assets/js/fa-pwa.js?v=pwa6-20260722',
   'assets/js/fa-design-system.js',
+  'assets/js/fa-design-system.js?v=design-20260722a',
   'assets/js/community-evolution.js',
   'assets/js/community-evolution-20260614f.js',
   'assets/js/community-evolution-20260614g.js',
@@ -32,6 +40,8 @@ const STATIC_ASSETS = [
   'assets/js/community-social-refinement-20260615a.js',
   'assets/js/social-chat.js?v=chat17-20260722',
   'assets/css/fa-design-system.css',
+  'assets/css/fa-design-system.css?v=design-20260722a',
+  'assets/css/home-manager.css?v=20260722a',
   'assets/css/dashboard-v2.css?v=20260718b',
   'assets/css/dashboard-v3.css?v=20260716d',
   'assets/css/dashboard-v4.css?v=20260719b',
@@ -50,9 +60,15 @@ self.addEventListener('install', event => {
     event.waitUntil(self.skipWaiting());
     return;
   }
-  event.waitUntil(caches.open(CACHE_VERSION)
-    .then(cache => cache.addAll(STATIC_ASSETS))
-    .then(() => self.skipWaiting()));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_VERSION);
+    await cache.addAll(STATIC_ASSETS);
+    try {
+      const notFoundResponse = await fetch('/404', { cache: 'no-store' });
+      await cache.put(OFFLINE_NOT_FOUND_URL, notFoundResponse);
+    } catch { /* fallback sintético abaixo */ }
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -91,10 +107,26 @@ self.addEventListener('fetch', event => {
     const isStaff = url.pathname.endsWith('/dashboard') || url.pathname.endsWith('/dashboard.html');
     const isCommunity = url.pathname === '/community'
       || url.pathname === '/community.html'
-      || url.pathname.startsWith('/community/');
-    event.respondWith(fetch(request).catch(() => isStaff
-      ? caches.match('staff-offline.html')
-      : caches.match(request).then(hit => hit || caches.match(isCommunity ? 'community.html' : 'index.html'))));
+      || url.pathname === '/community/notifications'
+      || /^\/community\/(?:post|profile)\/[^/]+$/.test(url.pathname);
+    const isHome = url.pathname === '/' || url.pathname === '/index.html';
+    const isGuide = url.pathname === '/guia' || url.pathname === '/guia.html';
+    const isTerms = url.pathname === '/termos' || url.pathname === '/termos.html';
+    const isPrivacy = url.pathname === '/privacidade' || url.pathname === '/privacidade.html';
+    event.respondWith(fetch(request).catch(async () => {
+      if (isStaff) return caches.match('staff-offline.html');
+      const exact = await caches.match(request);
+      if (exact) return exact;
+      if (isCommunity) return caches.match('community.html');
+      if (isGuide) return caches.match('guia.html');
+      if (isTerms) return caches.match('termos.html');
+      if (isPrivacy) return caches.match('privacidade.html');
+      if (isHome) return caches.match('./');
+      return (await caches.match(OFFLINE_NOT_FOUND_URL)) || new Response(
+        '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Página não encontrada | Força Aliada</title><body><main><h1>Página não encontrada</h1><p>Este endereço não existe e você está offline.</p><a href="/">Voltar ao início</a></main></body></html>',
+        { status: 404, headers: { 'Content-Type':'text/html; charset=utf-8' } },
+      );
+    }));
     return;
   }
 

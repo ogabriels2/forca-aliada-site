@@ -1,4 +1,5 @@
 backend/node_modules/
 .pages-dist/
+.wrangler/
 .DS_Store
 Thumbs.db

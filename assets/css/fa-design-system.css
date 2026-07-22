@@ -31,8 +31,8 @@ button:active,.btn:active,[role=button]:active { transform: scale(.96); transiti
 @keyframes fa-confetti-fall { 0%{opacity:0;transform:translate3d(0,-16px,0) rotate(0)}12%{opacity:1}100%{opacity:0;transform:translate3d(var(--x),105vh,0) rotate(var(--r))} }
 @keyframes fa-toast-in { from{opacity:0;transform:translateY(10px) scale(.97);filter:blur(5px)} to{opacity:1;transform:none;filter:none} }
 
-.fa-reveal { opacity:0;transform:translateY(16px); }
-.fa-reveal.is-revealed { animation:fa-in-up var(--dur-slow) var(--ease-decel) both; }
+.fa-motion-ready .fa-reveal { opacity:0;transform:translateY(16px); }
+.fa-motion-ready .fa-reveal.is-revealed { animation:fa-in-up var(--dur-slow) var(--ease-decel) both; }
 .skel,.skeleton { position:relative;overflow:hidden; }
 .skel::after,.skeleton::after { content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);transform:translateX(-100%);animation:fa-shimmer 1.4s linear infinite; }
 .pa-like.popping svg,.story-like.is-on svg { animation:fa-heart-beat 380ms var(--ease-spring) both; }
@@ -84,7 +84,7 @@ body[data-fa-page=index] .desktop-nav {
   justify-self:center;
   min-width:0;
   max-width:100%;
-  overflow:hidden;
+  overflow:visible;
 }
 body[data-fa-page=index] .desktop-nav ul { gap:clamp(14px,1.65vw,28px); }
 body[data-fa-page=index] .header-actions {
@@ -127,7 +127,7 @@ body[data-fa-page=profile] .profile-hero,body[data-fa-page=post] .post-card { bo
   .backdrop.show .sheet { border-radius:22px 22px 0 0; }
   .mobile-bottom-nav { padding-bottom:env(safe-area-inset-bottom); }
 }
-@media (min-width:861px) and (max-width:1120px) {
+@media (min-width:861px) and (max-width:1240px) {
   body[data-fa-page=index] header {
     display:flex!important;
     justify-content:space-between;
@@ -224,4 +224,5 @@ body[data-fa-page=profile] .profile-hero,body[data-fa-page=post] .post-card { bo
 }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation-duration:.001ms!important;animation-delay:0ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important; }
+  .fa-motion-ready .fa-reveal { opacity:1!important;transform:none!important;filter:none!important; }
 }

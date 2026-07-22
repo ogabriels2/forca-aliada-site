@@ -4,7 +4,7 @@
   "short_name": "Força Aliada",
   "description": "Portal oficial da Força Aliada.",
   "lang": "pt-BR",
-  "start_url": "/index.html?source=pwa",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#060c16",

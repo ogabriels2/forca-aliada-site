@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  document.documentElement.classList.add('fa-motion-ready');
   const page = location.pathname.split('/').pop()?.replace('.html','') || 'index';
   document.body.dataset.faPage = page;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -234,7 +235,7 @@
     header?.classList.toggle('fa-header-hidden',scrollY>lastY && scrollY>120);
     lastY=scrollY;
   },{passive:true});
-  if(page==='index' && matchMedia('(pointer:fine)').matches) {
+  if(page==='index' && matchMedia('(pointer:fine)').matches && !reduce.matches) {
     const hero=document.querySelector('.hero'),bg=document.querySelector('.hero-bg');
     hero?.addEventListener('pointermove',e=>{const r=hero.getBoundingClientRect();bg.style.transform=`scale(1.025) translate(${(e.clientX-r.left-r.width/2)/r.width*-8}px,${(e.clientY-r.top-r.height/2)/r.height*-6}px)`;});
     hero?.addEventListener('pointerleave',()=>{bg.style.transform='';});

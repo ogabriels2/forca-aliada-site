@@ -1,0 +1,154 @@
+.mgr-teaser {
+  background: #0a0a08;
+  position: relative;
+  overflow: hidden;
+  padding: 72px max(5%, calc((100vw - 1100px) / 2 + 5%));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+}
+.mgr-teaser::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(201,168,76,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,76,.055) 1px, transparent 1px),
+    linear-gradient(105deg, transparent 40%, rgba(201,168,76,.025) 40%, rgba(201,168,76,.025) 41%, transparent 41%);
+  background-size: 48px 48px, 48px 48px, 100% 100%;
+  mask-image: radial-gradient(ellipse 110% 260% at 42% 50%, black 0%, transparent 100%);
+  pointer-events: none;
+}
+.mgr-teaser::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 180% at 0% 50%, rgba(201,168,76,.09) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 120% at 100% 50%, rgba(201,168,76,.04) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 100% at 50% 50%, rgba(201,168,76,.03) 0%, transparent 80%);
+  pointer-events: none;
+}
+.mgr-left {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-width: 0;
+}
+.mgr-icon-wrap {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(201,168,76,.35);
+  background: rgba(201,168,76,.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.mgr-icon-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(201,168,76,.12);
+  pointer-events: none;
+}
+.mgr-icon-wrap svg { width: 24px; height: 24px; color: #c9a84c; }
+.mgr-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mgr-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c9a84c;
+  animation: mgr-pulse 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes mgr-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
+.mgr-headline {
+  font-size: clamp(20px,2.4vw,28px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #fdfcf8;
+  line-height: 1.15;
+}
+.mgr-headline em {
+  font-style: normal;
+  color: transparent;
+  -webkit-text-stroke: 1px #c9a84c;
+}
+.mgr-sub { font-size: 14px; color: rgba(255,255,255,.68); margin-top: 6px; letter-spacing: .01em; }
+.mgr-cta {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 30px;
+  background: #c9a84c;
+  color: #0a0a08;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background .2s, transform .15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mgr-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.12);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .3s ease;
+}
+.mgr-cta:hover { background: #e8c96a; transform: translateY(-1px); }
+.mgr-cta:hover::before { transform: scaleX(1); }
+.mgr-cta svg { width: 14px; height: 14px; flex-shrink: 0; }
+.mgr-divider { height: 1px; background: linear-gradient(90deg,transparent,rgba(201,168,76,.2),transparent); }
+.mgr-code-deco {
+  position: absolute;
+  right: max(5%, calc((100vw - 1100px) / 2 + 5%));
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: ui-monospace,'Cascadia Code','Consolas',monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+  opacity: .18;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  white-space: nowrap;
+}
+.mgr-cd-line { display: block; }
+.mgr-cd-indent { padding-left: 1.2em; }
+.mgr-cd-kw { color: #c9a84c; }
+.mgr-cd-fn { color: #a5c9ff; }
+.mgr-cd-str { color: #98e0a0; }
+.mgr-cd-num { color: #ff9f8a; }
+.mgr-cd-comment { color: #a3a099; }
+@media (max-width:1100px) { .mgr-code-deco { display: none; } }
+@media (max-width:700px) {
+  .mgr-teaser { flex-direction: column; align-items: flex-start; gap: 28px; padding: 52px 5%; }
+  .mgr-cta { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion:reduce) { .mgr-dot { animation: none; } }
