@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v51-home-repair';
+const CACHE_VERSION = 'fa-static-v52-gallery-repair';
 const CANONICAL_ORIGIN = 'https://forcaaliada.com';
 const OFFLINE_NOT_FOUND_URL = '/__fa-offline-not-found__';
 const LEGACY_HOSTS = new Set(['forcaaliada.ogabriels.com', 'www.forcaaliada.ogabriels.com']);

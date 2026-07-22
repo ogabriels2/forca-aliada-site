@@ -331,7 +331,7 @@ try {
   assert.match(communitySource, /new URL\(authPath, location\.origin\)/);
   assert.match(communitySource, /navigator\.serviceWorker\.register\('\/service-worker\.js',\{scope:'\/'\}\)/);
   assert.match(communitySource, /id="guest-notifications-title">Suas notificações vivem aqui/);
-  assert.match(serviceWorkerSource, /fa-static-v51-home-repair/);
+  assert.match(serviceWorkerSource, /fa-static-v52-gallery-repair/);
   assert.match(serviceWorkerSource, /OFFLINE_NOT_FOUND_URL/);
   assert.match(serviceWorkerSource, /if \(isHome\) return caches\.match\('\.\/'\)/);
   assert.match(communityManifestSource, /"start_url": "\/community\?source=pwa"/);
@@ -341,7 +341,9 @@ try {
   assert.match(communitySource, /social-chat\.js\?v=chat17-20260722/);
   assert.match(serviceWorkerSource, /social-chat\.js\?v=chat17-20260722/);
   assert.match(indexSource, /fa-pwa\.js\?v=pwa6-20260722/);
-  assert.match(indexSource, /data-gallery-index="2"/);
+  assert.match(indexSource, /id="gallery-track"/);
+  assert.match(indexSource, /data-gallery-prev/);
+  assert.match(indexSource, /data-gallery-next/);
   assert.match(indexSource, /'galeria27\.webp'/);
   assert.match(indexSource, /window\.location\.assign\('\/logout\?next=%2F'\)/);
   assert.match(manifestSource, /"start_url": "\/\?source=pwa"/);
