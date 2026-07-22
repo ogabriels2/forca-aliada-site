@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.mjs",
-    "test": "node scripts/audit-integration.mjs && node scripts/test-domain-migration.mjs && node scripts/test-home-static.mjs && node scripts/test-manager-release.mjs && node scripts/test-manager-observability.mjs"
+    "test": "node scripts/audit-integration.mjs && node scripts/test-domain-migration.mjs && node scripts/test-home-static.mjs && node scripts/test-manager-release.mjs && node scripts/test-manager-observability.mjs && node scripts/test-cloud-monitor-policy.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

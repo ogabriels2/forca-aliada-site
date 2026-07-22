@@ -84,6 +84,7 @@ import {
   managerEnvelope,
 } from './manager_observability.mjs';
 import { getLatestManagerRelease } from './manager_release.mjs';
+import { nextCloudMonitorState } from './cloud_monitor_policy.mjs';
 
 const PROCESS_STARTED_AT = new Date();
 
@@ -3788,6 +3789,64 @@ function pruneAppKeyValidationCache() {
   }
   while (appKeyValidationCache.size > 500) {
     appKeyValidationCache.delete(appKeyValidationCache.keys().next().value);
+  }
+}
+
+let cloudMonitorState = { consecutiveOfflineChecks: 0 };
+
+async function closeAllActivePlayerSessions(at) {
+  await pool.query(
+    `UPDATE player_sessions
+     SET left_at=$1,
+         duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz-entered_at))/3600)::numeric, 2)
+     WHERE left_at IS NULL`,
+    [at],
+  );
+}
+
+async function reconcileNamedCloudPlayers(status) {
+  const now = status.checkedAt;
+  const players = Array.from(new Set(
+    (status.players?.list || []).map(value => String(value || '').trim()).filter(Boolean),
+  ));
+  const active = await pool.query('SELECT player, entered_at FROM player_sessions WHERE left_at IS NULL');
+  const normalized = new Map(players.map(player => [player.toLocaleLowerCase('pt-BR'), player]));
+
+  for (const row of active.rows) {
+    if (!normalized.has(String(row.player).toLocaleLowerCase('pt-BR'))) {
+      const duration = (now - new Date(row.entered_at)) / 3600000;
+      await pool.query(
+        'UPDATE player_sessions SET left_at=$1, duration_hours=$2 WHERE player=$3 AND left_at IS NULL',
+        [now, +duration.toFixed(2), row.player],
+      );
+    }
+  }
+
+  const activeNames = new Set(active.rows.map(row => String(row.player).toLocaleLowerCase('pt-BR')));
+  for (const [key, player] of normalized) {
+    if (!activeNames.has(key)) {
+      await pool.query("INSERT INTO player_sessions(player,entered_at,origin) VALUES($1,$2,'site')", [player, now]);
+    }
+  }
+}
+
+async function runAutonomousCloudMonitor() {
+  if (!dbStartupState.ready || isAppConnectedInMemory()) {
+    cloudMonitorState = { consecutiveOfflineChecks: 0 };
+    return;
+  }
+
+  const status = await fetchMinecraftStatusCached();
+  // O Manager pode voltar enquanto os probes de rede estao em andamento.
+  if (isAppConnectedInMemory()) return;
+
+  await recordServerStatus(status);
+  cloudMonitorState = nextCloudMonitorState(cloudMonitorState, status);
+
+  if (cloudMonitorState.shouldCloseAll) {
+    await closeAllActivePlayerSessions(status.checkedAt);
+  } else if (cloudMonitorState.shouldReconcileNames) {
+    await reconcileNamedCloudPlayers(status);
   }
 }
 
@@ -12630,6 +12689,8 @@ const legacyMigrationService = registerLegacyMigration(app, pool, auth, requireA
 const PORT = process.env.PORT || 3000;
 let scheduledPostsTimer = null;
 let databaseRetryTimer = null;
+let autonomousCloudMonitorTimer = null;
+const AUTONOMOUS_CLOUD_MONITOR_MS = Math.max(30_000, Number(process.env.CLOUD_MONITOR_INTERVAL_MS || 60_000));
 
 function startScheduledPostPublisher() {
   if (scheduledPostsTimer) return;
@@ -12639,6 +12700,19 @@ function startScheduledPostPublisher() {
     SCHEDULED_POST_POLL_MS,
   );
   scheduledPostsTimer.unref?.();
+}
+
+function startAutonomousCloudMonitor() {
+  if (autonomousCloudMonitorTimer) return;
+  setTimeout(() => runAutonomousCloudMonitor().catch(error => {
+    console.warn('[cloud-monitor] Falha no ciclo inicial:', error?.message || error);
+  }), 5_000).unref?.();
+  autonomousCloudMonitorTimer = setInterval(() => {
+    runAutonomousCloudMonitor().catch(error => {
+      console.warn('[cloud-monitor] Falha no ciclo:', error?.message || error);
+    });
+  }, AUTONOMOUS_CLOUD_MONITOR_MS);
+  autonomousCloudMonitorTimer.unref?.();
 }
 
 async function prepareDatabaseForBoot() {
@@ -12661,6 +12735,7 @@ function scheduleDatabaseRetry() {
       await prepareDatabaseForBoot();
       console.info('[startup:db] Banco de dados pronto apos retry.');
       startScheduledPostPublisher();
+      startAutonomousCloudMonitor();
       clearInterval(databaseRetryTimer);
       databaseRetryTimer = null;
     } catch (error) {
@@ -12679,6 +12754,7 @@ function startHttpServer() {
 prepareDatabaseForBoot()
   .then(() => {
     startScheduledPostPublisher();
+    startAutonomousCloudMonitor();
     startHttpServer();
   })
   .catch(error => {
