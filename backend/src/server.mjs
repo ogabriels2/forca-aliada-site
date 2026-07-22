@@ -4788,11 +4788,11 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
       const closedResult = serverStopped
         ? await client.query(
             `UPDATE player_sessions
-                SET left_at=$1,
+                SET left_at=$1::timestamptz,
                     duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2),
                     origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END,
-                    origin_installation_id=$2,
-                    origin_transport=$3,
+                    origin_installation_id=$2::text,
+                    origin_transport=$3::varchar,
                     origin_confidence='verified'
               WHERE left_at IS NULL
               RETURNING player`,
@@ -4800,11 +4800,11 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
           )
         : await client.query(
             `UPDATE player_sessions
-                SET left_at=$1,
+                SET left_at=$1::timestamptz,
                     duration_hours=ROUND((EXTRACT(EPOCH FROM ($1::timestamptz - entered_at)) / 3600)::numeric, 2),
                     origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END,
-                    origin_installation_id=$3,
-                    origin_transport=$4,
+                    origin_installation_id=$3::text,
+                    origin_transport=$4::varchar,
                     origin_confidence='verified'
               WHERE left_at IS NULL
                 AND NOT (player = ANY($2::text[]))
@@ -4817,8 +4817,8 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
         await client.query(
           `UPDATE player_sessions
               SET origin=CASE WHEN origin='site' THEN 'mixed' ELSE origin END,
-                  origin_installation_id=$2,
-                  origin_transport=$3,
+                  origin_installation_id=$2::text,
+                  origin_transport=$3::varchar,
                   origin_confidence='verified'
             WHERE left_at IS NULL
               AND player = ANY($1::text[])`,
