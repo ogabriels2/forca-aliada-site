@@ -6,9 +6,10 @@ Este arquivo registra as etapas que dependem de paineis externos ou credenciais 
 
 1. Publicar o frontend como Cloudflare Pages incluindo `_worker.js`, `_routes.json` e `_headers`.
 2. No Render, definir:
-   - `FRONTEND_BASE_URL=https://forcaaliada.ogabriels.com`
-   - `PUBLIC_SHARE_BASE_URL=https://forcaaliada.ogabriels.com`
-3. Confirmar que `https://forcaaliada.ogabriels.com/sitemap.xml` retorna XML, e nao `index.html`.
+   - `FRONTEND_BASE_URL=https://accounts.ogabriels.com`
+   - `PUBLIC_BASE_URL=https://forcaaliada.com`
+   - `PUBLIC_SHARE_BASE_URL=https://forcaaliada.com`
+3. Confirmar que `https://forcaaliada.com/sitemap.xml` retorna XML, e nao `index.html`.
 4. Confirmar que `/share/post/:id` e `/share/profile/:identifier` respondem pelo dominio principal.
 
 ## Cloudflare
@@ -20,7 +21,7 @@ Ative Brotli, HTTP/3 e cache de borda. Para as rotas `/share/*` e `/sitemap*.xml
 ## Google e Bing
 
 1. Criar/verificar uma propriedade de dominio no Google Search Console.
-2. Enviar `https://forcaaliada.ogabriels.com/sitemap.xml`.
+2. Enviar `https://forcaaliada.com/sitemap.xml`.
 3. Inspecionar a home, `/guia`, uma share page de perfil e uma share page de post.
 4. Repetir o envio no Bing Webmaster Tools.
 5. Monitorar cobertura, Core Web Vitals, consultas de marca e paginas descobertas.

@@ -24,7 +24,7 @@
   // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                    ? 'http://localhost:3000'
-                   : 'https://forca-aliada-site.onrender.com';
+                   : 'https://forcaaliada.com';
 
   function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
   function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'dark')); }
@@ -1801,7 +1801,7 @@ footer { display: none; }
 }
 </style>
 <!-- Preconnect hints: reduz latência de primeira conexão -->
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="preconnect" href="https://api.mcstatus.io" crossorigin>
 <link rel="stylesheet" href="assets/css/dashboard-v2.css?v=20260718b">
@@ -3165,7 +3165,7 @@ footer { display: none; }
 
 <script>
 const SERVER_IP     = 'fa.ogabriels.com';
-const PROD_API_BASE = 'https://forca-aliada-site.onrender.com';
+const PROD_API_BASE = 'https://forcaaliada.com';
 const IS_LOCAL_DASHBOARD = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 let API_BASE        = IS_LOCAL_DASHBOARD
   ? 'http://localhost:3000'
@@ -6196,7 +6196,7 @@ document.addEventListener('keydown', event => {
 });
 
 // ══ Logout ══
-function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = '/logout'; }
 
 /* ══════════════════════════════════════════
    MODAL MÉRITO & CAPITAL — funções inline

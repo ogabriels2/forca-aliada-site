@@ -20,24 +20,24 @@
 <meta name="description" content="A rede social da comunidade Minecraft Força Aliada: encontre jogadores, publique construções, participe de threads e acompanhe conquistas.">
 <meta name="author" content="Força Aliada">
 <meta name="robots" content="index,follow,noarchive,max-image-preview:large,max-snippet:-1">
-<link rel="canonical" href="https://forcaaliada.ogabriels.com/community">
-<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/community">
-<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/community">
+<link rel="canonical" href="https://forcaaliada.com/community">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.com/community">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.com/community">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Força Aliada">
 <meta property="og:title" content="FA Community | Rede Social Minecraft">
 <meta property="og:description" content="Posts, perfis e conquistas da comunidade Minecraft Força Aliada.">
-<meta property="og:url" content="https://forcaaliada.ogabriels.com/community">
-<meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta property="og:url" content="https://forcaaliada.com/community">
+<meta property="og:image" content="https://forcaaliada.com/assets/images/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FA Community | Rede Social Minecraft">
 <meta name="twitter:description" content="Conheça jogadores, construções e histórias da Força Aliada.">
-<meta name="twitter:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta name="twitter:image" content="https://forcaaliada.com/assets/images/og-image.jpg">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"FA Community","url":"https://forcaaliada.ogabriels.com/community","applicationCategory":"SocialNetworkingApplication","operatingSystem":"Web","inLanguage":"pt-BR","description":"Rede social da comunidade Minecraft Força Aliada.","publisher":{"@type":"Organization","name":"Força Aliada","url":"https://forcaaliada.ogabriels.com/"}}
+{"@context":"https://schema.org","@type":"WebApplication","name":"FA Community","url":"https://forcaaliada.com/community","applicationCategory":"SocialNetworkingApplication","operatingSystem":"Web","inLanguage":"pt-BR","description":"Rede social da comunidade Minecraft Força Aliada.","publisher":{"@type":"Organization","name":"Força Aliada","url":"https://forcaaliada.com/"}}
 </script>
 <style>
 body.guest-mode #fab-post,
@@ -45,7 +45,7 @@ body.guest-mode #desktop-chat-btn,
 body.guest-mode #notif-btn,
 body.guest-mode #inline-composer { display:none!important; }
 </style>
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://api.mcheads.org" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,7 +61,7 @@ body.guest-mode #inline-composer { display:none!important; }
   const key = 'fa_theme';
   const token = localStorage.getItem('fa_token');
   const base = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-    ? 'http://localhost:3000' : 'https://forca-aliada-site.onrender.com';
+    ? 'http://localhost:3000' : 'https://forcaaliada.com';
   const effective = t => (t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'light';
   const apply = t => document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'dark'));
   apply(localStorage.getItem('fa_theme_pending') || localStorage.getItem(key) || 'dark');
@@ -4258,7 +4258,7 @@ body.community-guest-clean [data-filter="following"],body.community-guest-clean 
 
 <script>
 /* ======================= CONFIG ======================= */
-const PROD = 'https://forca-aliada-site.onrender.com';
+const PROD = 'https://forcaaliada.com';
 const IS_LOCAL = location.hostname==='localhost'||location.hostname==='127.0.0.1';
 const LOCAL_API = 'http://localhost:3000';
 const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
@@ -4708,7 +4708,7 @@ function updateThemeIcon(t){
 }
 
 /* ======================= AUTH ======================= */
-function logout(){localStorage.removeItem(TK_KEY);location.replace('login.html')}
+function logout(){localStorage.removeItem(TK_KEY);localStorage.removeItem('fa_session');location.replace('/logout')}
 
 /* ======================= LOADING BUTTON ======================= */
 function setBtnLoad(btn,loading,label=''){
@@ -8690,7 +8690,7 @@ async function openCommunityProfileEditor(){
       form.append('file',blob,`${folder}_${Date.now()}.${ext}`);
       /* ?type= informa ao backend qual preset de resize usar no Cloudinary */
       const typeParam=folder==='avatar'?'avatar':'cover';
-      const base=state.base||'https://forca-aliada-site.onrender.com';
+      const base=state.base||'https://forcaaliada.com';
       const res=await fetch(`${base}/api/upload?type=${typeParam}`,{
         method:'POST',headers:{Authorization:`Bearer ${localStorage.getItem('fa_token')}`},body:form
       });

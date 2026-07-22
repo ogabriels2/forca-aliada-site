@@ -62,7 +62,7 @@ if (/while\s*\([^)]*Date\.now[^)]*\)\s*\{[\s\S]{0,500}pool\.query/.test(server))
 if (!worker.includes("/^\\/api\\/app(?:\\/|$)/")) {
   failures.push('Worker publico nao encaminha o namespace /api/app ao backend');
 }
-if (!workerRoutes.include?.includes('/api/app/*')) {
+if (!workerRoutes.include?.includes('/api/app/*') && !workerRoutes.include?.includes('/*')) {
   failures.push('_routes.json nao ativa o Worker para /api/app/*');
 }
 if (/<header\b[^>]*class=["'][^"']*manager-console-header/.test(dashboard)) {

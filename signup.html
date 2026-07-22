@@ -18,7 +18,7 @@
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
   function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'dark'));}
   apply();
-  if(token){const syncTheme=()=>{fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
+  if(token){const syncTheme=()=>{fetch('https://forcaaliada.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'dark'));
 })();
 </script>
@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 
 <style>
 /* ── Reset ─────────────────────────────────────── */
@@ -627,7 +627,7 @@ header {
            src="https://minotar.net/helm/Steve/100.png" alt="Avatar">
       <div id="loggedin-name" class="loggedin-name"></div>
       <div class="loggedin-sub">Você já possui uma conta ativa.</div>
-      <button class="btn-submit" onclick="location.href='dashboard.html'">Acessar o Painel</button>
+      <button class="btn-submit" onclick="finishSignupAuth()">Acessar o Painel</button>
       <div class="card-footer" style="margin-top:14px;">
         <button class="btn-danger-text" onclick="forceLogout()">Entrar com outra conta</button>
       </div>
@@ -668,7 +668,7 @@ header {
 
         <!-- Xbox / Microsoft — hero button -->
         <button type="button" id="btn-ms-signup" class="btn-oauth-hero"
-          onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/microsoft/login'">
+          onclick="window.location.href='https://forcaaliada.com/api/auth/microsoft/login'">
           <svg viewBox="0 0 21 21" width="20" height="20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink:0;">
             <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
             <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
@@ -688,7 +688,7 @@ header {
         <div class="oauth-social-row">
           <button type="button" class="btn-oauth-social btn-oauth-google"
             aria-label="Cadastrar com Google"
-            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/google/login'">
+            onclick="window.location.href='https://forcaaliada.com/api/auth/google/login'">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
               <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
               <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15 19 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4c-7.7 0-14.3 4.3-17.7 10.7z"/>
@@ -699,7 +699,7 @@ header {
           </button>
           <button type="button" class="btn-oauth-social btn-oauth-facebook"
             aria-label="Cadastrar com Facebook"
-            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/facebook/login'">
+            onclick="window.location.href='https://forcaaliada.com/api/auth/facebook/login'">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#fff" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7.1V12h3V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12"/>
             </svg>
@@ -707,7 +707,7 @@ header {
           </button>
           <button type="button" class="btn-oauth-social btn-oauth-discord"
             aria-label="Cadastrar com Discord"
-            onclick="window.location.href='https://forca-aliada-site.onrender.com/api/auth/discord/login'">
+            onclick="window.location.href='https://forcaaliada.com/api/auth/discord/login'">
             <svg width="18" height="14" viewBox="0 0 127.14 96.36" aria-hidden="true">
               <path fill="#fff" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.08 0A72.37 72.37 0 0 0 45.67 0a105.89 105.89 0 0 0-26.24 8.07C2.79 33.07-1.71 57.45.54 81.48a105.73 105.73 0 0 0 32.17 16.24 77.7 77.7 0 0 0 6.89-11.31 68.42 68.42 0 0 1-10.84-5.18c.91-.67 1.8-1.37 2.66-2.09a75.57 75.57 0 0 0 64.3 0c.87.72 1.76 1.42 2.66 2.09a68.68 68.68 0 0 1-10.86 5.19 77.31 77.31 0 0 0 6.9 11.3 105.25 105.25 0 0 0 32.19-16.24c2.64-27.87-4.5-52.03-19.91-73.41ZM42.45 65.69C36.18 65.69 31 59.95 31 52.88s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.06 12.81-11.4 12.81Zm42.24 0c-6.27 0-11.4-5.74-11.4-12.81s5.06-12.8 11.4-12.8c6.4 0 11.57 5.8 11.45 12.8 0 7.07-5.05 12.81-11.45 12.81Z"/>
             </svg>
@@ -905,12 +905,7 @@ header {
           <li class="ms-benefit-item"><span class="ms-benefit-icon">🔐</span>Você é adicionado à whitelist instantaneamente</li>
           <li class="ms-benefit-item"><span class="ms-benefit-icon">🎯</span>Acesso garantido ao servidor sem passos extras</li>
         </ul>
-        <button id="btn-ms-link" class="btn-submit"
-          onclick="
-            const _t = localStorage.getItem('fa_token');
-            sessionStorage.setItem('fa_ms_signup_return','1');
-            window.location.href = 'https://forca-aliada-site.onrender.com/api/auth/microsoft/login' + (_t ? '?link_token=' + encodeURIComponent(_t) : '');
-          ">
+        <button id="btn-ms-link" class="btn-submit" onclick="startMicrosoftSignupLink()">
           <svg viewBox="0 0 21 21" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
             <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
@@ -986,7 +981,7 @@ header {
         <div class="ip-hint">Clique para copiar o endereço</div>
       </div>
 
-      <button class="btn-submit" onclick="location.href='dashboard.html'">
+      <button class="btn-submit" onclick="finishSignupAuth()">
         Acessar o Painel →
       </button>
     </div>
@@ -994,11 +989,14 @@ header {
   </div><!-- /card -->
 </div><!-- /page-wrap -->
 
+<script src="assets/js/fa-auth-transfer.js?v=20260722a"></script>
 <script>
 'use strict';
-const API_BASE    = 'https://forca-aliada-site.onrender.com';
+const API_BASE    = 'https://forcaaliada.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
+
+window.FAAuthTransfer?.ensureFlow({ authPath: '/signup', fallback: '/dashboard' });
 
 let pendingEmail         = '';
 let resendCountdown      = null;
@@ -1006,6 +1004,16 @@ let oauthOnboardToken    = null;   // JWT de conta criada via OAuth social (Goog
 let oauthOnboardProvider = null;
 
 const urlParams = new URLSearchParams(window.location.search);
+let postedOAuthResult = {};
+if (urlParams.get('oauth_result') === '1') {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem('fa_oauth_result') || 'null');
+    sessionStorage.removeItem('fa_oauth_result');
+    if (parsed && Date.now() - Number(parsed.created_at || 0) <= 2 * 60 * 1000) postedOAuthResult = parsed;
+  } catch {
+    sessionStorage.removeItem('fa_oauth_result');
+  }
+}
 
 // Modo A: retorno de verificação de e-mail pendente
 if (urlParams.has('verify')) {
@@ -1024,10 +1032,11 @@ if (urlParams.has('ms_linked')) {
 }
 
 // Modo C: onboarding pós-OAuth social (Google/Discord/Facebook criou conta nova)
-// O backend redireciona para signup.html?oauth_onboard=TOKEN&oauth_provider=google
-if (urlParams.has('oauth_onboard')) {
-  oauthOnboardToken    = urlParams.get('oauth_onboard');
-  oauthOnboardProvider = urlParams.get('oauth_provider') || 'social';
+// O backend entrega o token por POST; a query antiga continua aceita durante o rollout.
+const oauthOnboardResult = postedOAuthResult.oauth_onboard || urlParams.get('oauth_onboard');
+if (oauthOnboardResult) {
+  oauthOnboardToken    = oauthOnboardResult;
+  oauthOnboardProvider = postedOAuthResult.oauth_provider || urlParams.get('oauth_provider') || 'social';
   window.history.replaceState({}, document.title, window.location.pathname);
   localStorage.setItem(TOKEN_KEY, oauthOnboardToken);
   // Após carregar, inicializa o onboarding (mostra etapa 3 com banner explicativo)
@@ -1342,6 +1351,32 @@ function copyIp(ip, porta) {
 
 function forceLogout() {
   localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); showView('signup');
+}
+
+function startMicrosoftSignupLink() {
+  const currentToken = localStorage.getItem(TOKEN_KEY);
+  sessionStorage.setItem('fa_ms_signup_return', '1');
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `${API_BASE}/api/auth/microsoft/login`;
+  form.hidden = true;
+  if (currentToken) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'link_token';
+    input.value = currentToken;
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function finishSignupAuth() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch {}
+  if (window.FAAuthTransfer?.handoff(token, user, '/dashboard')) return;
+  location.href = 'dashboard.html';
 }
 
 

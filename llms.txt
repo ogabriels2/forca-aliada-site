@@ -8,13 +8,13 @@ A Forca Aliada e um servidor e uma comunidade social de Minecraft para jogadores
 
 ## Conteudo publico principal
 
-- Site oficial: https://forcaaliada.ogabriels.com/
-- Guia do servidor: https://forcaaliada.ogabriels.com/guia
-- Comunidade publica: https://forcaaliada.ogabriels.com/community
-- Perfis publicos: https://forcaaliada.ogabriels.com/share/profile/
-- Posts publicos selecionados: https://forcaaliada.ogabriels.com/share/post/
-- Termos: https://forcaaliada.ogabriels.com/termos
-- Privacidade: https://forcaaliada.ogabriels.com/privacidade
+- Site oficial: https://forcaaliada.com/
+- Guia do servidor: https://forcaaliada.com/guia
+- Comunidade publica: https://forcaaliada.com/community
+- Perfis publicos: https://forcaaliada.com/share/profile/
+- Posts publicos selecionados: https://forcaaliada.com/share/post/
+- Termos: https://forcaaliada.com/termos
+- Privacidade: https://forcaaliada.com/privacidade
 
 ## Dados tecnicos
 

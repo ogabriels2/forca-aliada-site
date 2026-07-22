@@ -1,13 +1,11 @@
 {
   "version": 1,
-  "include": [
-    "/api/app/*",
-    "/share/*",
-    "/sitemap.xml",
-    "/sitemap-pages.xml",
-    "/sitemap-profiles.xml",
-    "/sitemap-posts.xml",
-    "/sitemap-posts-page-*.xml"
-  ],
-  "exclude": []
+  "include": ["/*"],
+  "exclude": [
+    "/assets/*",
+    "/service-worker.js",
+    "/manifest.webmanifest",
+    "/community.webmanifest",
+    "/staff.webmanifest"
+  ]
 }

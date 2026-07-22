@@ -296,6 +296,9 @@ app.use(compression());
 
 // CORS
 const defaultCorsOrigins = [
+  'https://forcaaliada.com',
+  'https://www.forcaaliada.com',
+  'https://accounts.ogabriels.com',
   'https://forcaaliada.ogabriels.com',
   'https://forca-aliada-site.vercel.app',
   'https://forca-aliada-site.onrender.com',
@@ -757,7 +760,10 @@ const AUDIT_SCHEMA_STATEMENTS = [
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 chars');
 const INGEST_SECRET = process.env.INGEST_SECRET; // Usado agora apenas como Fallback de emergência
-const FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || 'https://forcaaliada.ogabriels.com').replace(/\/+$/, '');
+// OAuth sempre volta ao host isolado de contas. URLs publicas e share pages
+// usam PUBLIC_BASE_URL para nao misturar autenticacao com o dominio canonico.
+const FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || 'https://accounts.ogabriels.com').replace(/\/+$/, '');
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://forcaaliada.com').replace(/\/+$/, '');
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -2147,19 +2153,19 @@ function plainText(value = '', max = 180) {
 }
 
 function publicAssetUrl(path = '/assets/images/og-image.jpg') {
-  return new URL(path, `${FRONTEND_BASE_URL}/`).href;
+  return new URL(path, `${PUBLIC_BASE_URL}/`).href;
 }
 
 function publicPageUrl(path = '/') {
-  return new URL(path, `${FRONTEND_BASE_URL}/`).href;
+  return new URL(path, `${PUBLIC_BASE_URL}/`).href;
 }
 
-const PUBLIC_SHARE_BASE_URL = (process.env.PUBLIC_SHARE_BASE_URL || FRONTEND_BASE_URL).replace(/\/+$/, '');
+const PUBLIC_SHARE_BASE_URL = (process.env.PUBLIC_SHARE_BASE_URL || PUBLIC_BASE_URL).replace(/\/+$/, '');
 
 function absolutePublicUrl(value = '') {
   if (!value) return '';
   try {
-    const url = new URL(String(value), `${FRONTEND_BASE_URL}/`);
+    const url = new URL(String(value), `${PUBLIC_BASE_URL}/`);
     return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
   } catch {
     return '';
@@ -2167,7 +2173,7 @@ function absolutePublicUrl(value = '') {
 }
 
 function publicShareBaseUrl(req) {
-  return PUBLIC_SHARE_BASE_URL || FRONTEND_BASE_URL;
+  return PUBLIC_SHARE_BASE_URL || PUBLIC_BASE_URL;
 }
 
 function publicSharePageUrl(req, path = '/') {
@@ -3154,11 +3160,11 @@ app.get('/healthz', healthHandler);
 app.get('/api/healthz', healthHandler);
 app.get('/api/app/discovery', (req, res) => res.json(managerEnvelope(req, {
   ok: true,
-  apiBase: 'https://forca-aliada-site.onrender.com',
-  syncEndpoint: 'https://forca-aliada-site.onrender.com/api/app/sync',
-  installationRegistrationEndpoint: 'https://forca-aliada-site.onrender.com/api/app/installations/register',
-  installationPresenceEndpoint: 'https://forca-aliada-site.onrender.com/api/app/installations/presence',
-  websocketEndpoint: 'wss://forca-aliada-site.onrender.com/api/app/ws',
+  apiBase: 'https://forcaaliada.com',
+  syncEndpoint: 'https://forcaaliada.com/api/app/sync',
+  installationRegistrationEndpoint: 'https://forcaaliada.com/api/app/installations/register',
+  installationPresenceEndpoint: 'https://forcaaliada.com/api/app/installations/presence',
+  websocketEndpoint: 'wss://forcaaliada.com/api/app/ws',
   transports: { websocket: true, httpsFallback: true, operationalPresence: true },
   build: String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12) || null,
 })));
@@ -5564,18 +5570,22 @@ async function issueSessionToken(req, userRow) {
   return token;
 }
 
-async function createSessionAndRedirect(res, req, userRow, provider = 'oauth', isNew = false) {
+async function createSessionAndRedirect(res, req, userRow, provider = 'oauth', isNew = false, stateEntry = null) {
   const token = await issueSessionToken(req, userRow);
   const actionLabel = isNew ? `Cadastro + login social (${provider})` : `Login social (${provider})`;
   await audit({ actorId: userRow.id, actorName: userRow.username, type: isNew ? 'create' : 'login', message: actionLabel });
   // Se é conta nova via OAuth social (não Microsoft), redireciona para onboarding de cadastro
   // O onboarding guia o usuário pela vinculação da conta Microsoft e cópia do IP
   if (isNew && provider !== 'microsoft') {
-    return res.redirect(
-      `${FRONTEND_BASE_URL}/signup.html?oauth_onboard=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`
-    );
+    return oauthResultPost(res, {
+      oauth_onboard: token,
+      oauth_provider: provider,
+    }, stateEntry, 'signup');
   }
-  return res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=${encodeURIComponent(provider)}`);
+  return oauthResultPost(res, {
+    oauth_token: token,
+    oauth_provider: provider,
+  }, stateEntry, 'login');
 }
 
 // ─────────────────────────────────────────────
@@ -5634,6 +5644,47 @@ function oauthFrontendUrl(path, params = {}, stateEntry = null) {
   if (stateEntry?.popup) url.searchParams.set('oauth_popup', '1');
   if (stateEntry?.flowId) url.searchParams.set('oauth_flow', stateEntry.flowId);
   return url.toString();
+}
+
+function oauthHtmlAttribute(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[char]));
+}
+
+/**
+ * Entrega resultados OAuth confidenciais por POST. Tokens de sessão e de
+ * confirmação nunca entram na URL, no histórico nem no Referer do navegador.
+ */
+function oauthResultPost(res, fields = {}, stateEntry = null, target = 'login') {
+  const allowedFields = ['oauth_token', 'oauth_onboard', 'oauth_link_token', 'oauth_email', 'oauth_provider'];
+  const payload = {};
+  for (const key of allowedFields) {
+    if (fields[key] !== undefined && fields[key] !== null && String(fields[key]) !== '') {
+      payload[key] = String(fields[key]);
+    }
+  }
+  payload.oauth_target = target === 'signup' ? 'signup' : 'login';
+  if (stateEntry?.popup) payload.oauth_popup = '1';
+  if (stateEntry?.flowId) payload.oauth_flow = String(stateEntry.flowId).slice(0, 80);
+
+  const action = new URL('/auth/oauth-result', `${FRONTEND_BASE_URL}/`);
+  const actionOrigin = action.origin;
+  const nonce = randomBase64Url(18);
+  const inputs = Object.entries(payload)
+    .map(([name, value]) => `<input type="hidden" name="${oauthHtmlAttribute(name)}" value="${oauthHtmlAttribute(value)}">`)
+    .join('');
+
+  return res.status(200).set({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'private, no-store, max-age=0',
+    'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; form-action ${actionOrigin}; base-uri 'none'; frame-ancestors 'none'`,
+    'Cross-Origin-Opener-Policy': 'unsafe-none',
+    'Referrer-Policy': 'no-referrer',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-Robots-Tag': 'noindex, nofollow',
+  }).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Concluindo acesso</title><style nonce="${nonce}">html{color-scheme:dark;background:#060c16;font:16px system-ui,sans-serif}body{min-height:100vh;display:grid;place-items:center;margin:0;color:#f4f4f5}main{padding:2rem;text-align:center}p{color:#a1a1aa}</style></head><body><main><h1>Concluindo seu acesso…</h1><p>Você será redirecionado com segurança.</p><form id="oauth-result" method="post" action="${oauthHtmlAttribute(action.toString())}">${inputs}</form></main><script nonce="${nonce}">document.getElementById('oauth-result').submit()</script></body></html>`);
 }
 
 async function upsertSocialAccount({ provider, providerUserId, providerEmail, refreshToken, profileName }) {
@@ -5703,14 +5754,15 @@ async function upsertSocialAccount({ provider, providerUserId, providerEmail, re
   return { status: 'ok', user: created[0], isNew: true };
 }
 
-app.get('/api/auth/microsoft/login', (req, res) => {
+function startMicrosoftOAuth(req, res) {
   // Proteção CSRF: gera um state único para o fluxo Microsoft/Xbox
   // (o mesmo mecanismo usado pelos outros providers via registerGenericOAuth)
 
   // Se link_token for fornecido (fluxo de vinculação a partir da account.html),
   // extrai o userId para armazenar no state — o callback irá vincular ao usuário existente
   let linkUserId = null;
-  const rawLinkToken = req.query.link_token;
+  const input = req.method === 'POST' ? req.body : req.query;
+  const rawLinkToken = input?.link_token;
   if (rawLinkToken) {
     try {
       const payload = jwt.verify(rawLinkToken, JWT_SECRET);
@@ -5721,8 +5773,8 @@ app.get('/api/auth/microsoft/login', (req, res) => {
   }
 
   const state = buildOAuthState('microsoft', linkUserId, {
-    popup: req.query.popup === '1' || req.query.oauth_popup === '1',
-    flowId: req.query.flow_id || req.query.oauth_flow || null,
+    popup: input?.popup === '1' || input?.oauth_popup === '1',
+    flowId: input?.flow_id || input?.oauth_flow || null,
   });
 
   // ⚠️  IMPORTANTE: "offline_access" deve ficar no nível raiz (fora do XboxLive.*)
@@ -5738,7 +5790,10 @@ app.get('/api/auth/microsoft/login', (req, res) => {
     prompt:        'select_account', // <-- A MÁGICA AQUI: Força a MS a perguntar qual conta usar
   });
   res.redirect(`https://login.live.com/oauth20_authorize.srf?${params.toString()}`);
-});
+}
+
+app.get('/api/auth/microsoft/login', startMicrosoftOAuth);
+app.post('/api/auth/microsoft/login', startMicrosoftOAuth);
 
 app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
   try {
@@ -5771,11 +5826,12 @@ app.post('/api/auth/oauth/confirm-link', authLimiter, async (req, res) => {
 });
 
 function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scope }) {
-  app.get(`/api/auth/${provider}/login`, (req, res) => {
+  const startGenericOAuth = (req, res) => {
     // Se link_token for fornecido (fluxo de vinculação a partir da account.html),
     // extrai o userId para armazenar no state
+    const input = req.method === 'POST' ? req.body : req.query;
     let linkUserId = null;
-    const rawLinkToken = req.query.link_token;
+    const rawLinkToken = input?.link_token;
     if (rawLinkToken) {
       try {
         const payload = jwt.verify(rawLinkToken, JWT_SECRET);
@@ -5784,8 +5840,8 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
     }
 
     const state = buildOAuthState(provider, linkUserId, {
-      popup: req.query.popup === '1' || req.query.oauth_popup === '1',
-      flowId: req.query.flow_id || req.query.oauth_flow || null,
+      popup: input?.popup === '1' || input?.oauth_popup === '1',
+      flowId: input?.flow_id || input?.oauth_flow || null,
     });
     const params = new URLSearchParams({
       client_id: requireEnv(`${provider.toUpperCase()}_CLIENT_ID`),
@@ -5796,7 +5852,10 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
     });
     if (provider === 'facebook') params.set('auth_type', 'rerequest');
     res.redirect(`${authUrl}?${params.toString()}`);
-  });
+  };
+
+  app.get(`/api/auth/${provider}/login`, startGenericOAuth);
+  app.post(`/api/auth/${provider}/login`, startGenericOAuth);
 
   app.get(`/api/auth/${provider}/callback`, async (req, res) => {
     let stateEntry = null;
@@ -5844,10 +5903,10 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
 
         // Redireciona para login.html — o popup detecta e fecha com postMessage
         const token = await issueSessionToken(req, userRow);
-        return res.redirect(oauthFrontendUrl('login.html', {
+        return oauthResultPost(res, {
           oauth_token: token,
           oauth_provider: provider,
-        }, stateEntry));
+        }, stateEntry, 'login');
       }
 
       // Fluxo normal de login
@@ -5859,13 +5918,13 @@ function registerGenericOAuth({ provider, authUrl, tokenUrl, profileLoader, scop
         profileName: profile.name
       });
       if (outcome.status === 'needs_confirmation') {
-        return res.redirect(oauthFrontendUrl('login.html', {
+        return oauthResultPost(res, {
           oauth_provider: provider,
           oauth_link_token: outcome.linkToken,
           oauth_email: outcome.email,
-        }, stateEntry));
+        }, stateEntry, 'login');
       }
-      return createSessionAndRedirect(res, req, outcome.user, provider, outcome.isNew === true);
+      return createSessionAndRedirect(res, req, outcome.user, provider, outcome.isNew === true, stateEntry);
     } catch (err) {
       return res.redirect(oauthFrontendUrl('login.html', {
         oauth_provider: provider,
@@ -5933,7 +5992,7 @@ registerGenericOAuth({
  *   6. Upsert do usuário e da integração no banco, cria sessão JWT.
  *
  *  Segurança:
- *   - Não armazena tokens em query strings além do JWT assinado pelo servidor.
+ *   - Tokens de sessão são entregues por POST e nunca em query strings.
  *   - Refresh token da MS armazenado apenas na tabela user_integrations.
  *   - XUID usado como chave de busca para re-autenticações futuras (evita duplicatas).
  *   - UUID sintético para Bedrock ('bedrock_' + xuid) garante unicidade na coluna mc_uuid.
@@ -6063,10 +6122,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
         metadata: { edition, nick, xuid, mcUuid, integrationId: linked.integration?.id, transferredFromUserId: linked.transferredFromUserId },
       });
 
-      return res.redirect(oauthFrontendUrl('login.html', {
-            oauth_token: await issueSessionToken(req, userRow),
-            oauth_provider: 'microsoft',
-          }, stateEntry));
+      return oauthResultPost(res, {
+        oauth_token: await issueSessionToken(req, userRow),
+        oauth_provider: 'microsoft',
+      }, stateEntry, 'login');
         }
 
     // ── FLUXO NORMAL DE LOGIN ────────────────────────────────────────────────
@@ -6178,8 +6237,10 @@ app.get('/api/auth/microsoft/callback', async (req, res) => {
       metadata: { edition, nick, xuid, mcUuid },
     });
 
-    // Usa o parâmetro genérico oauth_token (compatível com o handler do login.html)
-    res.redirect(`${FRONTEND_BASE_URL}/login.html?oauth_token=${encodeURIComponent(token)}&oauth_provider=microsoft`);
+    return oauthResultPost(res, {
+      oauth_token: token,
+      oauth_provider: 'microsoft',
+    }, stateEntry, 'login');
 
   } catch (err) {
     console.error('[microsoft/callback]', err?.message || err);

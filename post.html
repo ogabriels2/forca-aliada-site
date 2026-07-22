@@ -16,17 +16,17 @@
 <meta name="description" content="Publicacao publica da comunidade Forca Aliada.">
 <meta name="author" content="Força Aliada">
 <meta name="robots" content="noindex,follow,max-image-preview:large">
-<link rel="canonical" href="https://forcaaliada.ogabriels.com/post">
-<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/post">
-<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/post">
+<link rel="canonical" href="https://forcaaliada.com/post">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.com/post">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.com/post">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Forca Aliada">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Post | Forca Aliada">
 <meta property="og:description" content="Publicacao publica da comunidade Forca Aliada.">
-<meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta property="og:image" content="https://forcaaliada.com/assets/images/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <script>
 (function(){
@@ -237,7 +237,7 @@ button{font:inherit;border:0}
 </main>
 
 <script>
-const PROD = 'https://forca-aliada-site.onrender.com';
+const PROD = 'https://forcaaliada.com';
 const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const LOCAL_API = 'http://localhost:3000';
 const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
@@ -312,7 +312,7 @@ function loginUrl(next = `${location.pathname}${location.search}${location.hash}
   return `${url.pathname.replace(/^\//, '')}${url.search}`;
 }
 function publicShareUrl(id) {
-  return `https://forcaaliada.ogabriels.com/share/post/${encodeURIComponent(id)}`;
+  return `https://forcaaliada.com/share/post/${encodeURIComponent(id)}`;
 }
 async function api(path) {
   let err;
@@ -352,7 +352,7 @@ function updateSeo(post, id) {
   const author = authorName(post);
   const description = plain(post.content) || `${author} publicou na comunidade Forca Aliada.`;
   const image = mediaUrls(post)[0] || post.avatar_url || post.photo_url || skin(author, 140);
-  const canonical = `https://forcaaliada.ogabriels.com/share/post/${encodeURIComponent(id)}`;
+  const canonical = `https://forcaaliada.com/share/post/${encodeURIComponent(id)}`;
   document.title = `Post de ${author} | Forca Aliada`;
   setMeta('description', description);
   setMeta('robots', 'index,follow,max-image-preview:large');
@@ -364,7 +364,7 @@ function updateSeo(post, id) {
   setMeta('og:image:alt', `Post de ${author}`, 'property');
   setMeta('article:published_time', post.created_at, 'property');
   setMeta('article:modified_time', post.updated_at || post.created_at, 'property');
-  setMeta('article:author', `https://forcaaliada.ogabriels.com/share/profile/${encodeURIComponent(profileIdentifier(post))}`, 'property');
+  setMeta('article:author', `https://forcaaliada.com/share/profile/${encodeURIComponent(profileIdentifier(post))}`, 'property');
   setMeta('twitter:card', 'summary_large_image');
   setMeta('twitter:title', `Post de ${author} | Forca Aliada`);
   setMeta('twitter:description', description);
@@ -381,7 +381,7 @@ function updateSeo(post, id) {
     image,
     url: canonical,
     author: { '@type': 'Person', name: author },
-    publisher: { '@type': 'Organization', name: 'Força Aliada', url: 'https://forcaaliada.ogabriels.com/' },
+    publisher: { '@type': 'Organization', name: 'Força Aliada', url: 'https://forcaaliada.com/' },
   });
 }
 function renderPost(post, id) {

@@ -33,4 +33,4 @@ Allow: /
 User-agent: LinkedInBot
 Allow: /
 
-Sitemap: https://forcaaliada.ogabriels.com/sitemap.xml
+Sitemap: https://forcaaliada.com/sitemap.xml

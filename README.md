@@ -6,7 +6,7 @@
 
 Site oficial, área de contas, painel de staff e rede social do servidor Minecraft Survival Vanilla Força Aliada.
 
-[Site ao vivo](https://forcaaliada.ogabriels.com) | [Community](https://forcaaliada.ogabriels.com/community) | [API](https://forca-aliada-site.onrender.com/healthz) | [Discord](https://discord.gg/xZmRkB7PWd)
+[Site ao vivo](https://forcaaliada.com) | [Community](https://forcaaliada.com/community) | [API](https://forcaaliada.com/healthz) | [Discord](https://discord.gg/xZmRkB7PWd)
 
 </div>
 
@@ -107,7 +107,7 @@ Configure as variáveis no ambiente local ou no painel do Render.
 DATABASE_URL=postgres://user:password@host:5432/dbname
 JWT_SECRET=troque-por-um-segredo-longo
 INGEST_SECRET=troque-por-um-segredo-longo
-CORS_ORIGINS=https://forcaaliada.ogabriels.com,http://localhost:5500
+CORS_ORIGINS=https://forcaaliada.com,https://accounts.ogabriels.com,http://localhost:5500
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
 EMAIL_FROM=no-reply@seudominio.com
 MC_HOST=fa.ogabriels.com

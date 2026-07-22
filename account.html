@@ -22,7 +22,7 @@
   // Se rodar no mesmo domínio, usa relativo. Se for front e back separados, define a API_BASE.
   const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                    ? 'http://localhost:3000'
-                   : 'https://forca-aliada-site.onrender.com';
+                   : 'https://forcaaliada.com';
 
   function effective(t) { return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
   function apply(t) { document.documentElement.setAttribute('data-theme', effective(t || localStorage.getItem(key) || 'dark')); }
@@ -1655,7 +1655,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 
 </style>
 <!-- Preconnect hints: reduz latência de primeira conexão -->
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/fa-design-system.css?v=design-20260614b">
@@ -2921,7 +2921,7 @@ footer a:hover { color: var(--text-primary); text-decoration: underline; }
 <script>
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:3000'
-  : 'https://forca-aliada-site.onrender.com';
+  : 'https://forcaaliada.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY = 'fa_token';
 const THEME_KEY = 'fa_theme';
@@ -4607,6 +4607,28 @@ async function loadSocialAccounts() {
   }
 }
 
+function openOAuthPostPopup(action, name, features, fields = {}) {
+  const popup = window.open('', name, features);
+  if (!popup) return null;
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = action;
+  form.target = name;
+  form.hidden = true;
+  for (const [fieldName, fieldValue] of Object.entries(fields)) {
+    if (fieldValue === undefined || fieldValue === null || String(fieldValue) === '') continue;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = fieldName;
+    input.value = String(fieldValue);
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
+  return popup;
+}
+
 function connectOAuthLegacy(provider) {
   const currentToken = localStorage.getItem(TOKEN_KEY);
   const endpoints = {
@@ -4618,14 +4640,16 @@ function connectOAuthLegacy(provider) {
   const base = endpoints[provider];
   if (!base) { showToast('error', 'Provedor inválido', 'Este provedor ainda não está disponível.'); return; }
 
-  // Passa o token atual como parâmetro para que o backend possa vincular à conta logada
-  // ao invés de apenas fazer login
-  const url = currentToken ? `${base}?link_token=${encodeURIComponent(currentToken)}` : base;
-
   const w = 520, h = 660;
   const left = Math.round((screen.width - w) / 2);
   const top  = Math.round((screen.height - h) / 2);
-  const popup = window.open(url, `oauth_${provider}`, `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,noopener=no`);
+  const popupName = `oauth_${provider}`;
+  const popup = openOAuthPostPopup(
+    base,
+    popupName,
+    `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,resizable=yes`,
+    { link_token: currentToken, popup: '1' },
+  );
 
   if (!popup) {
     showToast('error', 'Popup bloqueado', 'Permita popups para este site e tente novamente.');
@@ -4634,6 +4658,7 @@ function connectOAuthLegacy(provider) {
 
   // Ouve postMessage do popup (login.html envia quando completa vinculação)
   function onMessage(e) {
+    if (e.origin !== 'https://accounts.ogabriels.com') return;
     if (!e.data || e.data.source !== 'fa_oauth') return;
     window.removeEventListener('message', onMessage);
     clearInterval(poll);
@@ -4670,16 +4695,19 @@ function connectOAuth(provider) {
 
   const flowId = `${provider}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const resultKey = `fa_oauth_result_${flowId}`;
-  const params = new URLSearchParams({ popup: '1', flow_id: flowId });
-  if (currentToken) params.set('link_token', currentToken);
-  const url = `${base}?${params.toString()}`;
   const el = document.getElementById(`conn-${provider}`);
   if (el) el.classList.add('loading');
 
   const w = 520, h = 660;
   const left = Math.round((screen.width - w) / 2);
   const top  = Math.round((screen.height - h) / 2);
-  const popup = window.open(url, `oauth_${provider}`, `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,resizable=yes`);
+  const popupName = `oauth_${provider}`;
+  const popup = openOAuthPostPopup(
+    base,
+    popupName,
+    `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,resizable=yes`,
+    { link_token: currentToken, popup: '1', flow_id: flowId },
+  );
 
   if (!popup) {
     if (el) el.classList.remove('loading');
@@ -4725,6 +4753,7 @@ function connectOAuth(provider) {
   }
 
   function onMessage(e) {
+    if (e.origin !== 'https://accounts.ogabriels.com') return;
     if (!e.data || e.data.source !== 'fa_oauth') return;
     if (e.data.flowId && e.data.flowId !== flowId) return;
     finish(e.data);
@@ -4864,7 +4893,7 @@ async function unlinkAccount(provider) {
   }
 }
 
-function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = 'login.html'; }
+function logout() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); location.href = '/logout'; }
 
 // ── DROPDOWN HEADER ────────────────────────────────────────────
 function toggleDropdown(e) {

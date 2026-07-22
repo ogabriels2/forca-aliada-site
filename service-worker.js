@@ -1,4 +1,7 @@
-const CACHE_VERSION = 'fa-static-v47';
+const CACHE_VERSION = 'fa-static-v48-domain-migration';
+const CANONICAL_ORIGIN = 'https://forcaaliada.com';
+const LEGACY_HOSTS = new Set(['forcaaliada.ogabriels.com', 'www.forcaaliada.ogabriels.com']);
+const IS_LEGACY_ORIGIN = LEGACY_HOSTS.has(self.location.hostname);
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -43,12 +46,30 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', event => {
+  if (IS_LEGACY_ORIGIN) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   event.waitUntil(caches.open(CACHE_VERSION)
     .then(cache => cache.addAll(STATIC_ASSETS))
     .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
+  if (IS_LEGACY_ORIGIN) {
+    event.waitUntil((async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      await Promise.all(windows.map(client => {
+        const current = new URL(client.url);
+        const target = new URL(current.pathname + current.search + current.hash, CANONICAL_ORIGIN);
+        return client.navigate(target.href).catch(() => null);
+      }));
+      await self.registration.unregister();
+    })());
+    return;
+  }
   event.waitUntil(Promise.all([
     caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_VERSION).map(key => caches.delete(key)))),
     self.clients.claim(),
@@ -59,6 +80,11 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  if (IS_LEGACY_ORIGIN && request.destination === 'document') {
+    const target = new URL(url.pathname + url.search + url.hash, CANONICAL_ORIGIN);
+    event.respondWith(Promise.resolve(Response.redirect(target.href, 301)));
+    return;
+  }
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/share/')) return;
 
   if (request.destination === 'document') {
@@ -79,7 +105,8 @@ self.addEventListener('fetch', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || 'community.html?notifications=1', self.registration.scope).href;
+  const base = IS_LEGACY_ORIGIN ? CANONICAL_ORIGIN : self.registration.scope;
+  const target = new URL(event.notification.data?.url || 'community.html?notifications=1', base).href;
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find(client => new URL(client.url).origin === self.location.origin);

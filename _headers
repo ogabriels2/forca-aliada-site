@@ -34,6 +34,25 @@
 /service-worker.js
   Cache-Control: public, max-age=0, must-revalidate
 
+/auth/*
+  Cache-Control: private, no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow
+
+/login*
+  Cache-Control: private, no-store, max-age=0
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+
+/signup*
+  Cache-Control: private, no-store, max-age=0
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+
+/recuperar*
+  Cache-Control: private, no-store, max-age=0
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+
 /robots.txt
   Cache-Control: public, max-age=3600
 

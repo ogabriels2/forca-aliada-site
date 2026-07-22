@@ -18,7 +18,7 @@
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
   function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'dark'));}
   apply();
-  if(token){const syncTheme=()=>{fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
+  if(token){const syncTheme=()=>{fetch('https://forcaaliada.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'dark'));
 })();
 </script>
@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 
 <style>
@@ -803,21 +803,30 @@ header {
   </div>
 </div>
 
+<script src="assets/js/fa-auth-transfer.js?v=20260722a"></script>
 <script>
 'use strict';
-const API_BASE    = 'https://forca-aliada-site.onrender.com';
+const API_BASE    = 'https://forcaaliada.com';
 const SESSION_KEY = 'fa_session';
 const TOKEN_KEY   = 'fa_token';
 const LOGIN_NEXT_KEY = 'fa_login_next';
+
+window.FAAuthTransfer?.ensureFlow({ authPath: '/login', fallback: '/dashboard' });
 
 let failedAttempts = 0;
 const MAX_ATTEMPTS = 5;
 
 function normalizeReturnPath(raw) {
   if (!raw) return '';
+  if (window.FAAuthTransfer) {
+    const normalized = window.FAAuthTransfer.normalizeNext(raw, '/dashboard');
+    return normalized === '/dashboard' && !String(raw).includes('dashboard')
+      ? ''
+      : normalized.replace(/^\//, '');
+  }
   try {
-    const url = new URL(String(raw), window.location.origin);
-    if (url.origin !== window.location.origin) return '';
+    const url = new URL(String(raw), 'https://forcaaliada.com');
+    if (url.origin !== 'https://forcaaliada.com') return '';
     const path = url.pathname.replace(/\/+/g, '/');
     if (!path || /\/(?:login|signup|recuperar)\.html$/i.test(path)) return '';
     ['oauth_token', 'ms_token', 'oauth_err', 'ms_err', 'oauth_link_token', 'oauth_email', 'oauth_provider', 'oauth_popup', 'oauth_flow'].forEach(key => {
@@ -858,9 +867,7 @@ function captureLoginDestination() {
   const stored = readStoredLoginDestination();
   if (stored) return stored;
 
-  const ref = document.referrer && document.referrer.startsWith(window.location.origin)
-    ? normalizeReturnPath(document.referrer)
-    : '';
+  const ref = document.referrer ? normalizeReturnPath(document.referrer) : '';
   return ref ? storeLoginDestination(ref) : '';
 }
 
@@ -881,7 +888,11 @@ function loginFallback(user = null) {
 
 function redirectAfterAuth(user = null, delay = 0) {
   const destination = consumeLoginDestination() || loginFallback(user);
-  setTimeout(() => { window.location.href = destination; }, delay);
+  setTimeout(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (window.FAAuthTransfer?.handoff(token, user, `/${destination.replace(/^\//, '')}`)) return;
+    window.location.href = destination;
+  }, delay);
 }
 
 function buildLoginUrl(destination = window.location.href) {
@@ -1238,7 +1249,7 @@ async function handleLinkConfirmPopup(linkToken, provider, email, flowId = null)
           localStorage.setItem(`fa_oauth_result_${flowId}`, JSON.stringify({ ...payload, createdAt: Date.now() }));
         } catch (_) {}
       }
-      try { window.opener?.postMessage(payload, '*'); } catch (_) {}
+      try { window.opener?.postMessage(payload, 'https://forcaaliada.com'); } catch (_) {}
       setTimeout(() => window.close(), 60);
     }
 
@@ -1293,22 +1304,32 @@ async function handleLinkConfirmPopup(linkToken, provider, email, flowId = null)
 // ── DOMContentLoaded: handle OAuth redirects ──────
 window.addEventListener('DOMContentLoaded', async () => {
   const urlParams  = new URLSearchParams(window.location.search);
+  let postedResult = {};
+  if (urlParams.get('oauth_result') === '1') {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem('fa_oauth_result') || 'null');
+      sessionStorage.removeItem('fa_oauth_result');
+      if (parsed && Date.now() - Number(parsed.created_at || 0) <= 2 * 60 * 1000) postedResult = parsed;
+    } catch {
+      sessionStorage.removeItem('fa_oauth_result');
+    }
+  }
 
   // Normalize: ms_err/ms_token are legacy params from the Xbox callback; unify with generic names
   const oauthErr      = urlParams.get('oauth_err') || urlParams.get('ms_err');
-  const oauthProvider = urlParams.get('oauth_provider') || null; // No default fallback — null is correct
-  const oauthToken    = urlParams.get('oauth_token') || urlParams.get('ms_token');
-  const linkToken     = urlParams.get('oauth_link_token');
-  const linkEmail     = urlParams.get('oauth_email');
-  const oauthPopup    = urlParams.get('oauth_popup') === '1';
-  const oauthFlow     = urlParams.get('oauth_flow') || null;
+  const oauthProvider = postedResult.oauth_provider || urlParams.get('oauth_provider') || null; // No default fallback — null is correct
+  const oauthToken    = postedResult.oauth_token || urlParams.get('oauth_token') || urlParams.get('ms_token');
+  const linkToken     = postedResult.oauth_link_token || urlParams.get('oauth_link_token');
+  const linkEmail     = postedResult.oauth_email || urlParams.get('oauth_email');
+  const oauthPopup    = postedResult.oauth_popup === '1' || urlParams.get('oauth_popup') === '1';
+  const oauthFlow     = postedResult.oauth_flow || urlParams.get('oauth_flow') || null;
 
   // Detect popup context — se esta página foi aberta como popup pela account.html
   // window.opener existe e não está bloqueado
   const isPopup = oauthPopup || !!(window.opener && window.opener !== window);
 
   // Always clean URL params immediately to avoid re-triggering on refresh
-  if (oauthErr || oauthToken || linkToken || oauthPopup || oauthFlow) {
+  if (oauthErr || oauthToken || linkToken || oauthPopup || oauthFlow || urlParams.get('oauth_result') === '1') {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
@@ -1322,7 +1343,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         } catch (_) {}
       }
       try {
-        window.opener?.postMessage(payload, '*');
+        window.opener?.postMessage(payload, 'https://forcaaliada.com');
       } catch (_) {}
       setTimeout(() => window.close(), 60);
     }
@@ -1368,8 +1389,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   //   a) the provider was already linked (returning user) — login directly
   //   b) a brand new account was created via OAuth — login directly
   //   c) a new social (non-Microsoft) account was created — redirect to signup onboarding
-  //      (backend already redirects to signup.html?oauth_onboard=... in this case,
-  //       but if it lands here anyway, we handle it gracefully)
+  //      (o backend entrega o resultado por POST; se cair aqui, tratamos normalmente)
   //
   // Special case: if the user was in the signup flow step 3 (linking Xbox),
   //   they have fa_ms_signup_return in sessionStorage. After the Microsoft OAuth

@@ -18,7 +18,7 @@
   function effective(t){return t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
   function apply(t){document.documentElement.setAttribute('data-theme', effective(t||localStorage.getItem(key)||'dark'));}
   apply();
-  if(token){const syncTheme=()=>{fetch('https://forca-aliada-site.onrender.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
+  if(token){const syncTheme=()=>{fetch('https://forcaaliada.com/api/me/preferences',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null).then(p=>{if(p&&p.theme){localStorage.setItem(key,p.theme);apply(p.theme);}}).catch(()=>{});};(typeof requestIdleCallback==='function')?requestIdleCallback(syncTheme,{timeout:3000}):setTimeout(syncTheme,800);}
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>apply(localStorage.getItem(key)||'dark'));
 })();
 </script>
@@ -326,7 +326,7 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 </style>
 <!-- Preconnect hints: reduz latência de primeira conexão -->
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 </head>
 <body>
@@ -382,14 +382,21 @@ button.main-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   </div>
 </div>
 
+<script src="assets/js/fa-auth-transfer.js?v=20260722a"></script>
 <script>
-const API_BASE = 'https://forca-aliada-site.onrender.com';
+const API_BASE = 'https://forcaaliada.com';
 const TOKEN_KEY = 'fa_token';
 let userEmail = '';
 
+window.FAAuthTransfer?.ensureFlow({ authPath: '/recuperar', fallback: '/dashboard' });
+
 // Verifica se já está logado, se sim, redireciona para o painel.
 if (localStorage.getItem(TOKEN_KEY)) {
-  window.location.replace('dashboard.html');
+  let session = null;
+  try { session = JSON.parse(localStorage.getItem('fa_session') || 'null'); } catch {}
+  if (!window.FAAuthTransfer?.handoff(localStorage.getItem(TOKEN_KEY), session, '/dashboard')) {
+    window.location.replace('dashboard.html');
+  }
 }
 
 function showMessage(step, text, type) {

@@ -16,17 +16,17 @@
 <meta name="description" content="Perfil publico gamificado da comunidade Forca Aliada.">
 <meta name="author" content="Força Aliada">
 <meta name="robots" content="noindex,follow,max-image-preview:large">
-<link rel="canonical" href="https://forcaaliada.ogabriels.com/profile">
-<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.ogabriels.com/profile">
-<link rel="alternate" hreflang="x-default" href="https://forcaaliada.ogabriels.com/profile">
+<link rel="canonical" href="https://forcaaliada.com/profile">
+<link rel="alternate" hreflang="pt-BR" href="https://forcaaliada.com/profile">
+<link rel="alternate" hreflang="x-default" href="https://forcaaliada.com/profile">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Força Aliada">
 <meta property="og:type" content="profile">
 <meta property="og:title" content="Perfil de jogador | Força Aliada">
 <meta property="og:description" content="Perfil público de jogador na comunidade Minecraft Força Aliada.">
-<meta property="og:image" content="https://forcaaliada.ogabriels.com/assets/images/og-image.jpg">
+<meta property="og:image" content="https://forcaaliada.com/assets/images/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://forca-aliada-site.onrender.com" crossorigin>
+<link rel="preconnect" href="https://forcaaliada.com" crossorigin>
 <link rel="preconnect" href="https://minotar.net" crossorigin>
 <link rel="stylesheet" href="assets/css/social-chat.css?v=chat15-20260615">
 <script>
@@ -623,7 +623,7 @@ button.stat:hover { transform: translateY(-1px); border-color: var(--accent); ba
 <div class="toast-stack" id="toast-stack"></div>
 
 <script>
-const PROD = 'https://forca-aliada-site.onrender.com';
+const PROD = 'https://forcaaliada.com';
 const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const LOCAL_API = 'http://localhost:3000';
 const STORED_API = IS_LOCAL ? localStorage.getItem('fa_api_base') : '';
@@ -821,7 +821,7 @@ function profileIdentifier(profile = state.data?.profile) {
   return profile?.minecraft_name || profile?.username || `id:${profile?.id}`;
 }
 function publicProfileShareUrl(profile = state.data?.profile) {
-  return `https://forcaaliada.ogabriels.com/share/profile/${encodeURIComponent(profileIdentifier(profile))}`;
+  return `https://forcaaliada.com/share/profile/${encodeURIComponent(profileIdentifier(profile))}`;
 }
 async function copyProfileShare(profile = state.data?.profile) {
   const url = publicProfileShareUrl(profile);
@@ -872,7 +872,7 @@ function renderProfile(data) {
   const rank = rankInfo(p.rank || p.role, p.merit);
   const isMe = Number(p.id) === Number(state.me?.id);
   const isGuest = !token;
-  const profileUrl = `https://forcaaliada.ogabriels.com/share/profile/${encodeURIComponent(profileIdentifier(p))}`;
+  const profileUrl = `https://forcaaliada.com/share/profile/${encodeURIComponent(profileIdentifier(p))}`;
   const seoDescription = (p.bio || `${name} na comunidade Forca Aliada. ${num(p.followers_count)} seguidores e ${num(p.posts_count)} posts.`).slice(0, 220);
   setMeta('description', seoDescription);
   setMeta('robots', 'index,follow,max-image-preview:large');

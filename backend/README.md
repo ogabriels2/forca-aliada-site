@@ -11,7 +11,7 @@
 - `DATABASE_URL`
 - `JWT_SECRET` (mínimo 32 caracteres)
 - `INGEST_SECRET` (mínimo 16 caracteres)
-- `CORS_ORIGINS` (CSV com origens permitidas, ex.: `https://forcaaliada.ogabriels.com,https://admin.forcaaliada.com`)
+- `CORS_ORIGINS` (CSV com origens permitidas, ex.: `https://forcaaliada.com,https://accounts.ogabriels.com`)
 - `MS_CLIENT_ID` (OAuth app da Microsoft/Xbox)
 - `MS_CLIENT_SECRET` (OAuth app da Microsoft/Xbox)
 - `MS_REDIRECT_URI` (precisa bater 1:1 com o callback cadastrado na Microsoft)
@@ -24,7 +24,9 @@
 - `DB_BOOT_RETRY_MS` (intervalo de retry do boot do banco; default `60000`)
 - `SCHEDULED_POST_POLL_MS` (intervalo para publicar posts agendados; default `900000`)
 - `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`
-- `FRONTEND_BASE_URL` (default `https://forcaaliada.ogabriels.com`; usado no redirect final do login Microsoft)
+- `FRONTEND_BASE_URL` (default `https://accounts.ogabriels.com`; usado nos retornos de login e OAuth)
+- `PUBLIC_BASE_URL` (default `https://forcaaliada.com`; origem canonica do site, sitemaps e metadados)
+- `PUBLIC_SHARE_BASE_URL` (default `PUBLIC_BASE_URL`; origem das share pages)
 
 ## Render / banco sem cota
 
@@ -39,7 +41,7 @@ npm install
 DATABASE_URL='postgres://...' \
 JWT_SECRET='coloque-um-segredo-bem-grande-com-32+-chars' \
 INGEST_SECRET='coloque-um-segredo-forte-16+-chars' \
-CORS_ORIGINS='https://forcaaliada.ogabriels.com' \
+CORS_ORIGINS='https://forcaaliada.com,https://accounts.ogabriels.com' \
 npm start
 ```
 

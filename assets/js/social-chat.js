@@ -31,7 +31,7 @@
   if (!token) return;
 
   // ── API bases ─────────────────────────────────────────────────────────────────
-  const PROD = 'https://forca-aliada-site.onrender.com';
+  const PROD = 'https://forcaaliada.com';
   const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
   const LOCAL_API = 'http://localhost:3000';
   const STORED_API = IS_LOCAL ? (safeStorage?.getItem('fa_api_base') || '') : '';
