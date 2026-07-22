@@ -4740,6 +4740,8 @@ function broadcastWhitelistItem(item) {
 }
 
 async function processAppSyncPayload(rawPayload = {}, options = {}) {
+  let syncStage = 'normalize';
+  try {
   const payload = rawPayload?.payload || rawPayload || {};
   const managerMeta = managerObservability.normalizeMetadata(
     options.metadata || payload._manager || rawPayload?._manager || {},
@@ -4779,6 +4781,7 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
   let closed = [];
 
   if (mustReconcile) {
+    syncStage = 'reconcile';
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -4854,6 +4857,7 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
   const pending = options.deliverWhitelist
     ? await takePendingWhitelist(options.appKeyId, false)
     : [];
+  syncStage = 'audit';
   if (serverStopped || serverStarted || opened.length || closed.length) {
     await audit({
       type: 'system',
@@ -4884,6 +4888,7 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
     kind: 'sync',
     ok: true,
   });
+  syncStage = 'telemetry';
   const telemetryPayload = rawPayload?.telemetry || payload?.telemetry;
   const telemetry = telemetryPayload
     ? await managerObservability.ingestTelemetry(options.auth || {}, {
@@ -4904,6 +4909,10 @@ async function processAppSyncPayload(rawPayload = {}, options = {}) {
     },
     telemetry,
   };
+  } catch (error) {
+    error.syncStage = syncStage;
+    throw error;
+  }
 }
 
 /**
@@ -5327,6 +5336,7 @@ app.post('/api/app/sync', async (req, res) => {
               table: String(err?.table || '').slice(0, 64) || null,
               column: String(err?.column || '').slice(0, 64) || null,
               constraint: String(err?.constraint || '').slice(0, 96) || null,
+              stage: String(err?.syncStage || '').slice(0, 32) || null,
             }
           : undefined;
         return res.status(500).json(managerEnvelope(req, { ok: false, code: 'SYNC_PROCESSING_FAILED', error: 'Falha na sincronização', diagnostic }));
