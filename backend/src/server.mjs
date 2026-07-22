@@ -945,6 +945,9 @@ CREATE TABLE IF NOT EXISTS player_sessions (
 );
 ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS duration_hours FLOAT;
 ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS origin VARCHAR(20) DEFAULT 'site';
+ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS origin_installation_id TEXT;
+ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS origin_transport VARCHAR(20);
+ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS origin_confidence VARCHAR(20) DEFAULT 'inferred';
 CREATE INDEX IF NOT EXISTS idx_player_name      ON player_sessions(player);
 CREATE INDEX IF NOT EXISTS idx_player_left_at   ON player_sessions(left_at DESC);
 
