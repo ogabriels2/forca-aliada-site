@@ -5171,9 +5171,14 @@ app.post('/api/app/remote/relay/register', remoteRelayLimiter, async (req, res) 
          host_name=EXCLUDED.host_name,
          expires_at=EXCLUDED.expires_at,
          last_host_seen_at=NOW()
-       WHERE app_remote_relay_rooms.host_token_hash=EXCLUDED.host_token_hash
-          OR app_remote_relay_rooms.expires_at <= NOW()
-       RETURNING room_id, expires_at`,
+        WHERE app_remote_relay_rooms.host_token_hash=EXCLUDED.host_token_hash
+           OR app_remote_relay_rooms.expires_at <= NOW()
+           OR (
+             app_remote_relay_rooms.app_key_id IS NOT NULL
+             AND EXCLUDED.app_key_id IS NOT NULL
+             AND app_remote_relay_rooms.app_key_id=EXCLUDED.app_key_id
+           )
+        RETURNING room_id, expires_at`,
       [roomId, appKeyId, tokenHash, hostName, ttl]
     );
     if (!rows.length) return res.status(409).json({ error: 'Sala remota ja esta em uso.' });
