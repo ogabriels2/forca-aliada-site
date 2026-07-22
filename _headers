@@ -53,6 +53,11 @@
   Referrer-Policy: no-referrer
   X-Robots-Tag: noindex, nofollow
 
+/404*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive
+  X-Frame-Options: DENY
+
 /robots.txt
   Cache-Control: public, max-age=3600
 

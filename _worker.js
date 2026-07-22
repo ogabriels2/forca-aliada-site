@@ -102,6 +102,32 @@ function notFound() {
   });
 }
 
+async function brandedNotFound(env, request, { preview = false } = {}) {
+  const assetUrl = new URL('/404', request.url);
+  const assetRequest = new Request(assetUrl, {
+    method: 'GET',
+    headers: request.headers,
+  });
+  const assetResponse = await env.ASSETS.fetch(assetRequest);
+  const headers = new Headers(assetResponse.headers);
+  headers.set('Content-Type', 'text/html; charset=utf-8');
+  headers.set('Content-Language', 'pt-BR');
+  headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  headers.set('Strict-Transport-Security', HSTS_HEADER);
+  headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests");
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  if (preview) headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+
+  return new Response(request.method === 'HEAD' ? null : assetResponse.body, {
+    status: 404,
+    headers,
+  });
+}
+
 function randomBase64Url(bytes = 32) {
   const values = crypto.getRandomValues(new Uint8Array(bytes));
   let binary = '';
@@ -128,6 +154,20 @@ function safeNext(value, fallback = '/dashboard') {
   } catch {
     return fallback;
   }
+}
+
+function legacyAppRouteTarget(requestUrl, pathname) {
+  const post = pathname.match(/^\/community\/post\/([^/]+)$/i);
+  const profile = pathname.match(/^\/profile\/([^/]+)$/i);
+  const notifications = /^\/community\/notifications$/i.test(pathname);
+  if (!post && !profile && !notifications) return null;
+
+  const target = new URL('/community', APP_ORIGIN);
+  for (const [key, value] of requestUrl.searchParams) target.searchParams.append(key, value);
+  if (post) target.searchParams.set('post', post[1]);
+  if (profile) target.searchParams.set('profile', profile[1]);
+  if (notifications) target.searchParams.set('notifications', '1');
+  return target;
 }
 
 function authCookieName(state) {
@@ -443,9 +483,16 @@ export default {
         if (requestedNext) start.searchParams.set('next', safeNext(requestedNext));
         return authStart(start);
       }
+      const legacyAppRoute = legacyAppRouteTarget(routeUrl, path);
+      if (legacyAppRoute) return redirectTo(legacyAppRoute, 301);
       if (isPrivatePath(path)) return notFound();
       if (isDynamicPath(path)) return proxyToApi(routedRequest, routeUrl);
-      return serveAsset(env, routedRequest);
+      if (path === '/404' || path === '/404.html') return brandedNotFound(env, routedRequest);
+      if (!['GET', 'HEAD'].includes(request.method)) return notFound();
+      const assetResponse = await serveAsset(env, routedRequest);
+      return assetResponse.status === 404
+        ? brandedNotFound(env, routedRequest)
+        : assetResponse;
     }
 
     if (host.endsWith(PAGES_PREVIEW_SUFFIX)) {
@@ -454,9 +501,16 @@ export default {
         start.searchParams.set('auth_path', authAsset.replace(/\.html$/, ''));
         return redirectTo(start, 302);
       }
+      const legacyAppRoute = legacyAppRouteTarget(routeUrl, path);
+      if (legacyAppRoute) return redirectTo(legacyAppRoute, 302);
       if (isPrivatePath(path)) return notFound();
       if (isDynamicPath(path)) return proxyToApi(routedRequest, routeUrl);
-      return serveAsset(env, routedRequest, { preview: true });
+      if (path === '/404' || path === '/404.html') return brandedNotFound(env, routedRequest, { preview: true });
+      if (!['GET', 'HEAD'].includes(request.method)) return notFound();
+      const assetResponse = await serveAsset(env, routedRequest, { preview: true });
+      return assetResponse.status === 404
+        ? brandedNotFound(env, routedRequest, { preview: true })
+        : assetResponse;
     }
 
     const canonical = new URL(routeUrl.pathname + routeUrl.search + routeUrl.hash, APP_ORIGIN);

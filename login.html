@@ -573,7 +573,7 @@ header {
 .card-footer a:hover { border-color: var(--accent); }
 
 /* ── Logged-in view ──────────────────────────────── */
-#view-loggedin { display: none; text-align: center; }
+#view-loggedin { text-align: center; }
 .loggedin-avatar {
   width: 80px; height: 80px; border-radius: 18px; object-fit: cover;
   margin: 0 auto 16px; display: block;
@@ -615,7 +615,7 @@ header {
   <div class="card" id="mainCard">
 
     <!-- ── View: já logado ─────────────────────────── -->
-    <div id="view-loggedin">
+    <div id="view-loggedin" hidden>
       <img id="avatar-loggedin" class="loggedin-avatar"
            src="assets/images/app-icons/icon-192.png"
            onerror="this.src='https://minotar.net/helm/Steve/100.png'" alt="Avatar">
@@ -931,8 +931,8 @@ function providerLabel(p) {
 
 // ── View switching ────────────────────────────────
 function showView(name) {
-  document.getElementById('view-loggedin').style.display = name === 'loggedin' ? '' : 'none';
-  document.getElementById('view-login').style.display    = name === 'login'    ? '' : 'none';
+  document.getElementById('view-loggedin').hidden = name !== 'loggedin';
+  document.getElementById('view-login').hidden    = name !== 'login';
 }
 
 // ── Alert ────────────────────────────────────────

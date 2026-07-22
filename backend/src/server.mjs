@@ -5680,7 +5680,11 @@ function oauthResultPost(res, fields = {}, stateEntry = null, target = 'login') 
     'Cache-Control': 'private, no-store, max-age=0',
     'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; form-action ${actionOrigin}; base-uri 'none'; frame-ancestors 'none'`,
     'Cross-Origin-Opener-Policy': 'unsafe-none',
-    'Referrer-Policy': 'no-referrer',
+    // Em navegacoes POST cross-origin, `no-referrer` serializa o Origin como
+    // `null` em navegadores Chromium. `strict-origin` preserva apenas
+    // protocolo + host, sem expor o callback OAuth nem seus parametros, e
+    // permite que o Worker mantenha a allowlist de origens estrita.
+    'Referrer-Policy': 'strict-origin',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-Robots-Tag': 'noindex, nofollow',

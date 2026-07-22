@@ -7,6 +7,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const workerSource = fs.readFileSync(path.resolve(here, '../../_worker.js'), 'utf8');
 const backendSource = fs.readFileSync(path.resolve(here, '../src/server.mjs'), 'utf8');
 const accountSource = fs.readFileSync(path.resolve(here, '../../account.html'), 'utf8');
+const loginSource = fs.readFileSync(path.resolve(here, '../../login.html'), 'utf8');
+const notFoundSource = fs.readFileSync(path.resolve(here, '../../404.html'), 'utf8');
+const buildSource = fs.readFileSync(path.resolve(here, '../../scripts/build-pages.mjs'), 'utf8');
 const workerModule = await import(`data:text/javascript;base64,${Buffer.from(workerSource).toString('base64')}`);
 const worker = workerModule.default;
 
@@ -14,7 +17,17 @@ const assetRequests = [];
 const env = {
   ASSETS: {
     async fetch(request) {
-      assetRequests.push(new URL(request.url).pathname);
+      const assetPath = new URL(request.url).pathname;
+      assetRequests.push(assetPath);
+      if (assetPath.startsWith('/missing/')) {
+        return new Response('asset missing', { status: 404 });
+      }
+      if (assetPath === '/404') {
+        return new Response('<!doctype html><main data-page="not-found">Rota fora do mapa</main>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+      }
       return new Response('asset', { status: 200 });
     },
   },
@@ -144,15 +157,26 @@ try {
   assert.match(oauthHtml, /oauth_result=1/);
   assert.doesNotMatch(oauthHtml, /oauth_result=1[^<]*eyJ/);
 
-  const forgedOAuthResult = await worker.fetch(new Request('https://accounts.ogabriels.com/auth/oauth-result', {
+  const apexOAuthResult = await worker.fetch(new Request('https://accounts.ogabriels.com/auth/oauth-result', {
     method: 'POST',
     headers: {
-      Origin: 'https://evil.example',
+      Origin: 'https://forcaaliada.com',
       'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: new URLSearchParams({ oauth_token: token, oauth_provider: 'google' }),
+    body: new URLSearchParams({ oauth_token: token, oauth_provider: 'discord' }),
   }), env);
-  assert.equal(forgedOAuthResult.status, 403);
+  assert.equal(apexOAuthResult.status, 200);
+
+  for (const origin of ['null', '', 'https://accounts.ogabriels.com', 'https://evil.example']) {
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    if (origin) headers.Origin = origin;
+    const forgedOAuthResult = await worker.fetch(new Request('https://accounts.ogabriels.com/auth/oauth-result', {
+      method: 'POST',
+      headers,
+      body: new URLSearchParams({ oauth_token: token, oauth_provider: 'google' }),
+    }), env);
+    assert.equal(forgedOAuthResult.status, 403, `OAuth origin ${origin || '(absent)'} must be rejected`);
+  }
 
   const logout = await worker.fetch(new Request('https://forcaaliada.com/logout?next=%2Fguia'), env);
   assert.equal(logout.status, 302);
@@ -196,6 +220,39 @@ try {
   const encodedApi = await worker.fetch(new Request('https://forcaaliada.com/api%2Fapp%2Fsync'), env);
   assert.equal(encodedApi.status, 200);
   assert.equal(upstreamRequests.at(-1).url, 'https://forca-aliada-site.onrender.com/api/app/sync');
+
+  const postDeepLink = await worker.fetch(new Request('https://forcaaliada.com/community/post/42?comment=7'), env);
+  assert.equal(postDeepLink.status, 301);
+  assert.equal(postDeepLink.headers.get('location'), 'https://forcaaliada.com/community?comment=7&post=42');
+
+  const profileDeepLink = await worker.fetch(new Request('https://forcaaliada.com/profile/id%3A7'), env);
+  assert.equal(profileDeepLink.status, 301);
+  assert.equal(profileDeepLink.headers.get('location'), 'https://forcaaliada.com/community?profile=id%3A7');
+
+  const notificationsDeepLink = await worker.fetch(new Request('https://forcaaliada.com/community/notifications'), env);
+  assert.equal(notificationsDeepLink.status, 301);
+  assert.equal(notificationsDeepLink.headers.get('location'), 'https://forcaaliada.com/community?notifications=1');
+
+  for (const publicMissingPath of ['/missing/route', '/missing/nested/route', '/404', '/404.html']) {
+    const missing = await worker.fetch(new Request(`https://forcaaliada.com${publicMissingPath}`), env);
+    assert.equal(missing.status, 404, `${publicMissingPath} must be a real 404`);
+    assert.match(missing.headers.get('content-type') || '', /^text\/html/);
+    assert.equal(missing.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
+    assert.match(missing.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+    assert.match(await missing.text(), /data-page="not-found"/);
+  }
+
+  const missingHead = await worker.fetch(new Request('https://forcaaliada.com/missing/head', { method: 'HEAD' }), env);
+  assert.equal(missingHead.status, 404);
+  assert.equal(await missingHead.text(), '');
+
+  assert.match(loginSource, /id="view-loggedin" hidden/);
+  assert.match(loginSource, /view-loggedin'\)\.hidden = name !== 'loggedin'/);
+  assert.match(loginSource, /view-login'\)\.hidden\s+= name !== 'login'/);
+  assert.doesNotMatch(loginSource, /#view-loggedin\s*\{[^}]*display:\s*none/);
+  assert.match(backendSource, /'Referrer-Policy': 'strict-origin'/);
+  assert.match(buildSource, /'404\.html'/);
+  assert.match(notFoundSource, /<meta name="robots" content="noindex,nofollow,noarchive">/);
 
   assert.doesNotMatch(backendSource, /[?&]oauth_(?:token|onboard)=/);
   assert.doesNotMatch(accountSource, /[?&]link_token=/);

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fa-static-v48-domain-migration';
+const CACHE_VERSION = 'fa-static-v49-auth-and-404';
 const CANONICAL_ORIGIN = 'https://forcaaliada.com';
 const LEGACY_HOSTS = new Set(['forcaaliada.ogabriels.com', 'www.forcaaliada.ogabriels.com']);
 const IS_LEGACY_ORIGIN = LEGACY_HOSTS.has(self.location.hostname);

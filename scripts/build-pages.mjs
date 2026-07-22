@@ -5,6 +5,7 @@ const projectRoot = resolve(import.meta.dirname, '..');
 const outputRoot = resolve(projectRoot, '.pages-dist');
 
 const publicFiles = [
+  '404.html',
   '_headers',
   '_routes.json',
   '_worker.js',
