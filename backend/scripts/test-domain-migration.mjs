@@ -162,6 +162,24 @@ try {
   assert.equal(mainApi.status, 200);
   assert.equal(upstreamRequests.at(-1).url, 'https://forca-aliada-site.onrender.com/api/app/sync');
 
+  for (const privatePath of [
+    '/README.md',
+    '/backend/package.json',
+    '/backend/src/server.mjs',
+    '/data/player-history.json',
+    '/scripts/monitor.mjs',
+    '/.git/HEAD',
+    '/wrangler.jsonc',
+  ]) {
+    const privateResponse = await worker.fetch(new Request(`https://forcaaliada.com${privatePath}`), env);
+    assert.equal(privateResponse.status, 404, `${privatePath} must not be public`);
+    assert.equal(privateResponse.headers.get('x-robots-tag'), 'noindex, nofollow');
+  }
+
+  const publicDiscovery = await worker.fetch(new Request('https://forcaaliada.com/.well-known/forca-aliada-manager.json'), env);
+  assert.equal(publicDiscovery.status, 200);
+  assert.equal(assetRequests.at(-1), '/.well-known/forca-aliada-manager.json');
+
   assert.doesNotMatch(backendSource, /[?&]oauth_(?:token|onboard)=/);
   assert.doesNotMatch(accountSource, /[?&]link_token=/);
 

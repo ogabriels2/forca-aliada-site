@@ -15,6 +15,14 @@ const AUTH_STATE_COOKIE_PREFIX = '__Host-fa_auth_';
 const AUTH_STATE_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
 const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const OAUTH_RESULT_ORIGINS = new Set([API_ORIGIN, APP_ORIGIN]);
+const HSTS_HEADER = 'max-age=31536000';
+
+const PRIVATE_PATH_PATTERNS = [
+  /^\/(?:backend|data|scripts|node_modules|\.pages-dist)(?:\/|$)/i,
+  /^\/(?!\.well-known(?:\/|$))(?:[^/]*\/)*\.[^/]+(?:\/|$)/i,
+  /\.(?:md|mjs|cjs|map|lock|log|env)$/i,
+  /^\/(?:package(?:-lock)?\.json|wrangler\.(?:jsonc|toml)|\.assetsignore|\.gitignore)$/i,
+];
 
 const DYNAMIC_PATHS = [
   /^\/healthz$/,
@@ -44,6 +52,24 @@ function authAssetFor(pathname) {
 
 function isDynamicPath(pathname) {
   return DYNAMIC_PATHS.some(pattern => pattern.test(pathname));
+}
+
+function isPrivatePath(pathname) {
+  return PRIVATE_PATH_PATTERNS.some(pattern => pattern.test(String(pathname || '/')));
+}
+
+function notFound() {
+  return new Response('Not Found', {
+    status: 404,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'private, no-store, max-age=0',
+      'Strict-Transport-Security': HSTS_HEADER,
+      'Referrer-Policy': 'no-referrer',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+  });
 }
 
 function randomBase64Url(bytes = 32) {
@@ -96,6 +122,7 @@ function redirectTo(url, status = 302) {
     headers: {
       Location: url.toString(),
       'Cache-Control': status === 301 ? 'public, max-age=3600' : 'no-store',
+      'Strict-Transport-Security': HSTS_HEADER,
       'Referrer-Policy': 'no-referrer',
       'X-Content-Type-Options': 'nosniff',
     },
@@ -108,6 +135,7 @@ function secureHtml(body, nonce, status = 200, extraHeaders = {}) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'private, no-store, max-age=0',
+      'Strict-Transport-Security': HSTS_HEADER,
       'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Referrer-Policy': 'no-referrer',
@@ -289,6 +317,7 @@ async function serveAsset(env, request, { auth = false, preview = false } = {}) 
   const isHtml = contentType.includes('text/html');
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('Strict-Transport-Security', HSTS_HEADER);
 
   if (auth) {
     headers.set('Cache-Control', 'private, no-store, max-age=0');
@@ -379,6 +408,7 @@ export default {
         if (requestedNext) start.searchParams.set('next', safeNext(requestedNext));
         return authStart(start);
       }
+      if (isPrivatePath(url.pathname)) return notFound();
       if (isDynamicPath(url.pathname)) return proxyToApi(request, url);
       return serveAsset(env, request);
     }
@@ -389,6 +419,7 @@ export default {
         start.searchParams.set('auth_path', authAsset.replace(/\.html$/, ''));
         return redirectTo(start, 302);
       }
+      if (isPrivatePath(url.pathname)) return notFound();
       if (isDynamicPath(url.pathname)) return proxyToApi(request, url);
       return serveAsset(env, request, { preview: true });
     }
